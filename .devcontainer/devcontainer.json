@@ -1,0 +1,55 @@
+{
+	"name": "Kotlin Multiplatform Development",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "dev",
+	"workspaceFolder": "/workspace",
+	"customizations": {
+		"jetbrains": {
+			"plugins": [
+				"org.jetbrains.android",
+				"org.jetbrains.kotlin",
+				"org.jetbrains.plugins.gradle",
+				"org.jetbrains.plugins.gradle.maven",
+				"org.jetbrains.plugins.yaml",
+				"com.jetbrains.kmm",
+				"com.android.tools.design",
+				"com.intellij.nativeDebug",
+				"androidx.compose.plugins.idea'",
+				"intellij.webp"
+			],
+			"vmoptions": "-Xmx2048m",
+			"javaVersion": "25"
+		}
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {}
+	},
+	"remoteEnv": {
+		"ANDROID_HOME": "/home/devcontainer/Android/sdk",
+		"ANDROID_SDK_ROOT": "/home/devcontainer/Android/sdk",
+		"JAVA_HOME": "/usr/lib/jvm/java-25-openjdk-amd64"
+	},
+	"postCreateCommand": "gradle --version && kotlinc -version && sdkmanager --version",
+	"remoteUser": "devcontainer",
+	"mounts": [
+		"source=${localEnv:HOME}/.gradle,target=/home/devcontainer/.gradle,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.m2,target=/home/devcontainer/.m2,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.android,target=/home/devcontainer/.android,type=bind,consistency=cached"
+	],
+	"forwardPorts": [8080, 8081, 8082],
+	"portsAttributes": {
+		"8080": {
+			"label": "Application",
+			"onAutoForward": "notify"
+		},
+		"8081": {
+			"label": "Debug",
+			"onAutoForward": "notify"
+		},
+		"8082": {
+			"label": "Test Server",
+			"onAutoForward": "notify"
+		}
+	}
+}

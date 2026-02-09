@@ -1,0 +1,520 @@
+package com.reader.android.ui.post
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.reader.android.ui.components.FlairChip
+import com.reader.android.ui.components.formatNumber
+import com.reader.android.ui.components.formatTimeAgo
+import com.reader.shared.data.api.CommentOrMore
+import com.reader.shared.domain.model.Comment
+import com.reader.shared.domain.model.MoreComments
+import com.reader.shared.domain.model.Post
+import com.reader.shared.domain.model.VoteState
+import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PostDetailScreen(
+    subreddit: String,
+    postId: String,
+    onBackClick: () -> Unit,
+    onSubredditClick: (String) -> Unit,
+    onUserClick: (String) -> Unit,
+    onLinkClick: (String) -> Unit = {},
+    viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId) }
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Comments") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { viewModel.loadPostWithComments() }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                    }
+                }
+            )
+        },
+        bottomBar = {
+            if (uiState.isLoggedIn && uiState.replyingTo != null) {
+                ReplyBar(
+                    replyText = uiState.replyText,
+                    onReplyTextChange = viewModel::setReplyText,
+                    onSubmit = viewModel::submitReply,
+                    onCancel = { viewModel.setReplyingTo(null) }
+                )
+            }
+        }
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            if (uiState.isLoading && uiState.post == null) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else if (uiState.error != null && uiState.post == null) {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(uiState.error ?: "Unknown error")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { viewModel.loadPostWithComments() }) {
+                        Text("Retry")
+                    }
+                }
+            } else {
+                uiState.post?.let { post ->
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        item {
+                            PostHeader(
+                                post = post,
+                                onSubredditClick = { onSubredditClick(post.subreddit) },
+                                onUserClick = { onUserClick(post.author) },
+                                onUpvote = { viewModel.votePost(if (post.likes == true) 0 else 1) },
+                                onDownvote = { viewModel.votePost(if (post.likes == false) 0 else -1) },
+                                onSave = { viewModel.savePost() },
+                                onReply = { viewModel.setReplyingTo(post.name) },
+                                isLoggedIn = uiState.isLoggedIn,
+                                onLinkClick = onLinkClick
+                            )
+                        }
+
+                        item {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                        }
+
+                        items(
+                            items = uiState.comments,
+                            key = { item ->
+                                when (item) {
+                                    is CommentOrMore.CommentItem -> item.comment.id
+                                    is CommentOrMore.More -> "more_${item.more.id}"
+                                }
+                            }
+                        ) { item ->
+                            when (item) {
+                                is CommentOrMore.CommentItem -> {
+                                    CommentItem(
+                                        comment = item.comment,
+                                        onUserClick = onUserClick,
+                                        onUpvote = { viewModel.voteComment(item.comment, if (item.comment.likes == true) 0 else 1) },
+                                        onDownvote = { viewModel.voteComment(item.comment, if (item.comment.likes == false) 0 else -1) },
+                                        onSave = { viewModel.saveComment(item.comment) },
+                                        onReply = { viewModel.setReplyingTo(item.comment.name) },
+                                        onLoadMore = viewModel::loadMoreComments,
+                                        isLoggedIn = uiState.isLoggedIn,
+                                        onLinkClick = onLinkClick
+                                    )
+                                }
+                                is CommentOrMore.More -> {
+                                    MoreCommentsButton(
+                                        more = item.more,
+                                        onClick = { viewModel.loadMoreComments(item.more) },
+                                        isLoading = uiState.isLoadingComments
+                                    )
+                                }
+                            }
+                        }
+
+                        item {
+                            Spacer(modifier = Modifier.height(80.dp))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PostHeader(
+    post: Post,
+    onSubredditClick: () -> Unit,
+    onUserClick: () -> Unit,
+    onUpvote: () -> Unit,
+    onDownvote: () -> Unit,
+    onSave: () -> Unit,
+    onReply: () -> Unit,
+    isLoggedIn: Boolean,
+    onLinkClick: (String) -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "r/${post.subreddit}",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable(onClick = onSubredditClick)
+            )
+            Text(" • ", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = "u/${post.author}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.clickable(onClick = onUserClick)
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = formatTimeAgo(post.createdUtc),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (post.isNsfw) FlairChip("NSFW", Color(0xFFFF4444))
+            if (post.isSpoiler) FlairChip("Spoiler", Color(0xFF888888))
+            post.linkFlairText?.let { FlairChip(it, Color.Gray) }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = post.title,
+            style = MaterialTheme.typography.titleLarge
+        )
+
+        val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
+        if (imageUrl != null && !post.isNsfw) {
+            Spacer(modifier = Modifier.height(12.dp))
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp)),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        post.selfText?.let { text ->
+            if (text.isNotBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+
+        if (post.isLinkPost) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = post.domain,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.secondary
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 4.dp)
+            ) {
+                IconButton(onClick = onUpvote, enabled = isLoggedIn, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        if (post.voteState == VoteState.UPVOTED) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
+                        contentDescription = "Upvote",
+                        tint = if (post.voteState == VoteState.UPVOTED) Color(0xFFFF4500) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = formatNumber(post.score),
+                    fontWeight = FontWeight.Bold,
+                    color = when (post.voteState) {
+                        VoteState.UPVOTED -> Color(0xFFFF4500)
+                        VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                        VoteState.NONE -> MaterialTheme.colorScheme.onSurface
+                    }
+                )
+                IconButton(onClick = onDownvote, enabled = isLoggedIn, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        if (post.voteState == VoteState.DOWNVOTED) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = "Downvote",
+                        tint = if (post.voteState == VoteState.DOWNVOTED) Color(0xFF7193FF) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Text(
+                text = "${formatNumber(post.numComments)} comments",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            if (isLoggedIn) {
+                IconButton(onClick = onSave) {
+                    Icon(
+                        if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                        contentDescription = "Save",
+                        tint = if (post.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onReply) {
+                    Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Reply")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommentItem(
+    comment: Comment,
+    onUserClick: (String) -> Unit,
+    onUpvote: () -> Unit,
+    onDownvote: () -> Unit,
+    onSave: () -> Unit,
+    onReply: () -> Unit,
+    onLoadMore: (MoreComments) -> Unit,
+    isLoggedIn: Boolean,
+    onLinkClick: (String) -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    val depthColors = listOf(
+        Color(0xFFFF4500),
+        Color(0xFF0079D3),
+        Color(0xFF46A508),
+        Color(0xFFFFD635),
+        Color(0xFF7193FF),
+        Color(0xFFFF66AC)
+    )
+    val depthColor = depthColors[comment.depth % depthColors.size]
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = (comment.depth * 12).dp)
+    ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            if (comment.depth > 0) {
+                Box(
+                    modifier = Modifier
+                        .width(2.dp)
+                        .height(IntrinsicSize.Max)
+                        .background(depthColor.copy(alpha = 0.5f))
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
+            Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp, horizontal = 8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = comment.author,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = when {
+                            comment.isSubmitter -> Color(0xFF0079D3)
+                            comment.distinguished == "moderator" -> Color(0xFF46A508)
+                            comment.distinguished == "admin" -> Color(0xFFFF4500)
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
+                        modifier = Modifier.clickable { onUserClick(comment.author) }
+                    )
+                    if (comment.isSubmitter) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("OP", style = MaterialTheme.typography.labelSmall, color = Color(0xFF0079D3))
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (comment.scoreHidden) "[score hidden]" else formatNumber(comment.score),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when (comment.voteState) {
+                            VoteState.UPVOTED -> Color(0xFFFF4500)
+                            VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                            VoteState.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = formatTimeAgo(comment.createdUtc),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (comment.isEdited) {
+                        Text(
+                            text = " (edited)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    text = comment.body,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    IconButton(onClick = onUpvote, enabled = isLoggedIn, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            if (comment.voteState == VoteState.UPVOTED) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
+                            contentDescription = "Upvote",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (comment.voteState == VoteState.UPVOTED) Color(0xFFFF4500) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onDownvote, enabled = isLoggedIn, modifier = Modifier.size(28.dp)) {
+                        Icon(
+                            if (comment.voteState == VoteState.DOWNVOTED) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
+                            contentDescription = "Downvote",
+                            modifier = Modifier.size(20.dp),
+                            tint = if (comment.voteState == VoteState.DOWNVOTED) Color(0xFF7193FF) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (isLoggedIn) {
+                        IconButton(onClick = onReply, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Reply", modifier = Modifier.size(18.dp))
+                        }
+                        IconButton(onClick = onSave, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                if (comment.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                                contentDescription = "Save",
+                                modifier = Modifier.size(18.dp),
+                                tint = if (comment.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        comment.replies.forEach { reply ->
+            CommentItem(
+                comment = reply,
+                onUserClick = onUserClick,
+                onUpvote = {},
+                onDownvote = {},
+                onSave = {},
+                onReply = {},
+                onLoadMore = onLoadMore,
+                isLoggedIn = isLoggedIn,
+                onLinkClick = onLinkClick
+            )
+        }
+
+        comment.moreReplies?.let { more ->
+            if (more.count > 0) {
+                MoreCommentsButton(
+                    more = more,
+                    onClick = { onLoadMore(more) },
+                    isLoading = false,
+                    modifier = Modifier.padding(start = 12.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MoreCommentsButton(
+    more: MoreComments,
+    onClick: () -> Unit,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    TextButton(
+        onClick = onClick,
+        enabled = !isLoading,
+        modifier = modifier.padding(start = (more.depth * 12).dp)
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+            Spacer(modifier = Modifier.width(8.dp))
+        }
+        Text("Load ${more.count} more ${if (more.count == 1) "reply" else "replies"}")
+    }
+}
+
+@Composable
+private fun ReplyBar(
+    replyText: String,
+    onReplyTextChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Surface(
+        tonalElevation = 3.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onCancel) {
+                Icon(Icons.Default.Close, contentDescription = "Cancel")
+            }
+            OutlinedTextField(
+                value = replyText,
+                onValueChange = onReplyTextChange,
+                modifier = Modifier.weight(1f),
+                placeholder = { Text("Write a reply...") },
+                maxLines = 4
+            )
+            IconButton(
+                onClick = onSubmit,
+                enabled = replyText.isNotBlank()
+            ) {
+                Icon(Icons.Default.Send, contentDescription = "Send")
+            }
+        }
+    }
+}

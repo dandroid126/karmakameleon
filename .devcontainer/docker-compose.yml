@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kotlin-multiplatform-dev
+    volumes:
+      - ..:/workspace:cached
+      - /var/run/docker.sock:/var/run/docker.sock
+    devices:
+      - /dev/kvm:/dev/kvm
+    environment:
+      - JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
+      - GRADLE_USER_HOME=/home/devcontainer/.gradle
+      - M2_HOME=/home/devcontainer/.m2
+    working_dir: /workspace
+    command: sleep infinity
+    stdin_open: true
+    tty: true
+    networks:
+      - kotlin-network
+
+networks:
+  kotlin-network:
+    driver: bridge

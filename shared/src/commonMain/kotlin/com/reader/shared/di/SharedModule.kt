@@ -1,0 +1,24 @@
+package com.reader.shared.di
+
+import com.reader.shared.data.api.AuthManager
+import com.reader.shared.data.api.RedditApi
+import com.reader.shared.data.api.createHttpClientWithConfig
+import com.reader.shared.data.repository.*
+import com.russhwolf.settings.Settings
+import org.koin.core.module.Module
+import org.koin.dsl.module
+
+val sharedModule = module {
+    single { createHttpClientWithConfig() }
+    single { Settings() }
+    single { AuthManager(get(), get()) }
+    single { RedditApi(get(), get()) }
+    
+    single { PostRepository(get()) }
+    single { SubredditRepository(get()) }
+    single { UserRepository(get(), get()) }
+    single { CommentRepository(get()) }
+    single { MessageRepository(get()) }
+}
+
+expect fun platformModule(): Module
