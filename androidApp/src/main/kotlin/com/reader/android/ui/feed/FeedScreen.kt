@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.reader.android.data.ReadPostsRepository
 import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.RedditLink
 import com.reader.android.ui.components.SortBottomSheet
@@ -18,6 +19,7 @@ import com.reader.android.ui.components.parseRedditLink
 import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.TimeFilter
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +33,8 @@ fun FeedScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     var showSortSheet by remember { mutableStateOf(false) }
+    val readPostsRepository: ReadPostsRepository = koinInject()
+    val readPostIds by readPostsRepository.readPostIds.collectAsState()
     
     // Load more when reaching end
     val shouldLoadMore by remember {
@@ -98,7 +102,10 @@ fun FeedScreen(
                     ) { post ->
                         PostCard(
                             post = post,
-                            onClick = { onPostClick(post.subreddit, post.id) },
+                            onClick = {
+                                readPostsRepository.markAsRead(post.id)
+                                onPostClick(post.subreddit, post.id)
+                            },
                             onSubredditClick = { onSubredditClick(post.subreddit) },
                             onUserClick = { onUserClick(post.author) },
                             onUpvote = { viewModel.vote(post, if (post.likes == true) 0 else 1) },
@@ -106,14 +113,7 @@ fun FeedScreen(
                             onSave = { viewModel.save(post) },
                             onHide = { viewModel.hide(post) },
                             isLoggedIn = uiState.isLoggedIn,
-                            onLinkClick = { url ->
-                                when (val link = parseRedditLink(url)) {
-                                    is RedditLink.Subreddit -> onSubredditClick(link.name)
-                                    is RedditLink.User -> onUserClick(link.name)
-                                    is RedditLink.Post -> onPostClick(link.subreddit, link.postId)
-                                    is RedditLink.External -> onLinkClick(url)
-                                }
-                            }
+                            isRead = readPostIds.contains(post.id)
                         )
                     }
                     

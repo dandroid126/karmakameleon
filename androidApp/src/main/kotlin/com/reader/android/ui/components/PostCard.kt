@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -21,6 +23,8 @@ import coil3.compose.AsyncImage
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
 import androidx.compose.material3.Text
+
+private val POST_CARD_MAX_CONTENT_HEIGHT = 400.dp
 
 @Composable
 fun PostCard(
@@ -33,7 +37,7 @@ fun PostCard(
     onSave: () -> Unit,
     onHide: () -> Unit,
     isLoggedIn: Boolean,
-    onLinkClick: (String) -> Unit = {},
+    isRead: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -110,60 +114,78 @@ fun PostCard(
             Text(
                 text = post.title,
                 style = MaterialTheme.typography.titleMedium,
+                fontWeight = if (isRead) FontWeight.Normal else FontWeight.Bold,
+                color = if (isRead) Color(0xFF8090B0) else MaterialTheme.colorScheme.onSurface,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
             
-            // Video/GIF or Thumbnail/Preview
-            val redditVideo = post.media?.redditVideo
-            if (redditVideo != null && !post.isNsfw) {
-                Spacer(modifier = Modifier.height(8.dp))
-                VideoPlayer(
-                    videoUrl = redditVideo.fallbackUrl,
-                    isGif = redditVideo.isGif,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 300.dp)
-                )
-            } else {
-                val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
-                    ?: post.thumbnail?.takeIf { it.startsWith("http") }
+            // Content preview with max height and fade
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = POST_CARD_MAX_CONTENT_HEIGHT)
+                    .clipToBounds()
+            ) {
+                Column {
+                    // Thumbnail/Preview (for both videos and images)
+                    val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
+                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
 
-                if (imageUrl != null && !post.isNsfw) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AsyncImage(
-                        model = imageUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 300.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
-            
-            // Self text preview
-            if (post.isTextPost) {
-                post.selfText?.let { text ->
-                    if (text.isNotBlank()) {
+                    if (imageUrl != null && !post.isNsfw) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        MarkdownText(
-                            markdown = text,
-                            style = MaterialTheme.typography.bodyMedium,
-                            onLinkClick = onLinkClick
+                        AsyncImage(
+                            model = imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 300.dp)
+                                .clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+
+                    // Self text preview (plain text, no clickable links)
+                    if (post.isTextPost) {
+                        post.selfText?.let { text ->
+                            if (text.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = text,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    maxLines = 6,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    // Link domain
+                    if (post.isLinkPost) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = post.domain,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
-            }
-            
-            // Link domain
-            if (post.isLinkPost) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = post.domain,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary
+
+                // Fade-out gradient at bottom when content is tall
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(32.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.surfaceContainerLow
+                                )
+                            )
+                        )
                 )
             }
             
