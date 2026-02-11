@@ -114,21 +114,33 @@ fun PostCard(
                 overflow = TextOverflow.Ellipsis
             )
             
-            // Thumbnail/Preview
-            val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
-                ?: post.thumbnail?.takeIf { it.startsWith("http") }
-            
-            if (imageUrl != null && !post.isNsfw) {
+            // Video/GIF or Thumbnail/Preview
+            val redditVideo = post.media?.redditVideo
+            if (redditVideo != null && !post.isNsfw) {
                 Spacer(modifier = Modifier.height(8.dp))
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
+                VideoPlayer(
+                    videoUrl = redditVideo.fallbackUrl,
+                    isGif = redditVideo.isGif,
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 300.dp)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
                 )
+            } else {
+                val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
+                    ?: post.thumbnail?.takeIf { it.startsWith("http") }
+
+                if (imageUrl != null && !post.isNsfw) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
             
             // Self text preview

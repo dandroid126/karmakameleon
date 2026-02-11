@@ -74,6 +74,9 @@ dependencies {
     
     implementation(libs.napier)
     
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+    
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

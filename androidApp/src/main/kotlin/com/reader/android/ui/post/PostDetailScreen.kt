@@ -25,6 +25,7 @@ import coil3.compose.AsyncImage
 import com.reader.android.ui.components.FlairChip
 import com.reader.android.ui.components.MarkdownText
 import com.reader.android.ui.components.RedditLink
+import com.reader.android.ui.components.VideoPlayer
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
 import com.reader.android.ui.components.parseRedditLink
@@ -224,17 +225,27 @@ private fun PostHeader(
             style = MaterialTheme.typography.titleLarge
         )
 
-        val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
-        if (imageUrl != null && !post.isNsfw) {
+        val redditVideo = post.media?.redditVideo
+        if (redditVideo != null && !post.isNsfw) {
             Spacer(modifier = Modifier.height(12.dp))
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop
+            VideoPlayer(
+                videoUrl = redditVideo.fallbackUrl,
+                isGif = redditVideo.isGif,
+                modifier = Modifier.fillMaxWidth()
             )
+        } else {
+            val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
+            if (imageUrl != null && !post.isNsfw) {
+                Spacer(modifier = Modifier.height(12.dp))
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
+            }
         }
 
         post.selfText?.let { text ->

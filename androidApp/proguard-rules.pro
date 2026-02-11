@@ -24,5 +24,9 @@
 -keep class io.ktor.util.debug.** { *; }
 -dontwarn org.slf4j.**
 
+# Media3 / ExoPlayer
+-keep class androidx.media3.** { *; }
+-dontwarn androidx.media3.**
+
 # Java Management (needed by Ktor debug detection)
 -dontwarn java.lang.management.**
