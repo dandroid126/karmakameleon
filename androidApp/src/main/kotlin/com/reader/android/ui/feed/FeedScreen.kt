@@ -12,7 +12,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.reader.android.ui.components.PostCard
+import com.reader.android.ui.components.RedditLink
 import com.reader.android.ui.components.SortBottomSheet
+import com.reader.android.ui.components.parseRedditLink
 import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.TimeFilter
 import org.koin.androidx.compose.koinViewModel
@@ -104,7 +106,14 @@ fun FeedScreen(
                             onSave = { viewModel.save(post) },
                             onHide = { viewModel.hide(post) },
                             isLoggedIn = uiState.isLoggedIn,
-                            onLinkClick = onLinkClick
+                            onLinkClick = { url ->
+                                when (val link = parseRedditLink(url)) {
+                                    is RedditLink.Subreddit -> onSubredditClick(link.name)
+                                    is RedditLink.User -> onUserClick(link.name)
+                                    is RedditLink.Post -> onPostClick(link.subreddit, link.postId)
+                                    is RedditLink.External -> onLinkClick(url)
+                                }
+                            }
                         )
                     }
                     

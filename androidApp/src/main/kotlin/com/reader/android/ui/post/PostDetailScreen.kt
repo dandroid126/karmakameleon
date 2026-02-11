@@ -23,8 +23,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.reader.android.ui.components.FlairChip
+import com.reader.android.ui.components.MarkdownText
+import com.reader.android.ui.components.RedditLink
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
+import com.reader.android.ui.components.parseRedditLink
 import com.reader.shared.data.api.CommentOrMore
 import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.MoreComments
@@ -136,7 +139,14 @@ fun PostDetailScreen(
                                         onReply = { viewModel.setReplyingTo(item.comment.name) },
                                         onLoadMore = viewModel::loadMoreComments,
                                         isLoggedIn = uiState.isLoggedIn,
-                                        onLinkClick = onLinkClick
+                                        onLinkClick = { url ->
+                                            when (val link = parseRedditLink(url)) {
+                                                is RedditLink.Subreddit -> onSubredditClick(link.name)
+                                                is RedditLink.User -> onUserClick(link.name)
+                                                is RedditLink.Post -> onLinkClick(url)
+                                                is RedditLink.External -> onLinkClick(url)
+                                            }
+                                        }
                                     )
                                 }
                                 is CommentOrMore.More -> {
@@ -230,9 +240,10 @@ private fun PostHeader(
         post.selfText?.let { text ->
             if (text.isNotBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium
+                MarkdownText(
+                    markdown = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    onLinkClick = onLinkClick
                 )
             }
         }
@@ -391,9 +402,10 @@ private fun CommentItem(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
-                    text = comment.body,
-                    style = MaterialTheme.typography.bodyMedium
+                MarkdownText(
+                    markdown = comment.body,
+                    style = MaterialTheme.typography.bodyMedium,
+                    onLinkClick = onLinkClick
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))

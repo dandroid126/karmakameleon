@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
+import androidx.compose.material3.Text
 
 @Composable
 fun PostCard(
@@ -135,10 +136,10 @@ fun PostCard(
                 post.selfText?.let { text ->
                     if (text.isNotBlank()) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = text,
+                        MarkdownText(
+                            markdown = text,
                             style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 3
+                            onLinkClick = onLinkClick
                         )
                     }
                 }

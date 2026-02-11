@@ -16,7 +16,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.reader.android.ui.components.RedditLink
 import com.reader.android.ui.components.WebBrowserScreen
+import com.reader.android.ui.components.parseRedditLink
 import com.reader.android.ui.feed.FeedScreen
 import com.reader.android.ui.inbox.InboxScreen
 import com.reader.android.ui.post.PostDetailScreen
@@ -144,6 +146,9 @@ fun ReaderApp() {
                     },
                     onUserClick = { username ->
                         navController.navigate(DetailScreen.UserProfile.createRoute(username))
+                    },
+                    onLinkClick = { url ->
+                        navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                     }
                 )
             }
@@ -163,6 +168,9 @@ fun ReaderApp() {
                     },
                     onSubredditClick = { subredditName ->
                         navController.navigate(DetailScreen.SubredditDetail.createRoute(subredditName))
+                    },
+                    onLinkClick = { url ->
+                        navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                     }
                 )
             }
@@ -180,6 +188,12 @@ fun ReaderApp() {
                     },
                     onUserClick = { username ->
                         navController.navigate(DetailScreen.UserProfile.createRoute(username))
+                    },
+                    onSubredditClick = { name ->
+                        navController.navigate(DetailScreen.SubredditDetail.createRoute(name))
+                    },
+                    onLinkClick = { url ->
+                        navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                     }
                 )
             }
@@ -204,7 +218,12 @@ fun ReaderApp() {
                         navController.navigate(DetailScreen.UserProfile.createRoute(username))
                     },
                     onLinkClick = { url ->
-                        navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        when (val link = parseRedditLink(url)) {
+                            is RedditLink.Subreddit -> navController.navigate(DetailScreen.SubredditDetail.createRoute(link.name))
+                            is RedditLink.User -> navController.navigate(DetailScreen.UserProfile.createRoute(link.name))
+                            is RedditLink.Post -> navController.navigate(DetailScreen.PostDetail.createRoute(link.subreddit, link.postId))
+                            is RedditLink.External -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        }
                     }
                 )
             }

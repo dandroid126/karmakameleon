@@ -21,8 +21,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.reader.android.ui.components.PostCard
+import com.reader.android.ui.components.RedditLink
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
+import com.reader.android.ui.components.parseRedditLink
 import com.reader.shared.domain.model.Account
 import org.koin.androidx.compose.koinViewModel
 
@@ -33,6 +35,7 @@ fun ProfileScreen(
     onBackClick: (() -> Unit)? = null,
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onSubredditClick: (String) -> Unit,
+    onLinkClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -155,7 +158,15 @@ fun ProfileScreen(
                                                 onDownvote = { viewModel.vote(post, if (post.likes == false) 0 else -1) },
                                                 onSave = { viewModel.save(post) },
                                                 onHide = {},
-                                                isLoggedIn = uiState.isLoggedIn
+                                                isLoggedIn = uiState.isLoggedIn,
+                                                onLinkClick = { url ->
+                                                    when (val link = parseRedditLink(url)) {
+                                                        is RedditLink.Subreddit -> onSubredditClick(link.name)
+                                                        is RedditLink.User -> {}
+                                                        is RedditLink.Post -> onPostClick(link.subreddit, link.postId)
+                                                        is RedditLink.External -> onLinkClick(url)
+                                                    }
+                                                }
                                             )
                                         }
                                     }
