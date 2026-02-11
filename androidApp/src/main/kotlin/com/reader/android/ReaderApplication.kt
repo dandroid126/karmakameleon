@@ -4,9 +4,8 @@ import android.app.Application
 import com.reader.android.di.androidModule
 import com.reader.shared.di.platformModule
 import com.reader.shared.di.sharedModule
-import io.github.aakira.napier.Napier
 import io.github.aakira.napier.DebugAntilog
-import io.github.aakira.napier.Antilog
+import io.github.aakira.napier.Napier
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin

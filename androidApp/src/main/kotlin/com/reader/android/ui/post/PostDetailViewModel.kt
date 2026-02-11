@@ -6,8 +6,14 @@ import com.reader.shared.data.api.CommentOrMore
 import com.reader.shared.data.repository.CommentRepository
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.UserRepository
-import com.reader.shared.domain.model.*
-import kotlinx.coroutines.flow.*
+import com.reader.shared.domain.model.Comment
+import com.reader.shared.domain.model.CommentSort
+import com.reader.shared.domain.model.MoreComments
+import com.reader.shared.domain.model.Post
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class PostDetailUiState(

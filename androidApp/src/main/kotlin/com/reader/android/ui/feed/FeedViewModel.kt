@@ -5,8 +5,13 @@ import androidx.lifecycle.viewModelScope
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.data.repository.UserRepository
-import com.reader.shared.domain.model.*
-import kotlinx.coroutines.flow.*
+import com.reader.shared.domain.model.Post
+import com.reader.shared.domain.model.PostSort
+import com.reader.shared.domain.model.TimeFilter
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class FeedUiState(

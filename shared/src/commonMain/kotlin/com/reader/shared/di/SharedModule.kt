@@ -3,7 +3,11 @@ package com.reader.shared.di
 import com.reader.shared.data.api.AuthManager
 import com.reader.shared.data.api.RedditApi
 import com.reader.shared.data.api.createHttpClientWithConfig
-import com.reader.shared.data.repository.*
+import com.reader.shared.data.repository.CommentRepository
+import com.reader.shared.data.repository.MessageRepository
+import com.reader.shared.data.repository.PostRepository
+import com.reader.shared.data.repository.SubredditRepository
+import com.reader.shared.data.repository.UserRepository
 import com.russhwolf.settings.Settings
 import org.koin.core.module.Module
 import org.koin.dsl.module

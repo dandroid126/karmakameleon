@@ -4,8 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.reader.shared.data.repository.MessageRepository
 import com.reader.shared.data.repository.UserRepository
-import com.reader.shared.domain.model.*
-import kotlinx.coroutines.flow.*
+import com.reader.shared.domain.model.InboxFilter
+import com.reader.shared.domain.model.Message
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class InboxUiState(

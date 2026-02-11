@@ -2,10 +2,24 @@ package com.reader.android.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -24,8 +38,8 @@ import com.reader.android.ui.inbox.InboxScreen
 import com.reader.android.ui.post.PostDetailScreen
 import com.reader.android.ui.profile.ProfileScreen
 import com.reader.android.ui.search.SearchScreen
-import com.reader.android.ui.subreddit.SubredditScreen
 import com.reader.android.ui.subreddit.SubredditListScreen
+import com.reader.android.ui.subreddit.SubredditScreen
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
