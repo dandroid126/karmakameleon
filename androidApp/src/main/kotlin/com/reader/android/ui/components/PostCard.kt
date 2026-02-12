@@ -49,7 +49,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
 
@@ -158,13 +157,17 @@ fun PostCard(
             ) {
                 Column {
                     // Thumbnail/Preview (for both videos and images)
-                    val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
+                    val previewImage = post.preview?.images?.firstOrNull()
+                    val highResUrl = previewImage?.source?.url
+                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                    val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
                         ?: post.thumbnail?.takeIf { it.startsWith("http") }
 
-                    if (imageUrl != null && !post.isNsfw) {
+                    if (highResUrl != null && !post.isNsfw) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        AsyncImage(
-                            model = imageUrl,
+                        ProgressiveAsyncImage(
+                            lowResUrl = lowResUrl,
+                            highResUrl = highResUrl,
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxWidth()

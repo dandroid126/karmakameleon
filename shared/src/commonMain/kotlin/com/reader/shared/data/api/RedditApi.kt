@@ -702,7 +702,7 @@ class RedditApi(
             thumbnail = dto.thumbnail?.takeIf { it.startsWith("http") },
             thumbnailWidth = dto.thumbnailWidth,
             thumbnailHeight = dto.thumbnailHeight,
-            preview = dto.preview?.let { mapPreview(it) },
+            preview = (dto.preview ?: dto.crosspostParentList?.firstOrNull()?.preview)?.let { mapPreview(it) },
             score = dto.score,
             upvoteRatio = dto.upvoteRatio,
             numComments = dto.numComments,
@@ -723,7 +723,7 @@ class RedditApi(
             linkFlairTextColor = dto.linkFlairTextColor,
             authorFlairText = dto.authorFlairText,
             distinguished = dto.distinguished,
-            media = dto.media?.let { mapMedia(it) },
+            media = (dto.media ?: dto.crosspostParentList?.firstOrNull()?.media)?.let { mapMedia(it) },
             galleryData = dto.galleryData?.let { mapGallery(it) },
             crosspostParent = dto.crosspostParent,
             isCrosspost = dto.crosspostParent != null

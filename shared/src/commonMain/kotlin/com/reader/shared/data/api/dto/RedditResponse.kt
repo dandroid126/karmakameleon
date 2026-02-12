@@ -65,6 +65,7 @@ data class PostDto(
     @SerialName("gallery_data") val galleryData: GalleryDataDto? = null,
     @SerialName("media_metadata") val mediaMetadata: Map<String, MediaMetadataDto>? = null,
     @SerialName("crosspost_parent") val crosspostParent: String? = null,
+    @SerialName("crosspost_parent_list") val crosspostParentList: List<PostDto>? = null,
     @SerialName("is_gallery") val isGallery: Boolean = false,
     @SerialName("is_video") val isVideo: Boolean = false,
     @SerialName("is_self") val isSelf: Boolean = false,

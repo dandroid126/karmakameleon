@@ -52,9 +52,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.reader.android.ui.components.FlairChip
 import com.reader.android.ui.components.MarkdownText
+import com.reader.android.ui.components.ProgressiveAsyncImage
 import com.reader.android.ui.components.RedditLink
 import com.reader.android.ui.components.VideoPlayer
 import com.reader.android.ui.components.formatNumber
@@ -275,11 +275,15 @@ private fun PostHeader(
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
-                val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
-                if (imageUrl != null && !post.isNsfw) {
+                val previewImage = post.preview?.images?.firstOrNull()
+                val highResUrl = previewImage?.source?.url
+                val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
+                    ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                if (highResUrl != null && !post.isNsfw) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    AsyncImage(
-                        model = imageUrl,
+                    ProgressiveAsyncImage(
+                        lowResUrl = lowResUrl,
+                        highResUrl = highResUrl,
                         contentDescription = null,
                         modifier = Modifier
                             .fillMaxWidth()

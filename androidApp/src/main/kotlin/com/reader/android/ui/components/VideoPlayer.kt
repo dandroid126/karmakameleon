@@ -3,9 +3,8 @@ package com.reader.android.ui.components
 import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.os.Build
-import android.view.ViewGroup
+import android.view.TextureView
 import android.view.WindowManager
-import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -64,9 +63,11 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.reader.android.data.VideoCacheProvider
 import kotlinx.coroutines.delay
 
 @OptIn(UnstableApi::class)
@@ -89,7 +90,15 @@ fun VideoPlayer(
     val hasRetriedWithoutAudio = remember { mutableStateOf(false) }
 
     val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
+        val cache = VideoCacheProvider.getCache(context)
+        val cacheDataSourceFactory = CacheDataSource.Factory()
+            .setCache(cache)
+            .setUpstreamDataSourceFactory(DefaultDataSource.Factory(context))
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(cacheDataSourceFactory))
+            .build().apply {
             val cleanUrl = videoUrl.replace(Regex("\\?.*"), "")
             if (cleanUrl.contains("v.redd.it")) {
                 val baseUrl = cleanUrl.substringBeforeLast("/")
@@ -130,6 +139,7 @@ fun VideoPlayer(
 
         onDispose {
             exoPlayer.removeListener(listener)
+            exoPlayer.stop()
             exoPlayer.release()
         }
     }
@@ -181,15 +191,12 @@ fun VideoPlayer(
     ) {
         AndroidView(
             factory = { ctx ->
-                PlayerView(ctx).apply {
-                    player = exoPlayer
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                    layoutParams = FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                    )
+                TextureView(ctx).also { textureView ->
+                    exoPlayer.setVideoTextureView(textureView)
                 }
+            },
+            onRelease = {
+                exoPlayer.clearVideoTextureView(it as TextureView)
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -296,15 +303,12 @@ fun VideoPlayer(
             ) {
                 AndroidView(
                     factory = { ctx ->
-                        PlayerView(ctx).apply {
-                            player = exoPlayer
-                            useController = false
-                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                            layoutParams = FrameLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
+                        TextureView(ctx).also { textureView ->
+                            exoPlayer.setVideoTextureView(textureView)
                         }
+                    },
+                    onRelease = {
+                        exoPlayer.clearVideoTextureView(it as TextureView)
                     },
                     modifier = Modifier.fillMaxSize()
                 )
