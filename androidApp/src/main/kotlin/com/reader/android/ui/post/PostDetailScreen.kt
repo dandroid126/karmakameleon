@@ -151,6 +151,19 @@ fun PostDetailScreen(
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         }
 
+                        if (uiState.isLoading && uiState.comments.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                        }
+
                         items(
                             items = uiState.comments,
                             key = { item ->

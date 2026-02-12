@@ -76,8 +76,13 @@ fun MarkdownText(
                     )
                 }
                 line.startsWith(">") -> {
+                    val quoteLines = mutableListOf(line.removePrefix(">").removePrefix(" "))
+                    while (i + 1 < lines.size && lines[i + 1].startsWith(">")) {
+                        i++
+                        quoteLines.add(lines[i].removePrefix(">").removePrefix(" "))
+                    }
                     ClickableMarkdownText(
-                        text = parseInlineMarkdown(line.substring(2)),
+                        text = parseInlineMarkdown(quoteLines.joinToString("\n")),
                         style = style.copy(fontStyle = FontStyle.Italic),
                         modifier = Modifier
                             .padding(start = 12.dp, top = 4.dp, bottom = 4.dp)

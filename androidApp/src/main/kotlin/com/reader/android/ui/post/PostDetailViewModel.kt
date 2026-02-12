@@ -40,6 +40,10 @@ class PostDetailViewModel(
     val uiState: StateFlow<PostDetailUiState> = _uiState.asStateFlow()
 
     init {
+        // Show cached post immediately so the header renders while comments load
+        postRepository.getCachedPost(postId)?.let { cachedPost ->
+            _uiState.update { it.copy(post = cachedPost) }
+        }
         viewModelScope.launch {
             userRepository.isLoggedIn.collect { isLoggedIn ->
                 _uiState.update { it.copy(isLoggedIn = isLoggedIn) }
