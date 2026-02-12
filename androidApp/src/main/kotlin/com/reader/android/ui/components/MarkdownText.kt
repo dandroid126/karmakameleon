@@ -47,31 +47,27 @@ fun MarkdownText(
                     RenderTable(tableLines, style, onLinkClick)
                     i = tableEndIdx - 1
                 }
-                line.startsWith("#") && !line.startsWith("# ") -> {
-                    i++
-                    continue
-                }
-                line.startsWith("# ") -> {
+                line.startsWith("###") -> {
                     ClickableMarkdownText(
-                        text = parseInlineMarkdown(line.substring(2)),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
+                        text = parseInlineMarkdown(line.removePrefix("###").trimStart()),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                         onLinkClick = onLinkClick
                     )
                 }
-                line.startsWith("## ") -> {
+                line.startsWith("##") -> {
                     ClickableMarkdownText(
-                        text = parseInlineMarkdown(line.substring(3)),
+                        text = parseInlineMarkdown(line.removePrefix("##").trimStart()),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
                         onLinkClick = onLinkClick
                     )
                 }
-                line.startsWith("### ") -> {
+                line.startsWith("#") -> {
                     ClickableMarkdownText(
-                        text = parseInlineMarkdown(line.substring(4)),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+                        text = parseInlineMarkdown(line.removePrefix("#").trimStart()),
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                         onLinkClick = onLinkClick
                     )
                 }
@@ -102,6 +98,12 @@ fun MarkdownText(
                             .padding(8.dp)
                     )
                 }
+                line.matches(Regex("^-{3,}$")) -> {
+                    androidx.compose.material3.HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
                 line.startsWith("- ") || line.startsWith("* ") -> {
                     ClickableMarkdownText(
                         text = parseInlineMarkdown("• " + line.substring(2)),
@@ -130,7 +132,9 @@ fun MarkdownText(
                     )
                 }
                 else -> {
-                    Text(text = "", modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+                    if (i + 1 >= lines.size || lines[i + 1].isNotBlank()) {
+                        Text(text = "", modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+                    }
                 }
             }
             i++
@@ -257,230 +261,168 @@ private fun RenderTable(
     }
 }
 
+private data class InlineMatch(
+    val text: String,
+    val style: SpanStyle? = null,
+    val linkUrl: String? = null,
+    val endIndex: Int
+)
+
+private fun delimitedPattern(delimiter: String, style: SpanStyle): (String, Int) -> InlineMatch? = { t, i ->
+    if (t.startsWith(delimiter, i)) {
+        val closeIdx = t.indexOf(delimiter, i + delimiter.length)
+        if (closeIdx != -1) {
+            InlineMatch(
+                text = t.substring(i + delimiter.length, closeIdx),
+                style = style,
+                endIndex = closeIdx + delimiter.length
+            )
+        } else null
+    } else null
+}
+
 @Composable
 private fun parseInlineMarkdown(text: String): androidx.compose.ui.text.AnnotatedString {
+    val linkColor = MaterialTheme.colorScheme.primary
+    val superscriptSize = MaterialTheme.typography.bodySmall.fontSize
+    val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[', ']', '(', ')', '#', '-', '.', '+', '|')
+
+    val patterns: List<(String, Int) -> InlineMatch?> = listOf(
+        // Backslash escape
+        { t, i ->
+            if (t.startsWith("\\", i) && i + 1 < t.length && t[i + 1] in escapeChars) {
+                InlineMatch(text = t[i + 1].toString(), endIndex = i + 2)
+            } else null
+        },
+        // Links: [text](url) and [text][ref]
+        { t, i ->
+            if (t.startsWith("[", i)) {
+                val closeTextIdx = t.indexOf("]", i + 1)
+                if (closeTextIdx != -1) {
+                    when {
+                        t.getOrNull(closeTextIdx + 1) == '(' -> {
+                            val closeUrlIdx = t.indexOf(")", closeTextIdx + 2)
+                            if (closeUrlIdx != -1) {
+                                val linkText = t.substring(i + 1, closeTextIdx)
+                                val linkUrl = t.substring(closeTextIdx + 2, closeUrlIdx)
+                                InlineMatch(linkText, SpanStyle(color = linkColor), linkUrl, closeUrlIdx + 1)
+                            } else null
+                        }
+                        t.getOrNull(closeTextIdx + 1) == '[' -> {
+                            val refCloseIdx = t.indexOf("]", closeTextIdx + 2)
+                            if (refCloseIdx != -1) {
+                                val linkText = t.substring(i + 1, closeTextIdx)
+                                InlineMatch(linkText, SpanStyle(color = linkColor), linkText, refCloseIdx + 1)
+                            } else null
+                        }
+                        else -> null
+                    }
+                } else null
+            } else null
+        },
+        // Bold+Italic ___...___ and ***...***
+        delimitedPattern("___", SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)),
+        delimitedPattern("***", SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)),
+        // Bold __...__ and **...**
+        delimitedPattern("__", SpanStyle(fontWeight = FontWeight.Bold)),
+        delimitedPattern("**", SpanStyle(fontWeight = FontWeight.Bold)),
+        // Strikethrough ~~...~~
+        delimitedPattern("~~", SpanStyle(textDecoration = TextDecoration.LineThrough)),
+        // Spoiler >!...!<
+        { t, i ->
+            if (t.startsWith(">!", i)) {
+                val closeIdx = t.indexOf("!<", i + 2)
+                if (closeIdx != -1) {
+                    InlineMatch(t.substring(i + 2, closeIdx), SpanStyle(background = Color.Gray), endIndex = closeIdx + 2)
+                } else null
+            } else null
+        },
+        // Superscript ^(...)
+        { t, i ->
+            if (t.startsWith("^(", i)) {
+                val closeIdx = t.indexOf(")", i + 2)
+                if (closeIdx != -1) {
+                    InlineMatch(t.substring(i + 2, closeIdx), SpanStyle(fontSize = superscriptSize), endIndex = closeIdx + 1)
+                } else null
+            } else null
+        },
+        // Superscript ^word
+        { t, i ->
+            if (t.startsWith("^", i) && i + 1 < t.length && t[i + 1] != '(') {
+                val endIdx = (i + 1 until t.length).firstOrNull { t[it].isWhitespace() } ?: t.length
+                InlineMatch(t.substring(i + 1, endIdx), SpanStyle(fontSize = superscriptSize), endIndex = endIdx)
+            } else null
+        },
+        // Italic _..._ (not __)
+        { t, i ->
+            if (t.startsWith("_", i) && !t.startsWith("__", i)) {
+                val closeIdx = t.indexOf("_", i + 1)
+                if (closeIdx != -1) {
+                    InlineMatch(t.substring(i + 1, closeIdx), SpanStyle(fontStyle = FontStyle.Italic), endIndex = closeIdx + 1)
+                } else null
+            } else null
+        },
+        // Italic *...* (not ** or ***)
+        { t, i ->
+            if (t.startsWith("*", i) && !t.startsWith("**", i)) {
+                val closeIdx = t.indexOf("*", i + 1)
+                if (closeIdx != -1) {
+                    InlineMatch(t.substring(i + 1, closeIdx), SpanStyle(fontStyle = FontStyle.Italic), endIndex = closeIdx + 1)
+                } else null
+            } else null
+        },
+        // Inline code `...`
+        delimitedPattern("`", SpanStyle(fontFamily = FontFamily.Monospace)),
+        // Bare URL
+        { t, i ->
+            if (t.startsWith("https://", i) || t.startsWith("http://", i)) {
+                val endIdx = (i until t.length).firstOrNull { t[it].isWhitespace() } ?: t.length
+                val url = t.substring(i, endIdx)
+                InlineMatch(url, SpanStyle(color = linkColor), url, endIdx)
+            } else null
+        },
+        // Subreddit reference r/
+        { t, i ->
+            if (t.startsWith("r/", i)) {
+                val endIdx = (i + 2 until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
+                val ref = t.substring(i, endIdx)
+                InlineMatch(ref, SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
+            } else null
+        },
+        // User reference u/
+        { t, i ->
+            if (t.startsWith("u/", i)) {
+                val endIdx = (i + 2 until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
+                val ref = t.substring(i, endIdx)
+                InlineMatch(ref, SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
+            } else null
+        }
+    )
+
     return buildAnnotatedString {
         var current = 0
         var i = 0
-        
         while (i < text.length) {
-            when {
-                text.startsWith("[", i) -> {
-                    val closeTextIdx = text.indexOf("]", i)
-                    if (closeTextIdx != -1 && text.getOrNull(closeTextIdx + 1) == '(') {
-                        val closeUrlIdx = text.indexOf(")", closeTextIdx + 2)
-                        if (closeUrlIdx != -1) {
-                            append(text.substring(current, i))
-                            val linkText = text.substring(i + 1, closeTextIdx)
-                            val linkUrl = text.substring(closeTextIdx + 2, closeUrlIdx)
-                            pushStringAnnotation(tag = "URL", annotation = linkUrl)
-                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                                append(linkText)
-                            }
-                            pop()
-                            i = closeUrlIdx + 1
-                            current = i
-                        } else {
-                            i++
-                        }
-                    } else if (closeTextIdx != -1 && text.getOrNull(closeTextIdx + 1) == '[') {
-                        val refCloseIdx = text.indexOf("]", closeTextIdx + 2)
-                        if (refCloseIdx != -1) {
-                            append(text.substring(current, i))
-                            val linkText = text.substring(i + 1, closeTextIdx)
-                            pushStringAnnotation(tag = "URL", annotation = linkText)
-                            withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                                append(linkText)
-                            }
-                            pop()
-                            i = refCloseIdx + 1
-                            current = i
-                        } else {
-                            i++
-                        }
-                    } else {
-                        i++
-                    }
+            val match = patterns.firstNotNullOfOrNull { it(text, i) }
+            if (match != null) {
+                append(text.substring(current, i))
+                if (match.linkUrl != null) {
+                    pushStringAnnotation(tag = "URL", annotation = match.linkUrl)
                 }
-                text.startsWith("___", i) -> {
-                    val closeIdx = text.indexOf("___", i + 3)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
-                            append(text.substring(i + 3, closeIdx))
-                        }
-                        i = closeIdx + 3
-                        current = i
-                    } else {
-                        i++
-                    }
+                if (match.style != null) {
+                    withStyle(match.style) { append(match.text) }
+                } else {
+                    append(match.text)
                 }
-                text.startsWith("***", i) -> {
-                    val closeIdx = text.indexOf("***", i + 3)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
-                            append(text.substring(i + 3, closeIdx))
-                        }
-                        i = closeIdx + 3
-                        current = i
-                    } else {
-                        i++
-                    }
-                }
-                text.startsWith("__", i) -> {
-                    val closeIdx = text.indexOf("__", i + 2)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(text.substring(i + 2, closeIdx))
-                        }
-                        i = closeIdx + 2
-                        current = i
-                    } else {
-                        i++
-                    }
-                }
-                text.startsWith("**", i) -> {
-                    val closeIdx = text.indexOf("**", i + 2)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                            append(text.substring(i + 2, closeIdx))
-                        }
-                        i = closeIdx + 2
-                        current = i
-                    } else {
-                        i++
-                    }
-                }
-                text.startsWith("~~", i) -> {
-                    val closeIdx = text.indexOf("~~", i + 2)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
-                            append(text.substring(i + 2, closeIdx))
-                        }
-                        i = closeIdx + 2
-                        current = i
-                    } else {
-                        i++
-                    }
-                }
-                text.startsWith(">!", i) -> {
-                    val closeIdx = text.indexOf("!<", i + 2)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(background = Color.Gray)) {
-                            append(text.substring(i + 2, closeIdx))
-                        }
-                        i = closeIdx + 2
-                        current = i
-                    } else {
-                        i++
-                    }
-                }
-                text.startsWith("^(", i) -> {
-                    val closeIdx = text.indexOf(")", i + 2)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(fontSize = MaterialTheme.typography.bodySmall.fontSize)) {
-                            append(text.substring(i + 2, closeIdx))
-                        }
-                        i = closeIdx + 1
-                        current = i
-                    } else {
-                        i++
-                    }
-                }
-                text.startsWith("^", i) && i + 1 < text.length && text[i + 1] != '(' -> {
-                    val endIdx = (i + 1 until text.length).firstOrNull { text[it].isWhitespace() } ?: text.length
-                    append(text.substring(current, i))
-                    withStyle(SpanStyle(fontSize = MaterialTheme.typography.bodySmall.fontSize)) {
-                        append(text.substring(i + 1, endIdx))
-                    }
-                    i = endIdx
-                    current = i
-                }
-                text.startsWith("_", i) && !text.startsWith("__", i) -> {
-                    val closeIdx = text.indexOf("_", i + 1)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                            append(text.substring(i + 1, closeIdx))
-                        }
-                        i = closeIdx + 1
-                        current = i
-                    } else {
-                        i++
-                    }
-                }
-                text.startsWith("*", i) && !text.startsWith("**", i) && !text.startsWith("***", i) -> {
-                    val closeIdx = text.indexOf("*", i + 1)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-                            append(text.substring(i + 1, closeIdx))
-                        }
-                        i = closeIdx + 1
-                        current = i
-                    } else {
-                        i++
-                    }
-                }
-                text.startsWith("`", i) -> {
-                    val closeIdx = text.indexOf("`", i + 1)
-                    if (closeIdx != -1) {
-                        append(text.substring(current, i))
-                        withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
-                            append(text.substring(i + 1, closeIdx))
-                        }
-                        i = closeIdx + 1
-                        current = i
-                    } else {
-                        i++
-                    }
-                }
-                text.startsWith("https://", i) || text.startsWith("http://", i) -> {
-                    val endIdx = (i until text.length).firstOrNull { text[it].isWhitespace() } ?: text.length
-                    append(text.substring(current, i))
-                    val url = text.substring(i, endIdx)
-                    pushStringAnnotation(tag = "URL", annotation = url)
-                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                        append(url)
-                    }
+                if (match.linkUrl != null) {
                     pop()
-                    i = endIdx
-                    current = i
                 }
-                text.startsWith("r/", i) -> {
-                    val endIdx = (i + 2 until text.length).firstOrNull { !text[it].isLetterOrDigit() && text[it] != '_' } ?: text.length
-                    append(text.substring(current, i))
-                    val subredditRef = text.substring(i, endIdx)
-                    pushStringAnnotation(tag = "URL", annotation = "https://www.reddit.com/$subredditRef")
-                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                        append(subredditRef)
-                    }
-                    pop()
-                    i = endIdx
-                    current = i
-                }
-                text.startsWith("u/", i) -> {
-                    val endIdx = (i + 2 until text.length).firstOrNull { !text[it].isLetterOrDigit() && text[it] != '_' } ?: text.length
-                    append(text.substring(current, i))
-                    val userRef = text.substring(i, endIdx)
-                    pushStringAnnotation(tag = "URL", annotation = "https://www.reddit.com/$userRef")
-                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
-                        append(userRef)
-                    }
-                    pop()
-                    i = endIdx
-                    current = i
-                }
-                else -> i++
+                i = match.endIndex
+                current = i
+            } else {
+                i++
             }
         }
-        
         append(text.substring(current))
     }
 }
