@@ -1,6 +1,11 @@
 package com.reader.android
 
 import android.app.Application
+import android.os.Build
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.gif.AnimatedImageDecoder
+import coil3.gif.GifDecoder
 import com.reader.android.di.androidModule
 import com.reader.shared.di.platformModule
 import com.reader.shared.di.sharedModule
@@ -10,7 +15,7 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 
-class ReaderApplication : Application() {
+class ReaderApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         
@@ -25,5 +30,17 @@ class ReaderApplication : Application() {
                 androidModule
             )
         }
+    }
+
+    override fun newImageLoader(context: coil3.PlatformContext): ImageLoader {
+        return ImageLoader.Builder(context)
+            .components {
+                if (Build.VERSION.SDK_INT >= 28) {
+                    add(AnimatedImageDecoder.Factory())
+                } else {
+                    add(GifDecoder.Factory())
+                }
+            }
+            .build()
     }
 }

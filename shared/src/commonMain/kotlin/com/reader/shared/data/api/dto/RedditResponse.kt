@@ -73,13 +73,25 @@ data class PostDto(
 @Serializable
 data class PreviewDto(
     val images: List<PreviewImageDto> = emptyList(),
-    val enabled: Boolean = false
+    val enabled: Boolean = false,
+    @SerialName("reddit_video_preview") val redditVideoPreview: RedditVideoDto? = null
 )
 
 @Serializable
 data class PreviewImageDto(
     val source: ImageSourceDto,
-    val resolutions: List<ImageSourceDto> = emptyList()
+    val resolutions: List<ImageSourceDto> = emptyList(),
+    val variants: PreviewVariantsDto? = null
+)
+
+@Serializable
+data class PreviewVariantsDto(
+    val mp4: PreviewVariantDto? = null
+)
+
+@Serializable
+data class PreviewVariantDto(
+    val source: ImageSourceDto? = null
 )
 
 @Serializable

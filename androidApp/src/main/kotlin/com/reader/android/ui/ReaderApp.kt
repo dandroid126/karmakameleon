@@ -1,5 +1,6 @@
 package com.reader.android.ui
 
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
@@ -123,7 +124,9 @@ fun ReaderApp() {
         NavHost(
             navController = navController,
             startDestination = Screen.Feed.route,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
         ) {
             composable(Screen.Feed.route) {
                 FeedScreen(

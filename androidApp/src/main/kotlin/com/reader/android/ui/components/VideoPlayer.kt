@@ -1,6 +1,10 @@
 package com.reader.android.ui.components
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.os.Build
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
@@ -14,11 +18,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
@@ -43,9 +51,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -63,18 +79,27 @@ fun VideoPlayer(
     val context = LocalContext.current
 
     var isOverlayVisible by remember { mutableStateOf(true) }
-    var isMuted by remember { mutableStateOf(isGif) }
+    var isMuted by remember { mutableStateOf(false) }
     var isLooping by remember { mutableStateOf(isGif) }
-    var isPlaying by remember { mutableStateOf(true) }
+    var isPlaying by remember { mutableStateOf(false) }
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var isFullscreen by remember { mutableStateOf(false) }
+    val hasRetriedWithoutAudio = remember { mutableStateOf(false) }
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(videoUrl))
+            val cleanUrl = videoUrl.replace(Regex("\\?.*"), "")
+            if (cleanUrl.contains("v.redd.it")) {
+                val baseUrl = cleanUrl.substringBeforeLast("/")
+                val hlsUrl = "$baseUrl/HLSPlaylist.m3u8"
+                setMediaItem(MediaItem.fromUri(hlsUrl))
+            } else {
+                setMediaItem(MediaItem.fromUri(videoUrl))
+            }
             repeatMode = if (isGif) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
-            volume = if (isGif) 0f else 1f
+            volume = 0f
             playWhenReady = true
             prepare()
         }
@@ -90,6 +115,15 @@ fun VideoPlayer(
 
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                if (!hasRetriedWithoutAudio.value) {
+                    hasRetriedWithoutAudio.value = true
+                    exoPlayer.setMediaItem(MediaItem.fromUri(videoUrl))
+                    exoPlayer.prepare()
+                    exoPlayer.play()
+                }
             }
         }
         exoPlayer.addListener(listener)
@@ -173,11 +207,20 @@ fun VideoPlayer(
                 isPlaying = isPlaying,
                 isMuted = isMuted,
                 isLooping = isLooping,
+                isFullscreen = false,
+                hasAudio = !isGif && !hasRetriedWithoutAudio.value,
                 currentPosition = currentPosition,
                 duration = duration,
                 onPlayPauseClick = {
                     lastInteractionTime = System.currentTimeMillis()
-                    if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                    if (exoPlayer.playbackState == Player.STATE_ENDED) {
+                        exoPlayer.seekTo(0)
+                        exoPlayer.play()
+                    } else if (exoPlayer.isPlaying) {
+                        exoPlayer.pause()
+                    } else {
+                        exoPlayer.play()
+                    }
                 },
                 onMuteClick = {
                     lastInteractionTime = System.currentTimeMillis()
@@ -191,8 +234,126 @@ fun VideoPlayer(
                     lastInteractionTime = System.currentTimeMillis()
                     exoPlayer.seekTo(position)
                     currentPosition = position
+                },
+                onFullscreenClick = {
+                    lastInteractionTime = System.currentTimeMillis()
+                    isFullscreen = true
                 }
             )
+        }
+    }
+
+    if (isFullscreen) {
+        Dialog(
+            onDismissRequest = { isFullscreen = false },
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            // Hide system bars and unlock orientation for true fullscreen
+            val dialogView = LocalView.current
+            DisposableEffect(Unit) {
+                val activity = context as? Activity
+                val originalOrientation = activity?.requestedOrientation
+                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+
+                val dialogWindow = (dialogView.parent as? DialogWindowProvider)?.window
+                dialogWindow?.let { window ->
+                    WindowCompat.setDecorFitsSystemWindows(window, false)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        window.attributes = window.attributes.also {
+                            it.layoutInDisplayCutoutMode =
+                                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                        }
+                    }
+                    val controller = WindowCompat.getInsetsController(window, dialogView)
+                    controller.hide(WindowInsetsCompat.Type.systemBars())
+                    controller.systemBarsBehavior =
+                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+                onDispose {
+                    activity?.requestedOrientation =
+                        originalOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        if (isOverlayVisible) {
+                            isOverlayVisible = false
+                        } else {
+                            isOverlayVisible = true
+                            lastInteractionTime = System.currentTimeMillis()
+                        }
+                    }
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            player = exoPlayer
+                            useController = false
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            layoutParams = FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+
+                AnimatedVisibility(
+                    visible = isOverlayVisible,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                ) {
+                    VideoControlsOverlay(
+                        isPlaying = isPlaying,
+                        isMuted = isMuted,
+                        isLooping = isLooping,
+                        isFullscreen = true,
+                        hasAudio = !isGif && !hasRetriedWithoutAudio.value,
+                        currentPosition = currentPosition,
+                        duration = duration,
+                        onPlayPauseClick = {
+                            lastInteractionTime = System.currentTimeMillis()
+                            if (exoPlayer.playbackState == Player.STATE_ENDED) {
+                                exoPlayer.seekTo(0)
+                                exoPlayer.play()
+                            } else if (exoPlayer.isPlaying) {
+                                exoPlayer.pause()
+                            } else {
+                                exoPlayer.play()
+                            }
+                        },
+                        onMuteClick = {
+                            lastInteractionTime = System.currentTimeMillis()
+                            isMuted = !isMuted
+                        },
+                        onLoopClick = {
+                            lastInteractionTime = System.currentTimeMillis()
+                            isLooping = !isLooping
+                        },
+                        onSeek = { position ->
+                            lastInteractionTime = System.currentTimeMillis()
+                            exoPlayer.seekTo(position)
+                            currentPosition = position
+                        },
+                        onFullscreenClick = {
+                            lastInteractionTime = System.currentTimeMillis()
+                            isFullscreen = false
+                        }
+                    )
+                }
+            }
         }
     }
 }
@@ -202,33 +363,22 @@ private fun VideoControlsOverlay(
     isPlaying: Boolean,
     isMuted: Boolean,
     isLooping: Boolean,
+    isFullscreen: Boolean,
+    hasAudio: Boolean,
     currentPosition: Long,
     duration: Long,
     onPlayPauseClick: () -> Unit,
     onMuteClick: () -> Unit,
     onLoopClick: () -> Unit,
-    onSeek: (Long) -> Unit
+    onSeek: (Long) -> Unit,
+    onFullscreenClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Color.Black.copy(alpha = 0.6f))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = if (isFullscreen) 24.dp else 8.dp, vertical = 4.dp)
     ) {
-        // Seek bar
-        Slider(
-            value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
-            onValueChange = { fraction ->
-                onSeek((fraction * duration).toLong())
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = Color.White,
-                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
-            )
-        )
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -238,50 +388,81 @@ private fun VideoControlsOverlay(
             Text(
                 text = "${formatDuration(currentPosition)} / ${formatDuration(duration)}",
                 color = Color.White,
-                style = MaterialTheme.typography.labelSmall
+                style = MaterialTheme.typography.labelMedium
             )
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Play/Pause
                 IconButton(
                     onClick = onPlayPauseClick,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = if (isPlaying) "Pause" else "Play",
-                        tint = Color.White
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
 
                 // Mute toggle
                 IconButton(
-                    onClick = onMuteClick,
-                    modifier = Modifier.size(36.dp)
+                    onClick = if (hasAudio) onMuteClick else { {} },
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = if (isMuted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
-                        contentDescription = if (isMuted) "Unmute" else "Mute",
-                        tint = Color.White
+                        imageVector = if (!hasAudio || isMuted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
+                        contentDescription = if (!hasAudio) "No audio available"
+                            else if (isMuted) "Unmute" else "Mute",
+                        tint = if (!hasAudio) Color.Red else Color.White,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
 
                 // Loop toggle
                 IconButton(
                     onClick = onLoopClick,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Repeat,
                         contentDescription = if (isLooping) "Disable loop" else "Enable loop",
-                        tint = if (isLooping) Color(0xFF4FC3F7) else Color.White
+                        tint = if (isLooping) Color(0xFF4FC3F7) else Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+
+                // Fullscreen toggle
+                IconButton(
+                    onClick = onFullscreenClick,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isFullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
+                        contentDescription = if (isFullscreen) "Exit fullscreen" else "Fullscreen",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
         }
+
+        // Seek bar
+        Slider(
+            value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
+            onValueChange = { fraction ->
+                onSeek((fraction * duration).toLong())
+            },
+            modifier = Modifier.fillMaxWidth().height(24.dp),
+            colors = SliderDefaults.colors(
+                thumbColor = Color.White,
+                activeTrackColor = Color.White,
+                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+            )
+        )
     }
 }
 

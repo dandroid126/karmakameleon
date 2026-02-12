@@ -745,10 +745,20 @@ class RedditApi(
                             width = res.width,
                             height = res.height
                         )
-                    }
+                    },
+                    mp4Url = img.variants?.mp4?.source?.url?.let { decodeHtml(it) }
                 )
             },
-            enabled = dto.enabled
+            enabled = dto.enabled,
+            redditVideoPreview = dto.redditVideoPreview?.let {
+                RedditVideo(
+                    fallbackUrl = it.fallbackUrl,
+                    height = it.height,
+                    width = it.width,
+                    duration = it.duration,
+                    isGif = it.isGif
+                )
+            }
         )
     }
 

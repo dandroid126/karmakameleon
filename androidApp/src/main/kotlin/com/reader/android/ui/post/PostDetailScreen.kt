@@ -257,6 +257,7 @@ private fun PostHeader(
         )
 
         val redditVideo = post.media?.redditVideo
+            ?: post.preview?.redditVideoPreview
         if (redditVideo != null && !post.isNsfw) {
             Spacer(modifier = Modifier.height(12.dp))
             VideoPlayer(
@@ -265,17 +266,27 @@ private fun PostHeader(
                 modifier = Modifier.fillMaxWidth()
             )
         } else {
-            val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
-            if (imageUrl != null && !post.isNsfw) {
+            val mp4Url = post.preview?.images?.firstOrNull()?.mp4Url
+            if (mp4Url != null && !post.isNsfw) {
                 Spacer(modifier = Modifier.height(12.dp))
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Crop
+                VideoPlayer(
+                    videoUrl = mp4Url,
+                    isGif = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
+            } else {
+                val imageUrl = post.preview?.images?.firstOrNull()?.source?.url
+                if (imageUrl != null && !post.isNsfw) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             }
         }
 

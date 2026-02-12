@@ -66,8 +66,8 @@ fun PostCard(
     onSave: () -> Unit,
     onHide: () -> Unit,
     isLoggedIn: Boolean,
-    isRead: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isRead: Boolean = false
 ) {
     var showMenu by remember { mutableStateOf(false) }
     

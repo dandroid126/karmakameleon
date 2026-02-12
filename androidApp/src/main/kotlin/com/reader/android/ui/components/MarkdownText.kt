@@ -172,9 +172,14 @@ private fun ClickableMarkdownText(
     modifier: Modifier = Modifier,
     onLinkClick: (String) -> Unit = {}
 ) {
+    val mergedStyle = if (style.color == Color.Unspecified) {
+        style.copy(color = MaterialTheme.colorScheme.onSurface)
+    } else {
+        style
+    }
     ClickableText(
         text = text,
-        style = style,
+        style = mergedStyle,
         modifier = modifier,
         onClick = { offset ->
             text.getStringAnnotations(tag = "URL", start = offset, end = offset)

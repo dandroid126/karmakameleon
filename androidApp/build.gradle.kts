@@ -70,11 +70,13 @@ dependencies {
     implementation(libs.koin.androidx.compose)
     
     implementation(libs.coil.compose)
+    implementation(libs.coil.gif)
     implementation(libs.coil.network.ktor)
     
     implementation(libs.napier)
     
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.hls)
     implementation(libs.media3.ui)
     
     debugImplementation(libs.androidx.compose.ui.tooling)

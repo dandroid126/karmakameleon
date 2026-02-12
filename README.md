@@ -59,9 +59,9 @@ A modern Reddit client built with Kotlin Multiplatform (KMP), inspired by Reddit
 ## Setup
 
 ### Prerequisites
-- Android Studio Hedgehog or later
-- JDK 17+
-- Android SDK 34
+- Android Studio Otter 3 or later
+- JDK 25+
+- Android SDK 36
 
 ### Reddit API Setup
 1. Create a Reddit app at https://www.reddit.com/prefs/apps

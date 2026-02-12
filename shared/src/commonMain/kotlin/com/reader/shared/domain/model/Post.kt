@@ -62,13 +62,15 @@ data class Post(
 @Serializable
 data class Preview(
     val images: List<PreviewImage>,
-    val enabled: Boolean
+    val enabled: Boolean,
+    val redditVideoPreview: RedditVideo? = null
 )
 
 @Serializable
 data class PreviewImage(
     val source: ImageSource,
-    val resolutions: List<ImageSource>
+    val resolutions: List<ImageSource>,
+    val mp4Url: String? = null
 )
 
 @Serializable
