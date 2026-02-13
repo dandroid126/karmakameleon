@@ -1,11 +1,11 @@
 package com.reader.android.ui.post
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -26,6 +27,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
@@ -45,12 +48,18 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reader.android.ui.components.FlairChip
 import com.reader.android.ui.components.MarkdownText
@@ -60,11 +69,14 @@ import com.reader.android.ui.components.VideoPlayer
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
 import com.reader.android.ui.components.parseRedditLink
-import com.reader.shared.data.api.CommentOrMore
 import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.MoreComments
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -80,6 +92,58 @@ fun PostDetailScreen(
     viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId) }
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+
+    val flattenedComments = remember(uiState.comments, uiState.hiddenCommentIds) {
+        viewModel.getFlattenedComments()
+    }
+
+    fun scrollToComment(targetCommentId: String) {
+        coroutineScope.launch {
+            val currentSelectedId = uiState.selectedCommentId
+            var currentOffset = 0
+            if (currentSelectedId != null) {
+                val currentItemInfo = listState.layoutInfo.visibleItemsInfo.find {
+                    it.key == currentSelectedId
+                }
+                if (currentItemInfo != null) {
+                    currentOffset = currentItemInfo.offset
+                }
+            }
+
+            viewModel.selectComment(targetCommentId)
+
+            // Wait for recomposition and layout to reflect the new selection
+            // (control bars appear/disappear, changing item heights)
+            snapshotFlow { listState.layoutInfo }.drop(1).first()
+
+            val newTargetInfo = listState.layoutInfo.visibleItemsInfo.find {
+                it.key == targetCommentId
+            }
+
+            if (newTargetInfo != null) {
+                val scrollAmount = newTargetInfo.offset - currentOffset
+                if (scrollAmount != 0) {
+                    listState.scroll { scrollBy(scrollAmount.toFloat()) }
+                }
+            } else {
+                val updatedFlat = viewModel.getFlattenedComments()
+                val targetIndex = updatedFlat.indexOfFirst {
+                    it is FlatCommentItem.CommentEntry && it.comment.id == targetCommentId
+                }
+                if (targetIndex >= 0) {
+                    val lazyIndex = targetIndex + 2 // +2 for PostHeader and Divider items
+                    listState.scrollToItem(lazyIndex, 0)
+                    if (currentOffset > 0) {
+                        listState.scroll { scrollBy(-currentOffset.toFloat()) }
+                    }
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -131,6 +195,7 @@ fun PostDetailScreen(
             } else {
                 uiState.post?.let { post ->
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize()
                     ) {
                         item {
@@ -165,24 +230,49 @@ fun PostDetailScreen(
                         }
 
                         items(
-                            items = uiState.comments,
+                            items = flattenedComments,
                             key = { item ->
                                 when (item) {
-                                    is CommentOrMore.CommentItem -> item.comment.id
-                                    is CommentOrMore.More -> "more_${item.more.id}"
+                                    is FlatCommentItem.CommentEntry -> item.comment.id
+                                    is FlatCommentItem.MoreEntry -> "more_${item.more.id}"
                                 }
                             }
                         ) { item ->
                             when (item) {
-                                is CommentOrMore.CommentItem -> {
+                                is FlatCommentItem.CommentEntry -> {
+                                    val comment = item.comment
+                                    val isSelected = uiState.selectedCommentId == comment.id
+                                    val isHidden = uiState.hiddenCommentIds.contains(comment.id)
                                     CommentItem(
-                                        comment = item.comment,
+                                        comment = comment,
+                                        isSelected = isSelected,
+                                        isHidden = isHidden,
+                                        onSelect = { viewModel.selectComment(comment.id) },
+                                        onDone = { viewModel.selectComment(null) },
+                                        onHide = { viewModel.hideComment(comment.id) },
+                                        onPrev = {
+                                            viewModel.findPrevRootCommentId(comment.id)?.let { scrollToComment(it) }
+                                        },
+                                        onNext = {
+                                            viewModel.findNextRootCommentId(comment.id)?.let { scrollToComment(it) }
+                                        },
+                                        onRoot = {
+                                            viewModel.findRootCommentId(comment.id)?.let { rootId ->
+                                                if (rootId != comment.id) scrollToComment(rootId)
+                                            }
+                                        },
+                                        onParent = {
+                                            viewModel.findParentCommentId(comment.id)?.let { scrollToComment(it) }
+                                        },
                                         onUserClick = onUserClick,
-                                        onUpvote = { viewModel.voteComment(item.comment, if (item.comment.likes == true) 0 else 1) },
-                                        onDownvote = { viewModel.voteComment(item.comment, if (item.comment.likes == false) 0 else -1) },
-                                        onSave = { viewModel.saveComment(item.comment) },
-                                        onReply = { viewModel.setReplyingTo(item.comment.name) },
-                                        onLoadMore = viewModel::loadMoreComments,
+                                        onUpvote = { viewModel.voteComment(comment, if (comment.likes == true) 0 else 1) },
+                                        onDownvote = { viewModel.voteComment(comment, if (comment.likes == false) 0 else -1) },
+                                        onShare = {
+                                            val link = "https://www.reddit.com${comment.permalink}"
+                                            clipboardManager.setText(AnnotatedString(link))
+                                            Toast.makeText(context, "Copied link: $link", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onReply = { viewModel.setReplyingTo(comment.name) },
                                         isLoggedIn = uiState.isLoggedIn,
                                         onLinkClick = { url ->
                                             when (val link = parseRedditLink(url)) {
@@ -194,7 +284,7 @@ fun PostDetailScreen(
                                         }
                                     )
                                 }
-                                is CommentOrMore.More -> {
+                                is FlatCommentItem.MoreEntry -> {
                                     MoreCommentsButton(
                                         more = item.more,
                                         onClick = { viewModel.loadMoreComments(item.more) },
@@ -391,12 +481,20 @@ private fun PostHeader(
 @Composable
 private fun CommentItem(
     comment: Comment,
+    isSelected: Boolean,
+    isHidden: Boolean,
+    onSelect: () -> Unit,
+    onDone: () -> Unit,
+    onHide: () -> Unit,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onRoot: () -> Unit,
+    onParent: () -> Unit,
     onUserClick: (String) -> Unit,
     onUpvote: () -> Unit,
     onDownvote: () -> Unit,
-    onSave: () -> Unit,
+    onShare: () -> Unit,
     onReply: () -> Unit,
-    onLoadMore: (MoreComments) -> Unit,
     isLoggedIn: Boolean,
     onLinkClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
@@ -410,24 +508,64 @@ private fun CommentItem(
         Color(0xFFFF66AC)
     )
     val depthColor = depthColors[comment.depth % depthColors.size]
+    val isRootComment = comment.depth == 0
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(start = (comment.depth * 12).dp)
+            .then(
+                if (isSelected) Modifier.background(Color(0xFF0079D3).copy(alpha = 0.08f))
+                else Modifier
+            )
+            .clickable { onSelect() }
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             if (comment.depth > 0) {
                 Box(
                     modifier = Modifier
                         .width(2.dp)
-                        .height(IntrinsicSize.Max)
                         .background(depthColor.copy(alpha = 0.5f))
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
 
             Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp, horizontal = 8.dp)) {
+                if (isSelected) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            TextButton(onClick = onDone, modifier = Modifier.height(32.dp)) {
+                                Text("Done", style = MaterialTheme.typography.labelMedium)
+                            }
+                            TextButton(onClick = onHide, modifier = Modifier.height(32.dp)) {
+                                Text("Hide", style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            if (isRootComment) {
+                                TextButton(onClick = onPrev, modifier = Modifier.height(32.dp)) {
+                                    Text("Prev", style = MaterialTheme.typography.labelMedium)
+                                }
+                                TextButton(onClick = onNext, modifier = Modifier.height(32.dp)) {
+                                    Text("Next", style = MaterialTheme.typography.labelMedium)
+                                }
+                            } else {
+                                TextButton(onClick = onRoot, modifier = Modifier.height(32.dp)) {
+                                    Text("Root", style = MaterialTheme.typography.labelMedium)
+                                }
+                                TextButton(onClick = onParent, modifier = Modifier.height(32.dp)) {
+                                    Text("Parent", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = comment.author,
@@ -468,77 +606,67 @@ private fun CommentItem(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (isHidden) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            Icons.Filled.VisibilityOff,
+                            contentDescription = "Hidden",
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                if (!isHidden) {
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                MarkdownText(
-                    markdown = comment.body,
-                    style = MaterialTheme.typography.bodyMedium,
-                    onLinkClick = onLinkClick
-                )
+                    MarkdownText(
+                        markdown = comment.body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        onLinkClick = onLinkClick,
+                        onTextClick = onSelect
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                if (isSelected) {
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    IconButton(onClick = onUpvote, enabled = isLoggedIn, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            if (comment.voteState == VoteState.UPVOTED) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
-                            contentDescription = "Upvote",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (comment.voteState == VoteState.UPVOTED) Color(0xFFFF4500) else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    IconButton(onClick = onDownvote, enabled = isLoggedIn, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            if (comment.voteState == VoteState.DOWNVOTED) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
-                            contentDescription = "Downvote",
-                            modifier = Modifier.size(20.dp),
-                            tint = if (comment.voteState == VoteState.DOWNVOTED) Color(0xFF7193FF) else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (isLoggedIn) {
-                        IconButton(onClick = onReply, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Reply", modifier = Modifier.size(18.dp))
-                        }
-                        IconButton(onClick = onSave, modifier = Modifier.size(28.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                    ) {
+                        IconButton(onClick = onUpvote, enabled = isLoggedIn, modifier = Modifier.size(36.dp)) {
                             Icon(
-                                if (comment.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                                contentDescription = "Save",
-                                modifier = Modifier.size(18.dp),
-                                tint = if (comment.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                if (comment.voteState == VoteState.UPVOTED) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
+                                contentDescription = "Upvote",
+                                modifier = Modifier.size(24.dp),
+                                tint = if (comment.voteState == VoteState.UPVOTED) Color(0xFFFF4500) else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                        IconButton(onClick = onDownvote, enabled = isLoggedIn, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                if (comment.voteState == VoteState.DOWNVOTED) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
+                                contentDescription = "Downvote",
+                                modifier = Modifier.size(24.dp),
+                                tint = if (comment.voteState == VoteState.DOWNVOTED) Color(0xFF7193FF) else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        IconButton(onClick = onShare, modifier = Modifier.size(36.dp)) {
+                            Icon(
+                                Icons.Filled.Share,
+                                contentDescription = "Share",
+                                modifier = Modifier.size(22.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (isLoggedIn) {
+                            IconButton(onClick = onReply, modifier = Modifier.size(36.dp)) {
+                                Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Reply", modifier = Modifier.size(22.dp))
+                            }
+                        }
                     }
                 }
-            }
-        }
-
-        comment.replies.forEach { reply ->
-            CommentItem(
-                comment = reply,
-                onUserClick = onUserClick,
-                onUpvote = {},
-                onDownvote = {},
-                onSave = {},
-                onReply = {},
-                onLoadMore = onLoadMore,
-                isLoggedIn = isLoggedIn,
-                onLinkClick = onLinkClick
-            )
-        }
-
-        comment.moreReplies?.let { more ->
-            if (more.count > 0) {
-                MoreCommentsButton(
-                    more = more,
-                    onClick = { onLoadMore(more) },
-                    isLoading = false,
-                    modifier = Modifier.padding(start = 12.dp)
-                )
             }
         }
     }

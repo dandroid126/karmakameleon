@@ -33,7 +33,8 @@ fun MarkdownText(
     markdown: String,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodyMedium,
-    onLinkClick: (String) -> Unit = {}
+    onLinkClick: (String) -> Unit = {},
+    onTextClick: (() -> Unit)? = null
 ) {
     val lines = markdown.split("\n")
     Column(modifier = modifier) {
@@ -44,7 +45,7 @@ fun MarkdownText(
                 isTableStart(lines, i) -> {
                     val tableEndIdx = findTableEnd(lines, i)
                     val tableLines = lines.subList(i, tableEndIdx)
-                    RenderTable(tableLines, style, onLinkClick)
+                    RenderTable(tableLines, style, onLinkClick, onTextClick)
                     i = tableEndIdx - 1
                 }
                 line.startsWith("###") -> {
@@ -52,7 +53,8 @@ fun MarkdownText(
                         text = parseInlineMarkdown(line.removePrefix("###").trimStart()),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                        onLinkClick = onLinkClick
+                        onLinkClick = onLinkClick,
+                        onTextClick = onTextClick
                     )
                 }
                 line.startsWith("##") -> {
@@ -60,7 +62,8 @@ fun MarkdownText(
                         text = parseInlineMarkdown(line.removePrefix("##").trimStart()),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
-                        onLinkClick = onLinkClick
+                        onLinkClick = onLinkClick,
+                        onTextClick = onTextClick
                     )
                 }
                 line.startsWith("#") -> {
@@ -68,7 +71,8 @@ fun MarkdownText(
                         text = parseInlineMarkdown(line.removePrefix("#").trimStart()),
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
-                        onLinkClick = onLinkClick
+                        onLinkClick = onLinkClick,
+                        onTextClick = onTextClick
                     )
                 }
                 line.startsWith(">") -> {
@@ -85,7 +89,8 @@ fun MarkdownText(
                             .padding(start = 8.dp)
                             .background(MaterialTheme.colorScheme.surfaceVariant, shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
                             .padding(8.dp),
-                        onLinkClick = onLinkClick
+                        onLinkClick = onLinkClick,
+                        onTextClick = onTextClick
                     )
                 }
                 line.startsWith("    ") -> {
@@ -109,7 +114,8 @@ fun MarkdownText(
                         text = parseInlineMarkdown("• " + line.substring(2)),
                         style = style,
                         modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
-                        onLinkClick = onLinkClick
+                        onLinkClick = onLinkClick,
+                        onTextClick = onTextClick
                     )
                 }
                 line.matches(Regex("^\\d+\\.\\s+.*")) -> {
@@ -119,7 +125,8 @@ fun MarkdownText(
                             text = parseInlineMarkdown("${match.groupValues[1]}. ${match.groupValues[2]}"),
                             style = style,
                             modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
-                            onLinkClick = onLinkClick
+                            onLinkClick = onLinkClick,
+                            onTextClick = onTextClick
                         )
                     }
                 }
@@ -128,7 +135,8 @@ fun MarkdownText(
                         text = parseInlineMarkdown(line),
                         style = style,
                         modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
-                        onLinkClick = onLinkClick
+                        onLinkClick = onLinkClick,
+                        onTextClick = onTextClick
                     )
                 }
                 else -> {
@@ -179,7 +187,8 @@ private fun ClickableMarkdownText(
     text: androidx.compose.ui.text.AnnotatedString,
     style: TextStyle,
     modifier: Modifier = Modifier,
-    onLinkClick: (String) -> Unit = {}
+    onLinkClick: (String) -> Unit = {},
+    onTextClick: (() -> Unit)? = null
 ) {
     val mergedStyle = if (style.color == Color.Unspecified) {
         style.copy(color = MaterialTheme.colorScheme.onSurface)
@@ -191,11 +200,13 @@ private fun ClickableMarkdownText(
         style = mergedStyle,
         modifier = modifier,
         onClick = { offset ->
-            text.getStringAnnotations(tag = "URL", start = offset, end = offset)
-                .firstOrNull()?.let { annotation ->
-                    val url = annotation.item
-                    onLinkClick(url)
-                }
+            val annotation = text.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                .firstOrNull()
+            if (annotation != null) {
+                onLinkClick(annotation.item)
+            } else {
+                onTextClick?.invoke()
+            }
         }
     )
 }
@@ -204,7 +215,8 @@ private fun ClickableMarkdownText(
 private fun RenderTable(
     tableLines: List<String>,
     style: TextStyle,
-    onLinkClick: (String) -> Unit = {}
+    onLinkClick: (String) -> Unit = {},
+    onTextClick: (() -> Unit)? = null
 ) {
     if (tableLines.isEmpty()) return
     
@@ -252,7 +264,8 @@ private fun RenderTable(
                             text = parseInlineMarkdown(cellContent),
                             style = if (rowIndex == 0) style.copy(fontWeight = FontWeight.Bold) else style,
                             modifier = Modifier.wrapContentHeight(),
-                            onLinkClick = onLinkClick
+                            onLinkClick = onLinkClick,
+                            onTextClick = onTextClick
                         )
                     }
                 }

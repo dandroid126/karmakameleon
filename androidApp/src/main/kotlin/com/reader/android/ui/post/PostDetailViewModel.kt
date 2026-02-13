@@ -16,6 +16,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+sealed class FlatCommentItem {
+    data class CommentEntry(val comment: Comment) : FlatCommentItem()
+    data class MoreEntry(val more: MoreComments) : FlatCommentItem()
+}
+
 data class PostDetailUiState(
     val post: Post? = null,
     val comments: List<CommentOrMore> = emptyList(),
@@ -25,7 +30,9 @@ data class PostDetailUiState(
     val commentSort: CommentSort = CommentSort.CONFIDENCE,
     val isLoggedIn: Boolean = false,
     val replyingTo: String? = null,
-    val replyText: String = ""
+    val replyText: String = "",
+    val selectedCommentId: String? = null,
+    val hiddenCommentIds: Set<String> = emptySet()
 )
 
 class PostDetailViewModel(
@@ -243,6 +250,121 @@ class PostDetailViewModel(
                 )
             }
         }
+    }
+
+    fun selectComment(commentId: String?) {
+        _uiState.update { state ->
+            if (commentId != null && state.hiddenCommentIds.contains(commentId)) {
+                state.copy(
+                    selectedCommentId = commentId,
+                    hiddenCommentIds = state.hiddenCommentIds - commentId
+                )
+            } else {
+                state.copy(selectedCommentId = commentId)
+            }
+        }
+    }
+
+    fun hideComment(commentId: String) {
+        _uiState.update { state ->
+            state.copy(
+                hiddenCommentIds = state.hiddenCommentIds + commentId,
+                selectedCommentId = null
+            )
+        }
+    }
+
+    fun getFlattenedComments(): List<FlatCommentItem> {
+        val state = _uiState.value
+        return flattenCommentTree(state.comments, state.hiddenCommentIds)
+    }
+
+    private fun flattenCommentTree(
+        items: List<CommentOrMore>,
+        hiddenIds: Set<String>
+    ): List<FlatCommentItem> {
+        val result = mutableListOf<FlatCommentItem>()
+        for (item in items) {
+            when (item) {
+                is CommentOrMore.CommentItem -> {
+                    result.add(FlatCommentItem.CommentEntry(item.comment))
+                    if (!hiddenIds.contains(item.comment.id)) {
+                        result.addAll(flattenReplies(item.comment.replies, hiddenIds))
+                        item.comment.moreReplies?.let { more ->
+                            if (more.count > 0) {
+                                result.add(FlatCommentItem.MoreEntry(more))
+                            }
+                        }
+                    }
+                }
+                is CommentOrMore.More -> {
+                    result.add(FlatCommentItem.MoreEntry(item.more))
+                }
+            }
+        }
+        return result
+    }
+
+    private fun flattenReplies(
+        replies: List<Comment>,
+        hiddenIds: Set<String>
+    ): List<FlatCommentItem> {
+        val result = mutableListOf<FlatCommentItem>()
+        for (comment in replies) {
+            result.add(FlatCommentItem.CommentEntry(comment))
+            if (!hiddenIds.contains(comment.id)) {
+                result.addAll(flattenReplies(comment.replies, hiddenIds))
+                comment.moreReplies?.let { more ->
+                    if (more.count > 0) {
+                        result.add(FlatCommentItem.MoreEntry(more))
+                    }
+                }
+            }
+        }
+        return result
+    }
+
+    fun findRootCommentId(commentId: String): String? {
+        val flatComments = getFlattenedComments()
+            .filterIsInstance<FlatCommentItem.CommentEntry>()
+            .map { it.comment }
+        val comment = flatComments.find { it.id == commentId } ?: return null
+        if (comment.depth == 0) return comment.id
+        var current = comment
+        while (current.depth > 0) {
+            val parent = flatComments.find { it.name == current.parentId } ?: break
+            current = parent
+        }
+        return current.id
+    }
+
+    fun findParentCommentId(commentId: String): String? {
+        val flatComments = getFlattenedComments()
+            .filterIsInstance<FlatCommentItem.CommentEntry>()
+            .map { it.comment }
+        val comment = flatComments.find { it.id == commentId } ?: return null
+        if (comment.depth == 0) return null
+        return flatComments.find { it.name == comment.parentId }?.id
+    }
+
+    fun findPrevRootCommentId(commentId: String): String? {
+        val state = _uiState.value
+        val rootComments = state.comments
+            .filterIsInstance<CommentOrMore.CommentItem>()
+            .map { it.comment }
+        val currentRootId = findRootCommentId(commentId) ?: return null
+        val idx = rootComments.indexOfFirst { it.id == currentRootId }
+        return if (idx > 0) rootComments[idx - 1].id else null
+    }
+
+    fun findNextRootCommentId(commentId: String): String? {
+        val state = _uiState.value
+        val rootComments = state.comments
+            .filterIsInstance<CommentOrMore.CommentItem>()
+            .map { it.comment }
+        val currentRootId = findRootCommentId(commentId) ?: return null
+        val idx = rootComments.indexOfFirst { it.id == currentRootId }
+        return if (idx < rootComments.size - 1) rootComments[idx + 1].id else null
     }
 
     fun setReplyingTo(parentId: String?) {
