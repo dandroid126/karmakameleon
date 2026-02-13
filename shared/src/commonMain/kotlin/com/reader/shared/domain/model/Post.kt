@@ -47,7 +47,7 @@ data class Post(
     val isTextPost: Boolean get() = postHint == "self" || url.contains("reddit.com") && selfText != null
     val isImagePost: Boolean get() = postHint == "image" || url.endsWith(".jpg") || url.endsWith(".png") || url.endsWith(".gif")
     val isVideoPost: Boolean get() = postHint == "hosted:video" || postHint == "rich:video"
-    val isLinkPost: Boolean get() = !isTextPost && !isImagePost && !isVideoPost
+    val isLinkPost: Boolean get() = !isTextPost && !isImagePost && !isVideoPost && !isGallery
     val isGallery: Boolean get() = galleryData != null
     
     val voteState: VoteState get() = when (likes) {
@@ -103,7 +103,8 @@ data class GalleryData(
 data class GalleryItem(
     val mediaId: String,
     val id: Long,
-    val caption: String?
+    val caption: String?,
+    val url: String? = null
 )
 
 enum class VoteState {

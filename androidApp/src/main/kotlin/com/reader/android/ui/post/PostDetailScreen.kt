@@ -9,12 +9,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -76,6 +79,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reader.android.ui.components.FlairChip
+import com.reader.android.ui.components.FullScreenImageViewer
 import com.reader.android.ui.components.MarkdownText
 import com.reader.android.ui.components.ProgressiveAsyncImage
 import com.reader.android.ui.components.RedditLink
@@ -121,6 +125,8 @@ fun PostDetailScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     var pendingDismissAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var showDiscardDraftOption by remember { mutableStateOf(false) }
+    var imageViewerUrls by remember { mutableStateOf<List<String>>(emptyList()) }
+    var imageViewerInitialPage by remember { mutableStateOf(0) }
 
     val isReplyBarOpen = uiState.isLoggedIn && (uiState.editingCommentId != null || uiState.replyingTo != null)
     BackHandler(enabled = isReplyBarOpen) {
@@ -317,7 +323,11 @@ fun PostDetailScreen(
                                 onSortClick = { showCommentSortSheet = true },
                                 onReply = { viewModel.setReplyingTo(post.name) },
                                 isLoggedIn = uiState.isLoggedIn,
-                                onLinkClick = onLinkClick
+                                onLinkClick = onLinkClick,
+                                onImageClick = { urls, page ->
+                                    imageViewerUrls = urls
+                                    imageViewerInitialPage = page
+                                }
                             )
                         }
 
@@ -413,6 +423,14 @@ fun PostDetailScreen(
                 }
             }
         }
+    }
+
+    if (imageViewerUrls.isNotEmpty()) {
+        FullScreenImageViewer(
+            imageUrls = imageViewerUrls,
+            initialPage = imageViewerInitialPage,
+            onDismiss = { imageViewerUrls = emptyList() }
+        )
     }
 
     if (showCommentSortSheet) {
@@ -567,6 +585,8 @@ private fun CommentSortBottomSheet(
     }
 }
 
+private val POST_DETAIL_IMAGE_MAX_HEIGHT = 400.dp
+
 @Composable
 private fun PostHeader(
     post: Post,
@@ -578,7 +598,8 @@ private fun PostHeader(
     onSortClick: () -> Unit,
     onReply: () -> Unit,
     isLoggedIn: Boolean,
-    onLinkClick: (String) -> Unit = {}
+    onLinkClick: (String) -> Unit = {},
+    onImageClick: (urls: List<String>, initialPage: Int) -> Unit = { _, _ -> }
 ) {
     Column(
         modifier = Modifier
@@ -623,40 +644,89 @@ private fun PostHeader(
             style = MaterialTheme.typography.titleLarge
         )
 
-        val redditVideo = post.media?.redditVideo
-            ?: post.preview?.redditVideoPreview
-        if (redditVideo != null && !post.isNsfw) {
+        val galleryItems = post.galleryData?.items?.filter { it.url != null } ?: emptyList()
+        if (galleryItems.size > 1 && !post.isNsfw) {
             Spacer(modifier = Modifier.height(12.dp))
-            VideoPlayer(
-                videoUrl = redditVideo.fallbackUrl,
-                isGif = redditVideo.isGif,
-                modifier = Modifier.fillMaxWidth()
-            )
+            val pagerState = rememberPagerState(pageCount = { galleryItems.size })
+            val galleryUrls = remember(galleryItems) { galleryItems.mapNotNull { it.url } }
+            Column {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { onImageClick(galleryUrls, pagerState.currentPage) }
+                ) { page ->
+                    AsyncImage(
+                        model = galleryItems[page].url,
+                        contentDescription = galleryItems[page].caption,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    repeat(galleryItems.size) { index ->
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 3.dp)
+                                .size(if (index == pagerState.currentPage) 8.dp else 6.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(
+                                    if (index == pagerState.currentPage)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                )
+                        )
+                    }
+                }
+            }
         } else {
-            val mp4Url = post.preview?.images?.firstOrNull()?.mp4Url
-            if (mp4Url != null && !post.isNsfw) {
+            val redditVideo = post.media?.redditVideo
+                ?: post.preview?.redditVideoPreview
+            if (redditVideo != null && !post.isNsfw) {
                 Spacer(modifier = Modifier.height(12.dp))
                 VideoPlayer(
-                    videoUrl = mp4Url,
-                    isGif = true,
+                    videoUrl = redditVideo.fallbackUrl,
+                    isGif = redditVideo.isGif,
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
-                val previewImage = post.preview?.images?.firstOrNull()
-                val highResUrl = previewImage?.source?.url
-                val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
-                    ?: post.thumbnail?.takeIf { it.startsWith("http") }
-                if (highResUrl != null && !post.isNsfw) {
+                val mp4Url = post.preview?.images?.firstOrNull()?.mp4Url
+                if (mp4Url != null && !post.isNsfw) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    ProgressiveAsyncImage(
-                        lowResUrl = lowResUrl,
-                        highResUrl = highResUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Crop
+                    VideoPlayer(
+                        videoUrl = mp4Url,
+                        isGif = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
+                } else {
+                    val previewImage = post.preview?.images?.firstOrNull()
+                    val galleryUrl = galleryItems.firstOrNull()?.url
+                    val highResUrl = previewImage?.source?.url
+                        ?: galleryUrl
+                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                    val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
+                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                    if (highResUrl != null && !post.isNsfw) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ProgressiveAsyncImage(
+                            lowResUrl = lowResUrl,
+                            highResUrl = highResUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onImageClick(listOf(highResUrl), 0) },
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
             }
         }

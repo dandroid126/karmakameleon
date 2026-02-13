@@ -158,23 +158,44 @@ fun PostCard(
                 Column {
                     // Thumbnail/Preview (for both videos and images)
                     val previewImage = post.preview?.images?.firstOrNull()
+                    val galleryUrl = post.galleryData?.items?.firstOrNull()?.url
                     val highResUrl = previewImage?.source?.url
+                        ?: galleryUrl
                         ?: post.thumbnail?.takeIf { it.startsWith("http") }
                     val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
                         ?: post.thumbnail?.takeIf { it.startsWith("http") }
 
                     if (highResUrl != null && !post.isNsfw) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        ProgressiveAsyncImage(
-                            lowResUrl = lowResUrl,
-                            highResUrl = highResUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 300.dp)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                        Box {
+                            ProgressiveAsyncImage(
+                                lowResUrl = lowResUrl,
+                                highResUrl = highResUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 300.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            val galleryCount = post.galleryData?.items?.size ?: 0
+                            if (galleryCount > 1) {
+                                Surface(
+                                    color = Color.Black.copy(alpha = 0.6f),
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(8.dp)
+                                ) {
+                                    Text(
+                                        text = "1/$galleryCount",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
 
                     // Self text preview (plain text, no clickable links)

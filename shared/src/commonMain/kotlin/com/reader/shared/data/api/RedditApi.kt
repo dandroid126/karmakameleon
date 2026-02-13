@@ -3,6 +3,7 @@ package com.reader.shared.data.api
 import com.reader.shared.data.api.dto.AccountDto
 import com.reader.shared.data.api.dto.CommentDto
 import com.reader.shared.data.api.dto.GalleryDataDto
+import com.reader.shared.data.api.dto.MediaMetadataDto
 import com.reader.shared.data.api.dto.ListingData
 import com.reader.shared.data.api.dto.MediaDto
 import com.reader.shared.data.api.dto.MessageDto
@@ -725,7 +726,9 @@ class RedditApi(
             authorFlairText = dto.authorFlairText,
             distinguished = dto.distinguished,
             media = (dto.media ?: dto.crosspostParentList?.firstOrNull()?.media)?.let { mapMedia(it) },
-            galleryData = dto.galleryData?.let { mapGallery(it) },
+            galleryData = (dto.galleryData ?: dto.crosspostParentList?.firstOrNull()?.galleryData)?.let {
+                mapGallery(it, dto.mediaMetadata ?: dto.crosspostParentList?.firstOrNull()?.mediaMetadata)
+            },
             crosspostParent = dto.crosspostParent,
             isCrosspost = dto.crosspostParent != null
         )
@@ -777,14 +780,18 @@ class RedditApi(
         )
     }
 
-    private fun mapGallery(dto: GalleryDataDto): GalleryData {
+    private fun mapGallery(dto: GalleryDataDto, metadata: Map<String, MediaMetadataDto>?): GalleryData {
         return GalleryData(
-            items = dto.items.map {
-                GalleryItem(
-                    mediaId = it.mediaId,
-                    id = it.id,
-                    caption = it.caption
-                )
+            items = dto.items.mapNotNull { item ->
+                val url = metadata?.get(item.mediaId)?.s?.u?.let { decodeHtml(it) }
+                if (url != null || metadata == null) {
+                    GalleryItem(
+                        mediaId = item.mediaId,
+                        id = item.id,
+                        caption = item.caption,
+                        url = url
+                    )
+                } else null
             }
         )
     }
