@@ -28,10 +28,19 @@ data class CommentDto(
     val replies: JsonElement? = null, // Can be empty string or object
     @SerialName("author_flair_text") val authorFlairText: String? = null,
     @SerialName("author_flair_background_color") val authorFlairBackgroundColor: String? = null,
+    @SerialName("author_flair_richtext") val authorFlairRichtext: List<FlairRichtextDto>? = null,
     @SerialName("score_hidden") val scoreHidden: Boolean = false,
     val edited: JsonElement? = null, // Can be boolean false or timestamp
     val subreddit: String,
     val permalink: String? = null,
+)
+
+@Serializable
+data class FlairRichtextDto(
+    val e: String, // "text" or "emoji"
+    val t: String? = null, // text content
+    val a: String? = null, // emoji shortcode like ":61910:"
+    val u: String? = null  // emoji image URL
 )
 
 @Serializable

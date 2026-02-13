@@ -18,6 +18,7 @@ import com.reader.shared.data.api.dto.UserSubredditDto
 import com.reader.shared.domain.model.Account
 import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.CommentSort
+import com.reader.shared.domain.model.FlairRichtext
 import com.reader.shared.domain.model.GalleryData
 import com.reader.shared.domain.model.GalleryItem
 import com.reader.shared.domain.model.ImageSource
@@ -817,6 +818,13 @@ class RedditApi(
             moreReplies = moreReplies,
             authorFlairText = dto.authorFlairText,
             authorFlairBackgroundColor = dto.authorFlairBackgroundColor,
+            authorFlairRichtext = dto.authorFlairRichtext?.map { rt ->
+                FlairRichtext(
+                    type = rt.e,
+                    text = rt.t,
+                    url = rt.u
+                )
+            } ?: emptyList(),
             scoreHidden = dto.scoreHidden,
             edited = parseEdited(dto.edited),
             subreddit = dto.subreddit,

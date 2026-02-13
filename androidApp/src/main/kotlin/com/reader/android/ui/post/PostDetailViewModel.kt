@@ -29,6 +29,7 @@ data class PostDetailUiState(
     val error: String? = null,
     val commentSort: CommentSort = CommentSort.CONFIDENCE,
     val isLoggedIn: Boolean = false,
+    val loggedInUsername: String? = null,
     val replyingTo: String? = null,
     val replyText: String = "",
     val selectedCommentId: String? = null,
@@ -55,6 +56,14 @@ class PostDetailViewModel(
             userRepository.isLoggedIn.collect { isLoggedIn ->
                 _uiState.update { it.copy(isLoggedIn = isLoggedIn) }
             }
+        }
+        viewModelScope.launch {
+            userRepository.currentAccount.collect { account ->
+                _uiState.update { it.copy(loggedInUsername = account?.name) }
+            }
+        }
+        if (userRepository.isLoggedIn.value && userRepository.currentAccount.value == null) {
+            viewModelScope.launch { userRepository.loadCurrentUser() }
         }
         loadPostWithComments()
     }
@@ -456,6 +465,7 @@ class PostDetailViewModel(
         viewModelScope.launch {
             val result = commentRepository.submitComment(parentId, text)
             result.onSuccess { newComment ->
+                val newComment = newComment.copy(likes = true, score = 1)
                 _uiState.update { state ->
                     state.copy(
                         comments = if (parentId == state.post?.name) {

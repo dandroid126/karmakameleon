@@ -28,6 +28,7 @@ data class Comment(
     val moreReplies: MoreComments?,
     val authorFlairText: String?,
     val authorFlairBackgroundColor: String?,
+    val authorFlairRichtext: List<FlairRichtext> = emptyList(),
     val scoreHidden: Boolean,
     val edited: Long?, // timestamp if edited, null if not
     val subreddit: String,
@@ -51,6 +52,13 @@ data class MoreComments(
     val count: Int,
     val depth: Int,
     val children: List<String> // List of comment IDs
+)
+
+@Serializable
+data class FlairRichtext(
+    val type: String, // "text" or "emoji"
+    val text: String? = null,
+    val url: String? = null
 )
 
 enum class CommentSort(val value: String, val displayName: String) {

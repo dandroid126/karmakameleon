@@ -1,5 +1,6 @@
 package com.reader.android.ui.post
 
+import android.graphics.Color as AndroidColor
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -76,8 +77,10 @@ import com.reader.android.ui.components.VideoPlayer
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
 import com.reader.android.ui.components.parseRedditLink
+import coil3.compose.AsyncImage
 import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.CommentSort
+import com.reader.shared.domain.model.FlairRichtext
 import com.reader.shared.domain.model.MoreComments
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
@@ -285,6 +288,7 @@ fun PostDetailScreen(
                                         },
                                         onReply = { viewModel.setReplyingTo(comment.name) },
                                         isLoggedIn = uiState.isLoggedIn,
+                                        loggedInUsername = uiState.loggedInUsername,
                                         onLinkClick = { url ->
                                             when (val link = parseRedditLink(url)) {
                                                 is RedditLink.Subreddit -> onSubredditClick(link.name)
@@ -571,6 +575,7 @@ private fun CommentItem(
     onShare: () -> Unit,
     onReply: () -> Unit,
     isLoggedIn: Boolean,
+    loggedInUsername: String? = null,
     onLinkClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -650,6 +655,7 @@ private fun CommentItem(
                             comment.isSubmitter -> Color(0xFF0079D3)
                             comment.distinguished == "moderator" -> Color(0xFF46A508)
                             comment.distinguished == "admin" -> Color(0xFFFF4500)
+                            loggedInUsername != null && comment.author == loggedInUsername -> Color(0xFFFF0000)
                             else -> MaterialTheme.colorScheme.onSurface
                         },
                         modifier = Modifier.clickable { onUserClick(comment.author) }
@@ -657,6 +663,23 @@ private fun CommentItem(
                     if (comment.isSubmitter) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("OP", style = MaterialTheme.typography.labelSmall, color = Color(0xFF0079D3))
+                    }
+                    val flairText = comment.authorFlairText
+                    val flairColor = comment.authorFlairBackgroundColor?.let {
+                        try { Color(AndroidColor.parseColor(it)) } catch (_: Exception) { MaterialTheme.colorScheme.secondary }
+                    } ?: MaterialTheme.colorScheme.secondary
+                    if (comment.authorFlairRichtext.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        RichFlairChip(
+                            richtext = comment.authorFlairRichtext,
+                            color = flairColor
+                        )
+                    } else if (!flairText.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        FlairChip(
+                            text = flairText,
+                            color = flairColor
+                        )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -739,6 +762,47 @@ private fun CommentItem(
                             IconButton(onClick = onReply, modifier = Modifier.size(36.dp)) {
                                 Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Reply", modifier = Modifier.size(22.dp))
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RichFlairChip(
+    richtext: List<FlairRichtext>,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = color.copy(alpha = 0.2f),
+        shape = RoundedCornerShape(4.dp),
+        modifier = modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            richtext.forEach { part ->
+                when (part.type) {
+                    "text" -> {
+                        part.text?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = color
+                            )
+                        }
+                    }
+                    "emoji" -> {
+                        part.url?.let { url ->
+                            AsyncImage(
+                                model = url,
+                                contentDescription = part.text,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                     }
                 }
