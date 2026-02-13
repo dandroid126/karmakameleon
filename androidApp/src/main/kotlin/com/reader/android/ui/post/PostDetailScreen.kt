@@ -288,7 +288,7 @@ fun PostDetailScreen(
                                     MoreCommentsButton(
                                         more = item.more,
                                         onClick = { viewModel.loadMoreComments(item.more) },
-                                        isLoading = uiState.isLoadingComments
+                                        isLoading = uiState.loadingMoreId == item.more.id
                                     )
                                 }
                             }

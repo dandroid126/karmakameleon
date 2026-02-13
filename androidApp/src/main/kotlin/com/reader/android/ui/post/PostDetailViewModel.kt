@@ -25,7 +25,7 @@ data class PostDetailUiState(
     val post: Post? = null,
     val comments: List<CommentOrMore> = emptyList(),
     val isLoading: Boolean = false,
-    val isLoadingComments: Boolean = false,
+    val loadingMoreId: String? = null,
     val error: String? = null,
     val commentSort: CommentSort = CommentSort.CONFIDENCE,
     val isLoggedIn: Boolean = false,
@@ -99,9 +99,10 @@ class PostDetailViewModel(
 
     fun loadMoreComments(more: MoreComments) {
         val post = _uiState.value.post ?: return
+        if (more.children.isEmpty()) return
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingComments = true) }
+            _uiState.update { it.copy(loadingMoreId = more.id) }
             
             val result = postRepository.getMoreComments(
                 linkId = post.name,
@@ -111,20 +112,21 @@ class PostDetailViewModel(
             
             result.fold(
                 onSuccess = { newComments ->
+                    val treeComments = buildCommentTree(newComments)
                     _uiState.update { state ->
                         val updatedComments = insertComments(
                             state.comments,
                             more,
-                            newComments
+                            treeComments
                         )
                         state.copy(
                             comments = updatedComments,
-                            isLoadingComments = false
+                            loadingMoreId = null
                         )
                     }
                 },
                 onFailure = {
-                    _uiState.update { it.copy(isLoadingComments = false) }
+                    _uiState.update { it.copy(loadingMoreId = null) }
                 }
             )
         }
@@ -145,13 +147,26 @@ class PostDetailViewModel(
                     }
                 }
                 is CommentOrMore.CommentItem -> {
-                    listOf(
-                        CommentOrMore.CommentItem(
-                            item.comment.copy(
-                                replies = insertCommentsInReplies(item.comment.replies, more, newComments)
+                    if (item.comment.moreReplies?.id == more.id) {
+                        val addedReplies = newComments.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
+                        val newMore = newComments.filterIsInstance<CommentOrMore.More>().firstOrNull()?.more
+                        listOf(
+                            CommentOrMore.CommentItem(
+                                item.comment.copy(
+                                    replies = item.comment.replies + addedReplies,
+                                    moreReplies = newMore
+                                )
                             )
                         )
-                    )
+                    } else {
+                        listOf(
+                            CommentOrMore.CommentItem(
+                                item.comment.copy(
+                                    replies = insertCommentsInReplies(item.comment.replies, more, newComments)
+                                )
+                            )
+                        )
+                    }
                 }
             }
         }
@@ -163,10 +178,68 @@ class PostDetailViewModel(
         newComments: List<CommentOrMore>
     ): List<Comment> {
         return replies.map { comment ->
-            comment.copy(
-                replies = insertCommentsInReplies(comment.replies, more, newComments)
-            )
+            if (comment.moreReplies?.id == more.id) {
+                val addedReplies = newComments.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
+                val newMore = newComments.filterIsInstance<CommentOrMore.More>().firstOrNull()?.more
+                comment.copy(
+                    replies = comment.replies + addedReplies,
+                    moreReplies = newMore
+                )
+            } else {
+                comment.copy(
+                    replies = insertCommentsInReplies(comment.replies, more, newComments)
+                )
+            }
         }
+    }
+
+    private fun buildCommentTree(flatItems: List<CommentOrMore>): List<CommentOrMore> {
+        val comments = flatItems.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
+        val moreEntries = flatItems.filterIsInstance<CommentOrMore.More>()
+
+        val commentByName = mutableMapOf<String, Comment>()
+        for (c in comments) commentByName[c.name] = c
+
+        // Track child names per parent and more entries per parent (only within this batch)
+        val childNamesOf = mutableMapOf<String, MutableList<String>>()
+        for (c in comments) {
+            if (c.parentId in commentByName) {
+                childNamesOf.getOrPut(c.parentId) { mutableListOf() }.add(c.name)
+            }
+        }
+        val moreOf = mutableMapOf<String, MoreComments>()
+        for (m in moreEntries) {
+            if (m.more.parentId in commentByName) {
+                moreOf[m.more.parentId] = m.more
+            }
+        }
+
+        // Build tree bottom-up (deepest first)
+        for (c in comments.sortedByDescending { it.depth }) {
+            val childNames = childNamesOf[c.name]
+            val more = moreOf[c.name]
+            if (childNames != null || more != null) {
+                val children = childNames?.map { commentByName[it]!! } ?: emptyList()
+                commentByName[c.name] = commentByName[c.name]!!.copy(
+                    replies = children,
+                    moreReplies = more
+                )
+            }
+        }
+
+        // Roots: items whose parent is not in this batch
+        val result = mutableListOf<CommentOrMore>()
+        for (c in comments) {
+            if (c.parentId !in commentByName) {
+                result.add(CommentOrMore.CommentItem(commentByName[c.name]!!))
+            }
+        }
+        for (m in moreEntries) {
+            if (m.more.parentId !in commentByName) {
+                result.add(m)
+            }
+        }
+        return result
     }
 
     fun votePost(direction: Int) {
@@ -291,7 +364,7 @@ class PostDetailViewModel(
                     if (!hiddenIds.contains(item.comment.id)) {
                         result.addAll(flattenReplies(item.comment.replies, hiddenIds))
                         item.comment.moreReplies?.let { more ->
-                            if (more.count > 0) {
+                            if (more.count > 0 && more.children.isNotEmpty()) {
                                 result.add(FlatCommentItem.MoreEntry(more))
                             }
                         }
@@ -315,7 +388,7 @@ class PostDetailViewModel(
             if (!hiddenIds.contains(comment.id)) {
                 result.addAll(flattenReplies(comment.replies, hiddenIds))
                 comment.moreReplies?.let { more ->
-                    if (more.count > 0) {
+                    if (more.count > 0 && more.children.isNotEmpty()) {
                         result.add(FlatCommentItem.MoreEntry(more))
                     }
                 }
