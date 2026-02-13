@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -37,6 +39,7 @@ fun MarkdownText(
     onTextClick: (() -> Unit)? = null
 ) {
     val lines = markdown.split("\n")
+    val density = LocalDensity.current
     Column(modifier = modifier) {
         var i = 0
         while (i < lines.size) {
@@ -131,8 +134,25 @@ fun MarkdownText(
                     }
                 }
                 line.isNotBlank() -> {
+                    val paragraphLines = mutableListOf(line)
+                    while (i + 1 < lines.size && lines[i + 1].isNotBlank() && !isSpecialLine(lines, i + 1)) {
+                        i++
+                        paragraphLines.add(lines[i])
+                    }
+                    val merged = buildString {
+                        paragraphLines.forEachIndexed { idx, l ->
+                            if (idx > 0) {
+                                if (paragraphLines[idx - 1].endsWith("  ")) {
+                                    append("\n")
+                                } else {
+                                    append(" ")
+                                }
+                            }
+                            append(l.trimEnd())
+                        }
+                    }
                     ClickableMarkdownText(
-                        text = parseInlineMarkdown(line),
+                        text = parseInlineMarkdown(merged),
                         style = style,
                         modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
                         onLinkClick = onLinkClick,
@@ -140,14 +160,29 @@ fun MarkdownText(
                     )
                 }
                 else -> {
-                    if (i + 1 >= lines.size || lines[i + 1].isNotBlank()) {
-                        Text(text = "", modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
+                    while (i + 1 < lines.size && lines[i + 1].isBlank()) {
+                        i++
+                    }
+                    if (i + 1 < lines.size) {
+                        val spacerHeight = with(density) { style.fontSize.toPx().toDp() }
+                        Spacer(modifier = Modifier.height(spacerHeight))
                     }
                 }
             }
             i++
         }
     }
+}
+
+private fun isSpecialLine(lines: List<String>, i: Int): Boolean {
+    val line = lines[i]
+    return line.startsWith("#") ||
+            line.startsWith(">") ||
+            line.startsWith("    ") ||
+            line.matches(Regex("^-{3,}$")) ||
+            line.startsWith("- ") || line.startsWith("* ") ||
+            line.matches(Regex("^\\d+\\.\\s+.*")) ||
+            isTableStart(lines, i)
 }
 
 private fun isTableStart(lines: List<String>, index: Int): Boolean {

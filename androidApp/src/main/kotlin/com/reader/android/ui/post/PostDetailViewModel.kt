@@ -32,6 +32,7 @@ data class PostDetailUiState(
     val loggedInUsername: String? = null,
     val replyingTo: String? = null,
     val replyText: String = "",
+    val editingCommentId: String? = null,
     val selectedCommentId: String? = null,
     val hiddenCommentIds: Set<String> = emptySet()
 )
@@ -277,7 +278,7 @@ class PostDetailViewModel(
             result.onSuccess { updatedComment ->
                 _uiState.update { state ->
                     state.copy(
-                        comments = updateCommentInList(state.comments, updatedComment)
+                        comments = updateCommentInTree(state.comments, updatedComment)
                     )
                 }
             }
@@ -290,49 +291,13 @@ class PostDetailViewModel(
             result.onSuccess { updatedComment ->
                 _uiState.update { state ->
                     state.copy(
-                        comments = updateCommentInList(state.comments, updatedComment)
+                        comments = updateCommentInTree(state.comments, updatedComment)
                     )
                 }
             }
         }
     }
 
-    private fun updateCommentInList(
-        comments: List<CommentOrMore>,
-        updated: Comment
-    ): List<CommentOrMore> {
-        return comments.map { item ->
-            when (item) {
-                is CommentOrMore.CommentItem -> {
-                    if (item.comment.id == updated.id) {
-                        CommentOrMore.CommentItem(updated)
-                    } else {
-                        CommentOrMore.CommentItem(
-                            item.comment.copy(
-                                replies = updateCommentInReplies(item.comment.replies, updated)
-                            )
-                        )
-                    }
-                }
-                is CommentOrMore.More -> item
-            }
-        }
-    }
-
-    private fun updateCommentInReplies(
-        replies: List<Comment>,
-        updated: Comment
-    ): List<Comment> {
-        return replies.map { comment ->
-            if (comment.id == updated.id) {
-                updated
-            } else {
-                comment.copy(
-                    replies = updateCommentInReplies(comment.replies, updated)
-                )
-            }
-        }
-    }
 
     fun selectComment(commentId: String?) {
         _uiState.update { state ->
@@ -450,11 +415,128 @@ class PostDetailViewModel(
     }
 
     fun setReplyingTo(parentId: String?) {
-        _uiState.update { it.copy(replyingTo = parentId, replyText = "") }
+        _uiState.update { it.copy(replyingTo = parentId, editingCommentId = null, replyText = "") }
     }
 
     fun setReplyText(text: String) {
         _uiState.update { it.copy(replyText = text) }
+    }
+
+    fun startEditComment(comment: Comment) {
+        _uiState.update { it.copy(editingCommentId = comment.id, replyingTo = null, replyText = comment.body) }
+    }
+
+    fun submitEdit() {
+        val editingId = _uiState.value.editingCommentId ?: return
+        val text = _uiState.value.replyText.trim()
+        if (text.isEmpty()) return
+
+        val comment = findCommentById(editingId) ?: return
+        viewModelScope.launch {
+            val result = commentRepository.editComment(comment, text)
+            result.onSuccess { updatedComment ->
+                _uiState.update { state ->
+                    state.copy(
+                        comments = updateCommentInTree(state.comments, updatedComment),
+                        editingCommentId = null,
+                        replyText = ""
+                    )
+                }
+            }
+        }
+    }
+
+    fun deleteComment(commentId: String) {
+        val comment = findCommentById(commentId) ?: return
+        viewModelScope.launch {
+            val result = commentRepository.deleteComment(comment)
+            result.onSuccess {
+                _uiState.update { state ->
+                    state.copy(
+                        comments = removeCommentFromTree(state.comments, commentId),
+                        selectedCommentId = null
+                    )
+                }
+            }
+        }
+    }
+
+    private fun findCommentById(commentId: String): Comment? {
+        for (item in _uiState.value.comments) {
+            if (item is CommentOrMore.CommentItem) {
+                if (item.comment.id == commentId) return item.comment
+                val found = searchReplies(item.comment.replies, commentId)
+                if (found != null) return found
+            }
+        }
+        return null
+    }
+
+    private fun searchReplies(replies: List<Comment>, commentId: String): Comment? {
+        for (comment in replies) {
+            if (comment.id == commentId) return comment
+            val found = searchReplies(comment.replies, commentId)
+            if (found != null) return found
+        }
+        return null
+    }
+
+    private fun updateCommentInTree(comments: List<CommentOrMore>, updated: Comment): List<CommentOrMore> {
+        return comments.map { item ->
+            when (item) {
+                is CommentOrMore.CommentItem -> {
+                    if (item.comment.id == updated.id) {
+                        CommentOrMore.CommentItem(updated.copy(replies = item.comment.replies, moreReplies = item.comment.moreReplies))
+                    } else {
+                        CommentOrMore.CommentItem(
+                            item.comment.copy(replies = updateCommentInReplies(item.comment.replies, updated))
+                        )
+                    }
+                }
+                is CommentOrMore.More -> item
+            }
+        }
+    }
+
+    private fun updateCommentInReplies(replies: List<Comment>, updated: Comment): List<Comment> {
+        return replies.map { comment ->
+            if (comment.id == updated.id) {
+                updated.copy(replies = comment.replies, moreReplies = comment.moreReplies)
+            } else {
+                comment.copy(replies = updateCommentInReplies(comment.replies, updated))
+            }
+        }
+    }
+
+    private fun removeCommentFromTree(comments: List<CommentOrMore>, commentId: String): List<CommentOrMore> {
+        return comments.mapNotNull { item ->
+            when (item) {
+                is CommentOrMore.CommentItem -> {
+                    if (item.comment.id == commentId) {
+                        null
+                    } else {
+                        CommentOrMore.CommentItem(
+                            item.comment.copy(replies = removeCommentFromReplies(item.comment.replies, commentId))
+                        )
+                    }
+                }
+                is CommentOrMore.More -> item
+            }
+        }
+    }
+
+    private fun removeCommentFromReplies(replies: List<Comment>, commentId: String): List<Comment> {
+        return replies.mapNotNull { comment ->
+            if (comment.id == commentId) {
+                null
+            } else {
+                comment.copy(replies = removeCommentFromReplies(comment.replies, commentId))
+            }
+        }
+    }
+
+    fun cancelEdit() {
+        _uiState.update { it.copy(editingCommentId = null, replyText = "") }
     }
 
     fun submitReply() {

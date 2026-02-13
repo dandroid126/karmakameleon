@@ -25,6 +25,8 @@ import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
@@ -35,6 +37,7 @@ import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -109,6 +112,7 @@ fun PostDetailScreen(
     val context = LocalContext.current
 
     var showCommentSortSheet by remember { mutableStateOf(false) }
+    var deleteConfirmCommentId by remember { mutableStateOf<String?>(null) }
 
     val flattenedComments = remember(uiState.comments, uiState.hiddenCommentIds) {
         viewModel.getFlattenedComments()
@@ -175,7 +179,15 @@ fun PostDetailScreen(
             )
         },
         bottomBar = {
-            if (uiState.isLoggedIn && uiState.replyingTo != null) {
+            if (uiState.isLoggedIn && uiState.editingCommentId != null) {
+                ReplyBar(
+                    replyText = uiState.replyText,
+                    onReplyTextChange = viewModel::setReplyText,
+                    onSubmit = viewModel::submitEdit,
+                    onCancel = viewModel::cancelEdit,
+                    placeholder = "Edit comment..."
+                )
+            } else if (uiState.isLoggedIn && uiState.replyingTo != null) {
                 ReplyBar(
                     replyText = uiState.replyText,
                     onReplyTextChange = viewModel::setReplyText,
@@ -287,6 +299,8 @@ fun PostDetailScreen(
                                             Toast.makeText(context, "Copied link: $link", Toast.LENGTH_SHORT).show()
                                         },
                                         onReply = { viewModel.setReplyingTo(comment.name) },
+                                        onEdit = { viewModel.startEditComment(comment) },
+                                        onDelete = { deleteConfirmCommentId = comment.id },
                                         isLoggedIn = uiState.isLoggedIn,
                                         loggedInUsername = uiState.loggedInUsername,
                                         onLinkClick = { url ->
@@ -326,6 +340,27 @@ fun PostDetailScreen(
                 showCommentSortSheet = false
             },
             onDismiss = { showCommentSortSheet = false }
+        )
+    }
+
+    if (deleteConfirmCommentId != null) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirmCommentId = null },
+            title = { Text("Delete Comment") },
+            text = { Text("Are you sure you want to delete this comment? This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteConfirmCommentId?.let { viewModel.deleteComment(it) }
+                    deleteConfirmCommentId = null
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmCommentId = null }) {
+                    Text("Cancel")
+                }
+            }
         )
     }
 }
@@ -574,6 +609,8 @@ private fun CommentItem(
     onDownvote: () -> Unit,
     onShare: () -> Unit,
     onReply: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
     isLoggedIn: Boolean,
     loggedInUsername: String? = null,
     onLinkClick: (String) -> Unit = {},
@@ -734,6 +771,16 @@ private fun CommentItem(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
                     ) {
+                        if (isLoggedIn) {
+                            if (loggedInUsername != null && comment.author == loggedInUsername) {
+                                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
                         IconButton(onClick = onUpvote, enabled = isLoggedIn, modifier = Modifier.size(36.dp)) {
                             Icon(
                                 if (comment.voteState == VoteState.UPVOTED) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
@@ -836,7 +883,8 @@ private fun ReplyBar(
     replyText: String,
     onReplyTextChange: (String) -> Unit,
     onSubmit: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    placeholder: String = "Write a reply..."
 ) {
     Surface(
         tonalElevation = 3.dp,
@@ -855,7 +903,7 @@ private fun ReplyBar(
                 value = replyText,
                 onValueChange = onReplyTextChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Write a reply...") },
+                placeholder = { Text(placeholder) },
                 maxLines = 4
             )
             IconButton(
