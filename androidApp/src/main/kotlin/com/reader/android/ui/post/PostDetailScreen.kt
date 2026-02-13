@@ -2,9 +2,12 @@ package com.reader.android.ui.post
 
 import android.graphics.Color as AndroidColor
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -113,6 +116,34 @@ fun PostDetailScreen(
 
     var showCommentSortSheet by remember { mutableStateOf(false) }
     var deleteConfirmCommentId by remember { mutableStateOf<String?>(null) }
+    var showLoadDraftDialog by remember { mutableStateOf(false) }
+    var pendingDraftText by remember { mutableStateOf<String?>(null) }
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    var pendingDismissAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var showDiscardDraftOption by remember { mutableStateOf(false) }
+
+    val isReplyBarOpen = uiState.isLoggedIn && (uiState.editingCommentId != null || uiState.replyingTo != null)
+    BackHandler(enabled = isReplyBarOpen) {
+        if (uiState.editingCommentId != null) {
+            val draft = uiState.savedDraftText
+            if (uiState.replyText != uiState.editingOriginalText && uiState.replyText != (draft ?: "")) {
+                pendingDismissAction = { viewModel.cancelEdit() }
+                showDiscardDraftOption = true
+                showDiscardDialog = true
+            } else {
+                viewModel.cancelEdit()
+            }
+        } else if (uiState.replyingTo != null) {
+            val draft = uiState.savedDraftText
+            if (uiState.replyText.isNotBlank() && uiState.replyText != (draft ?: "")) {
+                pendingDismissAction = { viewModel.setReplyingTo(null) }
+                showDiscardDraftOption = true
+                showDiscardDialog = true
+            } else {
+                viewModel.setReplyingTo(null)
+            }
+        }
+    }
 
     val flattenedComments = remember(uiState.comments, uiState.hiddenCommentIds) {
         viewModel.getFlattenedComments()
@@ -180,19 +211,71 @@ fun PostDetailScreen(
         },
         bottomBar = {
             if (uiState.isLoggedIn && uiState.editingCommentId != null) {
+                val draft = uiState.savedDraftText
+                val hasDraft = draft != null
                 ReplyBar(
                     replyText = uiState.replyText,
                     onReplyTextChange = viewModel::setReplyText,
                     onSubmit = viewModel::submitEdit,
-                    onCancel = viewModel::cancelEdit,
+                    onCancel = {
+                        if (uiState.replyText != uiState.editingOriginalText && uiState.replyText != (draft ?: "")) {
+                            pendingDismissAction = { viewModel.cancelEdit() }
+                            showDiscardDraftOption = true
+                            showDiscardDialog = true
+                        } else {
+                            viewModel.cancelEdit()
+                        }
+                    },
+                    onSaveDraft = {
+                        viewModel.saveDraft()
+                        Toast.makeText(context, "Draft saved", Toast.LENGTH_SHORT).show()
+                    },
+                    onLoadDraft = {
+                        if (draft != null) {
+                            if (uiState.replyText.isNotBlank() && uiState.replyText != draft) {
+                                pendingDraftText = draft
+                                showLoadDraftDialog = true
+                            } else {
+                                viewModel.applyDraft(draft)
+                            }
+                        }
+                    },
+                    hasDraft = hasDraft,
+                    showDraftControls = true,
                     placeholder = "Edit comment..."
                 )
             } else if (uiState.isLoggedIn && uiState.replyingTo != null) {
+                val draft = uiState.savedDraftText
+                val hasDraft = draft != null
                 ReplyBar(
                     replyText = uiState.replyText,
                     onReplyTextChange = viewModel::setReplyText,
                     onSubmit = viewModel::submitReply,
-                    onCancel = { viewModel.setReplyingTo(null) }
+                    onCancel = {
+                        if (uiState.replyText.isNotBlank() && uiState.replyText != (draft ?: "")) {
+                            pendingDismissAction = { viewModel.setReplyingTo(null) }
+                            showDiscardDraftOption = true
+                            showDiscardDialog = true
+                        } else {
+                            viewModel.setReplyingTo(null)
+                        }
+                    },
+                    onSaveDraft = {
+                        viewModel.saveDraft()
+                        Toast.makeText(context, "Draft saved", Toast.LENGTH_SHORT).show()
+                    },
+                    onLoadDraft = {
+                        if (draft != null) {
+                            if (uiState.replyText.isNotBlank() && uiState.replyText != draft) {
+                                pendingDraftText = draft
+                                showLoadDraftDialog = true
+                            } else {
+                                viewModel.applyDraft(draft)
+                            }
+                        }
+                    },
+                    hasDraft = hasDraft,
+                    showDraftControls = true
                 )
             }
         }
@@ -358,6 +441,76 @@ fun PostDetailScreen(
             },
             dismissButton = {
                 TextButton(onClick = { deleteConfirmCommentId = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showLoadDraftDialog) {
+        AlertDialog(
+            onDismissRequest = { showLoadDraftDialog = false },
+            title = { Text("Load Draft") },
+            text = { Text("Loading the draft will overwrite your current text. Continue?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    pendingDraftText?.let { viewModel.applyDraft(it) }
+                    pendingDraftText = null
+                    showLoadDraftDialog = false
+                }) {
+                    Text("Load Draft")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pendingDraftText = null
+                    showLoadDraftDialog = false
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                pendingDismissAction = null
+                showDiscardDraftOption = false
+                showDiscardDialog = false
+            },
+            title = { Text("Discard Changes") },
+            text = { Text("You have unsaved changes. Are you sure you want to discard them?") },
+            confirmButton = {
+                Row {
+                    if (showDiscardDraftOption) {
+                        TextButton(onClick = {
+                            viewModel.saveDraft()
+                            pendingDismissAction?.invoke()
+                            pendingDismissAction = null
+                            showDiscardDraftOption = false
+                            showDiscardDialog = false
+                            Toast.makeText(context, "Draft saved", Toast.LENGTH_SHORT).show()
+                        }) {
+                            Text("Save Draft")
+                        }
+                    }
+                    TextButton(onClick = {
+                        pendingDismissAction?.invoke()
+                        pendingDismissAction = null
+                        showDiscardDraftOption = false
+                        showDiscardDialog = false
+                    }) {
+                        Text("Discard", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    pendingDismissAction = null
+                    showDiscardDraftOption = false
+                    showDiscardDialog = false
+                }) {
                     Text("Cancel")
                 }
             }
@@ -884,33 +1037,61 @@ private fun ReplyBar(
     onReplyTextChange: (String) -> Unit,
     onSubmit: () -> Unit,
     onCancel: () -> Unit,
-    placeholder: String = "Write a reply..."
+    placeholder: String = "Write a reply...",
+    onSaveDraft: () -> Unit = {},
+    onLoadDraft: () -> Unit = {},
+    hasDraft: Boolean = false,
+    showDraftControls: Boolean = false
 ) {
     Surface(
         tonalElevation = 3.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(8.dp)
         ) {
-            IconButton(onClick = onCancel) {
-                Icon(Icons.Default.Close, contentDescription = "Cancel")
-            }
-            OutlinedTextField(
-                value = replyText,
-                onValueChange = onReplyTextChange,
-                modifier = Modifier.weight(1f),
-                placeholder = { Text(placeholder) },
-                maxLines = 4
-            )
-            IconButton(
-                onClick = onSubmit,
-                enabled = replyText.isNotBlank()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Send, contentDescription = "Send")
+                IconButton(onClick = onCancel) {
+                    Icon(Icons.Default.Close, contentDescription = "Cancel")
+                }
+                OutlinedTextField(
+                    value = replyText,
+                    onValueChange = onReplyTextChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text(placeholder) },
+                    maxLines = 4,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+                )
+                IconButton(
+                    onClick = onSubmit,
+                    enabled = replyText.isNotBlank()
+                ) {
+                    Icon(Icons.Default.Send, contentDescription = "Send")
+                }
+            }
+            if (showDraftControls) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (hasDraft) {
+                        TextButton(onClick = onLoadDraft) {
+                            Text("Load Draft", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                    TextButton(
+                        onClick = onSaveDraft,
+                        enabled = replyText.isNotBlank()
+                    ) {
+                        Text("Save Draft", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
             }
         }
     }

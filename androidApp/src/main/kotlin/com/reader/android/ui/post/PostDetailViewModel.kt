@@ -2,6 +2,7 @@ package com.reader.android.ui.post
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.reader.android.data.CommentDraftRepository
 import com.reader.shared.data.api.CommentOrMore
 import com.reader.shared.data.repository.CommentRepository
 import com.reader.shared.data.repository.PostRepository
@@ -32,7 +33,9 @@ data class PostDetailUiState(
     val loggedInUsername: String? = null,
     val replyingTo: String? = null,
     val replyText: String = "",
+    val savedDraftText: String? = null,
     val editingCommentId: String? = null,
+    val editingOriginalText: String = "",
     val selectedCommentId: String? = null,
     val hiddenCommentIds: Set<String> = emptySet()
 )
@@ -42,7 +45,8 @@ class PostDetailViewModel(
     private val postId: String,
     private val postRepository: PostRepository,
     private val commentRepository: CommentRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val commentDraftRepository: CommentDraftRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostDetailUiState())
@@ -415,7 +419,25 @@ class PostDetailViewModel(
     }
 
     fun setReplyingTo(parentId: String?) {
-        _uiState.update { it.copy(replyingTo = parentId, editingCommentId = null, replyText = "") }
+        val draft = if (parentId != null) commentDraftRepository.loadDraft(parentId) else null
+        _uiState.update { it.copy(replyingTo = parentId, editingCommentId = null, replyText = "", savedDraftText = draft) }
+    }
+
+    fun saveDraft() {
+        val parentId = _uiState.value.replyingTo ?: _uiState.value.editingCommentId ?: return
+        val text = _uiState.value.replyText
+        if (text.isNotBlank()) {
+            commentDraftRepository.saveDraft(parentId, text)
+            _uiState.update { it.copy(savedDraftText = text) }
+        }
+    }
+
+    fun applyDraft(draft: String) {
+        _uiState.update { it.copy(replyText = draft) }
+    }
+
+    private fun deleteDraft(parentId: String) {
+        commentDraftRepository.deleteDraft(parentId)
     }
 
     fun setReplyText(text: String) {
@@ -423,7 +445,8 @@ class PostDetailViewModel(
     }
 
     fun startEditComment(comment: Comment) {
-        _uiState.update { it.copy(editingCommentId = comment.id, replyingTo = null, replyText = comment.body) }
+        val draft = commentDraftRepository.loadDraft(comment.id)
+        _uiState.update { it.copy(editingCommentId = comment.id, editingOriginalText = comment.body, replyingTo = null, replyText = comment.body, savedDraftText = draft) }
     }
 
     fun submitEdit() {
@@ -435,11 +458,14 @@ class PostDetailViewModel(
         viewModelScope.launch {
             val result = commentRepository.editComment(comment, text)
             result.onSuccess { updatedComment ->
+                deleteDraft(editingId)
                 _uiState.update { state ->
                     state.copy(
                         comments = updateCommentInTree(state.comments, updatedComment),
                         editingCommentId = null,
-                        replyText = ""
+                        editingOriginalText = "",
+                        replyText = "",
+                        savedDraftText = null
                     )
                 }
             }
@@ -536,7 +562,7 @@ class PostDetailViewModel(
     }
 
     fun cancelEdit() {
-        _uiState.update { it.copy(editingCommentId = null, replyText = "") }
+        _uiState.update { it.copy(editingCommentId = null, editingOriginalText = "", replyText = "", savedDraftText = null) }
     }
 
     fun submitReply() {
@@ -547,6 +573,7 @@ class PostDetailViewModel(
         viewModelScope.launch {
             val result = commentRepository.submitComment(parentId, text)
             result.onSuccess { newComment ->
+                deleteDraft(parentId)
                 val newComment = newComment.copy(likes = true, score = 1)
                 _uiState.update { state ->
                     state.copy(
