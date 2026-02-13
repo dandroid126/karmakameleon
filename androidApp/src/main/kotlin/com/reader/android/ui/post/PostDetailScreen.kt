@@ -22,12 +22,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Reply
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -38,18 +40,23 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -70,6 +77,7 @@ import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
 import com.reader.android.ui.components.parseRedditLink
 import com.reader.shared.domain.model.Comment
+import com.reader.shared.domain.model.CommentSort
 import com.reader.shared.domain.model.MoreComments
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
@@ -96,6 +104,8 @@ fun PostDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+
+    var showCommentSortSheet by remember { mutableStateOf(false) }
 
     val flattenedComments = remember(uiState.comments, uiState.hiddenCommentIds) {
         viewModel.getFlattenedComments()
@@ -135,7 +145,7 @@ fun PostDetailScreen(
                     it is FlatCommentItem.CommentEntry && it.comment.id == targetCommentId
                 }
                 if (targetIndex >= 0) {
-                    val lazyIndex = targetIndex + 2 // +2 for PostHeader and Divider items
+                    val lazyIndex = targetIndex + 2 // +2 for PostHeader and Divider
                     listState.scrollToItem(lazyIndex, 0)
                     if (currentOffset > 0) {
                         listState.scroll { scrollBy(-currentOffset.toFloat()) }
@@ -206,6 +216,7 @@ fun PostDetailScreen(
                                 onUpvote = { viewModel.votePost(if (post.likes == true) 0 else 1) },
                                 onDownvote = { viewModel.votePost(if (post.likes == false) 0 else -1) },
                                 onSave = { viewModel.savePost() },
+                                onSortClick = { showCommentSortSheet = true },
                                 onReply = { viewModel.setReplyingTo(post.name) },
                                 isLoggedIn = uiState.isLoggedIn,
                                 onLinkClick = onLinkClick
@@ -302,6 +313,66 @@ fun PostDetailScreen(
             }
         }
     }
+
+    if (showCommentSortSheet) {
+        CommentSortBottomSheet(
+            currentSort = uiState.commentSort,
+            onSortSelected = { sort ->
+                viewModel.setCommentSort(sort)
+                showCommentSortSheet = false
+            },
+            onDismiss = { showCommentSortSheet = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CommentSortBottomSheet(
+    currentSort: CommentSort,
+    onSortSelected: (CommentSort) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "Sort comments by",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+
+            CommentSort.entries.forEach { sort ->
+                val isActive = currentSort == sort
+                ListItem(
+                    headlineContent = {
+                        Text(
+                            sort.displayName,
+                            color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    },
+                    trailingContent = if (isActive) {
+                        {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    } else null,
+                    modifier = Modifier.clickable { onSortSelected(sort) }
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -312,6 +383,7 @@ private fun PostHeader(
     onUpvote: () -> Unit,
     onDownvote: () -> Unit,
     onSave: () -> Unit,
+    onSortClick: () -> Unit,
     onReply: () -> Unit,
     isLoggedIn: Boolean,
     onLinkClick: (String) -> Unit = {}
@@ -462,6 +534,9 @@ private fun PostHeader(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            IconButton(onClick = onSortClick) {
+                Icon(Icons.Default.Sort, contentDescription = "Sort comments", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             if (isLoggedIn) {
                 IconButton(onClick = onSave) {
                     Icon(

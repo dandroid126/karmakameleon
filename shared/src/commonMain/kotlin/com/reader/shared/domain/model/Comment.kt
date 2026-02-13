@@ -53,11 +53,11 @@ data class MoreComments(
     val children: List<String> // List of comment IDs
 )
 
-enum class CommentSort(val value: String) {
-    CONFIDENCE("confidence"),
-    TOP("top"),
-    NEW("new"),
-    CONTROVERSIAL("controversial"),
-    OLD("old"),
-    QA("qa")
+enum class CommentSort(val value: String, val displayName: String) {
+    CONFIDENCE("confidence", "Best"),
+    TOP("top", "Top"),
+    NEW("new", "New"),
+    CONTROVERSIAL("controversial", "Controversial"),
+    OLD("old", "Old"),
+    QA("qa", "Q&A")
 }

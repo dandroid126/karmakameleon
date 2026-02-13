@@ -93,7 +93,7 @@ class PostDetailViewModel(
 
     fun setCommentSort(sort: CommentSort) {
         if (_uiState.value.commentSort == sort) return
-        _uiState.update { it.copy(commentSort = sort) }
+        _uiState.update { it.copy(commentSort = sort, comments = emptyList()) }
         loadPostWithComments()
     }
 
