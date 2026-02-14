@@ -679,7 +679,8 @@ private fun RenderMixedContent(
                 is ContentSegment.Image -> {
                     InlineImage(
                         url = segment.url,
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        onImageClick = onImageClick
                     )
                 }
             }
@@ -692,7 +693,8 @@ private val aspectRatioCache = mutableMapOf<String, Float>()
 @Composable
 private fun InlineImage(
     url: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onImageClick: (String) -> Unit = {}
 ) {
     var aspectRatio by remember(url) { mutableStateOf(aspectRatioCache[url]) }
     var showMenu by remember { mutableStateOf(false) }
@@ -711,7 +713,7 @@ private fun InlineImage(
             .combinedClickable(
                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                 indication = null,
-                onClick = {},
+                onClick = { onImageClick(url) },
                 onLongClick = { showMenu = true }
             )
     ) {
