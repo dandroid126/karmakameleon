@@ -385,6 +385,7 @@ class RedditApi(
     suspend fun getUserPosts(
         username: String,
         sort: PostSort = PostSort.NEW,
+        timeFilter: TimeFilter? = null,
         after: String? = null,
         limit: Int = 25
     ): Listing<Post> {
@@ -392,6 +393,9 @@ class RedditApi(
             method = HttpMethod.Get
             url("$BASE_URL/user/$username/submitted")
             parameter("sort", sort.value)
+            if (sort == PostSort.TOP || sort == PostSort.CONTROVERSIAL) {
+                parameter("t", (timeFilter ?: TimeFilter.ALL).value)
+            }
             parameter("limit", limit)
             parameter("raw_json", 1)
             after?.let { parameter("after", it) }
@@ -405,6 +409,7 @@ class RedditApi(
     suspend fun getUserComments(
         username: String,
         sort: PostSort = PostSort.NEW,
+        timeFilter: TimeFilter? = null,
         after: String? = null,
         limit: Int = 25
     ): Listing<Comment> {
@@ -412,6 +417,9 @@ class RedditApi(
             method = HttpMethod.Get
             url("$BASE_URL/user/$username/comments")
             parameter("sort", sort.value)
+            if (sort == PostSort.TOP || sort == PostSort.CONTROVERSIAL) {
+                parameter("t", (timeFilter ?: TimeFilter.ALL).value)
+            }
             parameter("limit", limit)
             parameter("raw_json", 1)
             after?.let { parameter("after", it) }
@@ -431,6 +439,42 @@ class RedditApi(
             method = HttpMethod.Get
             url("$BASE_URL/user/$username/saved")
             parameter("type", "links")
+            parameter("limit", limit)
+            parameter("raw_json", 1)
+            after?.let { parameter("after", it) }
+        }
+        
+        val body = response.bodyAsText()
+        val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
+        return parsePostListing(redditResponse.data)
+    }
+
+    suspend fun getUpvotedPosts(
+        username: String,
+        after: String? = null,
+        limit: Int = 25
+    ): Listing<Post> {
+        val response = authenticatedRequest {
+            method = HttpMethod.Get
+            url("$BASE_URL/user/$username/upvoted")
+            parameter("limit", limit)
+            parameter("raw_json", 1)
+            after?.let { parameter("after", it) }
+        }
+        
+        val body = response.bodyAsText()
+        val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
+        return parsePostListing(redditResponse.data)
+    }
+
+    suspend fun getDownvotedPosts(
+        username: String,
+        after: String? = null,
+        limit: Int = 25
+    ): Listing<Post> {
+        val response = authenticatedRequest {
+            method = HttpMethod.Get
+            url("$BASE_URL/user/$username/downvoted")
             parameter("limit", limit)
             parameter("raw_json", 1)
             after?.let { parameter("after", it) }

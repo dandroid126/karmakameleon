@@ -7,6 +7,7 @@ import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.Listing
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.PostSort
+import com.reader.shared.domain.model.TimeFilter
 import com.reader.shared.domain.model.User
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,10 +58,11 @@ class UserRepository(
     suspend fun getUserPosts(
         username: String,
         sort: PostSort = PostSort.NEW,
+        timeFilter: TimeFilter? = null,
         after: String? = null
     ): Result<Listing<Post>> {
         return try {
-            val listing = redditApi.getUserPosts(username, sort, after)
+            val listing = redditApi.getUserPosts(username, sort, timeFilter, after)
             Result.success(listing)
         } catch (e: Exception) {
             Result.failure(e)
@@ -70,10 +72,11 @@ class UserRepository(
     suspend fun getUserComments(
         username: String,
         sort: PostSort = PostSort.NEW,
+        timeFilter: TimeFilter? = null,
         after: String? = null
     ): Result<Listing<Comment>> {
         return try {
-            val listing = redditApi.getUserComments(username, sort, after)
+            val listing = redditApi.getUserComments(username, sort, timeFilter, after)
             Result.success(listing)
         } catch (e: Exception) {
             Result.failure(e)
@@ -84,6 +87,26 @@ class UserRepository(
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
         return try {
             val listing = redditApi.getSavedPosts(username, after)
+            Result.success(listing)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getUpvotedPosts(after: String? = null): Result<Listing<Post>> {
+        val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val listing = redditApi.getUpvotedPosts(username, after)
+            Result.success(listing)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getDownvotedPosts(after: String? = null): Result<Listing<Post>> {
+        val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val listing = redditApi.getDownvotedPosts(username, after)
             Result.success(listing)
         } catch (e: Exception) {
             Result.failure(e)

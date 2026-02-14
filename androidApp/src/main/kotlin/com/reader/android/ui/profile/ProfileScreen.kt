@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
@@ -34,14 +35,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,9 +56,14 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.reader.android.data.ReadPostsRepository
 import com.reader.android.ui.components.PostCard
+import com.reader.android.ui.components.ProfileCommentCard
+import com.reader.android.ui.components.SortBottomSheet
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
 import com.reader.shared.domain.model.Account
+import com.reader.shared.domain.model.PostSort
+import com.reader.shared.domain.model.TimeFilter
+import com.reader.shared.domain.model.User
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -137,38 +146,152 @@ fun ProfileScreen(
                             created = created ?: 0L
                         )
 
-                        if (isOwnProfile) {
-                            TabRow(selectedTabIndex = uiState.selectedTab.ordinal) {
-                                Tab(
-                                    selected = uiState.selectedTab == ProfileTab.POSTS,
-                                    onClick = { viewModel.setSelectedTab(ProfileTab.POSTS) },
-                                    text = { Text("Posts") }
-                                )
-                                Tab(
-                                    selected = uiState.selectedTab == ProfileTab.SAVED,
-                                    onClick = { viewModel.setSelectedTab(ProfileTab.SAVED) },
-                                    text = { Text("Saved") }
-                                )
-                                Tab(
-                                    selected = uiState.selectedTab == ProfileTab.ABOUT,
-                                    onClick = { viewModel.setSelectedTab(ProfileTab.ABOUT) },
-                                    text = { Text("About") }
+                        val tabs = if (isOwnProfile) {
+                            listOf(
+                                ProfileTab.POSTS,
+                                ProfileTab.COMMENTS,
+                                ProfileTab.SAVED,
+                                ProfileTab.UPVOTED,
+                                ProfileTab.DOWNVOTED,
+                                ProfileTab.ABOUT
+                            )
+                        } else {
+                            listOf(ProfileTab.POSTS, ProfileTab.COMMENTS, ProfileTab.ABOUT)
+                        }
+
+                        val selectedTabIndex = tabs.indexOf(uiState.selectedTab).coerceAtLeast(0)
+
+                        if (tabs.size <= 3) {
+                            androidx.compose.material3.TabRow(
+                                selectedTabIndex = selectedTabIndex,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                tabs.forEach { tab ->
+                                    Tab(
+                                        selected = uiState.selectedTab == tab,
+                                        onClick = { viewModel.setSelectedTab(tab) },
+                                        text = { Text(tab.displayName) }
+                                    )
+                                }
+                            }
+                        } else {
+                            ScrollableTabRow(
+                                selectedTabIndex = selectedTabIndex,
+                                edgePadding = 8.dp,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                tabs.forEach { tab ->
+                                    Tab(
+                                        selected = uiState.selectedTab == tab,
+                                        onClick = { viewModel.setSelectedTab(tab) },
+                                        text = { Text(tab.displayName) }
+                                    )
+                                }
+                            }
+                        }
+
+                        var showSortSheet by remember { mutableStateOf(false) }
+                        val showSortOption = uiState.selectedTab == ProfileTab.POSTS || 
+                                           uiState.selectedTab == ProfileTab.COMMENTS
+
+                        if (showSortOption) {
+                            val currentSort = when (uiState.selectedTab) {
+                                ProfileTab.POSTS -> uiState.postsSort
+                                ProfileTab.COMMENTS -> uiState.commentsSort
+                                else -> PostSort.NEW
+                            }
+                            val currentTimeFilter = when (uiState.selectedTab) {
+                                ProfileTab.POSTS -> uiState.postsTimeFilter
+                                ProfileTab.COMMENTS -> uiState.commentsTimeFilter
+                                else -> TimeFilter.ALL
+                            }
+                            
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                IconButton(onClick = { showSortSheet = true }) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Sort,
+                                        contentDescription = "Sort"
+                                    )
+                                }
+                            }
+                            
+                            if (showSortSheet) {
+                                SortBottomSheet(
+                                    currentSort = currentSort,
+                                    currentTimeFilter = currentTimeFilter,
+                                    onSortSelected = { sort ->
+                                        when (uiState.selectedTab) {
+                                            ProfileTab.POSTS -> viewModel.setPostsSort(sort)
+                                            ProfileTab.COMMENTS -> viewModel.setCommentsSort(sort)
+                                            else -> {}
+                                        }
+                                    },
+                                    onTimeFilterSelected = { timeFilter ->
+                                        when (uiState.selectedTab) {
+                                            ProfileTab.POSTS -> viewModel.setPostsTimeFilter(timeFilter)
+                                            ProfileTab.COMMENTS -> viewModel.setCommentsTimeFilter(timeFilter)
+                                            else -> {}
+                                        }
+                                    },
+                                    onDismiss = { showSortSheet = false }
                                 )
                             }
                         }
 
-                        when {
-                            uiState.selectedTab == ProfileTab.ABOUT && isOwnProfile -> {
-                                AboutTab(account = uiState.account)
+                        when (uiState.selectedTab) {
+                            ProfileTab.ABOUT -> {
+                                if (isOwnProfile) {
+                                    AboutTab(account = uiState.account)
+                                } else {
+                                    AboutTabForUser(user = uiState.user)
+                                }
+                            }
+                            ProfileTab.COMMENTS -> {
+                                val comments = uiState.comments
+                                if (uiState.isLoadingContent && comments.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                } else if (comments.isEmpty()) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("No comments")
+                                    }
+                                } else {
+                                    LazyColumn {
+                                        items(comments, key = { it.id }) { comment ->
+                                            ProfileCommentCard(
+                                                comment = comment,
+                                                onClick = {
+                                                    val postId = comment.linkId.removePrefix("t3_")
+                                                    onPostClick(comment.subreddit, postId)
+                                                },
+                                                onSubredditClick = onSubredditClick,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
                             }
                             else -> {
-                                val posts = when {
-                                    !isOwnProfile -> uiState.posts
-                                    uiState.selectedTab == ProfileTab.SAVED -> uiState.savedPosts
+                                val posts = when (uiState.selectedTab) {
+                                    ProfileTab.SAVED -> uiState.savedPosts
+                                    ProfileTab.UPVOTED -> uiState.upvotedPosts
+                                    ProfileTab.DOWNVOTED -> uiState.downvotedPosts
                                     else -> uiState.posts
                                 }
 
-                                if (uiState.isLoadingPosts && posts.isEmpty()) {
+                                if (uiState.isLoadingContent && posts.isEmpty()) {
                                     Box(
                                         modifier = Modifier.fillMaxSize(),
                                         contentAlignment = Alignment.Center
@@ -214,6 +337,7 @@ fun ProfileScreen(
         }
     }
 }
+
 
 @Composable
 private fun LoginPrompt(onLogin: () -> Unit) {
@@ -333,5 +457,27 @@ private fun KarmaRow(label: String, value: Int, bold: Boolean = false) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
         Text(formatNumber(value), fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
+    }
+}
+
+@Composable
+private fun AboutTabForUser(user: User?) {
+    if (user == null) return
+    
+    LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        item {
+            Text("Karma Breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        item {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    KarmaRow("Post Karma", user.linkKarma)
+                    KarmaRow("Comment Karma", user.commentKarma)
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    KarmaRow("Total Karma", user.totalKarma, bold = true)
+                }
+            }
+        }
     }
 }
