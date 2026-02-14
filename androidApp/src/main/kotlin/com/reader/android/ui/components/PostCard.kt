@@ -162,6 +162,7 @@ fun PostCard(
                     val highResUrl = previewImage?.source?.url
                         ?: galleryUrl
                         ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                        ?: post.url.takeIf { post.isImagePost }
                     val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
                         ?: post.thumbnail?.takeIf { it.startsWith("http") }
 

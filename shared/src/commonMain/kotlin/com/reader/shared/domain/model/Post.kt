@@ -45,7 +45,7 @@ data class Post(
     val isCrosspost: Boolean = false,
 ) {
     val isTextPost: Boolean get() = postHint == "self" || url.contains("reddit.com") && selfText != null
-    val isImagePost: Boolean get() = postHint == "image" || url.endsWith(".jpg") || url.endsWith(".png") || url.endsWith(".gif")
+    val isImagePost: Boolean get() = postHint == "image" || url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".png") || url.endsWith(".gif")
     val isVideoPost: Boolean get() = postHint == "hosted:video" || postHint == "rich:video"
     val isLinkPost: Boolean get() = !isTextPost && !isImagePost && !isVideoPost && !isGallery
     val isGallery: Boolean get() = galleryData != null

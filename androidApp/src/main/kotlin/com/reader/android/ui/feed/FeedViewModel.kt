@@ -69,6 +69,7 @@ class FeedViewModel(
                             isLoading = false
                         )
                     }
+                    enrichPosts(listing.items)
                 },
                 onFailure = { error ->
                     _uiState.update {
@@ -108,11 +109,22 @@ class FeedViewModel(
                             isLoadingMore = false
                         )
                     }
+                    enrichPosts(listing.items)
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMore = false) }
                 }
             )
+        }
+    }
+
+    private suspend fun enrichPosts(posts: List<Post>) {
+        val enriched = postRepository.enrichSparsePosts(posts)
+        if (enriched.isNotEmpty()) {
+            val enrichedMap = enriched.associateBy { it.id }
+            _uiState.update { state ->
+                state.copy(posts = state.posts.map { enrichedMap[it.id] ?: it })
+            }
         }
     }
 

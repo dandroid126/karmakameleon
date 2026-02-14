@@ -37,6 +37,21 @@ class PostRepository(
         }
     }
 
+    suspend fun enrichSparsePosts(posts: List<Post>): List<Post> {
+        val sparsePosts = posts.filter { post ->
+            post.preview == null && post.thumbnail == null && !post.isTextPost
+        }
+        if (sparsePosts.isEmpty()) return emptyList()
+
+        val enriched = redditApi.fetchPostsByIds(sparsePosts.map { it.name })
+        if (enriched.isNotEmpty()) {
+            _cachedPosts.update { cache ->
+                cache + enriched.associateBy { it.id }
+            }
+        }
+        return enriched
+    }
+
     suspend fun getPost(subreddit: String, postId: String): Result<Post> {
         // Check cache first
         _cachedPosts.value[postId]?.let { return Result.success(it) }

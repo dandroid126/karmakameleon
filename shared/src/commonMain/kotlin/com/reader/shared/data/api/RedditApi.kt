@@ -119,6 +119,22 @@ class RedditApi(
         return parsePostListing(redditResponse.data)
     }
 
+    suspend fun fetchPostsByIds(fullnames: List<String>): List<Post> {
+        return try {
+            val response = authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/api/info")
+                parameter("id", fullnames.joinToString(","))
+                parameter("raw_json", 1)
+            }
+            val body = response.bodyAsText()
+            val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
+            parsePostListing(redditResponse.data).items
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
     suspend fun getPost(subreddit: String, postId: String): Post? {
         val response = authenticatedRequest {
             method = HttpMethod.Get
@@ -699,7 +715,7 @@ class RedditApi(
             subredditId = dto.subredditId,
             selfText = dto.selftext?.let { decodeHtml(it) },
             selfTextHtml = dto.selftextHtml,
-            url = decodeHtml(dto.url),
+            url = resolveRedditMediaUrl(decodeHtml(dto.url)),
             permalink = dto.permalink,
             thumbnail = dto.thumbnail?.takeIf { it.startsWith("http") },
             thumbnailWidth = dto.thumbnailWidth,
@@ -1000,6 +1016,37 @@ class RedditApi(
                 else -> MessageType.PRIVATE_MESSAGE
             }
         )
+    }
+
+    private fun resolveRedditMediaUrl(url: String): String {
+        if (url.startsWith("https://www.reddit.com/media?url=") || url.startsWith("https://reddit.com/media?url=")) {
+            val encoded = url.substringAfter("url=")
+            return try {
+                decodePercent(encoded)
+            } catch (_: Exception) {
+                url
+            }
+        }
+        return url
+    }
+
+    private fun decodePercent(encoded: String): String {
+        val sb = StringBuilder()
+        var i = 0
+        while (i < encoded.length) {
+            if (encoded[i] == '%' && i + 2 < encoded.length) {
+                val hex = encoded.substring(i + 1, i + 3)
+                val code = hex.toIntOrNull(16)
+                if (code != null) {
+                    sb.append(code.toChar())
+                    i += 3
+                    continue
+                }
+            }
+            sb.append(encoded[i])
+            i++
+        }
+        return sb.toString()
     }
 
     private fun decodeHtml(text: String): String {
