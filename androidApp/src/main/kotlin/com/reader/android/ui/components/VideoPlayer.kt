@@ -62,6 +62,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.cache.CacheDataSource
@@ -87,6 +88,7 @@ fun VideoPlayer(
     var duration by remember { mutableLongStateOf(0L) }
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isFullscreen by remember { mutableStateOf(false) }
+    var videoAspectRatio by remember { mutableStateOf(16f / 9f) }
     val hasRetriedWithoutAudio = remember { mutableStateOf(false) }
 
     val exoPlayer = remember {
@@ -124,6 +126,12 @@ fun VideoPlayer(
 
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+            }
+
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                if (videoSize.width > 0 && videoSize.height > 0) {
+                    videoAspectRatio = videoSize.width.toFloat() / videoSize.height.toFloat()
+                }
             }
 
             override fun onPlayerError(error: PlaybackException) {
@@ -200,7 +208,7 @@ fun VideoPlayer(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(16f / 9f)
+                .aspectRatio(videoAspectRatio)
         )
 
         // Controls overlay
@@ -310,7 +318,9 @@ fun VideoPlayer(
                     onRelease = {
                         exoPlayer.clearVideoTextureView(it as TextureView)
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .aspectRatio(videoAspectRatio)
                 )
 
                 AnimatedVisibility(
