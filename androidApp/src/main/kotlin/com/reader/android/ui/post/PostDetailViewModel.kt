@@ -332,16 +332,11 @@ class PostDetailViewModel(
         }
     }
 
-    fun voteComment(comment: Comment, direction: Int) {
-        viewModelScope.launch {
-            val result = commentRepository.vote(comment, direction)
-            result.onSuccess { updatedComment ->
-                _uiState.update { state ->
-                    state.copy(
-                        comments = updateCommentInTree(state.comments, updatedComment)
-                    )
-                }
-            }
+    fun updateComment(updatedComment: Comment) {
+        _uiState.update { state ->
+            state.copy(
+                comments = updateCommentInTree(state.comments, updatedComment)
+            )
         }
     }
 

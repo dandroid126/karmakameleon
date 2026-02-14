@@ -196,6 +196,9 @@ fun ReaderApp() {
                     onPostClick = { subreddit, postId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
                     },
+                    onCommentClick = { subreddit, postId, commentId ->
+                        navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, commentId))
+                    },
                     onSubredditClick = { subredditName ->
                         navController.navigate(DetailScreen.SubredditDetail.createRoute(subredditName))
                     },
@@ -302,6 +305,9 @@ fun ReaderApp() {
                     onBackClick = { navController.popBackStack() },
                     onPostClick = { subreddit, postId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
+                    },
+                    onCommentClick = { subreddit, postId, commentId ->
+                        navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, commentId))
                     },
                     onSubredditClick = { subredditName ->
                         navController.navigate(DetailScreen.SubredditDetail.createRoute(subredditName))

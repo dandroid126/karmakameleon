@@ -442,6 +442,47 @@ fun FlairChip(
     }
 }
 
+@Composable
+fun RichFlairChip(
+    richtext: List<com.reader.shared.domain.model.FlairRichtext>,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = color.copy(alpha = 0.2f),
+        shape = RoundedCornerShape(4.dp),
+        modifier = modifier
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+            richtext.forEach { part ->
+                when (part.type) {
+                    "text" -> {
+                        part.text?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = color
+                            )
+                        }
+                    }
+                    "emoji" -> {
+                        part.url?.let { url ->
+                            coil3.compose.AsyncImage(
+                                model = url,
+                                contentDescription = part.text,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 fun formatTimeAgo(timestampSeconds: Long): String {
     val now = System.currentTimeMillis() / 1000
     val diff = now - timestampSeconds

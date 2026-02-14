@@ -50,13 +50,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.reader.android.data.ReadPostsRepository
+import com.reader.android.ui.components.CommentItem
 import com.reader.android.ui.components.PostCard
-import com.reader.android.ui.components.ProfileCommentCard
 import com.reader.android.ui.components.SortBottomSheet
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
@@ -73,6 +75,7 @@ fun ProfileScreen(
     username: String? = null,
     onBackClick: (() -> Unit)? = null,
     onPostClick: (subreddit: String, postId: String) -> Unit,
+    onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, c -> onPostClick(s, p) },
     onSubredditClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
     onSettingsClick: () -> Unit = {},
@@ -80,7 +83,9 @@ fun ProfileScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val isOwnProfile = username == null
+    var selectedCommentId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(username) {
         if (username != null) {
@@ -270,14 +275,41 @@ fun ProfileScreen(
                                 } else {
                                     LazyColumn {
                                         items(comments, key = { it.id }) { comment ->
-                                            ProfileCommentCard(
+                                            CommentItem(
                                                 comment = comment,
-                                                onClick = {
-                                                    val postId = comment.linkId.removePrefix("t3_")
-                                                    onPostClick(comment.subreddit, postId)
+                                                isSelected = selectedCommentId == comment.id,
+                                                isHidden = false,
+                                                onSelect = { 
+                                                    selectedCommentId = if (selectedCommentId == comment.id) null else comment.id
                                                 },
+                                                onDone = { selectedCommentId = null },
+                                                onHide = {},
+                                                onPrev = {},
+                                                onNext = {},
+                                                onRoot = {},
+                                                onParent = {},
+                                                onUserClick = {},
+                                                onCommentUpdated = { updatedComment ->
+                                                    viewModel.updateComment(updatedComment)
+                                                },
+                                                onShare = {
+                                                    clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
+                                                    android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
+                                                },
+                                                onReply = {},
+                                                onEdit = {},
+                                                onDelete = {},
+                                                isLoggedIn = uiState.isLoggedIn,
+                                                loggedInUsername = uiState.account?.name,
+                                                onLinkClick = onLinkClick,
+                                                showTopControls = false,
+                                                showSubreddit = true,
                                                 onSubredditClick = onSubredditClick,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                onGoToCommentNav = { commentId ->
+                                                    val postId = comment.linkId.removePrefix("t3_")
+                                                    onCommentClick(comment.subreddit, postId, commentId)
+                                                },
+                                                modifier = Modifier.padding(vertical = 4.dp)
                                             )
                                         }
                                     }

@@ -2,6 +2,7 @@ package com.reader.shared.data.repository
 
 import com.reader.shared.data.api.CommentOrMore
 import com.reader.shared.data.api.RedditApi
+import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.CommentSort
 import com.reader.shared.domain.model.Listing
 import com.reader.shared.domain.model.Post
@@ -119,6 +120,35 @@ class PostRepository(
                 )
                 _cachedPosts.update { it + (post.id to updatedPost) }
                 Result.success(updatedPost)
+            } else {
+                Result.failure(Exception("Vote failed"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun voteComment(comment: Comment, direction: Int): Result<Comment> {
+        return try {
+            val success = redditApi.vote(comment.name, direction)
+            if (success) {
+                val newLikes = when (direction) {
+                    1 -> true
+                    -1 -> false
+                    else -> null
+                }
+                val scoreDiff = when {
+                    comment.likes == true && direction != 1 -> -1
+                    comment.likes == false && direction != -1 -> 1
+                    comment.likes == null && direction == 1 -> 1
+                    comment.likes == null && direction == -1 -> -1
+                    else -> 0
+                }
+                val updatedComment = comment.copy(
+                    likes = newLikes,
+                    score = comment.score + scoreDiff
+                )
+                Result.success(updatedComment)
             } else {
                 Result.failure(Exception("Vote failed"))
             }

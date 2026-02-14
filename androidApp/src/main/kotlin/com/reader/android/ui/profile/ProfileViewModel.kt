@@ -321,6 +321,14 @@ class ProfileViewModel(
         }
     }
 
+    fun updateComment(updatedComment: Comment) {
+        _uiState.update { state ->
+            state.copy(
+                comments = state.comments.map { if (it.id == updatedComment.id) updatedComment else it }
+            )
+        }
+    }
+
     private fun generateState(): String {
         val chars = "abcdefghijklmnopqrstuvwxyz0123456789"
         return (1..16).map { chars.random() }.joinToString("")
