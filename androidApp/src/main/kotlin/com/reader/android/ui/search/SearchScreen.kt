@@ -56,6 +56,7 @@ import org.koin.compose.koinInject
 @Composable
 fun SearchScreen(
     onPostClick: (subreddit: String, postId: String) -> Unit,
+    onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, _ -> onPostClick(s, p) },
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
@@ -155,7 +156,7 @@ fun SearchScreen(
                         .clickable {
                             when (link) {
                                 is RedditLink.Post -> onPostClick(link.subreddit, link.postId)
-                                is RedditLink.Comment -> onPostClick(link.subreddit, link.postId)
+                                is RedditLink.Comment -> onCommentClick(link.subreddit, link.postId, link.commentId)
                                 is RedditLink.Subreddit -> onSubredditClick(link.name)
                                 is RedditLink.User -> onUserClick(link.name)
                                 is RedditLink.External, null -> {}

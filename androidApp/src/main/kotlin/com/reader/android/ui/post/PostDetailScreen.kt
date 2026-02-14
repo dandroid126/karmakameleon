@@ -27,7 +27,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -46,6 +48,8 @@ import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -116,11 +120,13 @@ import org.koin.core.parameter.parametersOf
 fun PostDetailScreen(
     subreddit: String,
     postId: String,
+    commentId: String? = null,
     onBackClick: () -> Unit,
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
-    viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId) }
+    onGoToCommentNav: (commentId: String) -> Unit = {},
+    viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId, commentId) }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -402,6 +408,19 @@ fun PostDetailScreen(
                             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                         }
 
+                        if (uiState.focusedCommentId != null) {
+                            item {
+                                TextButton(
+                                    onClick = { viewModel.viewAllComments() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp)
+                                ) {
+                                    Text("View all comments")
+                                }
+                            }
+                        }
+
                         if (uiState.isLoading && uiState.comments.isEmpty()) {
                             item {
                                 Box(
@@ -429,6 +448,7 @@ fun PostDetailScreen(
                                     val comment = item.comment
                                     val isSelected = uiState.selectedCommentId == comment.id
                                     val isHidden = uiState.hiddenCommentIds.contains(comment.id)
+                                    val isSingleThread = uiState.focusedCommentId != null
                                     CommentItem(
                                         comment = comment,
                                         isSelected = isSelected,
@@ -443,12 +463,33 @@ fun PostDetailScreen(
                                             viewModel.findNextRootCommentId(comment.id)?.let { scrollToComment(it) }
                                         },
                                         onRoot = {
-                                            viewModel.findRootCommentId(comment.id)?.let { rootId ->
-                                                if (rootId != comment.id) scrollToComment(rootId)
+                                            if (isSingleThread) {
+                                                val rootId = viewModel.findRootCommentId(comment.id)
+                                                if (rootId != null && rootId != comment.id) {
+                                                    scrollToComment(rootId)
+                                                } else if (comment.parentId.startsWith("t1_")) {
+                                                    // Root is not in current view, navigate to it
+                                                    viewModel.navigateToParentRoot(comment.id)
+                                                }
+                                            } else {
+                                                viewModel.findRootCommentId(comment.id)?.let { rootId ->
+                                                    if (rootId != comment.id) scrollToComment(rootId)
+                                                }
                                             }
                                         },
                                         onParent = {
-                                            viewModel.findParentCommentId(comment.id)?.let { scrollToComment(it) }
+                                            if (isSingleThread) {
+                                                val parentId = viewModel.findParentCommentId(comment.id)
+                                                if (parentId != null) {
+                                                    scrollToComment(parentId)
+                                                } else if (comment.parentId.startsWith("t1_")) {
+                                                    // Parent is not in current view, navigate to it
+                                                    val parentCommentId = comment.parentId.removePrefix("t1_")
+                                                    viewModel.navigateToComment(parentCommentId)
+                                                }
+                                            } else {
+                                                viewModel.findParentCommentId(comment.id)?.let { scrollToComment(it) }
+                                            }
                                         },
                                         onUserClick = onUserClick,
                                         onUpvote = { viewModel.voteComment(comment, if (comment.likes == true) 0 else 1) },
@@ -481,6 +522,13 @@ fun PostDetailScreen(
                                         onInlineImageClick = { url ->
                                             imageViewerUrls = listOf(url)
                                             imageViewerInitialPage = 0
+                                        },
+                                        isSingleThreadMode = isSingleThread,
+                                        onGoToComment = {
+                                            viewModel.navigateToComment(comment.id)
+                                        },
+                                        onGoToCommentNav = { targetCommentId ->
+                                            onGoToCommentNav(targetCommentId)
                                         }
                                     )
                                 }
@@ -973,6 +1021,9 @@ private fun CommentItem(
     onTouchStart: () -> Unit = {},
     renderInlineImages: Boolean = true,
     onInlineImageClick: (String) -> Unit = {},
+    isSingleThreadMode: Boolean = false,
+    onGoToComment: () -> Unit = {},
+    onGoToCommentNav: (commentId: String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val depthColors = listOf(
@@ -984,7 +1035,8 @@ private fun CommentItem(
         Color(0xFFFF66AC)
     )
     val depthColor = depthColors[comment.depth % depthColors.size]
-    val isRootComment = comment.depth == 0
+    val hasParentComment = comment.parentId.startsWith("t1_")
+    val showParentControls = if (isSingleThreadMode) hasParentComment else comment.depth > 0
 
     Column(
         modifier = modifier
@@ -1022,19 +1074,19 @@ private fun CommentItem(
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (isRootComment) {
-                                TextButton(onClick = onPrev, modifier = Modifier.height(32.dp)) {
-                                    Text("Prev", style = MaterialTheme.typography.labelMedium)
-                                }
-                                TextButton(onClick = onNext, modifier = Modifier.height(32.dp)) {
-                                    Text("Next", style = MaterialTheme.typography.labelMedium)
-                                }
-                            } else {
+                            if (showParentControls) {
                                 TextButton(onClick = onRoot, modifier = Modifier.height(32.dp)) {
                                     Text("Root", style = MaterialTheme.typography.labelMedium)
                                 }
                                 TextButton(onClick = onParent, modifier = Modifier.height(32.dp)) {
                                     Text("Parent", style = MaterialTheme.typography.labelMedium)
+                                }
+                            } else {
+                                TextButton(onClick = onPrev, modifier = Modifier.height(32.dp)) {
+                                    Text("Prev", style = MaterialTheme.typography.labelMedium)
+                                }
+                                TextButton(onClick = onNext, modifier = Modifier.height(32.dp)) {
+                                    Text("Next", style = MaterialTheme.typography.labelMedium)
                                 }
                             }
                         }
@@ -1171,13 +1223,37 @@ private fun CommentItem(
                                 tint = if (comment.voteState == VoteState.DOWNVOTED) Color(0xFF7193FF) else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        IconButton(onClick = onShare, modifier = Modifier.size(36.dp)) {
-                            Icon(
-                                Icons.Filled.Share,
-                                contentDescription = "Share",
-                                modifier = Modifier.size(22.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        Box {
+                            var showContextMenu by remember { mutableStateOf(false) }
+                            IconButton(onClick = { showContextMenu = true }, modifier = Modifier.size(36.dp)) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = "More",
+                                    modifier = Modifier.size(22.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showContextMenu,
+                                onDismissRequest = { showContextMenu = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Share") },
+                                    onClick = {
+                                        showContextMenu = false
+                                        onShare()
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("Go to comment") },
+                                    onClick = {
+                                        showContextMenu = false
+                                        onGoToCommentNav(comment.id)
+                                    },
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) }
+                                )
+                            }
                         }
                         if (isLoggedIn) {
                             IconButton(onClick = onReply, modifier = Modifier.size(36.dp)) {

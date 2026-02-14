@@ -153,14 +153,19 @@ class RedditApi(
         subreddit: String,
         postId: String,
         sort: CommentSort = CommentSort.CONFIDENCE,
-        limit: Int = 200
+        limit: Int = 200,
+        commentId: String? = null
     ): Pair<Post, List<CommentOrMore>> {
+        val commentPath = if (commentId != null) "/comment/$commentId" else ""
         val response = authenticatedRequest {
             method = HttpMethod.Get
-            url("$BASE_URL/r/$subreddit/comments/$postId")
+            url("$BASE_URL/r/$subreddit/comments/$postId$commentPath")
             parameter("sort", sort.value)
             parameter("limit", limit)
             parameter("raw_json", 1)
+            if (commentId != null) {
+                parameter("context", 0)
+            }
         }
         
         val body = response.bodyAsText()

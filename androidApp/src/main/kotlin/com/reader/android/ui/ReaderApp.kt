@@ -67,8 +67,11 @@ sealed class DetailScreen(val route: String) {
     data object SubredditDetail : DetailScreen("subreddit/{subredditName}") {
         fun createRoute(subredditName: String) = "subreddit/$subredditName"
     }
-    data object PostDetail : DetailScreen("post/{subreddit}/{postId}") {
-        fun createRoute(subreddit: String, postId: String) = "post/$subreddit/$postId"
+    data object PostDetail : DetailScreen("post/{subreddit}/{postId}?commentId={commentId}") {
+        fun createRoute(subreddit: String, postId: String, commentId: String? = null): String {
+            val base = "post/$subreddit/$postId"
+            return if (commentId != null) "$base?commentId=$commentId" else base
+        }
     }
     data object UserProfile : DetailScreen("user/{username}") {
         fun createRoute(username: String) = "user/$username"
@@ -165,6 +168,9 @@ fun ReaderApp() {
                     onPostClick = { subreddit, postId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
                     },
+                    onCommentClick = { subreddit, postId, commentId ->
+                        navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, commentId))
+                    },
                     onSubredditClick = { subredditName ->
                         navController.navigate(DetailScreen.SubredditDetail.createRoute(subredditName))
                     },
@@ -245,7 +251,8 @@ fun ReaderApp() {
                 route = DetailScreen.PostDetail.route,
                 arguments = listOf(
                     navArgument("subreddit") { type = NavType.StringType },
-                    navArgument("postId") { type = NavType.StringType }
+                    navArgument("postId") { type = NavType.StringType },
+                    navArgument("commentId") { type = NavType.StringType; nullable = true; defaultValue = null }
                 ),
                 enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } },
                 exitTransition = { fadeOut(animationSpec = tween(300)) },
@@ -254,9 +261,11 @@ fun ReaderApp() {
             ) { backStackEntry ->
                 val subreddit = backStackEntry.arguments?.getString("subreddit") ?: ""
                 val postId = backStackEntry.arguments?.getString("postId") ?: ""
+                val commentId = backStackEntry.arguments?.getString("commentId")
                 PostDetailScreen(
                     subreddit = subreddit,
                     postId = postId,
+                    commentId = commentId,
                     onBackClick = { navController.popBackStack() },
                     onSubredditClick = { subredditName ->
                         navController.navigate(DetailScreen.SubredditDetail.createRoute(subredditName))
@@ -269,9 +278,12 @@ fun ReaderApp() {
                             is RedditLink.Subreddit -> navController.navigate(DetailScreen.SubredditDetail.createRoute(link.name))
                             is RedditLink.User -> navController.navigate(DetailScreen.UserProfile.createRoute(link.name))
                             is RedditLink.Post -> navController.navigate(DetailScreen.PostDetail.createRoute(link.subreddit, link.postId))
-                            is RedditLink.Comment -> navController.navigate(DetailScreen.PostDetail.createRoute(link.subreddit, link.postId))
+                            is RedditLink.Comment -> navController.navigate(DetailScreen.PostDetail.createRoute(link.subreddit, link.postId, link.commentId))
                             is RedditLink.External -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                         }
+                    },
+                    onGoToCommentNav = { targetCommentId ->
+                        navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, targetCommentId))
                     }
                 )
             }

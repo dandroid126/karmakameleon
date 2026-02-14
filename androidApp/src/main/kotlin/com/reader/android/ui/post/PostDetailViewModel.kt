@@ -38,7 +38,8 @@ data class PostDetailUiState(
     val editingOriginalText: String = "",
     val selectedCommentId: String? = null,
     val hiddenCommentIds: Set<String> = emptySet(),
-    val lastTouchedCommentName: String? = null
+    val lastTouchedCommentName: String? = null,
+    val focusedCommentId: String? = null
 )
 
 class PostDetailViewModel(
@@ -47,7 +48,8 @@ class PostDetailViewModel(
     private val postRepository: PostRepository,
     private val commentRepository: CommentRepository,
     private val userRepository: UserRepository,
-    private val commentDraftRepository: CommentDraftRepository
+    private val commentDraftRepository: CommentDraftRepository,
+    private val commentId: String? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PostDetailUiState())
@@ -71,7 +73,59 @@ class PostDetailViewModel(
         if (userRepository.isLoggedIn.value && userRepository.currentAccount.value == null) {
             viewModelScope.launch { userRepository.loadCurrentUser() }
         }
+        _uiState.update { it.copy(focusedCommentId = commentId) }
         loadPostWithComments()
+    }
+
+    fun navigateToComment(newCommentId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(
+                focusedCommentId = newCommentId,
+                isLoading = true,
+                comments = emptyList(),
+                selectedCommentId = null,
+                hiddenCommentIds = emptySet()
+            ) }
+            val result = postRepository.getPostWithComments(
+                subreddit = subreddit,
+                postId = postId,
+                sort = _uiState.value.commentSort,
+                commentId = newCommentId
+            )
+            result.fold(
+                onSuccess = { (post, comments) ->
+                    _uiState.update { it.copy(post = post, comments = comments, isLoading = false) }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(isLoading = false, error = error.message ?: "Failed to load comment") }
+                }
+            )
+        }
+    }
+
+    fun viewAllComments() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(
+                focusedCommentId = null,
+                isLoading = true,
+                comments = emptyList(),
+                selectedCommentId = null,
+                hiddenCommentIds = emptySet()
+            ) }
+            val result = postRepository.getPostWithComments(
+                subreddit = subreddit,
+                postId = postId,
+                sort = _uiState.value.commentSort
+            )
+            result.fold(
+                onSuccess = { (post, comments) ->
+                    _uiState.update { it.copy(post = post, comments = comments, isLoading = false) }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(isLoading = false, error = error.message ?: "Failed to load comments") }
+                }
+            )
+        }
     }
 
     fun loadPostWithComments() {
@@ -81,7 +135,8 @@ class PostDetailViewModel(
             val result = postRepository.getPostWithComments(
                 subreddit = subreddit,
                 postId = postId,
-                sort = _uiState.value.commentSort
+                sort = _uiState.value.commentSort,
+                commentId = commentId
             )
             
             result.fold(
@@ -374,6 +429,53 @@ class PostDetailViewModel(
             }
         }
         return result
+    }
+
+    fun navigateToParentRoot(commentId: String) {
+        val flatComments = getFlattenedComments()
+            .filterIsInstance<FlatCommentItem.CommentEntry>()
+            .map { it.comment }
+        var current = flatComments.find { it.id == commentId } ?: return
+        // Walk up as far as we can in loaded comments
+        while (true) {
+            val parent = flatComments.find { it.name == current.parentId }
+            if (parent != null) {
+                current = parent
+            } else {
+                break
+            }
+        }
+        // current is the topmost loaded comment
+        if (!current.parentId.startsWith("t1_")) return // already at root
+        // Walk up via API to find the actual root
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, comments = emptyList(), selectedCommentId = null, hiddenCommentIds = emptySet()) }
+            var parentCommentId = current.parentId.removePrefix("t1_")
+            while (true) {
+                val result = postRepository.getPostWithComments(
+                    subreddit = subreddit,
+                    postId = postId,
+                    sort = _uiState.value.commentSort,
+                    commentId = parentCommentId
+                )
+                val comments = result.getOrNull()?.second ?: break
+                val topComment = comments.filterIsInstance<CommentOrMore.CommentItem>().firstOrNull()?.comment ?: break
+                if (!topComment.parentId.startsWith("t1_")) {
+                    // Found the root - navigate to it
+                    _uiState.update { it.copy(
+                        focusedCommentId = topComment.id,
+                        post = result.getOrNull()?.first ?: _uiState.value.post,
+                        comments = comments,
+                        isLoading = false
+                    ) }
+                    return@launch
+                }
+                parentCommentId = topComment.parentId.removePrefix("t1_")
+            }
+            // Fallback: just show all comments
+            _uiState.update { it.copy(isLoading = false) }
+            viewAllComments()
+        }
     }
 
     fun findRootCommentId(commentId: String): String? {
