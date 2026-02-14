@@ -61,8 +61,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -94,7 +97,12 @@ import com.reader.shared.domain.model.FlairRichtext
 import com.reader.shared.domain.model.MoreComments
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import com.reader.android.data.PendingQuote
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -127,6 +135,23 @@ fun PostDetailScreen(
     var showDiscardDraftOption by remember { mutableStateOf(false) }
     var imageViewerUrls by remember { mutableStateOf<List<String>>(emptyList()) }
     var imageViewerInitialPage by remember { mutableStateOf(0) }
+    var selectionVersion by remember { mutableIntStateOf(0) }
+    val touchedSelectable = remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        PendingQuote.text.collect { text ->
+            if (text != null) {
+                PendingQuote.consume()
+                val post = uiState.post ?: return@collect
+                if (uiState.replyingTo != null || uiState.editingCommentId != null) {
+                    viewModel.insertQuotedText(text)
+                } else {
+                    val parentId = uiState.lastTouchedCommentName ?: post.name
+                    viewModel.startReplyWithQuote(parentId, text)
+                }
+            }
+        }
+    }
 
     val isReplyBarOpen = uiState.isLoggedIn && (uiState.editingCommentId != null || uiState.replyingTo != null)
     BackHandler(enabled = isReplyBarOpen) {
@@ -246,6 +271,7 @@ fun PostDetailScreen(
                             }
                         }
                     },
+                    onQuote = viewModel::insertQuote,
                     hasDraft = hasDraft,
                     showDraftControls = true,
                     placeholder = "Edit comment..."
@@ -280,6 +306,7 @@ fun PostDetailScreen(
                             }
                         }
                     },
+                    onQuote = viewModel::insertQuote,
                     hasDraft = hasDraft,
                     showDraftControls = true
                 )
@@ -290,6 +317,28 @@ fun PostDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            if (event.changes.any { it.pressed && !it.previousPressed }) {
+                                touchedSelectable.value = false
+                            }
+                        }
+                    }
+                }
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Main)
+                            if (event.changes.any { it.pressed && !it.previousPressed }) {
+                                if (!touchedSelectable.value) {
+                                    selectionVersion++
+                                }
+                            }
+                        }
+                    }
+                }
         ) {
             if (uiState.isLoading && uiState.post == null) {
                 CircularProgressIndicator(
@@ -324,6 +373,11 @@ fun PostDetailScreen(
                                 onReply = { viewModel.setReplyingTo(post.name) },
                                 isLoggedIn = uiState.isLoggedIn,
                                 onLinkClick = onLinkClick,
+                                selectionVersion = selectionVersion,
+                                onTouchStart = {
+                                    touchedSelectable.value = true
+                                    viewModel.setLastTouchedComment(null)
+                                },
                                 onImageClick = { urls, page ->
                                     imageViewerUrls = urls
                                     imageViewerInitialPage = page
@@ -403,6 +457,11 @@ fun PostDetailScreen(
                                                 is RedditLink.Post -> onLinkClick(url)
                                                 is RedditLink.External -> onLinkClick(url)
                                             }
+                                        },
+                                        selectionVersion = selectionVersion,
+                                        onTouchStart = {
+                                            touchedSelectable.value = true
+                                            viewModel.setLastTouchedComment(comment.name)
                                         }
                                     )
                                 }
@@ -599,7 +658,9 @@ private fun PostHeader(
     onReply: () -> Unit,
     isLoggedIn: Boolean,
     onLinkClick: (String) -> Unit = {},
-    onImageClick: (urls: List<String>, initialPage: Int) -> Unit = { _, _ -> }
+    onImageClick: (urls: List<String>, initialPage: Int) -> Unit = { _, _ -> },
+    selectionVersion: Int = 0,
+    onTouchStart: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -639,10 +700,23 @@ private fun PostHeader(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = post.title,
-            style = MaterialTheme.typography.titleLarge
-        )
+        Box(modifier = Modifier.pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    awaitPointerEvent(PointerEventPass.Initial)
+                    onTouchStart()
+                }
+            }
+        }) {
+            key(selectionVersion) {
+                SelectionContainer {
+                    Text(
+                        text = post.title,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
+            }
+        }
 
         val galleryItems = post.galleryData?.items?.filter { it.url != null } ?: emptyList()
         if (galleryItems.size > 1 && !post.isNsfw) {
@@ -738,11 +812,24 @@ private fun PostHeader(
         post.selfText?.let { text ->
             if (text.isNotBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                MarkdownText(
-                    markdown = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    onLinkClick = onLinkClick
-                )
+                Box(modifier = Modifier.pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial)
+                            onTouchStart()
+                        }
+                    }
+                }) {
+                    key(selectionVersion) {
+                        SelectionContainer {
+                            MarkdownText(
+                                markdown = text,
+                                style = MaterialTheme.typography.bodyMedium,
+                                onLinkClick = onLinkClick
+                            )
+                        }
+                    }
+                }
             }
         }
 
@@ -844,6 +931,8 @@ private fun CommentItem(
     isLoggedIn: Boolean,
     loggedInUsername: String? = null,
     onLinkClick: (String) -> Unit = {},
+    selectionVersion: Int = 0,
+    onTouchStart: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val depthColors = listOf(
@@ -985,12 +1074,25 @@ private fun CommentItem(
                 if (!isHidden) {
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    MarkdownText(
-                        markdown = comment.body,
-                        style = MaterialTheme.typography.bodyMedium,
-                        onLinkClick = onLinkClick,
-                        onTextClick = onSelect
-                    )
+                    Box(modifier = Modifier.pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                awaitPointerEvent(PointerEventPass.Initial)
+                                onTouchStart()
+                            }
+                        }
+                    }) {
+                        key(selectionVersion) {
+                            SelectionContainer {
+                                MarkdownText(
+                                    markdown = comment.body,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    onLinkClick = onLinkClick,
+                                    onTextClick = onSelect
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (isSelected) {
@@ -1117,9 +1219,12 @@ private fun ReplyBar(
     placeholder: String = "Write a reply...",
     onSaveDraft: () -> Unit = {},
     onLoadDraft: () -> Unit = {},
+    onQuote: () -> Unit = {},
     hasDraft: Boolean = false,
     showDraftControls: Boolean = false
 ) {
+    val maxHeight = (LocalConfiguration.current.screenHeightDp / 2).dp
+
     Surface(
         tonalElevation = 3.dp,
         modifier = Modifier.fillMaxWidth()
@@ -1136,14 +1241,28 @@ private fun ReplyBar(
                 IconButton(onClick = onCancel) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
                 }
-                OutlinedTextField(
-                    value = replyText,
-                    onValueChange = onReplyTextChange,
+                Row(
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text(placeholder) },
-                    maxLines = 4,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-                )
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onQuote) {
+                        Text("Quote", style = MaterialTheme.typography.labelSmall)
+                    }
+                    if (showDraftControls) {
+                        if (hasDraft) {
+                            TextButton(onClick = onLoadDraft) {
+                                Text("Load Draft", style = MaterialTheme.typography.labelSmall)
+                            }
+                        }
+                        TextButton(
+                            onClick = onSaveDraft,
+                            enabled = replyText.isNotBlank()
+                        ) {
+                            Text("Save Draft", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
                 IconButton(
                     onClick = onSubmit,
                     enabled = replyText.isNotBlank()
@@ -1151,25 +1270,15 @@ private fun ReplyBar(
                     Icon(Icons.Default.Send, contentDescription = "Send")
                 }
             }
-            if (showDraftControls) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (hasDraft) {
-                        TextButton(onClick = onLoadDraft) {
-                            Text("Load Draft", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                    TextButton(
-                        onClick = onSaveDraft,
-                        enabled = replyText.isNotBlank()
-                    ) {
-                        Text("Save Draft", style = MaterialTheme.typography.labelSmall)
-                    }
-                }
-            }
+            OutlinedTextField(
+                value = replyText,
+                onValueChange = onReplyTextChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxHeight),
+                placeholder = { Text(placeholder) },
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
+            )
         }
     }
 }

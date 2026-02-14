@@ -37,7 +37,8 @@ data class PostDetailUiState(
     val editingCommentId: String? = null,
     val editingOriginalText: String = "",
     val selectedCommentId: String? = null,
-    val hiddenCommentIds: Set<String> = emptySet()
+    val hiddenCommentIds: Set<String> = emptySet(),
+    val lastTouchedCommentName: String? = null
 )
 
 class PostDetailViewModel(
@@ -421,6 +422,53 @@ class PostDetailViewModel(
     fun setReplyingTo(parentId: String?) {
         val draft = if (parentId != null) commentDraftRepository.loadDraft(parentId) else null
         _uiState.update { it.copy(replyingTo = parentId, editingCommentId = null, replyText = "", savedDraftText = draft) }
+    }
+
+    fun getReplyParentText(): String {
+        val parentId = _uiState.value.replyingTo ?: return ""
+        val post = _uiState.value.post
+        if (post != null && post.name == parentId) {
+            return post.selfText?.takeIf { it.isNotBlank() } ?: post.title
+        }
+        fun searchComments(items: List<CommentOrMore>): String? {
+            for (item in items) {
+                when (item) {
+                    is CommentOrMore.CommentItem -> {
+                        if (item.comment.name == parentId) return item.comment.body
+                        val found = searchComments(item.comment.replies.map { CommentOrMore.CommentItem(it) })
+                        if (found != null) return found
+                    }
+                    is CommentOrMore.More -> {}
+                }
+            }
+            return null
+        }
+        return searchComments(_uiState.value.comments) ?: ""
+    }
+
+    fun setLastTouchedComment(commentName: String?) {
+        _uiState.update { it.copy(lastTouchedCommentName = commentName) }
+    }
+
+    fun startReplyWithQuote(parentId: String, quotedText: String) {
+        val formatted = quotedText.lines().joinToString("\n") { ">$it" } + "\n\n"
+        val draft = commentDraftRepository.loadDraft(parentId)
+        _uiState.update { it.copy(replyingTo = parentId, editingCommentId = null, replyText = formatted, savedDraftText = draft) }
+    }
+
+    fun insertQuotedText(text: String) {
+        if (text.isBlank()) return
+        val formatted = text.lines().joinToString("\n") { ">$it" } + "\n\n"
+        val current = _uiState.value.replyText
+        _uiState.update { it.copy(replyText = formatted + current) }
+    }
+
+    fun insertQuote() {
+        val parentText = getReplyParentText()
+        if (parentText.isBlank()) return
+        val formatted = parentText.lines().joinToString("\n") { ">$it" } + "\n\n"
+        val current = _uiState.value.replyText
+        _uiState.update { it.copy(replyText = formatted + current) }
     }
 
     fun saveDraft() {
