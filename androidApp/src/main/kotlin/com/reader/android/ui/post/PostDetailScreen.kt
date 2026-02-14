@@ -137,6 +137,7 @@ fun PostDetailScreen(
     var imageViewerInitialPage by remember { mutableStateOf(0) }
     var selectionVersion by remember { mutableIntStateOf(0) }
     val touchedSelectable = remember { mutableStateOf(false) }
+    val selectionMayBeActive = remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         PendingQuote.text.collect { text ->
@@ -332,8 +333,11 @@ fun PostDetailScreen(
                         while (true) {
                             val event = awaitPointerEvent(PointerEventPass.Main)
                             if (event.changes.any { it.pressed && !it.previousPressed }) {
-                                if (!touchedSelectable.value) {
+                                if (touchedSelectable.value) {
+                                    selectionMayBeActive.value = true
+                                } else if (selectionMayBeActive.value) {
                                     selectionVersion++
+                                    selectionMayBeActive.value = false
                                 }
                             }
                         }
@@ -730,14 +734,29 @@ private fun PostHeader(
                         .fillMaxWidth()
                         .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
                         .clip(RoundedCornerShape(8.dp))
-                        .clickable { onImageClick(galleryUrls, pagerState.currentPage) }
                 ) { page ->
-                    AsyncImage(
-                        model = galleryItems[page].url,
-                        contentDescription = galleryItems[page].caption,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
+                    val item = galleryItems[page]
+                    if (item.isVideo && item.url != null) {
+                        VideoPlayer(
+                            videoUrl = item.url!!,
+                            isGif = true,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        AsyncImage(
+                            model = item.url,
+                            contentDescription = item.caption,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clickable {
+                                    val imageItems = galleryItems.filter { !it.isVideo }
+                                    val imageUrls = imageItems.mapNotNull { it.url }
+                                    val imageIndex = imageItems.indexOf(item).coerceAtLeast(0)
+                                    onImageClick(imageUrls, imageIndex)
+                                },
+                            contentScale = ContentScale.Fit
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(

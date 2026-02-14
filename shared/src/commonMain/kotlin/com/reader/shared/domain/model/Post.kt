@@ -104,7 +104,8 @@ data class GalleryItem(
     val mediaId: String,
     val id: Long,
     val caption: String?,
-    val url: String? = null
+    val url: String? = null,
+    val isVideo: Boolean = false
 )
 
 enum class VoteState {

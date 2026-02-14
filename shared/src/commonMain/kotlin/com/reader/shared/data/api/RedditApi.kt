@@ -799,13 +799,18 @@ class RedditApi(
     private fun mapGallery(dto: GalleryDataDto, metadata: Map<String, MediaMetadataDto>?): GalleryData {
         return GalleryData(
             items = dto.items.mapNotNull { item ->
-                val url = metadata?.get(item.mediaId)?.s?.u?.let { decodeHtml(it) }
+                val meta = metadata?.get(item.mediaId)
+                val isAnimated = meta?.e == "AnimatedImage"
+                val mp4Url = meta?.s?.mp4?.let { decodeHtml(it) }
+                val imageUrl = meta?.s?.u?.let { decodeHtml(it) }
+                val url = if (isAnimated) mp4Url ?: imageUrl else imageUrl
                 if (url != null || metadata == null) {
                     GalleryItem(
                         mediaId = item.mediaId,
                         id = item.id,
                         caption = item.caption,
-                        url = url
+                        url = url,
+                        isVideo = isAnimated && mp4Url != null
                     )
                 } else null
             }

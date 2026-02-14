@@ -141,5 +141,7 @@ data class MediaMetadataDto(
 data class MediaMetadataSourceDto(
     val y: Int = 0,
     val x: Int = 0,
-    val u: String? = null
+    val u: String? = null,
+    val mp4: String? = null,
+    val gif: String? = null
 )

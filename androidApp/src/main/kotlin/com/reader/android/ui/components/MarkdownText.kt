@@ -1,25 +1,45 @@
 package com.reader.android.ui.components
 
+import android.content.ContentValues
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -29,6 +49,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import io.github.aakira.napier.Napier
+import java.io.File
 
 @Composable
 fun MarkdownText(
@@ -52,8 +78,8 @@ fun MarkdownText(
                     i = tableEndIdx - 1
                 }
                 line.startsWith("###") -> {
-                    ClickableMarkdownText(
-                        text = parseInlineMarkdown(line.removePrefix("###").trimStart()),
+                    RenderMixedContent(
+                        text = line.removePrefix("###").trimStart(),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                         onLinkClick = onLinkClick,
@@ -61,8 +87,8 @@ fun MarkdownText(
                     )
                 }
                 line.startsWith("##") -> {
-                    ClickableMarkdownText(
-                        text = parseInlineMarkdown(line.removePrefix("##").trimStart()),
+                    RenderMixedContent(
+                        text = line.removePrefix("##").trimStart(),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
                         onLinkClick = onLinkClick,
@@ -70,8 +96,8 @@ fun MarkdownText(
                     )
                 }
                 line.startsWith("#") -> {
-                    ClickableMarkdownText(
-                        text = parseInlineMarkdown(line.removePrefix("#").trimStart()),
+                    RenderMixedContent(
+                        text = line.removePrefix("#").trimStart(),
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                         onLinkClick = onLinkClick,
@@ -84,8 +110,8 @@ fun MarkdownText(
                         i++
                         quoteLines.add(lines[i].removePrefix(">").removePrefix(" "))
                     }
-                    ClickableMarkdownText(
-                        text = parseInlineMarkdown(quoteLines.joinToString("\n")),
+                    RenderMixedContent(
+                        text = quoteLines.joinToString("\n"),
                         style = style.copy(fontStyle = FontStyle.Italic),
                         modifier = Modifier
                             .padding(start = 12.dp, top = 4.dp, bottom = 4.dp)
@@ -113,8 +139,8 @@ fun MarkdownText(
                     )
                 }
                 line.startsWith("- ") || line.startsWith("* ") -> {
-                    ClickableMarkdownText(
-                        text = parseInlineMarkdown("• " + line.substring(2)),
+                    RenderMixedContent(
+                        text = "• " + line.substring(2),
                         style = style,
                         modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
                         onLinkClick = onLinkClick,
@@ -124,8 +150,8 @@ fun MarkdownText(
                 line.matches(Regex("^\\d+\\.\\s+.*")) -> {
                     val match = Regex("^(\\d+)\\.\\s+(.*)").find(line)
                     if (match != null) {
-                        ClickableMarkdownText(
-                            text = parseInlineMarkdown("${match.groupValues[1]}. ${match.groupValues[2]}"),
+                        RenderMixedContent(
+                            text = "${match.groupValues[1]}. ${match.groupValues[2]}",
                             style = style,
                             modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
                             onLinkClick = onLinkClick,
@@ -151,8 +177,8 @@ fun MarkdownText(
                             append(l.trimEnd())
                         }
                     }
-                    ClickableMarkdownText(
-                        text = parseInlineMarkdown(merged),
+                    RenderMixedContent(
+                        text = merged,
                         style = style,
                         modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
                         onLinkClick = onLinkClick,
@@ -472,5 +498,254 @@ private fun parseInlineMarkdown(text: String): androidx.compose.ui.text.Annotate
             }
         }
         append(text.substring(current))
+    }
+}
+
+private sealed class ContentSegment {
+    data class Text(val text: String) : ContentSegment()
+    data class Image(val url: String) : ContentSegment()
+}
+
+private val inlineImagePattern = Regex("""!\[img]\(([^)]+)\)""")
+private val inlineGifPattern = Regex("""!\[gif]\(giphy\|([^)]+)\)""")
+private val previewRedditUrlPattern = Regex("""https://preview\.redd\.it/[^\s)]+""")
+
+private fun splitIntoContentSegments(text: String): List<ContentSegment> {
+    data class ImageMatch(val range: IntRange, val url: String)
+
+    val imageMatches = mutableListOf<ImageMatch>()
+
+    for (match in inlineImagePattern.findAll(text)) {
+        val content = match.groupValues[1]
+        val url = if (content.startsWith("http")) {
+            content
+        } else {
+            "https://preview.redd.it/${content}.jpeg"
+        }
+        imageMatches.add(ImageMatch(match.range, url))
+    }
+
+    for (match in inlineGifPattern.findAll(text)) {
+        val parts = match.groupValues[1].split("|")
+        val gifId = parts[0]
+        val params = parts.drop(1)
+        val knownParams = setOf("downsized")
+        val unknownParams = params.filter { it !in knownParams }
+        if (unknownParams.isNotEmpty()) {
+            Napier.w("Unknown giphy parameters: $unknownParams in ${match.value}")
+        }
+        val suffix = when {
+            "downsized" in params -> "giphy-downsized.gif"
+            else -> "giphy.gif"
+        }
+        imageMatches.add(ImageMatch(match.range, "https://i.giphy.com/${gifId}/${suffix}"))
+    }
+
+    for (match in previewRedditUrlPattern.findAll(text)) {
+        if (imageMatches.none { it.range.first <= match.range.first && match.range.last <= it.range.last }) {
+            imageMatches.add(ImageMatch(match.range, match.value))
+        }
+    }
+
+    if (imageMatches.isEmpty()) {
+        return listOf(ContentSegment.Text(text))
+    }
+
+    val sorted = imageMatches.sortedBy { it.range.first }
+    val segments = mutableListOf<ContentSegment>()
+    var lastEnd = 0
+
+    for (img in sorted) {
+        if (img.range.first > lastEnd) {
+            val textBefore = text.substring(lastEnd, img.range.first).trim()
+            if (textBefore.isNotEmpty()) {
+                segments.add(ContentSegment.Text(textBefore))
+            }
+        }
+        segments.add(ContentSegment.Image(img.url))
+        lastEnd = img.range.last + 1
+    }
+
+    if (lastEnd < text.length) {
+        val textAfter = text.substring(lastEnd).trim()
+        if (textAfter.isNotEmpty()) {
+            segments.add(ContentSegment.Text(textAfter))
+        }
+    }
+
+    return segments
+}
+
+@Composable
+private fun RenderMixedContent(
+    text: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    onLinkClick: (String) -> Unit = {},
+    onTextClick: (() -> Unit)? = null
+) {
+    val segments = splitIntoContentSegments(text)
+
+    if (segments.size == 1 && segments[0] is ContentSegment.Text) {
+        ClickableMarkdownText(
+            text = parseInlineMarkdown(text),
+            style = style,
+            modifier = modifier,
+            onLinkClick = onLinkClick,
+            onTextClick = onTextClick
+        )
+        return
+    }
+
+    Column(modifier = modifier) {
+        for (segment in segments) {
+            when (segment) {
+                is ContentSegment.Text -> {
+                    ClickableMarkdownText(
+                        text = parseInlineMarkdown(segment.text),
+                        style = style,
+                        onLinkClick = onLinkClick,
+                        onTextClick = onTextClick
+                    )
+                }
+                is ContentSegment.Image -> {
+                    InlineImage(
+                        url = segment.url,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val aspectRatioCache = mutableMapOf<String, Float>()
+
+@Composable
+private fun InlineImage(
+    url: String,
+    modifier: Modifier = Modifier
+) {
+    var aspectRatio by remember(url) { mutableStateOf(aspectRatioCache[url]) }
+    var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (aspectRatio != null) Modifier.aspectRatio(aspectRatio!!)
+                else Modifier
+            )
+            .clipToBounds()
+            .combinedClickable(
+                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+                onLongClick = { showMenu = true }
+            )
+    ) {
+        AsyncImage(
+            model = url,
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.FillWidth,
+            onSuccess = { state ->
+                val w = state.result.image.width
+                val h = state.result.image.height
+                if (w > 0 && h > 0) {
+                    val ratio = w.toFloat() / h.toFloat()
+                    aspectRatioCache[url] = ratio
+                    aspectRatio = ratio
+                }
+            }
+        )
+        Box(modifier = Modifier.align(Alignment.BottomEnd)) {
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Copy Image URL") },
+                    onClick = {
+                        clipboardManager.setText(AnnotatedString(url))
+                        Toast.makeText(context, "URL copied", Toast.LENGTH_SHORT).show()
+                        showMenu = false
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Save Image") },
+                    onClick = {
+                        showMenu = false
+                        scope.launch {
+                            saveImageToGallery(context, url)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+private suspend fun saveImageToGallery(context: android.content.Context, url: String) {
+    withContext(Dispatchers.IO) {
+        try {
+            val filename = url.substringAfterLast("/").substringBefore("?").let {
+                if (it.contains(".")) it else "${it}.jpg"
+            }
+            val mimeType = when {
+                filename.endsWith(".gif") -> "image/gif"
+                filename.endsWith(".png") -> "image/png"
+                filename.endsWith(".webp") -> "image/webp"
+                else -> "image/jpeg"
+            }
+
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                    put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
+                }
+                context.contentResolver.insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    contentValues
+                )
+            } else {
+                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
+                if (!dir.exists()) dir.mkdirs()
+                val file = File(dir, filename)
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
+                    put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+                    put(MediaStore.Images.Media.DATA, file.absolutePath)
+                }
+                context.contentResolver.insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    contentValues
+                )
+            }
+
+            if (uri != null) {
+                val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+                connection.connect()
+                connection.inputStream.use { input ->
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                connection.disconnect()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Image saved", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Failed to save image", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }
