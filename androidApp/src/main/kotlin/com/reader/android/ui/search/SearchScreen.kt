@@ -14,12 +14,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -30,9 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -45,17 +43,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.reader.android.data.ReadPostsRepository
 import com.reader.android.ui.components.PostCard
-import com.reader.android.ui.components.formatNumber
+import com.reader.android.ui.components.RedditLink
 import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.SearchType
-import com.reader.shared.domain.model.Subreddit
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -110,20 +103,7 @@ fun SearchScreen(
                     singleLine = true
                 )
 
-                TabRow(selectedTabIndex = uiState.searchType.ordinal) {
-                    Tab(
-                        selected = uiState.searchType == SearchType.POST,
-                        onClick = { viewModel.setSearchType(SearchType.POST) },
-                        text = { Text("Posts") }
-                    )
-                    Tab(
-                        selected = uiState.searchType == SearchType.SUBREDDIT,
-                        onClick = { viewModel.setSearchType(SearchType.SUBREDDIT) },
-                        text = { Text("Communities") }
-                    )
-                }
-
-                if (uiState.searchType == SearchType.POST && uiState.query.isNotEmpty()) {
+                if (uiState.query.isNotEmpty() && uiState.detectedLink == null) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -164,68 +144,95 @@ fun SearchScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Search for posts or communities")
+                    Text("Search for posts")
                 }
-            } else if (uiState.isLoading && uiState.posts.isEmpty() && uiState.subreddits.isEmpty()) {
+            } else if (uiState.detectedLink != null) {
+                val link = uiState.detectedLink
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .clickable {
+                            when (link) {
+                                is RedditLink.Post -> onPostClick(link.subreddit, link.postId)
+                                is RedditLink.Comment -> onPostClick(link.subreddit, link.postId)
+                                is RedditLink.Subreddit -> onSubredditClick(link.name)
+                                is RedditLink.User -> onUserClick(link.name)
+                                is RedditLink.External, null -> {}
+                            }
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = when (link) {
+                                    is RedditLink.Post -> "Open post in r/${link.subreddit}"
+                                    is RedditLink.Comment -> "Open comment in r/${link.subreddit}"
+                                    is RedditLink.Subreddit -> "Open r/${link.name}"
+                                    is RedditLink.User -> "Open u/${link.name}"
+                                    is RedditLink.External, null -> ""
+                                },
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = uiState.query.trim(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+            } else if (uiState.isLoading && uiState.posts.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
-                when (uiState.searchType) {
-                    SearchType.POST -> {
-                        if (uiState.posts.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No results found")
-                            }
-                        } else {
-                            LazyColumn(state = listState) {
-                                items(uiState.posts, key = { it.id }) { post ->
-                                    PostCard(
-                                        post = post,
-                                        onClick = {
-                                            readPostsRepository.markAsRead(post.id)
-                                            onPostClick(post.subreddit, post.id)
-                                        },
-                                        onSubredditClick = { onSubredditClick(post.subreddit) },
-                                        onUserClick = { onUserClick(post.author) },
-                                        onUpvote = {},
-                                        onDownvote = {},
-                                        onSave = {},
-                                        onHide = {},
-                                        isLoggedIn = false,
-                                        onLinkClick = onLinkClick,
-                                        isRead = readPostIds.contains(post.id)
-                                    )
-                                }
-                                
-                                if (uiState.isLoading) {
-                                    item {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                                        }
-                                    }
+                if (uiState.posts.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No results found")
+                    }
+                } else {
+                    LazyColumn(state = listState) {
+                        items(uiState.posts, key = { it.id }) { post ->
+                            PostCard(
+                                post = post,
+                                onClick = {
+                                    readPostsRepository.markAsRead(post.id)
+                                    onPostClick(post.subreddit, post.id)
+                                },
+                                onSubredditClick = { onSubredditClick(post.subreddit) },
+                                onUserClick = { onUserClick(post.author) },
+                                onUpvote = {},
+                                onDownvote = {},
+                                onSave = {},
+                                onHide = {},
+                                isLoggedIn = false,
+                                onLinkClick = onLinkClick,
+                                isRead = readPostIds.contains(post.id)
+                            )
+                        }
+
+                        if (uiState.isLoading) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(32.dp))
                                 }
                             }
                         }
                     }
-                    SearchType.SUBREDDIT -> {
-                        if (uiState.subreddits.isEmpty()) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No communities found")
-                            }
-                        } else {
-                            LazyColumn {
-                                items(uiState.subreddits, key = { it.id }) { subreddit ->
-                                    SubredditSearchItem(
-                                        subreddit = subreddit,
-                                        onClick = { onSubredditClick(subreddit.displayName) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    SearchType.USER -> {}
                 }
             }
         }
@@ -264,53 +271,3 @@ fun SearchScreen(
     }
 }
 
-@Composable
-private fun SubredditSearchItem(
-    subreddit: Subreddit,
-    onClick: () -> Unit
-) {
-    ListItem(
-        headlineContent = {
-            Text(subreddit.displayNamePrefixed, fontWeight = FontWeight.Medium)
-        },
-        supportingContent = {
-            Column {
-                Text("${formatNumber(subreddit.subscribers.toInt())} members")
-                subreddit.publicDescription?.let { desc ->
-                    if (desc.isNotBlank()) {
-                        Text(
-                            text = desc,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2
-                        )
-                    }
-                }
-            }
-        },
-        leadingContent = {
-            if (subreddit.iconUrl != null) {
-                AsyncImage(
-                    model = subreddit.iconUrl,
-                    contentDescription = null,
-                    modifier = Modifier.size(48.dp).clip(CircleShape),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Surface(
-                    modifier = Modifier.size(48.dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            subreddit.displayName.first().uppercase(),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                    }
-                }
-            }
-        },
-        modifier = Modifier.clickable(onClick = onClick)
-    )
-}

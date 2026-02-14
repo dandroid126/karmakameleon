@@ -2,6 +2,8 @@ package com.reader.android.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.reader.android.ui.components.RedditLink
+import com.reader.android.ui.components.parseRedditLink
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.domain.model.Post
@@ -27,7 +29,8 @@ data class SearchUiState(
     val searchSort: SearchSort = SearchSort.RELEVANCE,
     val timeFilter: TimeFilter = TimeFilter.ALL,
     val after: String? = null,
-    val hasMore: Boolean = true
+    val hasMore: Boolean = true,
+    val detectedLink: RedditLink? = null
 )
 
 class SearchViewModel(
@@ -41,8 +44,20 @@ class SearchViewModel(
     private var searchJob: Job? = null
 
     fun setQuery(query: String) {
-        _uiState.update { it.copy(query = query) }
-        
+        val trimmed = query.trim()
+        val link = if (trimmed.contains("reddit.com/") || trimmed.startsWith("/r/")) {
+            val parsed = parseRedditLink(trimmed)
+            if (parsed is RedditLink.External) null else parsed
+        } else null
+
+        _uiState.update { it.copy(query = query, detectedLink = link) }
+
+        if (link != null) {
+            searchJob?.cancel()
+            _uiState.update { it.copy(posts = emptyList(), subreddits = emptyList()) }
+            return
+        }
+
         searchJob?.cancel()
         if (query.length >= 2) {
             searchJob = viewModelScope.launch {

@@ -269,6 +269,7 @@ fun ReaderApp() {
                             is RedditLink.Subreddit -> navController.navigate(DetailScreen.SubredditDetail.createRoute(link.name))
                             is RedditLink.User -> navController.navigate(DetailScreen.UserProfile.createRoute(link.name))
                             is RedditLink.Post -> navController.navigate(DetailScreen.PostDetail.createRoute(link.subreddit, link.postId))
+                            is RedditLink.Comment -> navController.navigate(DetailScreen.PostDetail.createRoute(link.subreddit, link.postId))
                             is RedditLink.External -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                         }
                     }

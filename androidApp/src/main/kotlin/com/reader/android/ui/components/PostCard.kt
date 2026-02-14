@@ -47,9 +47,13 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
 
@@ -71,6 +75,8 @@ fun PostCard(
     isRead: Boolean = false
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
     
     Card(
         modifier = modifier
@@ -399,7 +405,12 @@ fun PostCard(
                         }
                         DropdownMenuItem(
                             text = { Text("Share") },
-                            onClick = { showMenu = false },
+                            onClick = {
+                                val link = "https://www.reddit.com${post.permalink}"
+                                clipboardManager.setText(AnnotatedString(link))
+                                Toast.makeText(context, "Copied link", Toast.LENGTH_SHORT).show()
+                                showMenu = false
+                            },
                             leadingIcon = {
                                 Icon(Icons.Default.Share, contentDescription = null)
                             }

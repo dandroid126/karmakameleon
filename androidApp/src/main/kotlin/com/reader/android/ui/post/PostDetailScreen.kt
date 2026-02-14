@@ -468,6 +468,7 @@ fun PostDetailScreen(
                                                 is RedditLink.Subreddit -> onSubredditClick(link.name)
                                                 is RedditLink.User -> onUserClick(link.name)
                                                 is RedditLink.Post -> onLinkClick(url)
+                                                is RedditLink.Comment -> onLinkClick(url)
                                                 is RedditLink.External -> onLinkClick(url)
                                             }
                                         },
