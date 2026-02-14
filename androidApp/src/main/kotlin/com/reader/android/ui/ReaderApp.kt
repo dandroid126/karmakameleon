@@ -1,5 +1,10 @@
 package com.reader.android.ui
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -194,7 +199,11 @@ fun ReaderApp() {
             
             composable(
                 route = DetailScreen.SubredditDetail.route,
-                arguments = listOf(navArgument("subredditName") { type = NavType.StringType })
+                arguments = listOf(navArgument("subredditName") { type = NavType.StringType }),
+                enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } }
             ) { backStackEntry ->
                 val subredditName = backStackEntry.arguments?.getString("subredditName") ?: ""
                 SubredditScreen(
@@ -220,7 +229,11 @@ fun ReaderApp() {
                 arguments = listOf(
                     navArgument("subreddit") { type = NavType.StringType },
                     navArgument("postId") { type = NavType.StringType }
-                )
+                ),
+                enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } }
             ) { backStackEntry ->
                 val subreddit = backStackEntry.arguments?.getString("subreddit") ?: ""
                 val postId = backStackEntry.arguments?.getString("postId") ?: ""
@@ -247,7 +260,11 @@ fun ReaderApp() {
             
             composable(
                 route = DetailScreen.UserProfile.route,
-                arguments = listOf(navArgument("username") { type = NavType.StringType })
+                arguments = listOf(navArgument("username") { type = NavType.StringType }),
+                enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } }
             ) { backStackEntry ->
                 val username = backStackEntry.arguments?.getString("username") ?: ""
                 ProfileScreen(
@@ -264,7 +281,11 @@ fun ReaderApp() {
 
             composable(
                 route = DetailScreen.WebBrowser.route,
-                arguments = listOf(navArgument("url") { type = NavType.StringType })
+                arguments = listOf(navArgument("url") { type = NavType.StringType }),
+                enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } }
             ) { backStackEntry ->
                 val encodedUrl = backStackEntry.arguments?.getString("url") ?: ""
                 val url = java.net.URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString())
