@@ -103,10 +103,12 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import com.reader.android.data.PendingQuote
+import com.reader.android.data.SettingsRepository
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,6 +127,8 @@ fun PostDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
+    val settingsRepository: SettingsRepository = koinInject()
+    val inlineImagesEnabled by settingsRepository.inlineImagesEnabled.collectAsState()
 
     var showCommentSortSheet by remember { mutableStateOf(false) }
     var deleteConfirmCommentId by remember { mutableStateOf<String?>(null) }
@@ -385,6 +389,11 @@ fun PostDetailScreen(
                                 onImageClick = { urls, page ->
                                     imageViewerUrls = urls
                                     imageViewerInitialPage = page
+                                },
+                                renderInlineImages = inlineImagesEnabled,
+                                onInlineImageClick = { url ->
+                                    imageViewerUrls = listOf(url)
+                                    imageViewerInitialPage = 0
                                 }
                             )
                         }
@@ -466,6 +475,11 @@ fun PostDetailScreen(
                                         onTouchStart = {
                                             touchedSelectable.value = true
                                             viewModel.setLastTouchedComment(comment.name)
+                                        },
+                                        renderInlineImages = inlineImagesEnabled,
+                                        onInlineImageClick = { url ->
+                                            imageViewerUrls = listOf(url)
+                                            imageViewerInitialPage = 0
                                         }
                                     )
                                 }
@@ -664,7 +678,9 @@ private fun PostHeader(
     onLinkClick: (String) -> Unit = {},
     onImageClick: (urls: List<String>, initialPage: Int) -> Unit = { _, _ -> },
     selectionVersion: Int = 0,
-    onTouchStart: () -> Unit = {}
+    onTouchStart: () -> Unit = {},
+    renderInlineImages: Boolean = true,
+    onInlineImageClick: (String) -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -844,7 +860,9 @@ private fun PostHeader(
                             MarkdownText(
                                 markdown = text,
                                 style = MaterialTheme.typography.bodyMedium,
-                                onLinkClick = onLinkClick
+                                onLinkClick = onLinkClick,
+                                renderInlineImages = renderInlineImages,
+                                onImageClick = onInlineImageClick
                             )
                         }
                     }
@@ -952,6 +970,8 @@ private fun CommentItem(
     onLinkClick: (String) -> Unit = {},
     selectionVersion: Int = 0,
     onTouchStart: () -> Unit = {},
+    renderInlineImages: Boolean = true,
+    onInlineImageClick: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val depthColors = listOf(
@@ -1107,7 +1127,9 @@ private fun CommentItem(
                                     markdown = comment.body,
                                     style = MaterialTheme.typography.bodyMedium,
                                     onLinkClick = onLinkClick,
-                                    onTextClick = onSelect
+                                    onTextClick = onSelect,
+                                    renderInlineImages = renderInlineImages,
+                                    onImageClick = onInlineImageClick
                                 )
                             }
                         }

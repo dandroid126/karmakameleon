@@ -62,7 +62,9 @@ fun MarkdownText(
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodyMedium,
     onLinkClick: (String) -> Unit = {},
-    onTextClick: (() -> Unit)? = null
+    onTextClick: (() -> Unit)? = null,
+    renderInlineImages: Boolean = true,
+    onImageClick: (String) -> Unit = {}
 ) {
     val lines = markdown.split("\n")
     val density = LocalDensity.current
@@ -83,7 +85,9 @@ fun MarkdownText(
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
                         onLinkClick = onLinkClick,
-                        onTextClick = onTextClick
+                        onTextClick = onTextClick,
+                        renderInlineImages = renderInlineImages,
+                        onImageClick = onImageClick
                     )
                 }
                 line.startsWith("##") -> {
@@ -92,7 +96,9 @@ fun MarkdownText(
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
                         onLinkClick = onLinkClick,
-                        onTextClick = onTextClick
+                        onTextClick = onTextClick,
+                        renderInlineImages = renderInlineImages,
+                        onImageClick = onImageClick
                     )
                 }
                 line.startsWith("#") -> {
@@ -101,7 +107,9 @@ fun MarkdownText(
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                         onLinkClick = onLinkClick,
-                        onTextClick = onTextClick
+                        onTextClick = onTextClick,
+                        renderInlineImages = renderInlineImages,
+                        onImageClick = onImageClick
                     )
                 }
                 line.startsWith(">") -> {
@@ -119,7 +127,9 @@ fun MarkdownText(
                             .background(MaterialTheme.colorScheme.surfaceVariant, shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
                             .padding(8.dp),
                         onLinkClick = onLinkClick,
-                        onTextClick = onTextClick
+                        onTextClick = onTextClick,
+                        renderInlineImages = renderInlineImages,
+                        onImageClick = onImageClick
                     )
                 }
                 line.startsWith("    ") -> {
@@ -144,7 +154,9 @@ fun MarkdownText(
                         style = style,
                         modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
                         onLinkClick = onLinkClick,
-                        onTextClick = onTextClick
+                        onTextClick = onTextClick,
+                        renderInlineImages = renderInlineImages,
+                        onImageClick = onImageClick
                     )
                 }
                 line.matches(Regex("^\\d+\\.\\s+.*")) -> {
@@ -155,7 +167,9 @@ fun MarkdownText(
                             style = style,
                             modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
                             onLinkClick = onLinkClick,
-                            onTextClick = onTextClick
+                            onTextClick = onTextClick,
+                            renderInlineImages = renderInlineImages,
+                            onImageClick = onImageClick
                         )
                     }
                 }
@@ -182,7 +196,9 @@ fun MarkdownText(
                         style = style,
                         modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
                         onLinkClick = onLinkClick,
-                        onTextClick = onTextClick
+                        onTextClick = onTextClick,
+                        renderInlineImages = renderInlineImages,
+                        onImageClick = onImageClick
                     )
                 }
                 else -> {
@@ -582,8 +598,60 @@ private fun RenderMixedContent(
     style: TextStyle,
     modifier: Modifier = Modifier,
     onLinkClick: (String) -> Unit = {},
-    onTextClick: (() -> Unit)? = null
+    onTextClick: (() -> Unit)? = null,
+    renderInlineImages: Boolean = true,
+    onImageClick: (String) -> Unit = {}
 ) {
+    if (!renderInlineImages) {
+        val segments = splitIntoContentSegments(text)
+        if (segments.all { it is ContentSegment.Text }) {
+            ClickableMarkdownText(
+                text = parseInlineMarkdown(text),
+                style = style,
+                modifier = modifier,
+                onLinkClick = onLinkClick,
+                onTextClick = onTextClick
+            )
+        } else {
+            Column(modifier = modifier) {
+                for (segment in segments) {
+                    when (segment) {
+                        is ContentSegment.Text -> {
+                            ClickableMarkdownText(
+                                text = parseInlineMarkdown(segment.text),
+                                style = style,
+                                onLinkClick = onLinkClick,
+                                onTextClick = onTextClick
+                            )
+                        }
+                        is ContentSegment.Image -> {
+                            val isGif = segment.url.contains("giphy") || segment.url.endsWith(".gif")
+                            val label = if (isGif) "[gif]" else "[img]"
+                            val linkColor = MaterialTheme.colorScheme.primary
+                            val annotated = buildAnnotatedString {
+                                pushStringAnnotation(tag = "IMAGE", annotation = segment.url)
+                                withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
+                                    append(label)
+                                }
+                                pop()
+                            }
+                            ClickableText(
+                                text = annotated,
+                                style = style,
+                                modifier = Modifier.padding(vertical = 2.dp),
+                                onClick = { offset ->
+                                    annotated.getStringAnnotations("IMAGE", offset, offset)
+                                        .firstOrNull()?.let { onImageClick(it.item) }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        return
+    }
+
     val segments = splitIntoContentSegments(text)
 
     if (segments.size == 1 && segments[0] is ContentSegment.Text) {

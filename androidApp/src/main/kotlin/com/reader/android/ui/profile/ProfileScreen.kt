@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
@@ -65,6 +66,7 @@ fun ProfileScreen(
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onSubredditClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -97,9 +99,14 @@ fun ProfileScreen(
                     }
                 },
                 actions = {
-                    if (isOwnProfile && uiState.isLoggedIn) {
-                        IconButton(onClick = viewModel::logout) {
-                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
+                    if (isOwnProfile) {
+                        IconButton(onClick = onSettingsClick) {
+                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
+                        }
+                        if (uiState.isLoggedIn) {
+                            IconButton(onClick = viewModel::logout) {
+                                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
+                            }
                         }
                     }
                 }

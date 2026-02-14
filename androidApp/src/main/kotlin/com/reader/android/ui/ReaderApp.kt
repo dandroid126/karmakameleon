@@ -44,6 +44,7 @@ import com.reader.android.ui.inbox.InboxScreen
 import com.reader.android.ui.post.PostDetailScreen
 import com.reader.android.ui.profile.ProfileScreen
 import com.reader.android.ui.search.SearchScreen
+import com.reader.android.ui.settings.SettingsScreen
 import com.reader.android.ui.subreddit.SubredditListScreen
 import com.reader.android.ui.subreddit.SubredditScreen
 import java.net.URLEncoder
@@ -75,6 +76,7 @@ sealed class DetailScreen(val route: String) {
     data object WebBrowser : DetailScreen("web/{url}") {
         fun createRoute(url: String) = "web/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
     }
+    data object Settings : DetailScreen("settings")
 }
 
 val bottomNavItems = listOf(
@@ -193,7 +195,22 @@ fun ReaderApp() {
                     },
                     onLinkClick = { url ->
                         navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                    },
+                    onSettingsClick = {
+                        navController.navigate(DetailScreen.Settings.route)
                     }
+                )
+            }
+
+            composable(
+                route = DetailScreen.Settings.route,
+                enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } }
+            ) {
+                SettingsScreen(
+                    onBackClick = { navController.popBackStack() }
                 )
             }
             
