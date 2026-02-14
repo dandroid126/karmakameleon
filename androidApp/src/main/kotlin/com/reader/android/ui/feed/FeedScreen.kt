@@ -133,6 +133,7 @@ fun FeedScreen(
                             onSave = { viewModel.save(post) },
                             onHide = { viewModel.hide(post) },
                             isLoggedIn = uiState.isLoggedIn,
+                            onLinkClick = onLinkClick,
                             isRead = readPostIds.contains(post.id)
                         )
                     }

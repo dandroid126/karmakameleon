@@ -724,7 +724,10 @@ private fun PostHeader(
                                 .fillMaxWidth()
                                 .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
                                 .clip(RoundedCornerShape(8.dp))
-                                .clickable { onImageClick(listOf(highResUrl), 0) },
+                                .clickable {
+                                    if (post.isLinkPost) onLinkClick(post.url)
+                                    else onImageClick(listOf(highResUrl), 0)
+                                },
                             contentScale = ContentScale.Fit
                         )
                     }
@@ -748,7 +751,10 @@ private fun PostHeader(
             Text(
                 text = post.domain,
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clickable { onLinkClick(post.url) }
             )
         }
 

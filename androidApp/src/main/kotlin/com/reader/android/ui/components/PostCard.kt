@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -65,6 +66,7 @@ fun PostCard(
     onSave: () -> Unit,
     onHide: () -> Unit,
     isLoggedIn: Boolean,
+    onLinkClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
     isRead: Boolean = false
 ) {
@@ -177,6 +179,13 @@ fun PostCard(
                                     .fillMaxWidth()
                                     .heightIn(max = 300.dp)
                                     .clip(RoundedCornerShape(8.dp)),
+                                // Commenting this out for now, but this is where we would add the clickability of the image to follow the link.
+                                // I can't decide if I like it or not.
+                                // Maybe this will be configurable in the settings.
+//                                    .then(
+//                                        if (post.isLinkPost) Modifier.clickable { onLinkClick(post.url) }
+//                                        else Modifier
+//                                    ),
                                 contentScale = ContentScale.Crop
                             )
                             val galleryCount = post.galleryData?.items?.size ?: 0
@@ -327,6 +336,20 @@ fun PostCard(
                 
                 Spacer(modifier = Modifier.weight(1f))
                 
+                // Open link
+                if (post.isLinkPost) {
+                    IconButton(
+                        onClick = { onLinkClick(post.url) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                            contentDescription = "Open link",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 // Save
                 if (isLoggedIn) {
                     IconButton(

@@ -193,6 +193,7 @@ fun ProfileScreen(
                                                 onSave = { viewModel.save(post) },
                                                 onHide = {},
                                                 isLoggedIn = uiState.isLoggedIn,
+                                                onLinkClick = onLinkClick,
                                                 isRead = readPostIds.contains(post.id)
                                             )
                                         }

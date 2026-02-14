@@ -191,6 +191,7 @@ fun SearchScreen(
                                         onSave = {},
                                         onHide = {},
                                         isLoggedIn = false,
+                                        onLinkClick = onLinkClick,
                                         isRead = readPostIds.contains(post.id)
                                     )
                                 }
