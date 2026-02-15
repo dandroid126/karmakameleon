@@ -507,6 +507,7 @@ fun PostDetailScreen(
                                         onReply = { viewModel.setReplyingTo(comment.name) },
                                         onEdit = { viewModel.startEditComment(comment) },
                                         onDelete = { deleteConfirmCommentId = comment.id },
+                                        onSave = { viewModel.saveComment(comment) },
                                         isLoggedIn = uiState.isLoggedIn,
                                         loggedInUsername = uiState.loggedInUsername,
                                         onLinkClick = { url ->

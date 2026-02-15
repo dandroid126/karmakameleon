@@ -3,6 +3,7 @@ package com.reader.shared.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.reader.shared.data.api.AuthManager
+import com.reader.shared.data.repository.CommentRepository
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.Account
@@ -23,6 +24,7 @@ data class ProfileUiState(
     val posts: List<Post> = emptyList(),
     val comments: List<Comment> = emptyList(),
     val savedPosts: List<Post> = emptyList(),
+    val savedComments: List<Comment> = emptyList(),
     val upvotedPosts: List<Post> = emptyList(),
     val downvotedPosts: List<Post> = emptyList(),
     val isLoading: Boolean = false,
@@ -36,12 +38,14 @@ data class ProfileUiState(
     val commentsTimeFilter: TimeFilter = TimeFilter.ALL,
     val postsAfter: String? = null,
     val commentsAfter: String? = null,
-    val savedAfter: String? = null,
+    val savedPostsAfter: String? = null,
+    val savedCommentsAfter: String? = null,
     val upvotedAfter: String? = null,
     val downvotedAfter: String? = null,
     val authUrl: String? = null,
     val isOwnProfile: Boolean = true,
-    val clientId: String = ""
+    val clientId: String = "",
+    val savedContentType: SavedContentType = SavedContentType.POSTS
 )
 
 enum class ProfileTab(val displayName: String) {
@@ -53,9 +57,15 @@ enum class ProfileTab(val displayName: String) {
     ABOUT("About")
 }
 
+enum class SavedContentType(val displayName: String) {
+    POSTS("Posts"),
+    COMMENTS("Comments")
+}
+
 class ProfileViewModel(
     private val userRepository: UserRepository,
     private val postRepository: PostRepository,
+    private val commentRepository: CommentRepository,
     private val authManager: AuthManager
 ) : ViewModel() {
 
@@ -129,10 +139,11 @@ class ProfileViewModel(
     private fun loadUserPosts(
         username: String,
         sort: PostSort = _uiState.value.postsSort,
-        timeFilter: TimeFilter = _uiState.value.postsTimeFilter
+        timeFilter: TimeFilter = _uiState.value.postsTimeFilter,
+        forceRefresh: Boolean = false
     ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true, posts = emptyList()) }
+            _uiState.update { it.copy(isLoadingContent = true, posts = if (forceRefresh) emptyList() else it.posts) }
             val result = userRepository.getUserPosts(username, sort, timeFilter)
             result.fold(
                 onSuccess = { listing ->
@@ -154,10 +165,11 @@ class ProfileViewModel(
     private fun loadUserComments(
         username: String,
         sort: PostSort = _uiState.value.commentsSort,
-        timeFilter: TimeFilter = _uiState.value.commentsTimeFilter
+        timeFilter: TimeFilter = _uiState.value.commentsTimeFilter,
+        forceRefresh: Boolean = false
     ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true, comments = emptyList()) }
+            _uiState.update { it.copy(isLoadingContent = true, comments = if (forceRefresh) emptyList() else it.comments) }
             val result = userRepository.getUserComments(username, sort, timeFilter)
             result.fold(
                 onSuccess = { listing ->
@@ -176,16 +188,16 @@ class ProfileViewModel(
         }
     }
 
-    private fun loadSavedPosts() {
+    private fun loadSavedPosts(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true) }
+            _uiState.update { it.copy(isLoadingContent = true, savedPosts = if (forceRefresh) emptyList() else it.savedPosts) }
             val result = userRepository.getSavedPosts()
             result.fold(
                 onSuccess = { listing ->
                     _uiState.update {
                         it.copy(
                             savedPosts = listing.items,
-                            savedAfter = listing.after,
+                            savedPostsAfter = listing.after,
                             isLoadingContent = false
                         )
                     }
@@ -197,9 +209,30 @@ class ProfileViewModel(
         }
     }
 
-    private fun loadUpvotedPosts() {
+    private fun loadSavedComments(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true) }
+            _uiState.update { it.copy(isLoadingContent = true, savedComments = if (forceRefresh) emptyList() else it.savedComments) }
+            val result = userRepository.getSavedComments()
+            result.fold(
+                onSuccess = { listing ->
+                    _uiState.update {
+                        it.copy(
+                            savedComments = listing.items,
+                            savedCommentsAfter = listing.after,
+                            isLoadingContent = false
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isLoadingContent = false) }
+                }
+            )
+        }
+    }
+
+    private fun loadUpvotedPosts(forceRefresh: Boolean = false) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingContent = true, upvotedPosts = if (forceRefresh) emptyList() else it.upvotedPosts) }
             val result = userRepository.getUpvotedPosts()
             result.fold(
                 onSuccess = { listing ->
@@ -218,9 +251,9 @@ class ProfileViewModel(
         }
     }
 
-    private fun loadDownvotedPosts() {
+    private fun loadDownvotedPosts(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true) }
+            _uiState.update { it.copy(isLoadingContent = true, downvotedPosts = if (forceRefresh) emptyList() else it.downvotedPosts) }
             val result = userRepository.getDownvotedPosts()
             result.fold(
                 onSuccess = { listing ->
@@ -245,7 +278,10 @@ class ProfileViewModel(
         when (tab) {
             ProfileTab.POSTS -> if (_uiState.value.posts.isEmpty()) loadUserPosts(username)
             ProfileTab.COMMENTS -> if (_uiState.value.comments.isEmpty()) loadUserComments(username)
-            ProfileTab.SAVED -> if (_uiState.value.savedPosts.isEmpty()) loadSavedPosts()
+            ProfileTab.SAVED -> {
+                if (_uiState.value.savedPosts.isEmpty()) loadSavedPosts()
+                if (_uiState.value.savedComments.isEmpty()) loadSavedComments()
+            }
             ProfileTab.UPVOTED -> if (_uiState.value.upvotedPosts.isEmpty()) loadUpvotedPosts()
             ProfileTab.DOWNVOTED -> if (_uiState.value.downvotedPosts.isEmpty()) loadDownvotedPosts()
             ProfileTab.ABOUT -> { /* No loading needed */ }
@@ -274,6 +310,25 @@ class ProfileViewModel(
         _uiState.update { it.copy(commentsTimeFilter = timeFilter) }
         val username = getUsername() ?: return
         loadUserComments(username, _uiState.value.commentsSort, timeFilter)
+    }
+
+    fun setSavedContentType(type: SavedContentType) {
+        _uiState.update { it.copy(savedContentType = type) }
+    }
+
+    fun refresh() {
+        val username = getUsername() ?: return
+        when (_uiState.value.selectedTab) {
+            ProfileTab.POSTS -> loadUserPosts(username, forceRefresh = true)
+            ProfileTab.COMMENTS -> loadUserComments(username, forceRefresh = true)
+            ProfileTab.SAVED -> {
+                loadSavedPosts(forceRefresh = true)
+                loadSavedComments(forceRefresh = true)
+            }
+            ProfileTab.UPVOTED -> loadUpvotedPosts(forceRefresh = true)
+            ProfileTab.DOWNVOTED -> loadDownvotedPosts(forceRefresh = true)
+            ProfileTab.ABOUT -> if (_uiState.value.isOwnProfile) loadCurrentUser() else loadUser(username)
+        }
     }
 
     fun initiateLogin() {
@@ -332,8 +387,22 @@ class ProfileViewModel(
     fun updateComment(updatedComment: Comment) {
         _uiState.update { state ->
             state.copy(
-                comments = state.comments.map { if (it.id == updatedComment.id) updatedComment else it }
+                comments = state.comments.map { if (it.id == updatedComment.id) updatedComment else it },
+                savedComments = if (updatedComment.isSaved) {
+                    state.savedComments.map { if (it.id == updatedComment.id) updatedComment else it }
+                } else {
+                    state.savedComments.filter { it.id != updatedComment.id }
+                }
             )
+        }
+    }
+
+    fun saveComment(comment: Comment) {
+        viewModelScope.launch {
+            val result = commentRepository.save(comment)
+            result.onSuccess { updatedComment ->
+                updateComment(updatedComment)
+            }
         }
     }
 

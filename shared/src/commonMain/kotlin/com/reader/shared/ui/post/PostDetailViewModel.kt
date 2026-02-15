@@ -340,11 +340,7 @@ class PostDetailViewModel(
         viewModelScope.launch {
             val result = commentRepository.save(comment)
             result.onSuccess { updatedComment ->
-                _uiState.update { state ->
-                    state.copy(
-                        comments = updateCommentInTree(state.comments, updatedComment)
-                    )
-                }
+                updateComment(updatedComment)
             }
         }
     }

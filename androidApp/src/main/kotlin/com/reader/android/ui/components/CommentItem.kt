@@ -17,6 +17,8 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -71,6 +73,7 @@ fun CommentItem(
     onReply: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onSave: () -> Unit = {},
     isLoggedIn: Boolean,
     loggedInUsername: String? = null,
     onLinkClick: (String) -> Unit = {},
@@ -335,6 +338,21 @@ fun CommentItem(
                                     },
                                     leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) }
                                 )
+                                if (isLoggedIn) {
+                                    DropdownMenuItem(
+                                        text = { Text(if (comment.isSaved) "Unsave" else "Save") },
+                                        onClick = {
+                                            showContextMenu = false
+                                            onSave()
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                if (comment.isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                                contentDescription = null
+                                            )
+                                        }
+                                    )
+                                }
                                 DropdownMenuItem(
                                     text = { Text("Go to comment") },
                                     onClick = {

@@ -449,6 +449,25 @@ class RedditApi(
         return parsePostListing(redditResponse.data)
     }
 
+    suspend fun getSavedComments(
+        username: String,
+        after: String? = null,
+        limit: Int = 25
+    ): Listing<Comment> {
+        val response = authenticatedRequest {
+            method = HttpMethod.Get
+            url("$BASE_URL/user/$username/saved")
+            parameter("type", "comments")
+            parameter("limit", limit)
+            parameter("raw_json", 1)
+            after?.let { parameter("after", it) }
+        }
+        
+        val body = response.bodyAsText()
+        val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
+        return parseCommentListing(redditResponse.data)
+    }
+
     suspend fun getUpvotedPosts(
         username: String,
         after: String? = null,

@@ -93,6 +93,16 @@ class UserRepository(
         }
     }
 
+    suspend fun getSavedComments(after: String? = null): Result<Listing<Comment>> {
+        val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
+        return try {
+            val listing = redditApi.getSavedComments(username, after)
+            Result.success(listing)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun getUpvotedPosts(after: String? = null): Result<Listing<Post>> {
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
         return try {

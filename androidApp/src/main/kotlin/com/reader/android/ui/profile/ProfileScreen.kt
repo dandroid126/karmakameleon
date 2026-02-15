@@ -2,6 +2,7 @@ package com.reader.android.ui.profile
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,8 +20,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Star
@@ -28,6 +31,8 @@ import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -40,6 +45,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -60,6 +66,7 @@ import coil3.compose.AsyncImage
 import com.reader.shared.data.repository.ReadPostsRepository
 import com.reader.shared.ui.profile.ProfileTab
 import com.reader.shared.ui.profile.ProfileViewModel
+import com.reader.shared.ui.profile.SavedContentType
 import com.reader.android.ui.components.CommentItem
 import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.SortBottomSheet
@@ -116,6 +123,11 @@ fun ProfileScreen(
                     }
                 },
                 actions = {
+                    if (uiState.isLoggedIn || !isOwnProfile) {
+                        IconButton(onClick = viewModel::refresh) {
+                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
+                        }
+                    }
                     if (isOwnProfile) {
                         IconButton(onClick = onSettingsClick) {
                             Icon(Icons.Filled.Settings, contentDescription = "Settings")
@@ -306,6 +318,7 @@ fun ProfileScreen(
                                                 onReply = {},
                                                 onEdit = {},
                                                 onDelete = {},
+                                                onSave = { viewModel.saveComment(comment) },
                                                 isLoggedIn = uiState.isLoggedIn,
                                                 loggedInUsername = uiState.account?.name,
                                                 onLinkClick = onLinkClick,
@@ -322,9 +335,153 @@ fun ProfileScreen(
                                     }
                                 }
                             }
+                            ProfileTab.SAVED -> {
+                                var showSavedTypeMenu by remember { mutableStateOf(false) }
+                                val savedPosts = uiState.savedPosts
+                                val savedComments = uiState.savedComments
+                                val currentItems = when (uiState.savedContentType) {
+                                    SavedContentType.POSTS -> savedPosts
+                                    SavedContentType.COMMENTS -> savedComments
+                                }
+
+                                Column(modifier = Modifier.fillMaxSize()) {
+                                    // Dropdown selector header
+                                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.clickable { showSavedTypeMenu = true }
+                                        ) {
+                                            Text(
+                                                uiState.savedContentType.displayName,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Icon(
+                                                Icons.Default.ArrowDropDown,
+                                                contentDescription = "Change saved type"
+                                            )
+                                        }
+                                        DropdownMenu(
+                                            expanded = showSavedTypeMenu,
+                                            onDismissRequest = { showSavedTypeMenu = false }
+                                        ) {
+                                            SavedContentType.entries.forEach { type ->
+                                                DropdownMenuItem(
+                                                    text = { Text(type.displayName) },
+                                                    onClick = {
+                                                        viewModel.setSavedContentType(type)
+                                                        showSavedTypeMenu = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    when (uiState.savedContentType) {
+                                        SavedContentType.POSTS -> {
+                                            if (uiState.isLoadingContent && savedPosts.isEmpty()) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    CircularProgressIndicator()
+                                                }
+                                            } else if (savedPosts.isEmpty()) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text("No saved posts")
+                                                }
+                                            } else {
+                                                val readPostsRepository: ReadPostsRepository = koinInject()
+                                                val readPostIds by readPostsRepository.readPostIds.collectAsState()
+                                                LazyColumn {
+                                                    items(savedPosts, key = { it.id }) { post ->
+                                                        PostCard(
+                                                            post = post,
+                                                            onClick = {
+                                                                readPostsRepository.markAsRead(post.id)
+                                                                onPostClick(post.subreddit, post.id)
+                                                            },
+                                                            onSubredditClick = { onSubredditClick(post.subreddit) },
+                                                            onUserClick = {},
+                                                            onUpvote = { viewModel.vote(post, if (post.likes == true) 0 else 1) },
+                                                            onDownvote = { viewModel.vote(post, if (post.likes == false) 0 else -1) },
+                                                            onSave = { viewModel.save(post) },
+                                                            onHide = {},
+                                                            isLoggedIn = uiState.isLoggedIn,
+                                                            onLinkClick = onLinkClick,
+                                                            isRead = readPostIds.contains(post.id)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        SavedContentType.COMMENTS -> {
+                                            if (uiState.isLoadingContent && savedComments.isEmpty()) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    CircularProgressIndicator()
+                                                }
+                                            } else if (savedComments.isEmpty()) {
+                                                Box(
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text("No saved comments")
+                                                }
+                                            } else {
+                                                LazyColumn {
+                                                    items(savedComments, key = { it.id }) { comment ->
+                                                        CommentItem(
+                                                            comment = comment,
+                                                            isSelected = selectedCommentId == comment.id,
+                                                            isHidden = false,
+                                                            onSelect = { 
+                                                                selectedCommentId = if (selectedCommentId == comment.id) null else comment.id
+                                                            },
+                                                            onDone = { selectedCommentId = null },
+                                                            onHide = {},
+                                                            onPrev = {},
+                                                            onNext = {},
+                                                            onRoot = {},
+                                                            onParent = {},
+                                                            onUserClick = {},
+                                                            onCommentUpdated = { updatedComment ->
+                                                                viewModel.updateComment(updatedComment)
+                                                            },
+                                                            onShare = {
+                                                                clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
+                                                                android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
+                                                            },
+                                                            onReply = {},
+                                                            onEdit = {},
+                                                            onDelete = {},
+                                                            onSave = { viewModel.saveComment(comment) },
+                                                            isLoggedIn = uiState.isLoggedIn,
+                                                            loggedInUsername = uiState.account?.name,
+                                                            onLinkClick = onLinkClick,
+                                                            showTopControls = false,
+                                                            showSubreddit = true,
+                                                            onSubredditClick = onSubredditClick,
+                                                            onGoToCommentNav = { commentId ->
+                                                                val postId = comment.linkId.removePrefix("t3_")
+                                                                onCommentClick(comment.subreddit, postId, commentId)
+                                                            },
+                                                            modifier = Modifier.padding(vertical = 4.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             else -> {
                                 val posts = when (uiState.selectedTab) {
-                                    ProfileTab.SAVED -> uiState.savedPosts
                                     ProfileTab.UPVOTED -> uiState.upvotedPosts
                                     ProfileTab.DOWNVOTED -> uiState.downvotedPosts
                                     else -> uiState.posts
