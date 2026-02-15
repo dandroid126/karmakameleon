@@ -2,6 +2,7 @@ package com.reader.android.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.reader.shared.data.api.AuthManager
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.Account
@@ -39,7 +40,8 @@ data class ProfileUiState(
     val upvotedAfter: String? = null,
     val downvotedAfter: String? = null,
     val authUrl: String? = null,
-    val isOwnProfile: Boolean = true
+    val isOwnProfile: Boolean = true,
+    val clientId: String = ""
 )
 
 enum class ProfileTab(val displayName: String) {
@@ -53,10 +55,11 @@ enum class ProfileTab(val displayName: String) {
 
 class ProfileViewModel(
     private val userRepository: UserRepository,
-    private val postRepository: PostRepository
+    private val postRepository: PostRepository,
+    private val authManager: AuthManager
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ProfileUiState())
+    private val _uiState = MutableStateFlow(ProfileUiState(clientId = authManager.getClientId()))
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
     init {
@@ -77,6 +80,11 @@ class ProfileViewModel(
                 }
             }
         }
+    }
+
+    fun setClientId(clientId: String) {
+        authManager.setClientId(clientId)
+        _uiState.update { it.copy(clientId = clientId) }
     }
 
     fun loadCurrentUser() {

@@ -36,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -133,7 +134,11 @@ fun ProfileScreen(
                 .padding(padding)
         ) {
             if (!uiState.isLoggedIn && isOwnProfile) {
-                LoginPrompt(onLogin = viewModel::initiateLogin)
+                LoginPrompt(
+                    clientId = uiState.clientId,
+                    onClientIdChange = viewModel::setClientId,
+                    onLogin = viewModel::initiateLogin
+                )
             } else if (uiState.isLoading && uiState.account == null && uiState.user == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
@@ -372,7 +377,11 @@ fun ProfileScreen(
 
 
 @Composable
-private fun LoginPrompt(onLogin: () -> Unit) {
+private fun LoginPrompt(
+    clientId: String,
+    onClientIdChange: (String) -> Unit,
+    onLogin: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -395,7 +404,20 @@ private fun LoginPrompt(onLogin: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onLogin, modifier = Modifier.fillMaxWidth(0.7f)) {
+        OutlinedTextField(
+            value = clientId,
+            onValueChange = onClientIdChange,
+            label = { Text("Reddit Client ID") },
+            placeholder = { Text("Enter your Reddit app client ID") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(0.9f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onLogin,
+            modifier = Modifier.fillMaxWidth(0.7f),
+            enabled = clientId.isNotBlank()
+        ) {
             Icon(Icons.Default.Login, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text("Sign In")

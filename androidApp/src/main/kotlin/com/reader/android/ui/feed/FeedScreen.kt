@@ -76,8 +76,12 @@ fun FeedScreen(
         }
     }
 
+    var previousFeedType by remember { mutableStateOf(uiState.currentFeedType) }
     LaunchedEffect(uiState.currentFeedType) {
-        listState.scrollToItem(0)
+        if (uiState.currentFeedType != previousFeedType) {
+            listState.scrollToItem(0)
+            previousFeedType = uiState.currentFeedType
+        }
     }
 
     Scaffold(

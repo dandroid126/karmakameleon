@@ -28,8 +28,8 @@ class AuthManager(
     companion object {
         private const val KEY_TOKEN_INFO = "token_info"
         private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_CLIENT_ID = "client_id"
         
-        const val CLIENT_ID = "your_client_id_here" // Replace with your Reddit app client ID
         const val REDIRECT_URI = "reader://oauth"
         const val SCOPES = "identity edit flair history modconfig modflair modlog modposts modwiki mysubreddits privatemessages read report save submit subscribe vote wikiread"
         
@@ -57,10 +57,17 @@ class AuthManager(
         }
     }
 
+    fun getClientId(): String = settings[KEY_CLIENT_ID] ?: ""
+
+    fun setClientId(clientId: String) {
+        settings[KEY_CLIENT_ID] = clientId
+    }
+
     fun getAuthorizationUrl(state: String): String {
+        val clientId = getClientId()
         return buildString {
             append("https://www.reddit.com/api/v1/authorize.compact")
-            append("?client_id=$CLIENT_ID")
+            append("?client_id=$clientId")
             append("&response_type=code")
             append("&state=$state")
             append("&redirect_uri=${REDIRECT_URI.encodeURLParameter()}")
@@ -207,7 +214,9 @@ class AuthManager(
     }
 
     private fun encodeCredentials(): String {
-        val credentials = "$CLIENT_ID:"
+        val credentials = "${getClientId()}:"
         return credentials.encodeToByteArray().encodeBase64()
     }
+
+    fun hasClientId(): Boolean = getClientId().isNotBlank()
 }
