@@ -23,7 +23,7 @@ val sharedModule = module {
     
     // Repositories
     single { PostRepository(get()) }
-    single { SubredditRepository(get()) }
+    single { SubredditRepository(get(), get()) }
     single { UserRepository(get(), get()) }
     single { CommentRepository(get()) }
     single { MessageRepository(get()) }

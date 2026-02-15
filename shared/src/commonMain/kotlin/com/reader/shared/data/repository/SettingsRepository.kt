@@ -14,6 +14,9 @@ class SettingsRepository(private val settings: Settings) {
     private val _blockedSubreddits = MutableStateFlow(loadBlockedSubreddits())
     val blockedSubreddits: StateFlow<Set<String>> = _blockedSubreddits.asStateFlow()
 
+    private val _favoriteSubreddits = MutableStateFlow(loadFavoriteSubreddits())
+    val favoriteSubreddits: StateFlow<Set<String>> = _favoriteSubreddits.asStateFlow()
+
     fun setInlineImagesEnabled(enabled: Boolean) {
         _inlineImagesEnabled.value = enabled
         settings[KEY_INLINE_IMAGES] = enabled
@@ -31,6 +34,21 @@ class SettingsRepository(private val settings: Settings) {
         saveBlockedSubreddits(updated)
     }
 
+    fun toggleFavoriteSubreddit(subreddit: String) {
+        val name = subreddit.lowercase()
+        val updated = if (name in _favoriteSubreddits.value) {
+            _favoriteSubreddits.value - name
+        } else {
+            _favoriteSubreddits.value + name
+        }
+        _favoriteSubreddits.value = updated
+        saveFavoriteSubreddits(updated)
+    }
+
+    fun isFavoriteSubreddit(subreddit: String): Boolean {
+        return subreddit.lowercase() in _favoriteSubreddits.value
+    }
+
     private fun loadBlockedSubreddits(): Set<String> {
         val stored = settings.getStringOrNull(KEY_BLOCKED_SUBREDDITS) ?: return emptySet()
         return stored.split(",").filter { it.isNotBlank() }.toSet()
@@ -40,8 +58,18 @@ class SettingsRepository(private val settings: Settings) {
         settings[KEY_BLOCKED_SUBREDDITS] = subreddits.joinToString(",")
     }
 
+    private fun loadFavoriteSubreddits(): Set<String> {
+        val stored = settings.getStringOrNull(KEY_FAVORITE_SUBREDDITS) ?: return emptySet()
+        return stored.split(",").filter { it.isNotBlank() }.toSet()
+    }
+
+    private fun saveFavoriteSubreddits(subreddits: Set<String>) {
+        settings[KEY_FAVORITE_SUBREDDITS] = subreddits.joinToString(",")
+    }
+
     companion object {
         private const val KEY_INLINE_IMAGES = "inline_images_enabled"
         private const val KEY_BLOCKED_SUBREDDITS = "blocked_subreddits"
+        private const val KEY_FAVORITE_SUBREDDITS = "favorite_subreddits"
     }
 }

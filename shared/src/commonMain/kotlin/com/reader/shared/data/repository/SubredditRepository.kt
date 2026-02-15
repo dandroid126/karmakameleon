@@ -6,13 +6,25 @@ import com.reader.shared.domain.model.Subreddit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 
 class SubredditRepository(
     private val redditApi: RedditApi,
+    private val settingsRepository: SettingsRepository,
 ) {
     private val _subscribedSubreddits = MutableStateFlow<List<Subreddit>>(emptyList())
     val subscribedSubreddits: StateFlow<List<Subreddit>> = _subscribedSubreddits.asStateFlow()
+
+    val sortedSubscribedSubreddits = combine(
+        _subscribedSubreddits,
+        settingsRepository.favoriteSubreddits
+    ) { subreddits, favorites ->
+        subreddits.sortedWith(
+            compareByDescending<Subreddit> { it.displayName.lowercase() in favorites }
+                .thenBy { it.displayName.lowercase() }
+        )
+    }
     
     private val _cachedSubreddits = MutableStateFlow<Map<String, Subreddit>>(emptyMap())
 

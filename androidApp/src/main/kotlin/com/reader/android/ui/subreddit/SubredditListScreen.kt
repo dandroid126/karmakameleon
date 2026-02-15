@@ -13,7 +13,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -40,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.reader.android.ui.components.formatNumber
+import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.Subreddit
@@ -52,8 +56,10 @@ fun SubredditListScreen(
 ) {
     val subredditRepository: SubredditRepository = koinInject()
     val userRepository: UserRepository = koinInject()
+    val settingsRepository: SettingsRepository = koinInject()
     
-    val subscribedSubreddits by subredditRepository.subscribedSubreddits.collectAsState()
+    val subscribedSubreddits by subredditRepository.sortedSubscribedSubreddits.collectAsState(emptyList())
+    val favoriteSubreddits by settingsRepository.favoriteSubreddits.collectAsState()
     val isLoggedIn by userRepository.isLoggedIn.collectAsState()
     var isLoading by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -125,6 +131,8 @@ fun SubredditListScreen(
                     items(searchResults) { subreddit ->
                         SubredditListItem(
                             subreddit = subreddit,
+                            isFavorite = subreddit.displayName.lowercase() in favoriteSubreddits,
+                            onFavoriteClick = { settingsRepository.toggleFavoriteSubreddit(subreddit.displayName) },
                             onClick = { onSubredditClick(subreddit.displayName) }
                         )
                     }
@@ -166,6 +174,8 @@ fun SubredditListScreen(
                     ) { subreddit ->
                         SubredditListItem(
                             subreddit = subreddit,
+                            isFavorite = subreddit.displayName.lowercase() in favoriteSubreddits,
+                            onFavoriteClick = { settingsRepository.toggleFavoriteSubreddit(subreddit.displayName) },
                             onClick = { onSubredditClick(subreddit.displayName) }
                         )
                     }
@@ -178,6 +188,8 @@ fun SubredditListScreen(
 @Composable
 private fun SubredditListItem(
     subreddit: Subreddit,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
     onClick: () -> Unit
 ) {
     ListItem(
@@ -214,6 +226,15 @@ private fun SubredditListItem(
                         )
                     }
                 }
+            }
+        },
+        trailingContent = {
+            IconButton(onClick = onFavoriteClick) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         modifier = Modifier.clickable(onClick = onClick)
