@@ -40,9 +40,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -69,6 +71,7 @@ import com.reader.shared.ui.profile.ProfileViewModel
 import com.reader.shared.ui.profile.SavedContentType
 import com.reader.android.ui.components.CommentItem
 import com.reader.android.ui.components.PostCard
+import com.reader.android.ui.components.ReplyBar
 import com.reader.android.ui.components.SortBottomSheet
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
@@ -96,6 +99,7 @@ fun ProfileScreen(
     val clipboardManager = LocalClipboardManager.current
     val isOwnProfile = username == null
     var selectedCommentId by remember { mutableStateOf<String?>(null) }
+    var deleteConfirmCommentId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(username) {
         if (username != null) {
@@ -140,6 +144,24 @@ fun ProfileScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            if (uiState.isLoggedIn && uiState.editingCommentId != null) {
+                ReplyBar(
+                    replyText = uiState.replyText,
+                    onReplyTextChange = viewModel::setReplyText,
+                    onSubmit = viewModel::submitEdit,
+                    onCancel = viewModel::cancelEdit,
+                    placeholder = "Edit comment..."
+                )
+            } else if (uiState.isLoggedIn && uiState.replyingTo != null) {
+                ReplyBar(
+                    replyText = uiState.replyText,
+                    onReplyTextChange = viewModel::setReplyText,
+                    onSubmit = viewModel::submitReply,
+                    onCancel = { viewModel.setReplyingTo(null) }
+                )
+            }
         }
     ) { padding ->
         Box(
@@ -315,9 +337,9 @@ fun ProfileScreen(
                                                     clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
                                                     android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
                                                 },
-                                                onReply = {},
-                                                onEdit = {},
-                                                onDelete = {},
+                                                onReply = { viewModel.setReplyingTo(comment.name) },
+                                                onEdit = { viewModel.startEditComment(comment) },
+                                                onDelete = { deleteConfirmCommentId = comment.id },
                                                 onSave = { viewModel.saveComment(comment) },
                                                 isLoggedIn = uiState.isLoggedIn,
                                                 loggedInUsername = uiState.account?.name,
@@ -457,9 +479,9 @@ fun ProfileScreen(
                                                                 clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
                                                                 android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
                                                             },
-                                                            onReply = {},
-                                                            onEdit = {},
-                                                            onDelete = {},
+                                                            onReply = { viewModel.setReplyingTo(comment.name) },
+                                                            onEdit = { viewModel.startEditComment(comment) },
+                                                            onDelete = { deleteConfirmCommentId = comment.id },
                                                             onSave = { viewModel.saveComment(comment) },
                                                             isLoggedIn = uiState.isLoggedIn,
                                                             loggedInUsername = uiState.account?.name,
@@ -531,6 +553,27 @@ fun ProfileScreen(
                 }
             }
         }
+    }
+
+    if (deleteConfirmCommentId != null) {
+        AlertDialog(
+            onDismissRequest = { deleteConfirmCommentId = null },
+            title = { Text("Delete Comment") },
+            text = { Text("Are you sure you want to delete this comment? This cannot be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteConfirmCommentId?.let { viewModel.deleteComment(it) }
+                    deleteConfirmCommentId = null
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteConfirmCommentId = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

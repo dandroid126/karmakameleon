@@ -107,6 +107,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import com.reader.android.data.PendingQuote
+import com.reader.android.ui.components.ReplyBar
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.ui.post.FlatCommentItem
 import com.reader.shared.ui.post.PostDetailViewModel
@@ -1021,75 +1022,3 @@ private fun MoreCommentsButton(
     }
 }
 
-@Composable
-private fun ReplyBar(
-    replyText: String,
-    onReplyTextChange: (String) -> Unit,
-    onSubmit: () -> Unit,
-    onCancel: () -> Unit,
-    placeholder: String = "Write a reply...",
-    onSaveDraft: () -> Unit = {},
-    onLoadDraft: () -> Unit = {},
-    onQuote: () -> Unit = {},
-    hasDraft: Boolean = false,
-    showDraftControls: Boolean = false
-) {
-    val maxHeight = (LocalConfiguration.current.screenHeightDp / 2).dp
-
-    Surface(
-        tonalElevation = 3.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onCancel) {
-                    Icon(Icons.Default.Close, contentDescription = "Cancel")
-                }
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = onQuote) {
-                        Text("Quote", style = MaterialTheme.typography.labelSmall)
-                    }
-                    if (showDraftControls) {
-                        if (hasDraft) {
-                            TextButton(onClick = onLoadDraft) {
-                                Text("Load Draft", style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                        TextButton(
-                            onClick = onSaveDraft,
-                            enabled = replyText.isNotBlank()
-                        ) {
-                            Text("Save Draft", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                }
-                IconButton(
-                    onClick = onSubmit,
-                    enabled = replyText.isNotBlank()
-                ) {
-                    Icon(Icons.Default.Send, contentDescription = "Send")
-                }
-            }
-            OutlinedTextField(
-                value = replyText,
-                onValueChange = onReplyTextChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = maxHeight),
-                placeholder = { Text(placeholder) },
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences)
-            )
-        }
-    }
-}
