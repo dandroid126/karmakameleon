@@ -17,7 +17,7 @@ val androidModule = module {
     single { ReadPostsRepository(androidContext()) }
     single { CommentDraftRepository(androidContext()) }
     single { SettingsRepository(androidContext()) }
-    viewModel { FeedViewModel(get(), get(), get()) }
+    viewModel { FeedViewModel(get(), get(), get(), get()) }
     viewModel { params -> PostDetailViewModel(params[0], params[1], get(), get(), get(), get(), params.values.getOrNull(2) as? String) }
     viewModel { params -> SubredditViewModel(params.get(), get(), get(), get()) }
     viewModel { ProfileViewModel(get(), get()) }

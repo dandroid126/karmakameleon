@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -69,6 +70,7 @@ fun PostCard(
     onDownvote: () -> Unit,
     onSave: () -> Unit,
     onHide: () -> Unit,
+    onBlockSubreddit: () -> Unit = {},
     isLoggedIn: Boolean,
     onLinkClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -413,6 +415,17 @@ fun PostCard(
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Share, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Block r/${post.subreddit}") },
+                            onClick = {
+                                onBlockSubreddit()
+                                Toast.makeText(context, "Blocked r/${post.subreddit}", Toast.LENGTH_SHORT).show()
+                                showMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Block, contentDescription = null)
                             }
                         )
                     }

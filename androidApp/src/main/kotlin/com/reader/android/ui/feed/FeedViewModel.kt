@@ -2,6 +2,7 @@ package com.reader.android.ui.feed
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.reader.android.data.SettingsRepository
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.data.repository.UserRepository
@@ -11,8 +12,15 @@ import com.reader.shared.domain.model.TimeFilter
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+enum class FeedType(val displayName: String, val subreddit: String?) {
+    HOME("Home", null),
+    ALL("r/all", "all"),
+    POPULAR("r/popular", "popular")
+}
 
 data class FeedUiState(
     val posts: List<Post> = emptyList(),
@@ -22,6 +30,7 @@ data class FeedUiState(
     val currentSort: PostSort = PostSort.HOT,
     val currentTimeFilter: TimeFilter = TimeFilter.DAY,
     val currentSubreddit: String? = null,
+    val currentFeedType: FeedType = FeedType.HOME,
     val after: String? = null,
     val hasMore: Boolean = true,
     val isLoggedIn: Boolean = false
@@ -30,7 +39,8 @@ data class FeedUiState(
 class FeedViewModel(
     private val postRepository: PostRepository,
     private val subredditRepository: SubredditRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FeedUiState())
@@ -38,8 +48,20 @@ class FeedViewModel(
 
     init {
         viewModelScope.launch {
-            userRepository.isLoggedIn.collect { isLoggedIn ->
-                _uiState.update { it.copy(isLoggedIn = isLoggedIn) }
+            combine(
+                userRepository.isLoggedIn,
+                settingsRepository.blockedSubreddits
+            ) { isLoggedIn, blockedSubs ->
+                isLoggedIn to blockedSubs
+            }.collect { (isLoggedIn, blockedSubs) ->
+                _uiState.update { state ->
+                    state.copy(
+                        isLoggedIn = isLoggedIn,
+                        posts = state.posts.filter { post ->
+                            post.subreddit.lowercase() !in blockedSubs.map { it.lowercase() }
+                        }
+                    )
+                }
             }
         }
         loadPosts()
@@ -144,6 +166,16 @@ class FeedViewModel(
         if (_uiState.value.currentSubreddit == subreddit) return
         _uiState.update { it.copy(currentSubreddit = subreddit, posts = emptyList(), after = null) }
         loadPosts()
+    }
+
+    fun setFeedType(feedType: FeedType) {
+        if (_uiState.value.currentFeedType == feedType) return
+        _uiState.update { it.copy(currentFeedType = feedType, currentSubreddit = feedType.subreddit, posts = emptyList(), after = null) }
+        loadPosts()
+    }
+
+    fun blockSubreddit(subreddit: String) {
+        settingsRepository.addBlockedSubreddit(subreddit)
     }
 
     fun vote(post: Post, direction: Int) {

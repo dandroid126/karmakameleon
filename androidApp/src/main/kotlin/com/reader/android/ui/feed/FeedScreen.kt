@@ -1,8 +1,10 @@
 package com.reader.android.ui.feed
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,9 +15,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -53,6 +58,7 @@ fun FeedScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     var showSortSheet by remember { mutableStateOf(false) }
+    var showFeedTypeMenu by remember { mutableStateOf(false) }
     val readPostsRepository: ReadPostsRepository = koinInject()
     val readPostIds by readPostsRepository.readPostIds.collectAsState()
     
@@ -70,11 +76,40 @@ fun FeedScreen(
         }
     }
 
+    LaunchedEffect(uiState.currentFeedType) {
+        listState.scrollToItem(0)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(uiState.currentSubreddit?.let { "r/$it" } ?: "Home")
+                    Box {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { showFeedTypeMenu = true }
+                        ) {
+                            Text(uiState.currentFeedType.displayName)
+                            Icon(
+                                Icons.Default.ArrowDropDown,
+                                contentDescription = "Change feed"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showFeedTypeMenu,
+                            onDismissRequest = { showFeedTypeMenu = false }
+                        ) {
+                            FeedType.entries.forEach { feedType ->
+                                DropdownMenuItem(
+                                    text = { Text(feedType.displayName) },
+                                    onClick = {
+                                        viewModel.setFeedType(feedType)
+                                        showFeedTypeMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                 },
                 actions = {
                     IconButton(onClick = { showSortSheet = true }) {
@@ -132,6 +167,7 @@ fun FeedScreen(
                             onDownvote = { viewModel.vote(post, if (post.likes == false) 0 else -1) },
                             onSave = { viewModel.save(post) },
                             onHide = { viewModel.hide(post) },
+                            onBlockSubreddit = { viewModel.blockSubreddit(post.subreddit) },
                             isLoggedIn = uiState.isLoggedIn,
                             onLinkClick = onLinkClick,
                             isRead = readPostIds.contains(post.id)
