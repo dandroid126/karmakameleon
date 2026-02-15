@@ -44,10 +44,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.reader.android.data.ReadPostsRepository
 import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.SortBottomSheet
 import com.reader.android.ui.components.formatNumber
+import com.reader.shared.data.repository.ReadPostsRepository
+import com.reader.shared.ui.subreddit.SubredditViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf

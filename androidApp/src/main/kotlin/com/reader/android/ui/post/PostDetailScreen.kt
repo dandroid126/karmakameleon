@@ -91,11 +91,9 @@ import com.reader.android.ui.components.FullScreenImageViewer
 import com.reader.android.ui.components.RichFlairChip
 import com.reader.android.ui.components.MarkdownText
 import com.reader.android.ui.components.ProgressiveAsyncImage
-import com.reader.android.ui.components.RedditLink
 import com.reader.android.ui.components.VideoPlayer
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
-import com.reader.android.ui.components.parseRedditLink
 import coil3.compose.AsyncImage
 import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.CommentSort
@@ -109,7 +107,11 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import com.reader.android.data.PendingQuote
-import com.reader.android.data.SettingsRepository
+import com.reader.shared.data.repository.SettingsRepository
+import com.reader.shared.ui.post.FlatCommentItem
+import com.reader.shared.ui.post.PostDetailViewModel
+import com.reader.shared.util.RedditLink
+import com.reader.shared.util.parseRedditLink
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch

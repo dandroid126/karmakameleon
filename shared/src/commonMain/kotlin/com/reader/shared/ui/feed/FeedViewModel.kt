@@ -1,9 +1,9 @@
-package com.reader.android.ui.feed
+package com.reader.shared.ui.feed
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.reader.android.data.SettingsRepository
 import com.reader.shared.data.repository.PostRepository
+import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.Post

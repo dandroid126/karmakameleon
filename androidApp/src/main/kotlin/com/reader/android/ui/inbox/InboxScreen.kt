@@ -51,6 +51,7 @@ import com.reader.android.ui.components.formatTimeAgo
 import com.reader.shared.domain.model.InboxFilter
 import com.reader.shared.domain.model.Message
 import com.reader.shared.domain.model.MessageType
+import com.reader.shared.ui.inbox.InboxViewModel
 import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

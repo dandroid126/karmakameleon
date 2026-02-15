@@ -1,15 +1,12 @@
-package com.reader.android.data
+package com.reader.shared.data.repository
 
-import android.content.Context
-import android.content.SharedPreferences
+import com.russhwolf.settings.Settings
+import com.russhwolf.settings.set
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class ReadPostsRepository(context: Context) {
-
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+class ReadPostsRepository(private val settings: Settings) {
 
     private val _readPostIds = MutableStateFlow(loadReadPostIds())
     val readPostIds: StateFlow<Set<String>> = _readPostIds.asStateFlow()
@@ -19,15 +16,19 @@ class ReadPostsRepository(context: Context) {
     fun markAsRead(postId: String) {
         val updated = _readPostIds.value + postId
         _readPostIds.value = updated
-        prefs.edit().putStringSet(KEY_READ_POSTS, updated).apply()
+        saveReadPostIds(updated)
     }
 
     private fun loadReadPostIds(): Set<String> {
-        return prefs.getStringSet(KEY_READ_POSTS, emptySet()) ?: emptySet()
+        val stored = settings.getStringOrNull(KEY_READ_POSTS) ?: return emptySet()
+        return stored.split(",").filter { it.isNotBlank() }.toSet()
+    }
+
+    private fun saveReadPostIds(postIds: Set<String>) {
+        settings[KEY_READ_POSTS] = postIds.joinToString(",")
     }
 
     companion object {
-        private const val PREFS_NAME = "read_posts_prefs"
         private const val KEY_READ_POSTS = "read_post_ids"
     }
 }

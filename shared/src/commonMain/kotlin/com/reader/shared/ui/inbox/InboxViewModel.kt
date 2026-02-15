@@ -1,4 +1,4 @@
-package com.reader.android.ui.inbox
+package com.reader.shared.ui.inbox
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

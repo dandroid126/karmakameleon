@@ -44,11 +44,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.reader.android.data.ReadPostsRepository
 import com.reader.android.ui.components.PostCard
-import com.reader.android.ui.components.RedditLink
+import com.reader.shared.data.repository.ReadPostsRepository
 import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.SearchType
+import com.reader.shared.ui.search.SearchViewModel
+import com.reader.shared.util.RedditLink
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 

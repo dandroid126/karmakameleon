@@ -57,7 +57,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.reader.android.data.ReadPostsRepository
+import com.reader.shared.data.repository.ReadPostsRepository
+import com.reader.shared.ui.profile.ProfileTab
+import com.reader.shared.ui.profile.ProfileViewModel
 import com.reader.android.ui.components.CommentItem
 import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.SortBottomSheet

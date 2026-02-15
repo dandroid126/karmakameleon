@@ -1,4 +1,4 @@
-package com.reader.android.ui.subreddit
+package com.reader.shared.ui.subreddit
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

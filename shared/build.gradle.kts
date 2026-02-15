@@ -24,11 +24,16 @@ kotlin {
             implementation(libs.multiplatform.settings.no.arg)
             implementation(libs.multiplatform.settings.coroutines)
             implementation(libs.napier)
+            implementation(libs.lifecycle.viewmodel)
         }
         
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
+        }
+        
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
     }
 }

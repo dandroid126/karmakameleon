@@ -1,6 +1,6 @@
-package com.reader.android.ui.components
+package com.reader.shared.util
 
-import androidx.core.net.toUri
+import io.ktor.http.Url
 
 sealed class RedditLink {
     data class Subreddit(val name: String) : RedditLink()
@@ -19,18 +19,18 @@ fun parseRedditLink(url: String): RedditLink {
         url
     }
 
-    val uri = try {
-        normalizedUrl.toUri()
+    val parsedUrl = try {
+        Url(normalizedUrl)
     } catch (_: Exception) {
         return RedditLink.External(url)
     }
 
-    val host = uri.host ?: return RedditLink.External(url)
+    val host = parsedUrl.host
     if (!redditHostRegex.matches(host)) {
         return RedditLink.External(url)
     }
 
-    val pathSegments = uri.pathSegments ?: return RedditLink.External(url)
+    val pathSegments = parsedUrl.segments.filter { it.isNotEmpty() }
 
     return when {
         pathSegments.size >= 6

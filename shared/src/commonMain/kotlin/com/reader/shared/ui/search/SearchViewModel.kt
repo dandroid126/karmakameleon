@@ -1,9 +1,7 @@
-package com.reader.android.ui.search
+package com.reader.shared.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.reader.android.ui.components.RedditLink
-import com.reader.android.ui.components.parseRedditLink
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.domain.model.Post
@@ -11,6 +9,8 @@ import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.SearchType
 import com.reader.shared.domain.model.Subreddit
 import com.reader.shared.domain.model.TimeFilter
+import com.reader.shared.util.RedditLink
+import com.reader.shared.util.parseRedditLink
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

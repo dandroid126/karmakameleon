@@ -1,9 +1,9 @@
-package com.reader.android.ui.post
+package com.reader.shared.ui.post
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.reader.android.data.CommentDraftRepository
 import com.reader.shared.data.api.CommentOrMore
+import com.reader.shared.data.repository.CommentDraftRepository
 import com.reader.shared.data.repository.CommentRepository
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.UserRepository
@@ -56,7 +56,6 @@ class PostDetailViewModel(
     val uiState: StateFlow<PostDetailUiState> = _uiState.asStateFlow()
 
     init {
-        // Show cached post immediately so the header renders while comments load
         postRepository.getCachedPost(postId)?.let { cachedPost ->
             _uiState.update { it.copy(post = cachedPost) }
         }
@@ -270,7 +269,6 @@ class PostDetailViewModel(
         val commentByName = mutableMapOf<String, Comment>()
         for (c in comments) commentByName[c.name] = c
 
-        // Track child names per parent and more entries per parent (only within this batch)
         val childNamesOf = mutableMapOf<String, MutableList<String>>()
         for (c in comments) {
             if (c.parentId in commentByName) {
@@ -284,7 +282,6 @@ class PostDetailViewModel(
             }
         }
 
-        // Build tree bottom-up (deepest first)
         for (c in comments.sortedByDescending { it.depth }) {
             val childNames = childNamesOf[c.name]
             val more = moreOf[c.name]
@@ -297,7 +294,6 @@ class PostDetailViewModel(
             }
         }
 
-        // Roots: items whose parent is not in this batch
         val result = mutableListOf<CommentOrMore>()
         for (c in comments) {
             if (c.parentId !in commentByName) {
@@ -431,7 +427,6 @@ class PostDetailViewModel(
             .filterIsInstance<FlatCommentItem.CommentEntry>()
             .map { it.comment }
         var current = flatComments.find { it.id == commentId } ?: return
-        // Walk up as far as we can in loaded comments
         while (true) {
             val parent = flatComments.find { it.name == current.parentId }
             if (parent != null) {
@@ -440,9 +435,7 @@ class PostDetailViewModel(
                 break
             }
         }
-        // current is the topmost loaded comment
-        if (!current.parentId.startsWith("t1_")) return // already at root
-        // Walk up via API to find the actual root
+        if (!current.parentId.startsWith("t1_")) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, comments = emptyList(), selectedCommentId = null, hiddenCommentIds = emptySet()) }
             var parentCommentId = current.parentId.removePrefix("t1_")
@@ -456,7 +449,6 @@ class PostDetailViewModel(
                 val comments = result.getOrNull()?.second ?: break
                 val topComment = comments.filterIsInstance<CommentOrMore.CommentItem>().firstOrNull()?.comment ?: break
                 if (!topComment.parentId.startsWith("t1_")) {
-                    // Found the root - navigate to it
                     _uiState.update { it.copy(
                         focusedCommentId = topComment.id,
                         post = result.getOrNull()?.first ?: _uiState.value.post,
@@ -467,7 +459,6 @@ class PostDetailViewModel(
                 }
                 parentCommentId = topComment.parentId.removePrefix("t1_")
             }
-            // Fallback: just show all comments
             _uiState.update { it.copy(isLoading = false) }
             viewAllComments()
         }

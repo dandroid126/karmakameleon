@@ -1,4 +1,4 @@
-package com.reader.android.ui.profile
+package com.reader.shared.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

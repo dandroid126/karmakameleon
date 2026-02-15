@@ -6,6 +6,7 @@ compose = "1.7.0"
 compose-multiplatform = "1.10.0"
 androidx-activityCompose = "1.12.3"
 androidx-lifecycle = "2.10.0"
+lifecycle-viewmodel-kmp = "2.8.0"
 ktor = "3.4.0"
 kotlinx-coroutines = "1.10.2"
 kotlinx-serialization = "1.10.0"
@@ -77,6 +78,9 @@ multiplatform-settings-coroutines = { module = "com.russhwolf:multiplatform-sett
 
 # Logging
 napier = { module = "io.github.aakira:napier", version.ref = "napier" }
+
+# Lifecycle ViewModel (KMP)
+lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle-viewmodel-kmp" }
 
 # Markdown
 markdown-renderer = { module = "com.mikepenz:multiplatform-markdown-renderer", version.ref = "markdown-renderer" }
