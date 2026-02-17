@@ -70,7 +70,12 @@ fun WebBrowserScreen(
                             domStorageEnabled = true
                             databaseEnabled = true
                         }
-                        loadUrl(url)
+                        val httpsUrl = if (url.startsWith("http://")) {
+                            url.replace("http://", "https://")
+                        } else {
+                            url
+                        }
+                        loadUrl(httpsUrl)
                         webViewRef = this
                     }
                 },
