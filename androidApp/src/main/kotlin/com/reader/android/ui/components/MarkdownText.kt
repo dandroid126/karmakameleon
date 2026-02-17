@@ -799,17 +799,20 @@ private suspend fun saveImageToGallery(context: android.content.Context, url: St
 
             if (uri != null) {
                 val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-                connection.connectTimeout = 15000
-                connection.readTimeout = 15000
-                connection.connect()
-                connection.inputStream.use { input ->
-                    context.contentResolver.openOutputStream(uri)?.use { output ->
-                        input.copyTo(output)
+                try {
+                    connection.connectTimeout = 15000
+                    connection.readTimeout = 15000
+                    connection.connect()
+                    connection.inputStream.use { input ->
+                        context.contentResolver.openOutputStream(uri)?.use { output ->
+                            input.copyTo(output)
+                        }
                     }
-                }
-                connection.disconnect()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Image saved", Toast.LENGTH_SHORT).show()
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "Image saved", Toast.LENGTH_SHORT).show()
+                    }
+                } finally {
+                    connection.disconnect()
                 }
             }
         } catch (e: Exception) {

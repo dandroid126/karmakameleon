@@ -74,6 +74,10 @@ fun WebBrowserScreen(
                         webViewRef = this
                     }
                 },
+                onRelease = { webView ->
+                    webView.stopLoading()
+                    webView.destroy()
+                },
                 modifier = Modifier.fillMaxSize()
             )
 

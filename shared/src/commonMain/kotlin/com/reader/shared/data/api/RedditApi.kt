@@ -217,6 +217,7 @@ class RedditApi(
                 append("dir", direction.toString())
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -230,6 +231,7 @@ class RedditApi(
                 append("id", thingId)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -241,6 +243,7 @@ class RedditApi(
                 append("id", thingId)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -254,6 +257,7 @@ class RedditApi(
                 append("id", thingId)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -265,6 +269,7 @@ class RedditApi(
                 append("id", thingId)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -308,6 +313,7 @@ class RedditApi(
                 append("sr_name", subredditName)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -320,6 +326,7 @@ class RedditApi(
                 append("sr_name", subredditName)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -363,9 +370,9 @@ class RedditApi(
             parameter("raw_json", 1)
         }
         
+        val body = response.bodyAsText() // Always consume body to release connection
         if (!response.status.isSuccess()) return null
         
-        val body = response.bodyAsText()
         val accountDto = json.decodeFromString<AccountDto>(body)
         return mapAccount(accountDto)
     }
@@ -546,9 +553,8 @@ class RedditApi(
             }))
         }
         
+        val body = response.bodyAsText() // Always consume body to release connection
         if (!response.status.isSuccess()) return null
-        
-        val body = response.bodyAsText()
         // Parse the response to extract the new comment
         return try {
             val jsonResponse = json.parseToJsonElement(body).jsonObject
@@ -571,6 +577,7 @@ class RedditApi(
                 append("text", text)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -582,6 +589,7 @@ class RedditApi(
                 append("id", thingId)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -616,6 +624,7 @@ class RedditApi(
                 append("text", body)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -627,6 +636,7 @@ class RedditApi(
                 append("id", thingId)
             }))
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -635,6 +645,7 @@ class RedditApi(
             method = HttpMethod.Post
             url("$BASE_URL/api/read_all_messages")
         }
+        response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
@@ -668,9 +679,9 @@ class RedditApi(
             }))
         }
         
+        val body = response.bodyAsText() // Always consume body to release connection
         if (!response.status.isSuccess()) return null
         
-        val body = response.bodyAsText()
         return try {
             val jsonResponse = json.parseToJsonElement(body).jsonObject
             val data = jsonResponse["json"]?.jsonObject?.get("data")?.jsonObject
