@@ -22,6 +22,9 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Reply
@@ -58,6 +61,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -725,6 +729,7 @@ private fun PostHeader(
     renderInlineImages: Boolean = true,
     onInlineImageClick: (String) -> Unit = {}
 ) {
+    var isBodyExpanded by rememberSaveable { mutableStateOf(true) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -781,6 +786,25 @@ private fun PostHeader(
             }
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            IconButton(onClick = { isBodyExpanded = !isBodyExpanded }) {
+                Icon(
+                    imageVector = if (isBodyExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (isBodyExpanded) "Collapse post body" else "Expand post body",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        AnimatedVisibility(
+            visible = isBodyExpanded,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+        Column {
         val galleryItems = post.galleryData?.items?.filter { it.url != null } ?: emptyList()
         if (galleryItems.size > 1 && !post.isNsfw) {
             Spacer(modifier = Modifier.height(12.dp))
@@ -924,6 +948,8 @@ private fun PostHeader(
                 modifier = Modifier.clickable { onLinkClick(post.url) }
             )
         }
+        } // end Column inside AnimatedVisibility
+        } // end AnimatedVisibility
 
         Spacer(modifier = Modifier.height(16.dp))
 
