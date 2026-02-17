@@ -2,6 +2,7 @@ package com.reader.android.ui.profile
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,14 +21,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,16 +40,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,20 +66,20 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.reader.shared.data.repository.ReadPostsRepository
-import com.reader.shared.ui.profile.ProfileTab
-import com.reader.shared.ui.profile.ProfileViewModel
-import com.reader.shared.ui.profile.SavedContentType
 import com.reader.android.ui.components.CommentItem
 import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.ReplyBar
 import com.reader.android.ui.components.SortBottomSheet
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
+import com.reader.shared.data.repository.ReadPostsRepository
 import com.reader.shared.domain.model.Account
 import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.TimeFilter
 import com.reader.shared.domain.model.User
+import com.reader.shared.ui.profile.ProfileTab
+import com.reader.shared.ui.profile.ProfileViewModel
+import com.reader.shared.ui.profile.SavedContentType
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -208,7 +209,7 @@ fun ProfileScreen(
                         val selectedTabIndex = tabs.indexOf(uiState.selectedTab).coerceAtLeast(0)
 
                         if (tabs.size <= 3) {
-                            androidx.compose.material3.TabRow(
+                            TabRow(
                                 selectedTabIndex = selectedTabIndex,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -335,12 +336,18 @@ fun ProfileScreen(
                                                 },
                                                 onShare = {
                                                     clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
-                                                    android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
                                                 },
                                                 onReply = { viewModel.setReplyingTo(comment.name) },
                                                 onEdit = { viewModel.startEditComment(comment) },
                                                 onDelete = { deleteConfirmCommentId = comment.id },
-                                                onSave = { viewModel.saveComment(comment) },
+                                                onSave = {
+                                                    viewModel.saveComment(comment)
+                                                    Toast.makeText(
+                                                        context,
+                                                        if (comment.isSaved) "Unsaved comment" else "Saved comment",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                },
                                                 isLoggedIn = uiState.isLoggedIn,
                                                 loggedInUsername = uiState.account?.name,
                                                 onLinkClick = onLinkClick,
@@ -477,12 +484,18 @@ fun ProfileScreen(
                                                             },
                                                             onShare = {
                                                                 clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
-                                                                android.widget.Toast.makeText(context, "Link copied", android.widget.Toast.LENGTH_SHORT).show()
                                                             },
                                                             onReply = { viewModel.setReplyingTo(comment.name) },
                                                             onEdit = { viewModel.startEditComment(comment) },
                                                             onDelete = { deleteConfirmCommentId = comment.id },
-                                                            onSave = { viewModel.saveComment(comment) },
+                                                            onSave = {
+                                                                viewModel.saveComment(comment)
+                                                                Toast.makeText(
+                                                                    context,
+                                                                    if (comment.isSaved) "Unsaved comment" else "Saved comment",
+                                                                    Toast.LENGTH_SHORT
+                                                                ).show()
+                                                            },
                                                             isLoggedIn = uiState.isLoggedIn,
                                                             loggedInUsername = uiState.account?.name,
                                                             onLinkClick = onLinkClick,

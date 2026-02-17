@@ -37,8 +37,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.reader.android.ui.components.WebBrowserScreen
-import com.reader.shared.util.RedditLink
-import com.reader.shared.util.parseRedditLink
 import com.reader.android.ui.feed.FeedScreen
 import com.reader.android.ui.inbox.InboxScreen
 import com.reader.android.ui.post.PostDetailScreen
@@ -47,6 +45,8 @@ import com.reader.android.ui.search.SearchScreen
 import com.reader.android.ui.settings.SettingsScreen
 import com.reader.android.ui.subreddit.SubredditListScreen
 import com.reader.android.ui.subreddit.SubredditScreen
+import com.reader.shared.util.RedditLink
+import com.reader.shared.util.parseRedditLink
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 

@@ -3,9 +3,9 @@ package com.reader.shared.data.api
 import com.reader.shared.data.api.dto.AccountDto
 import com.reader.shared.data.api.dto.CommentDto
 import com.reader.shared.data.api.dto.GalleryDataDto
-import com.reader.shared.data.api.dto.MediaMetadataDto
 import com.reader.shared.data.api.dto.ListingData
 import com.reader.shared.data.api.dto.MediaDto
+import com.reader.shared.data.api.dto.MediaMetadataDto
 import com.reader.shared.data.api.dto.MessageDto
 import com.reader.shared.data.api.dto.MoreChildrenResponse
 import com.reader.shared.data.api.dto.MoreCommentsDto
