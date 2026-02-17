@@ -96,6 +96,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val commentState by viewModel.commentViewModel.uiState.collectAsState()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val isOwnProfile = username == null
@@ -147,20 +148,20 @@ fun ProfileScreen(
             )
         },
         bottomBar = {
-            if (uiState.isLoggedIn && uiState.editingCommentId != null) {
+            if (uiState.isLoggedIn && commentState.editingCommentId != null) {
                 ReplyBar(
-                    replyText = uiState.replyText,
-                    onReplyTextChange = viewModel::setReplyText,
+                    replyText = commentState.replyText,
+                    onReplyTextChange = viewModel.commentViewModel::setReplyText,
                     onSubmit = viewModel::submitEdit,
-                    onCancel = viewModel::cancelEdit,
+                    onCancel = viewModel.commentViewModel::cancelEdit,
                     placeholder = "Edit comment..."
                 )
-            } else if (uiState.isLoggedIn && uiState.replyingTo != null) {
+            } else if (uiState.isLoggedIn && commentState.replyingTo != null) {
                 ReplyBar(
-                    replyText = uiState.replyText,
-                    onReplyTextChange = viewModel::setReplyText,
+                    replyText = commentState.replyText,
+                    onReplyTextChange = viewModel.commentViewModel::setReplyText,
                     onSubmit = viewModel::submitReply,
-                    onCancel = { viewModel.setReplyingTo(null) }
+                    onCancel = { viewModel.commentViewModel.setReplyingTo(null) }
                 )
             }
         }
@@ -337,8 +338,8 @@ fun ProfileScreen(
                                                 onShare = {
                                                     clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
                                                 },
-                                                onReply = { viewModel.setReplyingTo(comment.name) },
-                                                onEdit = { viewModel.startEditComment(comment) },
+                                                onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
+                                                onEdit = { viewModel.commentViewModel.startEditComment(comment) },
                                                 onDelete = { deleteConfirmCommentId = comment.id },
                                                 onSave = {
                                                     viewModel.saveComment(comment)
@@ -485,8 +486,8 @@ fun ProfileScreen(
                                                             onShare = {
                                                                 clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
                                                             },
-                                                            onReply = { viewModel.setReplyingTo(comment.name) },
-                                                            onEdit = { viewModel.startEditComment(comment) },
+                                                            onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
+                                                            onEdit = { viewModel.commentViewModel.startEditComment(comment) },
                                                             onDelete = { deleteConfirmCommentId = comment.id },
                                                             onSave = {
                                                                 viewModel.saveComment(comment)

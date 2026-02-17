@@ -12,6 +12,7 @@ import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.TimeFilter
 import com.reader.shared.domain.model.User
+import com.reader.shared.ui.comment.CommentViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,11 +46,7 @@ data class ProfileUiState(
     val authUrl: String? = null,
     val isOwnProfile: Boolean = true,
     val clientId: String = "",
-    val savedContentType: SavedContentType = SavedContentType.POSTS,
-    val replyingTo: String? = null,
-    val editingCommentId: String? = null,
-    val replyText: String = "",
-    val editingOriginalText: String = ""
+    val savedContentType: SavedContentType = SavedContentType.POSTS
 )
 
 enum class ProfileTab(val displayName: String) {
@@ -69,9 +66,11 @@ enum class SavedContentType(val displayName: String) {
 class ProfileViewModel(
     private val userRepository: UserRepository,
     private val postRepository: PostRepository,
-    private val commentRepository: CommentRepository,
+    commentRepository: CommentRepository,
     private val authManager: AuthManager
 ) : ViewModel() {
+
+    val commentViewModel = CommentViewModel(commentRepository)
 
     private val _uiState = MutableStateFlow(ProfileUiState(clientId = authManager.getClientId()))
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
@@ -94,6 +93,7 @@ class ProfileViewModel(
                 }
             }
         }
+
     }
 
     fun setClientId(clientId: String) {
@@ -402,83 +402,37 @@ class ProfileViewModel(
     }
 
     fun saveComment(comment: Comment) {
-        viewModelScope.launch {
-            val result = commentRepository.save(comment)
-            result.onSuccess { updatedComment ->
-                updateComment(updatedComment)
-            }
+        commentViewModel.saveCommentWithCallback(comment) { updatedComment ->
+            updateComment(updatedComment)
         }
-    }
-
-    fun setReplyingTo(commentName: String?) {
-        _uiState.update { it.copy(replyingTo = commentName, replyText = "", editingCommentId = null) }
-    }
-
-    fun setReplyText(text: String) {
-        _uiState.update { it.copy(replyText = text) }
-    }
-
-    fun startEditComment(comment: Comment) {
-        _uiState.update {
-            it.copy(
-                editingCommentId = comment.id,
-                replyText = comment.body,
-                editingOriginalText = comment.body,
-                replyingTo = null
-            )
-        }
-    }
-
-    fun cancelEdit() {
-        _uiState.update { it.copy(editingCommentId = null, replyText = "", editingOriginalText = "") }
     }
 
     fun submitReply() {
-        val parentName = _uiState.value.replyingTo ?: return
-        val text = _uiState.value.replyText
-        if (text.isBlank()) return
-
-        viewModelScope.launch {
-            val result = commentRepository.submitComment(parentName, text)
-            result.onSuccess {
-                _uiState.update { it.copy(replyingTo = null, replyText = "") }
-            }
-        }
+        commentViewModel.submitReplyWithCallback { /* Reply submitted, state already cleared */ }
     }
 
     fun submitEdit() {
-        val commentId = _uiState.value.editingCommentId ?: return
-        val text = _uiState.value.replyText
-        if (text.isBlank()) return
-
-        val comment = findCommentById(commentId) ?: return
-
-        viewModelScope.launch {
-            val result = commentRepository.editComment(comment, text)
-            result.onSuccess { updatedComment ->
+        commentViewModel.submitEditWithCallback(
+            findComment = { findCommentById(it) },
+            onSuccess = { updatedComment ->
                 updateComment(updatedComment)
-                _uiState.update { it.copy(editingCommentId = null, replyText = "", editingOriginalText = "") }
             }
-        }
+        )
     }
 
     fun deleteComment(commentId: String) {
         val comment = findCommentById(commentId) ?: return
-
-        viewModelScope.launch {
-            val result = commentRepository.deleteComment(comment)
-            result.onSuccess {
-                _uiState.update { state ->
-                    state.copy(
-                        comments = state.comments.filter { it.id != commentId },
-                        savedComments = state.savedComments.filter { it.id != commentId }
-                    )
-                }
+        commentViewModel.deleteCommentWithCallback(comment) {
+            _uiState.update { state ->
+                state.copy(
+                    comments = state.comments.filter { it.id != commentId },
+                    savedComments = state.savedComments.filter { it.id != commentId }
+                )
             }
         }
     }
 
-    private fun findCommentById(commentId: String): Comment? {
+    fun findCommentById(commentId: String): Comment? {
         return _uiState.value.comments.find { it.id == commentId }
             ?: _uiState.value.savedComments.find { it.id == commentId }
     }

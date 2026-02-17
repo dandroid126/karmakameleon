@@ -89,7 +89,7 @@ import com.reader.shared.domain.model.CommentSort
 import com.reader.shared.domain.model.MoreComments
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
-import com.reader.shared.ui.post.FlatCommentItem
+import com.reader.shared.ui.comment.FlatCommentItem
 import com.reader.shared.ui.post.PostDetailViewModel
 import com.reader.shared.util.RedditLink
 import com.reader.shared.util.parseRedditLink
@@ -114,6 +114,7 @@ fun PostDetailScreen(
     viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId, commentId) }
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val commentState by viewModel.commentViewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
@@ -139,46 +140,46 @@ fun PostDetailScreen(
             if (text != null) {
                 PendingQuote.consume()
                 val post = uiState.post ?: return@collect
-                if (uiState.replyingTo != null || uiState.editingCommentId != null) {
-                    viewModel.insertQuotedText(text)
+                if (commentState.replyingTo != null || commentState.editingCommentId != null) {
+                    viewModel.commentViewModel.insertQuotedText(text)
                 } else {
-                    val parentId = uiState.lastTouchedCommentName ?: post.name
-                    viewModel.startReplyWithQuote(parentId, text)
+                    val parentId = commentState.lastTouchedCommentName ?: post.name
+                    viewModel.commentViewModel.startReplyWithQuote(parentId, text)
                 }
             }
         }
     }
 
-    val isReplyBarOpen = uiState.isLoggedIn && (uiState.editingCommentId != null || uiState.replyingTo != null)
+    val isReplyBarOpen = uiState.isLoggedIn && (commentState.editingCommentId != null || commentState.replyingTo != null)
     BackHandler(enabled = isReplyBarOpen) {
-        if (uiState.editingCommentId != null) {
-            val draft = uiState.savedDraftText
-            if (uiState.replyText != uiState.editingOriginalText && uiState.replyText != (draft ?: "")) {
-                pendingDismissAction = { viewModel.cancelEdit() }
+        if (commentState.editingCommentId != null) {
+            val draft = commentState.savedDraftText
+            if (commentState.replyText != commentState.editingOriginalText && commentState.replyText != (draft ?: "")) {
+                pendingDismissAction = { viewModel.commentViewModel.cancelEdit() }
                 showDiscardDraftOption = true
                 showDiscardDialog = true
             } else {
-                viewModel.cancelEdit()
+                viewModel.commentViewModel.cancelEdit()
             }
-        } else if (uiState.replyingTo != null) {
-            val draft = uiState.savedDraftText
-            if (uiState.replyText.isNotBlank() && uiState.replyText != (draft ?: "")) {
-                pendingDismissAction = { viewModel.setReplyingTo(null) }
+        } else if (commentState.replyingTo != null) {
+            val draft = commentState.savedDraftText
+            if (commentState.replyText.isNotBlank() && commentState.replyText != (draft ?: "")) {
+                pendingDismissAction = { viewModel.commentViewModel.setReplyingTo(null) }
                 showDiscardDraftOption = true
                 showDiscardDialog = true
             } else {
-                viewModel.setReplyingTo(null)
+                viewModel.commentViewModel.setReplyingTo(null)
             }
         }
     }
 
-    val flattenedComments = remember(uiState.comments, uiState.hiddenCommentIds) {
-        viewModel.getFlattenedComments()
+    val flattenedComments = remember(commentState.comments, commentState.hiddenCommentIds) {
+        viewModel.commentViewModel.getFlattenedComments()
     }
 
     fun scrollToComment(targetCommentId: String) {
         coroutineScope.launch {
-            val currentSelectedId = uiState.selectedCommentId
+            val currentSelectedId = commentState.selectedCommentId
             var currentOffset = 0
             if (currentSelectedId != null) {
                 val currentItemInfo = listState.layoutInfo.visibleItemsInfo.find {
@@ -189,7 +190,7 @@ fun PostDetailScreen(
                 }
             }
 
-            viewModel.selectComment(targetCommentId)
+            viewModel.commentViewModel.selectComment(targetCommentId)
 
             // Wait for recomposition and layout to reflect the new selection
             // (control bars appear/disappear, changing item heights)
@@ -205,7 +206,7 @@ fun PostDetailScreen(
                     listState.scroll { scrollBy(scrollAmount.toFloat()) }
                 }
             } else {
-                val updatedFlat = viewModel.getFlattenedComments()
+                val updatedFlat = viewModel.commentViewModel.getFlattenedComments()
                 val targetIndex = updatedFlat.indexOfFirst {
                     it is FlatCommentItem.CommentEntry && it.comment.id == targetCommentId
                 }
@@ -237,33 +238,33 @@ fun PostDetailScreen(
             )
         },
         bottomBar = {
-            if (uiState.isLoggedIn && uiState.editingCommentId != null) {
-                val draft = uiState.savedDraftText
+            if (uiState.isLoggedIn && commentState.editingCommentId != null) {
+                val draft = commentState.savedDraftText
                 val hasDraft = draft != null
                 ReplyBar(
-                    replyText = uiState.replyText,
-                    onReplyTextChange = viewModel::setReplyText,
-                    onSubmit = viewModel::submitEdit,
+                    replyText = commentState.replyText,
+                    onReplyTextChange = viewModel.commentViewModel::setReplyText,
+                    onSubmit = viewModel.commentViewModel::submitEdit,
                     onCancel = {
-                        if (uiState.replyText != uiState.editingOriginalText && uiState.replyText != (draft ?: "")) {
-                            pendingDismissAction = { viewModel.cancelEdit() }
+                        if (commentState.replyText != commentState.editingOriginalText && commentState.replyText != (draft ?: "")) {
+                            pendingDismissAction = { viewModel.commentViewModel.cancelEdit() }
                             showDiscardDraftOption = true
                             showDiscardDialog = true
                         } else {
-                            viewModel.cancelEdit()
+                            viewModel.commentViewModel.cancelEdit()
                         }
                     },
                     onSaveDraft = {
-                        viewModel.saveDraft()
+                        viewModel.commentViewModel.saveDraft()
                         Toast.makeText(context, "Draft saved", Toast.LENGTH_SHORT).show()
                     },
                     onLoadDraft = {
                         if (draft != null) {
-                            if (uiState.replyText.isNotBlank() && uiState.replyText != draft) {
+                            if (commentState.replyText.isNotBlank() && commentState.replyText != draft) {
                                 pendingDraftText = draft
                                 showLoadDraftDialog = true
                             } else {
-                                viewModel.applyDraft(draft)
+                                viewModel.commentViewModel.applyDraft(draft)
                             }
                         }
                     },
@@ -272,33 +273,33 @@ fun PostDetailScreen(
                     showDraftControls = true,
                     placeholder = "Edit comment..."
                 )
-            } else if (uiState.isLoggedIn && uiState.replyingTo != null) {
-                val draft = uiState.savedDraftText
+            } else if (uiState.isLoggedIn && commentState.replyingTo != null) {
+                val draft = commentState.savedDraftText
                 val hasDraft = draft != null
                 ReplyBar(
-                    replyText = uiState.replyText,
-                    onReplyTextChange = viewModel::setReplyText,
+                    replyText = commentState.replyText,
+                    onReplyTextChange = viewModel.commentViewModel::setReplyText,
                     onSubmit = viewModel::submitReply,
                     onCancel = {
-                        if (uiState.replyText.isNotBlank() && uiState.replyText != (draft ?: "")) {
-                            pendingDismissAction = { viewModel.setReplyingTo(null) }
+                        if (commentState.replyText.isNotBlank() && commentState.replyText != (draft ?: "")) {
+                            pendingDismissAction = { viewModel.commentViewModel.setReplyingTo(null) }
                             showDiscardDraftOption = true
                             showDiscardDialog = true
                         } else {
-                            viewModel.setReplyingTo(null)
+                            viewModel.commentViewModel.setReplyingTo(null)
                         }
                     },
                     onSaveDraft = {
-                        viewModel.saveDraft()
+                        viewModel.commentViewModel.saveDraft()
                         Toast.makeText(context, "Draft saved", Toast.LENGTH_SHORT).show()
                     },
                     onLoadDraft = {
                         if (draft != null) {
-                            if (uiState.replyText.isNotBlank() && uiState.replyText != draft) {
+                            if (commentState.replyText.isNotBlank() && commentState.replyText != draft) {
                                 pendingDraftText = draft
                                 showLoadDraftDialog = true
                             } else {
-                                viewModel.applyDraft(draft)
+                                viewModel.commentViewModel.applyDraft(draft)
                             }
                         }
                     },
@@ -369,13 +370,13 @@ fun PostDetailScreen(
                                 onDownvote = { viewModel.votePost(if (post.likes == false) 0 else -1) },
                                 onSave = { viewModel.savePost() },
                                 onSortClick = { showCommentSortSheet = true },
-                                onReply = { viewModel.setReplyingTo(post.name) },
+                                onReply = { viewModel.commentViewModel.setReplyingTo(post.name) },
                                 isLoggedIn = uiState.isLoggedIn,
                                 onLinkClick = onLinkClick,
                                 selectionVersion = selectionVersion,
                                 onTouchStart = {
                                     touchedSelectable.value = true
-                                    viewModel.setLastTouchedComment(null)
+                                    viewModel.commentViewModel.setLastTouchedComment(null)
                                 },
                                 onImageClick = { urls, page ->
                                     imageViewerUrls = urls
@@ -406,7 +407,7 @@ fun PostDetailScreen(
                             }
                         }
 
-                        if (uiState.isLoading && uiState.comments.isEmpty()) {
+                        if (uiState.isLoading && commentState.comments.isEmpty()) {
                             item {
                                 Box(
                                     modifier = Modifier
@@ -431,25 +432,25 @@ fun PostDetailScreen(
                             when (item) {
                                 is FlatCommentItem.CommentEntry -> {
                                     val comment = item.comment
-                                    val isSelected = uiState.selectedCommentId == comment.id
-                                    val isHidden = uiState.hiddenCommentIds.contains(comment.id)
+                                    val isSelected = commentState.selectedCommentId == comment.id
+                                    val isHidden = commentState.hiddenCommentIds.contains(comment.id)
                                     val isSingleThread = uiState.focusedCommentId != null
                                     CommentItem(
                                         comment = comment,
                                         isSelected = isSelected,
                                         isHidden = isHidden,
-                                        onSelect = { viewModel.selectComment(comment.id) },
-                                        onDone = { viewModel.selectComment(null) },
-                                        onHide = { viewModel.hideComment(comment.id) },
+                                        onSelect = { viewModel.commentViewModel.selectComment(comment.id) },
+                                        onDone = { viewModel.commentViewModel.selectComment(null) },
+                                        onHide = { viewModel.commentViewModel.hideComment(comment.id) },
                                         onPrev = {
-                                            viewModel.findPrevRootCommentId(comment.id)?.let { scrollToComment(it) }
+                                            viewModel.commentViewModel.findPrevRootCommentId(comment.id)?.let { scrollToComment(it) }
                                         },
                                         onNext = {
-                                            viewModel.findNextRootCommentId(comment.id)?.let { scrollToComment(it) }
+                                            viewModel.commentViewModel.findNextRootCommentId(comment.id)?.let { scrollToComment(it) }
                                         },
                                         onRoot = {
                                             if (isSingleThread) {
-                                                val rootId = viewModel.findRootCommentId(comment.id)
+                                                val rootId = viewModel.commentViewModel.findRootCommentId(comment.id)
                                                 if (rootId != null && rootId != comment.id) {
                                                     scrollToComment(rootId)
                                                 } else if (comment.parentId.startsWith("t1_")) {
@@ -457,14 +458,14 @@ fun PostDetailScreen(
                                                     viewModel.navigateToParentRoot(comment.id)
                                                 }
                                             } else {
-                                                viewModel.findRootCommentId(comment.id)?.let { rootId ->
+                                                viewModel.commentViewModel.findRootCommentId(comment.id)?.let { rootId ->
                                                     if (rootId != comment.id) scrollToComment(rootId)
                                                 }
                                             }
                                         },
                                         onParent = {
                                             if (isSingleThread) {
-                                                val parentId = viewModel.findParentCommentId(comment.id)
+                                                val parentId = viewModel.commentViewModel.findParentCommentId(comment.id)
                                                 if (parentId != null) {
                                                     scrollToComment(parentId)
                                                 } else if (comment.parentId.startsWith("t1_")) {
@@ -473,22 +474,22 @@ fun PostDetailScreen(
                                                     viewModel.navigateToComment(parentCommentId)
                                                 }
                                             } else {
-                                                viewModel.findParentCommentId(comment.id)?.let { scrollToComment(it) }
+                                                viewModel.commentViewModel.findParentCommentId(comment.id)?.let { scrollToComment(it) }
                                             }
                                         },
                                         onUserClick = onUserClick,
                                         onCommentUpdated = { updatedComment ->
-                                            viewModel.updateComment(updatedComment)
+                                            viewModel.commentViewModel.updateComment(updatedComment)
                                         },
                                         onShare = {
                                             val link = "https://www.reddit.com${comment.permalink}"
                                             clipboardManager.setText(AnnotatedString(link))
                                         },
-                                        onReply = { viewModel.setReplyingTo(comment.name) },
-                                        onEdit = { viewModel.startEditComment(comment) },
+                                        onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
+                                        onEdit = { viewModel.commentViewModel.startEditComment(comment) },
                                         onDelete = { deleteConfirmCommentId = comment.id },
                                         onSave = {
-                                            viewModel.saveComment(comment)
+                                            viewModel.commentViewModel.saveComment(comment)
                                             Toast.makeText(
                                                 context,
                                                 if (comment.isSaved) "Unsaved comment" else "Saved comment",
@@ -509,7 +510,7 @@ fun PostDetailScreen(
                                         selectionVersion = selectionVersion,
                                         onTouchStart = {
                                             touchedSelectable.value = true
-                                            viewModel.setLastTouchedComment(comment.name)
+                                            viewModel.commentViewModel.setLastTouchedComment(comment.name)
                                         },
                                         renderInlineImages = inlineImagesEnabled,
                                         onInlineImageClick = { url ->
@@ -529,7 +530,7 @@ fun PostDetailScreen(
                                     MoreCommentsButton(
                                         more = item.more,
                                         onClick = { viewModel.loadMoreComments(item.more) },
-                                        isLoading = uiState.loadingMoreId == item.more.id
+                                        isLoading = commentState.loadingMoreId == item.more.id
                                     )
                                 }
                             }
@@ -570,7 +571,7 @@ fun PostDetailScreen(
             text = { Text("Are you sure you want to delete this comment? This cannot be undone.") },
             confirmButton = {
                 TextButton(onClick = {
-                    deleteConfirmCommentId?.let { viewModel.deleteComment(it) }
+                    deleteConfirmCommentId?.let { viewModel.commentViewModel.deleteComment(it) }
                     deleteConfirmCommentId = null
                 }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
@@ -591,7 +592,7 @@ fun PostDetailScreen(
             text = { Text("Loading the draft will overwrite your current text. Continue?") },
             confirmButton = {
                 TextButton(onClick = {
-                    pendingDraftText?.let { viewModel.applyDraft(it) }
+                    pendingDraftText?.let { viewModel.commentViewModel.applyDraft(it) }
                     pendingDraftText = null
                     showLoadDraftDialog = false
                 }) {
@@ -622,7 +623,7 @@ fun PostDetailScreen(
                 Row {
                     if (showDiscardDraftOption) {
                         TextButton(onClick = {
-                            viewModel.saveDraft()
+                            viewModel.commentViewModel.saveDraft()
                             pendingDismissAction?.invoke()
                             pendingDismissAction = null
                             showDiscardDraftOption = false
