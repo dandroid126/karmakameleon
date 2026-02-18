@@ -375,9 +375,25 @@ private fun delimitedPattern(delimiter: String, style: SpanStyle): (String, Int)
 private fun parseInlineMarkdown(text: String): androidx.compose.ui.text.AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     val superscriptSize = MaterialTheme.typography.bodySmall.fontSize
-    val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[', ']', '(', ')', '#', '-', '.', '+', '|')
+    val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[', ']', '(', ')', '#', '-', '.', '+', '|', '/')
 
     val patterns: List<(String, Int) -> InlineMatch?> = listOf(
+        // Escaped subreddit \/r/ or user \/u/ → plain text, no link
+        { t, i ->
+            when {
+                t.startsWith("\\/r/", i) -> {
+                    val nameStart = i + 4
+                    val endIdx = (nameStart until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
+                    InlineMatch("/r/" + t.substring(nameStart, endIdx), endIndex = endIdx)
+                }
+                t.startsWith("\\/u/", i) -> {
+                    val nameStart = i + 4
+                    val endIdx = (nameStart until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
+                    InlineMatch("/u/" + t.substring(nameStart, endIdx), endIndex = endIdx)
+                }
+                else -> null
+            }
+        },
         // Backslash escape
         { t, i ->
             if (t.startsWith("\\", i) && i + 1 < t.length && t[i + 1] in escapeChars) {
@@ -468,24 +484,47 @@ private fun parseInlineMarkdown(text: String): androidx.compose.ui.text.Annotate
             if (t.startsWith("https://", i) || t.startsWith("http://", i)) {
                 val endIdx = (i until t.length).firstOrNull { t[it].isWhitespace() } ?: t.length
                 val url = t.substring(i, endIdx)
-                InlineMatch(url, SpanStyle(color = linkColor), url, endIdx)
+                val httpsUrl = if (url.startsWith("http://")) {
+                    url.replace("http://", "https://")
+                } else {
+                    url
+                }
+                InlineMatch(url, SpanStyle(color = linkColor), httpsUrl, endIdx)
             } else null
         },
-        // Subreddit reference r/
+        // Subreddit reference r/ or /r/
         { t, i ->
-            if (t.startsWith("r/", i)) {
-                val endIdx = (i + 2 until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
-                val ref = t.substring(i, endIdx)
-                InlineMatch(ref, SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
-            } else null
+            when {
+                t.startsWith("/r/", i) -> {
+                    val nameStart = i + 3
+                    val endIdx = (nameStart until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
+                    val ref = "r/" + t.substring(nameStart, endIdx)
+                    InlineMatch(t.substring(i, endIdx), SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
+                }
+                t.startsWith("r/", i) -> {
+                    val endIdx = (i + 2 until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
+                    val ref = t.substring(i, endIdx)
+                    InlineMatch(ref, SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
+                }
+                else -> null
+            }
         },
-        // User reference u/
+        // User reference u/ or /u/
         { t, i ->
-            if (t.startsWith("u/", i)) {
-                val endIdx = (i + 2 until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
-                val ref = t.substring(i, endIdx)
-                InlineMatch(ref, SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
-            } else null
+            when {
+                t.startsWith("/u/", i) -> {
+                    val nameStart = i + 3
+                    val endIdx = (nameStart until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
+                    val ref = "u/" + t.substring(nameStart, endIdx)
+                    InlineMatch(t.substring(i, endIdx), SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
+                }
+                t.startsWith("u/", i) -> {
+                    val endIdx = (i + 2 until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
+                    val ref = t.substring(i, endIdx)
+                    InlineMatch(ref, SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
+                }
+                else -> null
+            }
         }
     )
 

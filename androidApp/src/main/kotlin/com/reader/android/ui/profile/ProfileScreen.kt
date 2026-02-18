@@ -82,6 +82,7 @@ import com.reader.shared.ui.profile.ProfileViewModel
 import com.reader.shared.ui.profile.SavedContentType
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,7 +112,7 @@ fun ProfileScreen(
 
     LaunchedEffect(uiState.authUrl) {
         uiState.authUrl?.let { url ->
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
             context.startActivity(intent)
             viewModel.clearAuthUrl()
         }
