@@ -248,20 +248,21 @@ fun PostCard(
                 }
 
                 // Fade-out gradient at bottom when content is tall
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(32.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    MaterialTheme.colorScheme.surfaceContainerLow
-                                )
-                            )
-                        )
-                )
+                // TODO: this isn't working, and I can't seem to fix it.
+//                Box(
+//                    modifier = Modifier
+//                        .align(Alignment.BottomCenter)
+//                        .fillMaxWidth()
+//                        .height(32.dp)
+//                        .background(
+//                            Brush.verticalGradient(
+//                                colors = listOf(
+//                                    Color.Transparent,
+//                                    MaterialTheme.colorScheme.surfaceContainerLow
+//                                )
+//                            )
+//                        )
+//                )
             }
             
             Spacer(modifier = Modifier.height(8.dp))
