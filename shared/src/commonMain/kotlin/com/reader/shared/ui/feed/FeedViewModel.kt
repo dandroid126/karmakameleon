@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -64,6 +66,21 @@ class FeedViewModel(
                 }
             }
         }
+        postRepository.postUpdates
+            .onEach { updatedPost ->
+                _uiState.update { state ->
+                    val exists = state.posts.any { it.id == updatedPost.id }
+                    if (!exists) return@update state
+                    state.copy(
+                        posts = if (updatedPost.isHidden) {
+                            state.posts.filter { it.id != updatedPost.id }
+                        } else {
+                            state.posts.map { if (it.id == updatedPost.id) updatedPost else it }
+                        }
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
         loadPosts()
     }
 

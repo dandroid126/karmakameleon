@@ -16,6 +16,8 @@ import com.reader.shared.ui.comment.CommentViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -93,6 +95,22 @@ class ProfileViewModel(
                 }
             }
         }
+        postRepository.postUpdates
+            .onEach { updatedPost ->
+                _uiState.update { state ->
+                    state.copy(
+                        posts = state.posts.map { if (it.id == updatedPost.id) updatedPost else it },
+                        savedPosts = if (updatedPost.isSaved) {
+                            state.savedPosts.map { if (it.id == updatedPost.id) updatedPost else it }
+                        } else {
+                            state.savedPosts.filter { it.id != updatedPost.id }
+                        },
+                        upvotedPosts = state.upvotedPosts.map { if (it.id == updatedPost.id) updatedPost else it },
+                        downvotedPosts = state.downvotedPosts.map { if (it.id == updatedPost.id) updatedPost else it }
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
 
     }
 

@@ -10,7 +10,10 @@ import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.TimeFilter
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
@@ -18,6 +21,8 @@ class PostRepository(
     private val redditApi: RedditApi,
 ) {
     private val _cachedPosts = MutableStateFlow<Map<String, Post>>(emptyMap())
+    private val _postUpdates = MutableSharedFlow<Post>(extraBufferCapacity = 16)
+    val postUpdates: SharedFlow<Post> = _postUpdates.asSharedFlow()
     
     suspend fun getPosts(
         subreddit: String? = null,
@@ -119,6 +124,7 @@ class PostRepository(
                     score = post.score + scoreDiff
                 )
                 _cachedPosts.update { it + (post.id to updatedPost) }
+                _postUpdates.emit(updatedPost)
                 Result.success(updatedPost)
             } else {
                 Result.failure(Exception("Vote failed"))
@@ -167,6 +173,7 @@ class PostRepository(
             if (success) {
                 val updatedPost = post.copy(isSaved = !post.isSaved)
                 _cachedPosts.update { it + (post.id to updatedPost) }
+                _postUpdates.emit(updatedPost)
                 Result.success(updatedPost)
             } else {
                 Result.failure(Exception("Save failed"))
@@ -186,6 +193,7 @@ class PostRepository(
             if (success) {
                 val updatedPost = post.copy(isHidden = !post.isHidden)
                 _cachedPosts.update { it + (post.id to updatedPost) }
+                _postUpdates.emit(updatedPost)
                 Result.success(updatedPost)
             } else {
                 Result.failure(Exception("Hide failed"))
@@ -232,6 +240,4 @@ class PostRepository(
     }
 
     fun getCachedPost(postId: String): Post? = _cachedPosts.value[postId]
-    
-    fun observeCachedPost(postId: String): Flow<Map<String, Post>> = _cachedPosts.asStateFlow()
 }
