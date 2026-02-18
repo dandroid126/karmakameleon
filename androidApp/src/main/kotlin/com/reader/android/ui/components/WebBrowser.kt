@@ -68,7 +68,6 @@ fun WebBrowserScreen(
                         settings.apply {
                             javaScriptEnabled = true
                             domStorageEnabled = true
-                            databaseEnabled = true
                         }
                         val httpsUrl = if (url.startsWith("http://")) {
                             url.replace("http://", "https://")

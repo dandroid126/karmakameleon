@@ -17,7 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -119,7 +119,7 @@ fun FeedScreen(
                 },
                 actions = {
                     IconButton(onClick = { showSortSheet = true }) {
-                        Icon(Icons.Default.Sort, contentDescription = "Sort")
+                        Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort")
                     }
                     IconButton(onClick = { viewModel.loadPosts(forceRefresh = true) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")

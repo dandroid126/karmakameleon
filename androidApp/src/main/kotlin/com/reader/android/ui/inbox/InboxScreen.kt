@@ -13,7 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AlternateEmail
-import androidx.compose.material.icons.filled.Article
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
@@ -170,7 +170,7 @@ private fun MessageItem(
 ) {
     val icon = when (message.type) {
         MessageType.COMMENT_REPLY -> Icons.Default.ChatBubble
-        MessageType.POST_REPLY -> Icons.Default.Article
+        MessageType.POST_REPLY -> Icons.AutoMirrored.Default.Article
         MessageType.USERNAME_MENTION -> Icons.Default.AlternateEmail
         MessageType.PRIVATE_MESSAGE -> Icons.Default.Mail
         MessageType.MOD_MESSAGE -> Icons.Default.Notifications

@@ -23,7 +23,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -42,10 +42,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -60,9 +60,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import android.content.ClipData
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -99,7 +102,8 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val commentState by viewModel.commentViewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
     val isOwnProfile = username == null
     var selectedCommentId by remember { mutableStateOf<String?>(null) }
     var deleteConfirmCommentId by remember { mutableStateOf<String?>(null) }
@@ -211,7 +215,7 @@ fun ProfileScreen(
                         val selectedTabIndex = tabs.indexOf(uiState.selectedTab).coerceAtLeast(0)
 
                         if (tabs.size <= 3) {
-                            TabRow(
+                            PrimaryTabRow(
                                 selectedTabIndex = selectedTabIndex,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -224,7 +228,7 @@ fun ProfileScreen(
                                 }
                             }
                         } else {
-                            ScrollableTabRow(
+                            PrimaryScrollableTabRow(
                                 selectedTabIndex = selectedTabIndex,
                                 edgePadding = 8.dp,
                                 modifier = Modifier.fillMaxWidth()
@@ -336,7 +340,7 @@ fun ProfileScreen(
                                                     viewModel.updateComment(updatedComment)
                                                 },
                                                 onShare = {
-                                                    clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
+                                                    coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", "https://reddit.com${comment.permalink}"))) }
                                                 },
                                                 onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
                                                 onEdit = { viewModel.commentViewModel.startEditComment(comment) },
@@ -481,7 +485,7 @@ fun ProfileScreen(
                                                                 viewModel.updateComment(updatedComment)
                                                             },
                                                             onShare = {
-                                                                clipboardManager.setText(AnnotatedString("https://reddit.com${comment.permalink}"))
+                                                                coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", "https://reddit.com${comment.permalink}"))) }
                                                             },
                                                             onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
                                                             onEdit = { viewModel.commentViewModel.startEditComment(comment) },
@@ -629,7 +633,7 @@ private fun LoginPrompt(
             modifier = Modifier.fillMaxWidth(0.7f),
             enabled = clientId.isNotBlank()
         ) {
-            Icon(Icons.Default.Login, contentDescription = null)
+            Icon(Icons.AutoMirrored.Default.Login, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text("Sign In")
         }

@@ -10,12 +10,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.List
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,7 +58,7 @@ sealed class Screen(
     val unselectedIcon: ImageVector
 ) {
     data object Feed : Screen("feed", "Feed", Icons.Filled.Home, Icons.Outlined.Home)
-    data object Subreddits : Screen("subreddits", "Subreddits", Icons.Filled.List, Icons.Outlined.List)
+    data object Subreddits : Screen("subreddits", "Subreddits", Icons.AutoMirrored.Filled.List, Icons.AutoMirrored.Outlined.List)
     data object Search : Screen("search", "Search", Icons.Filled.Search, Icons.Outlined.Search)
     data object Inbox : Screen("inbox", "Inbox", Icons.Filled.Email, Icons.Outlined.Email)
     data object Profile : Screen("profile", "Profile", Icons.Filled.Person, Icons.Outlined.Person)

@@ -7,6 +7,7 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -36,10 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import android.content.ClipData
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -267,7 +270,6 @@ private fun ClickableMarkdownText(
     text: androidx.compose.ui.text.AnnotatedString,
     style: TextStyle,
     modifier: Modifier = Modifier,
-    onLinkClick: (String) -> Unit = {},
     onTextClick: (() -> Unit)? = null
 ) {
     val mergedStyle = if (style.color == Color.Unspecified) {
@@ -275,19 +277,10 @@ private fun ClickableMarkdownText(
     } else {
         style
     }
-    ClickableText(
+    Text(
         text = text,
         style = mergedStyle,
-        modifier = modifier,
-        onClick = { offset ->
-            val annotation = text.getStringAnnotations(tag = "URL", start = offset, end = offset)
-                .firstOrNull()
-            if (annotation != null) {
-                onLinkClick(annotation.item)
-            } else {
-                onTextClick?.invoke()
-            }
-        }
+        modifier = if (onTextClick != null) modifier.clickable(onClick = onTextClick) else modifier
     )
 }
 
@@ -341,10 +334,9 @@ private fun RenderTable(
                         contentAlignment = Alignment.TopStart
                     ) {
                         ClickableMarkdownText(
-                            text = parseInlineMarkdown(cellContent),
+                            text = parseInlineMarkdown(cellContent, onLinkClick),
                             style = if (rowIndex == 0) style.copy(fontWeight = FontWeight.Bold) else style,
                             modifier = Modifier.wrapContentHeight(),
-                            onLinkClick = onLinkClick,
                             onTextClick = onTextClick
                         )
                     }
@@ -375,7 +367,7 @@ private fun delimitedPattern(delimiter: String, style: SpanStyle): (String, Int)
 }
 
 @Composable
-private fun parseInlineMarkdown(text: String): androidx.compose.ui.text.AnnotatedString {
+private fun parseInlineMarkdown(text: String, onLinkClick: (String) -> Unit = {}): androidx.compose.ui.text.AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
     val superscriptSize = MaterialTheme.typography.bodySmall.fontSize
     val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[', ']', '(', ')', '#', '-', '.', '+', '|', '/')
@@ -539,15 +531,23 @@ private fun parseInlineMarkdown(text: String): androidx.compose.ui.text.Annotate
             if (match != null) {
                 append(text.substring(current, i))
                 if (match.linkUrl != null) {
-                    pushStringAnnotation(tag = "URL", annotation = match.linkUrl)
-                }
-                if (match.style != null) {
+                    pushLink(
+                        LinkAnnotation.Clickable(
+                            tag = match.linkUrl,
+                            styles = TextLinkStyles(style = match.style),
+                            linkInteractionListener = { onLinkClick(match.linkUrl) }
+                        )
+                    )
+                    if (match.style != null) {
+                        withStyle(match.style) { append(match.text) }
+                    } else {
+                        append(match.text)
+                    }
+                    pop()
+                } else if (match.style != null) {
                     withStyle(match.style) { append(match.text) }
                 } else {
                     append(match.text)
-                }
-                if (match.linkUrl != null) {
-                    pop()
                 }
                 i = match.endIndex
                 current = i
@@ -648,10 +648,9 @@ private fun RenderMixedContent(
         val segments = splitIntoContentSegments(text)
         if (segments.all { it is ContentSegment.Text }) {
             ClickableMarkdownText(
-                text = parseInlineMarkdown(text),
+                text = parseInlineMarkdown(text, onLinkClick),
                 style = style,
                 modifier = modifier,
-                onLinkClick = onLinkClick,
                 onTextClick = onTextClick
             )
         } else {
@@ -660,9 +659,8 @@ private fun RenderMixedContent(
                     when (segment) {
                         is ContentSegment.Text -> {
                             ClickableMarkdownText(
-                                text = parseInlineMarkdown(segment.text),
+                                text = parseInlineMarkdown(segment.text, onLinkClick),
                                 style = style,
-                                onLinkClick = onLinkClick,
                                 onTextClick = onTextClick
                             )
                         }
@@ -671,20 +669,20 @@ private fun RenderMixedContent(
                             val label = if (isGif) "[gif]" else "[img]"
                             val linkColor = MaterialTheme.colorScheme.primary
                             val annotated = buildAnnotatedString {
-                                pushStringAnnotation(tag = "IMAGE", annotation = segment.url)
-                                withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
-                                    append(label)
-                                }
+                                pushLink(
+                                    LinkAnnotation.Clickable(
+                                        tag = segment.url,
+                                        styles = TextLinkStyles(style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
+                                        linkInteractionListener = { onImageClick(segment.url) }
+                                    )
+                                )
+                                append(label)
                                 pop()
                             }
-                            ClickableText(
+                            Text(
                                 text = annotated,
                                 style = style,
-                                modifier = Modifier.padding(vertical = 2.dp),
-                                onClick = { offset ->
-                                    annotated.getStringAnnotations("IMAGE", offset, offset)
-                                        .firstOrNull()?.let { onImageClick(it.item) }
-                                }
+                                modifier = Modifier.padding(vertical = 2.dp)
                             )
                         }
                     }
@@ -698,10 +696,9 @@ private fun RenderMixedContent(
 
     if (segments.size == 1 && segments[0] is ContentSegment.Text) {
         ClickableMarkdownText(
-            text = parseInlineMarkdown(text),
+            text = parseInlineMarkdown(text, onLinkClick),
             style = style,
             modifier = modifier,
-            onLinkClick = onLinkClick,
             onTextClick = onTextClick
         )
         return
@@ -712,9 +709,8 @@ private fun RenderMixedContent(
             when (segment) {
                 is ContentSegment.Text -> {
                     ClickableMarkdownText(
-                        text = parseInlineMarkdown(segment.text),
+                        text = parseInlineMarkdown(segment.text, onLinkClick),
                         style = style,
-                        onLinkClick = onLinkClick,
                         onTextClick = onTextClick
                     )
                 }
@@ -741,7 +737,7 @@ private fun InlineImage(
     var aspectRatio by remember(url) { mutableStateOf(aspectRatioCache[url]) }
     var showMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
 
     Box(
@@ -782,8 +778,7 @@ private fun InlineImage(
                 DropdownMenuItem(
                     text = { Text("Copy Image URL") },
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(url))
-                        Toast.makeText(context, "URL copied", Toast.LENGTH_SHORT).show()
+                        scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", url))) }
                         showMenu = false
                     }
                 )

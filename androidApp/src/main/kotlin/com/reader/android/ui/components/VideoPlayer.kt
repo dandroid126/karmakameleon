@@ -31,8 +31,8 @@ import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -209,7 +209,7 @@ fun VideoPlayer(
                 }
             },
             onRelease = {
-                exoPlayer.clearVideoTextureView(it as TextureView)
+                exoPlayer.clearVideoTextureView(it)
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -344,7 +344,7 @@ fun VideoPlayer(
                         }
                     },
                     onRelease = {
-                        exoPlayer.clearVideoTextureView(it as TextureView)
+                        exoPlayer.clearVideoTextureView(it)
                     },
                     modifier = Modifier
                         .align(Alignment.Center)
@@ -462,7 +462,7 @@ private fun VideoControlsOverlay(
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = if (!hasAudio || isMuted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
+                        imageVector = if (!hasAudio || isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = if (!hasAudio) "No audio available"
                             else if (isMuted) "Unmute" else "Mute",
                         tint = if (!hasAudio) Color.Red else Color.White,

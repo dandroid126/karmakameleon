@@ -10,7 +10,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.NewReleases
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -78,7 +78,7 @@ fun SortBottomSheet(
                     }
                 )
                 SortOption(
-                    icon = Icons.Default.TrendingUp,
+                    icon = Icons.AutoMirrored.Default.TrendingUp,
                     text = "Top",
                     selected = currentSort == PostSort.TOP,
                     showArrow = true,

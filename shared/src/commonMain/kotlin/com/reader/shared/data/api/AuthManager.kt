@@ -16,7 +16,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.Parameters
 import io.ktor.http.encodeURLParameter
 import io.ktor.http.isSuccess
-import io.ktor.util.encodeBase64
+import kotlin.io.encoding.Base64
+import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -213,10 +214,9 @@ class AuthManager(
         return (1..30).map { chars.random() }.joinToString("")
     }
 
+    @OptIn(ExperimentalEncodingApi::class)
     private fun encodeCredentials(): String {
         val credentials = "${getClientId()}:"
-        return credentials.encodeToByteArray().encodeBase64()
+        return Base64.encode(credentials.encodeToByteArray())
     }
-
-    fun hasClientId(): Boolean = getClientId().isNotBlank()
 }

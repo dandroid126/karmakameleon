@@ -17,7 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -94,7 +94,7 @@ fun SubredditScreen(
                 },
                 actions = {
                     IconButton(onClick = { showSortSheet = true }) {
-                        Icon(Icons.Default.Sort, contentDescription = "Sort")
+                        Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort")
                     }
                     IconButton(onClick = { viewModel.loadPosts(forceRefresh = true) }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")

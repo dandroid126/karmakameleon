@@ -33,7 +33,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
@@ -71,9 +71,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import android.content.ClipData
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -117,7 +118,7 @@ fun PostDetailScreen(
     val commentState by viewModel.commentViewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
     val context = LocalContext.current
     val settingsRepository: SettingsRepository = koinInject()
     val inlineImagesEnabled by settingsRepository.inlineImagesEnabled.collectAsState()
@@ -479,7 +480,7 @@ fun PostDetailScreen(
                                         },
                                         onShare = {
                                             val link = "https://www.reddit.com${comment.permalink}"
-                                            clipboardManager.setText(AnnotatedString(link))
+                                            coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) }
                                         },
                                         onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
                                         onEdit = { viewModel.commentViewModel.startEditComment(comment) },
@@ -977,7 +978,7 @@ private fun PostHeader(
             Spacer(modifier = Modifier.weight(1f))
 
             IconButton(onClick = onSortClick) {
-                Icon(Icons.Default.Sort, contentDescription = "Sort comments", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort comments", tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (isLoggedIn) {
                 IconButton(onClick = onSave) {

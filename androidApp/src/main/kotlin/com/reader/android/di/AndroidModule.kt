@@ -7,7 +7,7 @@ import com.reader.shared.ui.profile.ProfileViewModel
 import com.reader.shared.ui.search.SearchViewModel
 import com.reader.shared.ui.subreddit.SubredditViewModel
 import com.reader.android.navigation.NavigationHandler
-import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val androidModule = module {

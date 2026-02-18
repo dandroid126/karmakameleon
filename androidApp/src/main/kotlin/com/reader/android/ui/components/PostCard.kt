@@ -49,9 +49,12 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
+import android.content.ClipData
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -77,7 +80,8 @@ fun PostCard(
     isRead: Boolean = false
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    val clipboardManager = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     
     Card(
@@ -409,8 +413,7 @@ fun PostCard(
                             text = { Text("Share") },
                             onClick = {
                                 val link = "https://www.reddit.com${post.permalink}"
-                                clipboardManager.setText(AnnotatedString(link))
-                                Toast.makeText(context, "Copied link", Toast.LENGTH_SHORT).show()
+                                coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) }
                                 showMenu = false
                             },
                             leadingIcon = {
