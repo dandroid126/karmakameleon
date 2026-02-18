@@ -86,11 +86,10 @@ class RedditApi(
         block: HttpRequestBuilder.() -> Unit
     ): HttpResponse {
         val token = authManager.getAccessToken()
+            ?: throw IllegalStateException("No Reddit Client ID configured. Please enter your Client ID in the Profile tab.")
         return httpClient.request {
             block()
-            if (token != null) {
-                header(HttpHeaders.Authorization, "Bearer $token")
-            }
+            header(HttpHeaders.Authorization, "Bearer $token")
             header(HttpHeaders.UserAgent, "Reader/1.0.0 (Android)")
         }
     }

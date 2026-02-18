@@ -150,6 +150,10 @@ class AuthManager(
     }
 
     private suspend fun getAnonymousToken(): String? {
+        if (getClientId().isEmpty()) {
+            Napier.w("No client ID configured, cannot fetch anonymous token")
+            return null
+        }
         return try {
             val deviceId = getOrCreateDeviceId()
             val response = httpClient.post("$AUTH_URL/access_token") {
