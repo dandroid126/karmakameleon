@@ -36,6 +36,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.compose.runtime.DisposableEffect
+import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.WebBrowserScreen
 import com.reader.android.ui.feed.FeedScreen
 import com.reader.android.ui.inbox.InboxScreen
@@ -45,10 +47,9 @@ import com.reader.android.ui.search.SearchScreen
 import com.reader.android.ui.settings.SettingsScreen
 import com.reader.android.ui.subreddit.SubredditListScreen
 import com.reader.android.ui.subreddit.SubredditScreen
-import com.reader.shared.util.RedditLink
-import com.reader.shared.util.parseRedditLink
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import org.koin.compose.koinInject
 
 sealed class Screen(
     val route: String,
@@ -96,6 +97,32 @@ fun ReaderApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val navigationHandler = koinInject<NavigationHandler>()
+
+    DisposableEffect(navController) {
+        navigationHandler.onSubredditClick = { name ->
+            navController.navigate(DetailScreen.SubredditDetail.createRoute(name))
+        }
+        navigationHandler.onUserClick = { username ->
+            navController.navigate(DetailScreen.UserProfile.createRoute(username))
+        }
+        navigationHandler.onExternalLinkClick = { url ->
+            navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+        }
+        navigationHandler.onPostClick = { subreddit, postId ->
+            navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
+        }
+        navigationHandler.onCommentClick = { subreddit, postId, commentId ->
+            navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, commentId))
+        }
+        onDispose {
+            navigationHandler.onSubredditClick = {}
+            navigationHandler.onUserClick = {}
+            navigationHandler.onExternalLinkClick = {}
+            navigationHandler.onPostClick = { _, _ -> }
+            navigationHandler.onCommentClick = { _, _, _ -> }
+        }
+    }
     
     val showBottomBar = bottomNavItems.any { screen ->
         currentDestination?.hierarchy?.any { it.route == screen.route } == true
@@ -154,6 +181,7 @@ fun ReaderApp() {
                     }
                 )
             }
+            // NOTE: FeedScreen/SearchScreen/SubredditScreen/PostCard still use explicit callbacks until PostCard is migrated
             
             composable(Screen.Subreddits.route) {
                 SubredditListScreen(
@@ -270,21 +298,6 @@ fun ReaderApp() {
                     postId = postId,
                     commentId = commentId,
                     onBackClick = { navController.popBackStack() },
-                    onSubredditClick = { subredditName ->
-                        navController.navigate(DetailScreen.SubredditDetail.createRoute(subredditName))
-                    },
-                    onUserClick = { username ->
-                        navController.navigate(DetailScreen.UserProfile.createRoute(username))
-                    },
-                    onLinkClick = { url ->
-                        when (val link = parseRedditLink(url)) {
-                            is RedditLink.Subreddit -> navController.navigate(DetailScreen.SubredditDetail.createRoute(link.name))
-                            is RedditLink.User -> navController.navigate(DetailScreen.UserProfile.createRoute(link.name))
-                            is RedditLink.Post -> navController.navigate(DetailScreen.PostDetail.createRoute(link.subreddit, link.postId))
-                            is RedditLink.Comment -> navController.navigate(DetailScreen.PostDetail.createRoute(link.subreddit, link.postId, link.commentId))
-                            is RedditLink.External -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
-                        }
-                    },
                     onGoToCommentNav = { targetCommentId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, targetCommentId))
                     }

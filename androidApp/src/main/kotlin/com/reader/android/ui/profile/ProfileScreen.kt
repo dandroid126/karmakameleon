@@ -332,7 +332,6 @@ fun ProfileScreen(
                                                 onNext = {},
                                                 onRoot = {},
                                                 onParent = {},
-                                                onUserClick = {},
                                                 onCommentUpdated = { updatedComment ->
                                                     viewModel.updateComment(updatedComment)
                                                 },
@@ -352,10 +351,8 @@ fun ProfileScreen(
                                                 },
                                                 isLoggedIn = uiState.isLoggedIn,
                                                 loggedInUsername = uiState.account?.name,
-                                                onLinkClick = onLinkClick,
                                                 showTopControls = false,
                                                 showSubreddit = true,
-                                                onSubredditClick = onSubredditClick,
                                                 onGoToCommentNav = { commentId ->
                                                     val postId = comment.linkId.removePrefix("t3_")
                                                     onCommentClick(comment.subreddit, postId, commentId)
@@ -480,7 +477,6 @@ fun ProfileScreen(
                                                             onNext = {},
                                                             onRoot = {},
                                                             onParent = {},
-                                                            onUserClick = {},
                                                             onCommentUpdated = { updatedComment ->
                                                                 viewModel.updateComment(updatedComment)
                                                             },
@@ -500,10 +496,8 @@ fun ProfileScreen(
                                                             },
                                                             isLoggedIn = uiState.isLoggedIn,
                                                             loggedInUsername = uiState.account?.name,
-                                                            onLinkClick = onLinkClick,
                                                             showTopControls = false,
                                                             showSubreddit = true,
-                                                            onSubredditClick = onSubredditClick,
                                                             onGoToCommentNav = { commentId ->
                                                                 val postId = comment.linkId.removePrefix("t3_")
                                                                 onCommentClick(comment.subreddit, postId, commentId)

@@ -54,31 +54,21 @@ import io.github.aakira.napier.Napier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.reader.shared.util.RedditLink
-import com.reader.shared.util.parseRedditLink
+import com.reader.android.navigation.NavigationHandler
 import java.io.File
+import org.koin.compose.koinInject
 
 @Composable
 fun MarkdownText(
     markdown: String,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodyMedium,
-    onLinkClick: (String) -> Unit = {},
     onTextClick: (() -> Unit)? = null,
     renderInlineImages: Boolean = true,
     onImageClick: (String) -> Unit = {},
-    onSubredditClick: ((String) -> Unit)? = null,
-    onUserClick: ((String) -> Unit)? = null
+    navigationHandler: NavigationHandler = koinInject()
 ) {
-    val handleLinkClick: (String) -> Unit = { url ->
-        when (val link = parseRedditLink(url)) {
-            is RedditLink.Subreddit -> onSubredditClick?.invoke(link.name) ?: onLinkClick(url)
-            is RedditLink.User -> onUserClick?.invoke(link.name) ?: onLinkClick(url)
-            is RedditLink.Post -> onLinkClick(url)
-            is RedditLink.Comment -> onLinkClick(url)
-            is RedditLink.External -> onLinkClick(url)
-        }
-    }
+    val handleLinkClick: (String) -> Unit = { url -> navigationHandler.handleLink(url) }
     val lines = markdown.split("\n")
     val density = LocalDensity.current
     Column(modifier = modifier) {

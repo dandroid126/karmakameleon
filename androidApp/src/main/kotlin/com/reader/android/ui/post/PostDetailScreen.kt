@@ -79,6 +79,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.reader.android.data.PendingQuote
+import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.CommentItem
 import com.reader.android.ui.components.FlairChip
 import com.reader.android.ui.components.FullScreenImageViewer
@@ -109,9 +110,6 @@ fun PostDetailScreen(
     postId: String,
     commentId: String? = null,
     onBackClick: () -> Unit,
-    onSubredditClick: (String) -> Unit,
-    onUserClick: (String) -> Unit,
-    onLinkClick: (String) -> Unit = {},
     onGoToCommentNav: (commentId: String) -> Unit = {},
     viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId, commentId) }
 ) {
@@ -366,22 +364,17 @@ fun PostDetailScreen(
                         item {
                             PostHeader(
                                 post = post,
-                                onSubredditClick = { onSubredditClick(post.subreddit) },
-                                onUserClick = { onUserClick(post.author) },
                                 onUpvote = { viewModel.votePost(if (post.likes == true) 0 else 1) },
                                 onDownvote = { viewModel.votePost(if (post.likes == false) 0 else -1) },
                                 onSave = { viewModel.savePost() },
                                 onSortClick = { showCommentSortSheet = true },
                                 onReply = { viewModel.commentViewModel.setReplyingTo(post.name) },
                                 isLoggedIn = uiState.isLoggedIn,
-                                onLinkClick = onLinkClick,
                                 selectionVersion = selectionVersion,
                                 onTouchStart = {
                                     touchedSelectable.value = true
                                     viewModel.commentViewModel.setLastTouchedComment(null)
                                 },
-                                onSubredditNameClick = onSubredditClick,
-                                onUserNameClick = onUserClick,
                                 onImageClick = { urls, page ->
                                     imageViewerUrls = urls
                                     imageViewerInitialPage = page
@@ -481,8 +474,6 @@ fun PostDetailScreen(
                                                 viewModel.commentViewModel.findParentCommentId(comment.id)?.let { scrollToComment(it) }
                                             }
                                         },
-                                        onUserClick = onUserClick,
-                                        onSubredditClick = onSubredditClick,
                                         onCommentUpdated = { updatedComment ->
                                             viewModel.commentViewModel.updateComment(updatedComment)
                                         },
@@ -503,7 +494,6 @@ fun PostDetailScreen(
                                         },
                                         isLoggedIn = uiState.isLoggedIn,
                                         loggedInUsername = uiState.loggedInUsername,
-                                        onLinkClick = onLinkClick,
                                         selectionVersion = selectionVersion,
                                         onTouchStart = {
                                             touchedSelectable.value = true
@@ -707,22 +697,18 @@ private val POST_DETAIL_IMAGE_MAX_HEIGHT = 400.dp
 @Composable
 private fun PostHeader(
     post: Post,
-    onSubredditClick: () -> Unit,
-    onUserClick: () -> Unit,
     onUpvote: () -> Unit,
     onDownvote: () -> Unit,
     onSave: () -> Unit,
     onSortClick: () -> Unit,
     onReply: () -> Unit,
     isLoggedIn: Boolean,
-    onLinkClick: (String) -> Unit = {},
     onImageClick: (urls: List<String>, initialPage: Int) -> Unit = { _, _ -> },
     selectionVersion: Int = 0,
     onTouchStart: () -> Unit = {},
     renderInlineImages: Boolean = true,
     onInlineImageClick: (String) -> Unit = {},
-    onSubredditNameClick: ((String) -> Unit)? = null,
-    onUserNameClick: ((String) -> Unit)? = null
+    navigationHandler: NavigationHandler = koinInject()
 ) {
     var isBodyExpanded by rememberSaveable { mutableStateOf(true) }
     Column(
@@ -736,14 +722,14 @@ private fun PostHeader(
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable(onClick = onSubredditClick)
+                modifier = Modifier.clickable { navigationHandler.onSubredditClick(post.subreddit) }
             )
             Text(" • ", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 text = "u/${post.author}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clickable(onClick = onUserClick)
+                modifier = Modifier.clickable { navigationHandler.onUserClick(post.author) }
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
@@ -896,7 +882,7 @@ private fun PostHeader(
                                 .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
                                 .clip(RoundedCornerShape(8.dp))
                                 .clickable {
-                                    if (post.isLinkPost) onLinkClick(post.url)
+                                    if (post.isLinkPost) navigationHandler.handleLink(post.url)
                                     else onImageClick(listOf(highResUrl), 0)
                                 },
                             contentScale = ContentScale.Fit
@@ -922,11 +908,8 @@ private fun PostHeader(
                             MarkdownText(
                                 markdown = text,
                                 style = MaterialTheme.typography.bodyMedium,
-                                onLinkClick = onLinkClick,
                                 renderInlineImages = renderInlineImages,
-                                onImageClick = onInlineImageClick,
-                                onSubredditClick = onSubredditNameClick,
-                                onUserClick = onUserNameClick
+                                onImageClick = onInlineImageClick
                             )
                         }
                     }
@@ -942,7 +925,7 @@ private fun PostHeader(
                 color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable { onLinkClick(post.url) }
+                modifier = Modifier.clickable { navigationHandler.handleLink(post.url) }
             )
         }
         } // end Column inside AnimatedVisibility

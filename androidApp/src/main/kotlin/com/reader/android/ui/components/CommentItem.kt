@@ -49,6 +49,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.rememberCoroutineScope
+import com.reader.android.navigation.NavigationHandler
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.VoteState
@@ -67,7 +68,6 @@ fun CommentItem(
     onNext: () -> Unit,
     onRoot: () -> Unit,
     onParent: () -> Unit,
-    onUserClick: (String) -> Unit,
     onCommentUpdated: (Comment) -> Unit = {},
     onShare: () -> Unit,
     onReply: () -> Unit,
@@ -76,7 +76,6 @@ fun CommentItem(
     onSave: () -> Unit = {},
     isLoggedIn: Boolean,
     loggedInUsername: String? = null,
-    onLinkClick: (String) -> Unit = {},
     selectionVersion: Int = 0,
     onTouchStart: () -> Unit = {},
     renderInlineImages: Boolean = true,
@@ -86,8 +85,8 @@ fun CommentItem(
     onGoToCommentNav: (commentId: String) -> Unit = {},
     showTopControls: Boolean = true,
     showSubreddit: Boolean = false,
-    onSubredditClick: (String) -> Unit = {},
     modifier: Modifier = Modifier,
+    navigationHandler: NavigationHandler = koinInject(),
     postRepository: PostRepository = koinInject()
 ) {
     val scope = rememberCoroutineScope()
@@ -174,7 +173,7 @@ fun CommentItem(
                         text = "r/${comment.subreddit}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onSubredditClick(comment.subreddit) }
+                        modifier = Modifier.clickable { navigationHandler.onSubredditClick(comment.subreddit) }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                 }
@@ -191,7 +190,7 @@ fun CommentItem(
                             loggedInUsername != null && comment.author == loggedInUsername -> Color(0xFFFF0000)
                             else -> MaterialTheme.colorScheme.onSurface
                         },
-                        modifier = Modifier.clickable { onUserClick(comment.author) }
+                        modifier = Modifier.clickable { navigationHandler.onUserClick(comment.author) }
                     )
                     if (comment.isSubmitter) {
                         Spacer(modifier = Modifier.width(4.dp))
@@ -264,9 +263,6 @@ fun CommentItem(
                                 MarkdownText(
                                     markdown = comment.body,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    onLinkClick = onLinkClick,
-                                    onSubredditClick = onSubredditClick,
-                                    onUserClick = onUserClick,
                                     onTextClick = onSelect,
                                     renderInlineImages = renderInlineImages,
                                     onImageClick = onInlineImageClick

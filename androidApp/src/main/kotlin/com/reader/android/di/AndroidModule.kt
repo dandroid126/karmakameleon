@@ -6,10 +6,12 @@ import com.reader.shared.ui.post.PostDetailViewModel
 import com.reader.shared.ui.profile.ProfileViewModel
 import com.reader.shared.ui.search.SearchViewModel
 import com.reader.shared.ui.subreddit.SubredditViewModel
+import com.reader.android.navigation.NavigationHandler
 import org.koin.androidx.viewmodel.dsl.viewModel
 import org.koin.dsl.module
 
 val androidModule = module {
+    single { NavigationHandler() }
     // ViewModels (Android-specific registration using viewModel DSL)
     viewModel { FeedViewModel(get(), get(), get(), get()) }
     viewModel { params -> PostDetailViewModel(params[0], params[1], get(), get(), get(), get(), params.values.getOrNull(2) as? String) }
