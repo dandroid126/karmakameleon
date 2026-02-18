@@ -265,6 +265,8 @@ fun CommentItem(
                                     markdown = comment.body,
                                     style = MaterialTheme.typography.bodyMedium,
                                     onLinkClick = onLinkClick,
+                                    onSubredditClick = onSubredditClick,
+                                    onUserClick = onUserClick,
                                     onTextClick = onSelect,
                                     renderInlineImages = renderInlineImages,
                                     onImageClick = onInlineImageClick

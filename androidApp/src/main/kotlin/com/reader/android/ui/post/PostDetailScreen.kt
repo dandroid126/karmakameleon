@@ -95,8 +95,6 @@ import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
 import com.reader.shared.ui.comment.FlatCommentItem
 import com.reader.shared.ui.post.PostDetailViewModel
-import com.reader.shared.util.RedditLink
-import com.reader.shared.util.parseRedditLink
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -382,6 +380,8 @@ fun PostDetailScreen(
                                     touchedSelectable.value = true
                                     viewModel.commentViewModel.setLastTouchedComment(null)
                                 },
+                                onSubredditNameClick = onSubredditClick,
+                                onUserNameClick = onUserClick,
                                 onImageClick = { urls, page ->
                                     imageViewerUrls = urls
                                     imageViewerInitialPage = page
@@ -482,6 +482,7 @@ fun PostDetailScreen(
                                             }
                                         },
                                         onUserClick = onUserClick,
+                                        onSubredditClick = onSubredditClick,
                                         onCommentUpdated = { updatedComment ->
                                             viewModel.commentViewModel.updateComment(updatedComment)
                                         },
@@ -502,15 +503,7 @@ fun PostDetailScreen(
                                         },
                                         isLoggedIn = uiState.isLoggedIn,
                                         loggedInUsername = uiState.loggedInUsername,
-                                        onLinkClick = { url ->
-                                            when (val link = parseRedditLink(url)) {
-                                                is RedditLink.Subreddit -> onSubredditClick(link.name)
-                                                is RedditLink.User -> onUserClick(link.name)
-                                                is RedditLink.Post -> onLinkClick(url)
-                                                is RedditLink.Comment -> onLinkClick(url)
-                                                is RedditLink.External -> onLinkClick(url)
-                                            }
-                                        },
+                                        onLinkClick = onLinkClick,
                                         selectionVersion = selectionVersion,
                                         onTouchStart = {
                                             touchedSelectable.value = true
@@ -727,7 +720,9 @@ private fun PostHeader(
     selectionVersion: Int = 0,
     onTouchStart: () -> Unit = {},
     renderInlineImages: Boolean = true,
-    onInlineImageClick: (String) -> Unit = {}
+    onInlineImageClick: (String) -> Unit = {},
+    onSubredditNameClick: ((String) -> Unit)? = null,
+    onUserNameClick: ((String) -> Unit)? = null
 ) {
     var isBodyExpanded by rememberSaveable { mutableStateOf(true) }
     Column(
@@ -929,7 +924,9 @@ private fun PostHeader(
                                 style = MaterialTheme.typography.bodyMedium,
                                 onLinkClick = onLinkClick,
                                 renderInlineImages = renderInlineImages,
-                                onImageClick = onInlineImageClick
+                                onImageClick = onInlineImageClick,
+                                onSubredditClick = onSubredditNameClick,
+                                onUserClick = onUserNameClick
                             )
                         }
                     }

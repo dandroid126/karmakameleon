@@ -54,6 +54,8 @@ import io.github.aakira.napier.Napier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.reader.shared.util.RedditLink
+import com.reader.shared.util.parseRedditLink
 import java.io.File
 
 @Composable
@@ -64,8 +66,19 @@ fun MarkdownText(
     onLinkClick: (String) -> Unit = {},
     onTextClick: (() -> Unit)? = null,
     renderInlineImages: Boolean = true,
-    onImageClick: (String) -> Unit = {}
+    onImageClick: (String) -> Unit = {},
+    onSubredditClick: ((String) -> Unit)? = null,
+    onUserClick: ((String) -> Unit)? = null
 ) {
+    val handleLinkClick: (String) -> Unit = { url ->
+        when (val link = parseRedditLink(url)) {
+            is RedditLink.Subreddit -> onSubredditClick?.invoke(link.name) ?: onLinkClick(url)
+            is RedditLink.User -> onUserClick?.invoke(link.name) ?: onLinkClick(url)
+            is RedditLink.Post -> onLinkClick(url)
+            is RedditLink.Comment -> onLinkClick(url)
+            is RedditLink.External -> onLinkClick(url)
+        }
+    }
     val lines = markdown.split("\n")
     val density = LocalDensity.current
     Column(modifier = modifier) {
@@ -76,7 +89,7 @@ fun MarkdownText(
                 isTableStart(lines, i) -> {
                     val tableEndIdx = findTableEnd(lines, i)
                     val tableLines = lines.subList(i, tableEndIdx)
-                    RenderTable(tableLines, style, onLinkClick, onTextClick)
+                    RenderTable(tableLines, style, handleLinkClick, onTextClick)
                     i = tableEndIdx - 1
                 }
                 line.startsWith("###") -> {
@@ -84,7 +97,7 @@ fun MarkdownText(
                         text = line.removePrefix("###").trimStart(),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                        onLinkClick = onLinkClick,
+                        onLinkClick = handleLinkClick,
                         onTextClick = onTextClick,
                         renderInlineImages = renderInlineImages,
                         onImageClick = onImageClick
@@ -95,7 +108,7 @@ fun MarkdownText(
                         text = line.removePrefix("##").trimStart(),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
-                        onLinkClick = onLinkClick,
+                        onLinkClick = handleLinkClick,
                         onTextClick = onTextClick,
                         renderInlineImages = renderInlineImages,
                         onImageClick = onImageClick
@@ -106,7 +119,7 @@ fun MarkdownText(
                         text = line.removePrefix("#").trimStart(),
                         style = MaterialTheme.typography.headlineSmall,
                         modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
-                        onLinkClick = onLinkClick,
+                        onLinkClick = handleLinkClick,
                         onTextClick = onTextClick,
                         renderInlineImages = renderInlineImages,
                         onImageClick = onImageClick
@@ -126,7 +139,7 @@ fun MarkdownText(
                             .padding(start = 8.dp)
                             .background(MaterialTheme.colorScheme.surfaceVariant, shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
                             .padding(8.dp),
-                        onLinkClick = onLinkClick,
+                        onLinkClick = handleLinkClick,
                         onTextClick = onTextClick,
                         renderInlineImages = renderInlineImages,
                         onImageClick = onImageClick
@@ -153,7 +166,7 @@ fun MarkdownText(
                         text = "• " + line.substring(2),
                         style = style,
                         modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
-                        onLinkClick = onLinkClick,
+                        onLinkClick = handleLinkClick,
                         onTextClick = onTextClick,
                         renderInlineImages = renderInlineImages,
                         onImageClick = onImageClick
@@ -166,7 +179,7 @@ fun MarkdownText(
                             text = "${match.groupValues[1]}. ${match.groupValues[2]}",
                             style = style,
                             modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
-                            onLinkClick = onLinkClick,
+                            onLinkClick = handleLinkClick,
                             onTextClick = onTextClick,
                             renderInlineImages = renderInlineImages,
                             onImageClick = onImageClick
@@ -195,7 +208,7 @@ fun MarkdownText(
                         text = merged,
                         style = style,
                         modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
-                        onLinkClick = onLinkClick,
+                        onLinkClick = handleLinkClick,
                         onTextClick = onTextClick,
                         renderInlineImages = renderInlineImages,
                         onImageClick = onImageClick
