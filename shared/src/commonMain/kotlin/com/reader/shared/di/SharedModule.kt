@@ -5,6 +5,7 @@ import com.reader.shared.data.api.RedditApi
 import com.reader.shared.data.api.createHttpClientWithConfig
 import com.reader.shared.data.repository.CommentDraftRepository
 import com.reader.shared.data.repository.CommentRepository
+import com.reader.shared.data.repository.InboxPoller
 import com.reader.shared.data.repository.MessageRepository
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.ReadPostsRepository
@@ -27,6 +28,7 @@ val sharedModule = module {
     single { UserRepository(get(), get()) }
     single { CommentRepository(get()) }
     single { MessageRepository(get()) }
+    single { InboxPoller(get(), get()) }
     single { SettingsRepository(get()) }
     single { ReadPostsRepository(get()) }
     single { CommentDraftRepository(get()) }

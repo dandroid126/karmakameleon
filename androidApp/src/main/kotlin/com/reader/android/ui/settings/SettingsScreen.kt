@@ -3,6 +3,7 @@ package com.reader.android.ui.settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowColumn
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,8 +29,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.reader.android.notifications.InboxNotificationWorker
 import com.reader.shared.data.repository.SettingsRepository
+import com.reader.shared.domain.model.NotificationInterval
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -38,7 +43,9 @@ fun SettingsScreen(
     settingsRepository: SettingsRepository = koinInject()
 ) {
     val inlineImagesEnabled by settingsRepository.inlineImagesEnabled.collectAsState()
+    val notificationInterval by settingsRepository.notificationInterval.collectAsState()
     val blockedSubreddits by settingsRepository.blockedSubreddits.collectAsState()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -79,6 +86,41 @@ fun SettingsScreen(
                         checked = inlineImagesEnabled,
                         onCheckedChange = { settingsRepository.setInlineImagesEnabled(it) }
                     )
+                }
+            }
+
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Inbox Notification Interval",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Text(
+                        text = "How often to check for new inbox messages in the background",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    FlowColumn {
+                        NotificationInterval.entries.forEach { interval ->
+                            FilterChip(
+                                selected = notificationInterval == interval,
+                                onClick = {
+                                    settingsRepository.setNotificationInterval(interval)
+                                    InboxNotificationWorker.schedule(context)
+                                },
+                                label = { Text(interval.displayName) }
+                            )
+                        }
+                    }
                 }
             }
 

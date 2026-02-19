@@ -2,6 +2,7 @@ package com.reader.shared.ui.inbox
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.reader.shared.data.repository.InboxPoller
 import com.reader.shared.data.repository.MessageRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.InboxFilter
@@ -27,7 +28,8 @@ data class InboxUiState(
 
 class InboxViewModel(
     private val messageRepository: MessageRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val inboxPoller: InboxPoller
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InboxUiState())
@@ -40,6 +42,11 @@ class InboxViewModel(
                 if (isLoggedIn) {
                     loadMessages()
                 }
+            }
+        }
+        viewModelScope.launch {
+            inboxPoller.newMessages.collect {
+                loadMessages(forceRefresh = true)
             }
         }
     }
