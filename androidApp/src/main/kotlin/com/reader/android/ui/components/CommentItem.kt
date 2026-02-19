@@ -1,6 +1,5 @@
 package com.reader.android.ui.components
 
-import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,6 +54,7 @@ import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.VoteState
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
+import androidx.core.graphics.toColorInt
 
 @Composable
 fun CommentItem(
@@ -81,15 +81,14 @@ fun CommentItem(
     renderInlineImages: Boolean = true,
     onInlineImageClick: (String) -> Unit = {},
     isSingleThreadMode: Boolean = false,
-    onGoToComment: () -> Unit = {},
     onGoToCommentNav: (commentId: String) -> Unit = {},
     showTopControls: Boolean = true,
     showSubreddit: Boolean = false,
     modifier: Modifier = Modifier,
-    navigationHandler: NavigationHandler = koinInject(),
     postRepository: PostRepository = koinInject()
 ) {
     val scope = rememberCoroutineScope()
+    val navigationHandler = koinInject<NavigationHandler>()
     
     fun vote(direction: Int) {
         scope.launch {
@@ -198,7 +197,7 @@ fun CommentItem(
                     }
                     val flairText = comment.authorFlairText
                     val flairColor = comment.authorFlairBackgroundColor?.let {
-                        try { Color(AndroidColor.parseColor(it)) } catch (_: Exception) { MaterialTheme.colorScheme.secondary }
+                        try { Color(it.toColorInt()) } catch (_: Exception) { MaterialTheme.colorScheme.secondary }
                     } ?: MaterialTheme.colorScheme.secondary
                     if (comment.authorFlairRichtext.isNotEmpty()) {
                         Spacer(modifier = Modifier.width(4.dp))

@@ -79,10 +79,11 @@ class PostRepository(
         subreddit: String,
         postId: String,
         sort: CommentSort = CommentSort.CONFIDENCE,
-        commentId: String? = null
+        commentId: String? = null,
+        context: Int? = null
     ): Result<Pair<Post, List<CommentOrMore>>> {
         return try {
-            val result = redditApi.getPostWithComments(subreddit, postId, sort, commentId = commentId)
+            val result = redditApi.getPostWithComments(subreddit, postId, sort, commentId = commentId, context = context)
             _cachedPosts.update { it + (postId to result.first) }
             Result.success(result)
         } catch (e: Exception) {

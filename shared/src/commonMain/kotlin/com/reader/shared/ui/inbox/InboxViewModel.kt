@@ -19,7 +19,10 @@ data class InboxUiState(
     val currentFilter: InboxFilter = InboxFilter.ALL,
     val after: String? = null,
     val hasMore: Boolean = true,
-    val isLoggedIn: Boolean = false
+    val isLoggedIn: Boolean = false,
+    val selectedMessageId: String? = null,
+    val replyingToMessage: Message? = null,
+    val replyText: String = ""
 )
 
 class InboxViewModel(
@@ -94,6 +97,64 @@ class InboxViewModel(
             messageRepository.markAllAsRead()
             _uiState.update { state ->
                 state.copy(messages = state.messages.map { it.copy(isNew = false) })
+            }
+        }
+    }
+
+    fun selectMessage(id: String?) {
+        _uiState.update { it.copy(selectedMessageId = if (it.selectedMessageId == id) null else id) }
+    }
+
+    fun voteOnMessage(message: Message, direction: Int) {
+        viewModelScope.launch {
+            val result = messageRepository.voteOnMessage(message, direction)
+            result.onSuccess { updated ->
+                _uiState.update { state ->
+                    state.copy(messages = state.messages.map { if (it.id == updated.id) updated else it })
+                }
+            }
+        }
+    }
+
+    fun markAsUnread(message: Message) {
+        viewModelScope.launch {
+            messageRepository.markAsUnread(message)
+            _uiState.update { state ->
+                state.copy(
+                    messages = state.messages.map { if (it.id == message.id) it.copy(isNew = true) else it },
+                    selectedMessageId = null
+                )
+            }
+        }
+    }
+
+    fun blockUser(username: String) {
+        viewModelScope.launch {
+            messageRepository.blockUser(username)
+            _uiState.update { it.copy(selectedMessageId = null) }
+        }
+    }
+
+    fun startReply(message: Message) {
+        _uiState.update { it.copy(replyingToMessage = message, replyText = "", selectedMessageId = null) }
+    }
+
+    fun cancelReply() {
+        _uiState.update { it.copy(replyingToMessage = null, replyText = "") }
+    }
+
+    fun setReplyText(text: String) {
+        _uiState.update { it.copy(replyText = text) }
+    }
+
+    fun submitReply() {
+        val message = _uiState.value.replyingToMessage ?: return
+        val text = _uiState.value.replyText.trim()
+        if (text.isEmpty()) return
+        viewModelScope.launch {
+            val result = messageRepository.replyToMessage(message, text)
+            result.onSuccess {
+                _uiState.update { it.copy(replyingToMessage = null, replyText = "") }
             }
         }
     }

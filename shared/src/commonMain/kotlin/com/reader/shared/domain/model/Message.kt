@@ -21,6 +21,8 @@ data class Message(
     val firstMessageName: String?, // for reply chains
     val replies: List<Message>,
     val type: MessageType,
+    val linkTitle: String? = null,
+    val likes: Boolean? = null,
 )
 
 enum class MessageType {

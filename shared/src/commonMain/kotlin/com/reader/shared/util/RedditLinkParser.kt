@@ -6,7 +6,7 @@ sealed class RedditLink {
     data class Subreddit(val name: String) : RedditLink()
     data class User(val name: String) : RedditLink()
     data class Post(val subreddit: String, val postId: String) : RedditLink()
-    data class Comment(val subreddit: String, val postId: String, val commentId: String) : RedditLink()
+    data class Comment(val subreddit: String, val postId: String, val commentId: String, val context: Int? = null) : RedditLink()
     data class External(val url: String) : RedditLink()
 }
 
@@ -31,6 +31,7 @@ fun parseRedditLink(url: String): RedditLink {
     }
 
     val pathSegments = parsedUrl.segments.filter { it.isNotEmpty() }
+    val contextParam = parsedUrl.parameters["context"]?.toIntOrNull()
 
     return when {
         pathSegments.size >= 6
@@ -40,7 +41,8 @@ fun parseRedditLink(url: String): RedditLink {
             RedditLink.Comment(
                 subreddit = pathSegments[1],
                 postId = pathSegments[3],
-                commentId = pathSegments[5]
+                commentId = pathSegments[5],
+                context = contextParam
             )
         }
 

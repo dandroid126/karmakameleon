@@ -110,9 +110,10 @@ fun PostDetailScreen(
     subreddit: String,
     postId: String,
     commentId: String? = null,
+    commentContext: Int? = null,
     onBackClick: () -> Unit,
     onGoToCommentNav: (commentId: String) -> Unit = {},
-    viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId, commentId) }
+    viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId, commentId, commentContext) }
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val commentState by viewModel.commentViewModel.uiState.collectAsState()
@@ -506,9 +507,6 @@ fun PostDetailScreen(
                                             imageViewerInitialPage = 0
                                         },
                                         isSingleThreadMode = isSingleThread,
-                                        onGoToComment = {
-                                            viewModel.navigateToComment(comment.id)
-                                        },
                                         onGoToCommentNav = { targetCommentId ->
                                             onGoToCommentNav(targetCommentId)
                                         }

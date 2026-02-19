@@ -35,7 +35,8 @@ class PostDetailViewModel(
     commentRepository: CommentRepository,
     private val userRepository: UserRepository,
     commentDraftRepository: CommentDraftRepository,
-    private val commentId: String? = null
+    private val commentId: String? = null,
+    private val context: Int? = null
 ) : ViewModel() {
 
     val commentViewModel = CommentViewModel(commentRepository, commentDraftRepository)
@@ -115,7 +116,8 @@ class PostDetailViewModel(
                 subreddit = subreddit,
                 postId = postId,
                 sort = _uiState.value.commentSort,
-                commentId = commentId
+                commentId = commentId,
+                context = context
             )
             
             result.fold(

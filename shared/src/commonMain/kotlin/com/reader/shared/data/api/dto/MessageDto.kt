@@ -9,7 +9,7 @@ data class MessageDto(
     val id: String,
     val name: String,
     val author: String? = null,
-    val dest: String,
+    val dest: String = "",
     val subject: String,
     val body: String,
     @SerialName("body_html") val bodyHtml: String,
@@ -23,4 +23,6 @@ data class MessageDto(
     @SerialName("first_message_name") val firstMessageName: String? = null,
     val replies: JsonElement? = null,
     val type: String? = null,
+    @SerialName("link_title") val linkTitle: String? = null,
+    val likes: Boolean? = null,
 )

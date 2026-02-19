@@ -68,10 +68,14 @@ sealed class DetailScreen(val route: String) {
     data object SubredditDetail : DetailScreen("subreddit/{subredditName}") {
         fun createRoute(subredditName: String) = "subreddit/$subredditName"
     }
-    data object PostDetail : DetailScreen("post/{subreddit}/{postId}?commentId={commentId}") {
-        fun createRoute(subreddit: String, postId: String, commentId: String? = null): String {
+    data object PostDetail : DetailScreen("post/{subreddit}/{postId}?commentId={commentId}&context={context}") {
+        fun createRoute(subreddit: String, postId: String, commentId: String? = null, context: Int? = null): String {
             val base = "post/$subreddit/$postId"
-            return if (commentId != null) "$base?commentId=$commentId" else base
+            if (commentId == null) {
+                return base
+            }
+            val comment = "$base?commentId=$commentId"
+            return if (context != null) "$comment&context=$context" else comment
         }
     }
     data object UserProfile : DetailScreen("user/{username}") {
@@ -112,15 +116,15 @@ fun ReaderApp() {
         navigationHandler.onPostClick = { subreddit, postId ->
             navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
         }
-        navigationHandler.onCommentClick = { subreddit, postId, commentId ->
-            navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, commentId))
+        navigationHandler.onCommentClick = { subreddit, postId, commentId, context ->
+            navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, commentId, context))
         }
         onDispose {
             navigationHandler.onSubredditClick = {}
             navigationHandler.onUserClick = {}
             navigationHandler.onExternalLinkClick = {}
             navigationHandler.onPostClick = { _, _ -> }
-            navigationHandler.onCommentClick = { _, _, _ -> }
+            navigationHandler.onCommentClick = { _, _, _, _ -> }
         }
     }
     
@@ -212,11 +216,7 @@ fun ReaderApp() {
             }
             
             composable(Screen.Inbox.route) {
-                InboxScreen(
-                    onPostClick = { subreddit, postId ->
-                        navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
-                    }
-                )
+                InboxScreen()
             }
             
             composable(Screen.Profile.route) {
@@ -283,7 +283,8 @@ fun ReaderApp() {
                 arguments = listOf(
                     navArgument("subreddit") { type = NavType.StringType },
                     navArgument("postId") { type = NavType.StringType },
-                    navArgument("commentId") { type = NavType.StringType; nullable = true; defaultValue = null }
+                    navArgument("commentId") { type = NavType.StringType; nullable = true; defaultValue = null },
+                    navArgument("context") { type = NavType.IntType; defaultValue = 0 }
                 ),
                 enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } },
                 exitTransition = { fadeOut(animationSpec = tween(300)) },
@@ -293,10 +294,12 @@ fun ReaderApp() {
                 val subreddit = backStackEntry.arguments?.getString("subreddit") ?: ""
                 val postId = backStackEntry.arguments?.getString("postId") ?: ""
                 val commentId = backStackEntry.arguments?.getString("commentId")
+                val commentContext = backStackEntry.arguments?.getInt("context")
                 PostDetailScreen(
                     subreddit = subreddit,
                     postId = postId,
                     commentId = commentId,
+                    commentContext = commentContext,
                     onBackClick = { navController.popBackStack() },
                     onGoToCommentNav = { targetCommentId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, targetCommentId))

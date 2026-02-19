@@ -153,7 +153,8 @@ class RedditApi(
         postId: String,
         sort: CommentSort = CommentSort.CONFIDENCE,
         limit: Int = 200,
-        commentId: String? = null
+        commentId: String? = null,
+        context: Int? = null
     ): Pair<Post, List<CommentOrMore>> {
         val commentPath = if (commentId != null) "/comment/$commentId" else ""
         val response = authenticatedRequest {
@@ -163,7 +164,7 @@ class RedditApi(
             parameter("limit", limit)
             parameter("raw_json", 1)
             if (commentId != null) {
-                parameter("context", 0)
+                parameter("context", context ?: 0)
             }
         }
         
@@ -639,6 +640,30 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
+    suspend fun markMessageUnread(thingId: String): Boolean {
+        val response = authenticatedRequest {
+            method = HttpMethod.Post
+            url("$BASE_URL/api/unread_message")
+            setBody(FormDataContent(Parameters.build {
+                append("id", thingId)
+            }))
+        }
+        response.bodyAsText() // Consume body to release connection
+        return response.status.isSuccess()
+    }
+
+    suspend fun blockUser(username: String): Boolean {
+        val response = authenticatedRequest {
+            method = HttpMethod.Post
+            url("$BASE_URL/api/block_user")
+            setBody(FormDataContent(Parameters.build {
+                append("name", username)
+            }))
+        }
+        response.bodyAsText() // Consume body to release connection
+        return response.status.isSuccess()
+    }
+
     suspend fun markAllMessagesRead(): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
@@ -734,7 +759,7 @@ class RedditApi(
 
     private fun parseMessageListing(data: ListingData): Listing<Message> {
         val messages = data.children.mapNotNull { thing ->
-            if (thing.kind == "t4") {
+            if (thing.kind == "t4" || thing.kind == "t1") {
                 val dto = json.decodeFromJsonElement<MessageDto>(thing.data)
                 mapMessage(dto)
             } else null
@@ -1092,11 +1117,18 @@ class RedditApi(
             parentId = dto.parentId,
             firstMessageName = dto.firstMessageName,
             replies = emptyList(), // TODO: Parse nested replies
-            type = when {
-                dto.wasComment && dto.context?.contains("/comments/") == true -> MessageType.COMMENT_REPLY
-                dto.wasComment -> MessageType.POST_REPLY
-                dto.subreddit != null -> MessageType.MOD_MESSAGE
-                else -> MessageType.PRIVATE_MESSAGE
+            linkTitle = dto.linkTitle?.let { decodeHtml(it) },
+            likes = dto.likes,
+            type = when (dto.type) {
+                "comment_reply" -> MessageType.COMMENT_REPLY
+                "post_reply" -> MessageType.POST_REPLY
+                "username_mention" -> MessageType.USERNAME_MENTION
+                else -> when {
+                    dto.wasComment && dto.context?.contains("/comments/") == true -> MessageType.COMMENT_REPLY
+                    dto.wasComment -> MessageType.POST_REPLY
+                    dto.subreddit != null -> MessageType.MOD_MESSAGE
+                    else -> MessageType.PRIVATE_MESSAGE
+                }
             }
         )
     }
