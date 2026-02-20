@@ -1,6 +1,7 @@
 package com.reader.android
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import com.reader.android.data.PendingNotificationAction
 import com.reader.android.notifications.InboxNotificationWorker
 import com.reader.android.notifications.NotificationHelper
 import com.reader.android.ui.ReaderApp
@@ -34,6 +36,8 @@ class MainActivity : ComponentActivity() {
         NotificationHelper.createChannel(this)
         requestNotificationPermissionAndSchedule()
 
+        handleNotificationIntent(intent)
+
         setContent {
             ReaderTheme {
                 Surface(
@@ -43,6 +47,17 @@ class MainActivity : ComponentActivity() {
                     ReaderApp()
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(NotificationHelper.EXTRA_OPEN_INBOX_UNREAD, false) == true) {
+            PendingNotificationAction.triggerOpenInboxUnread()
         }
     }
 

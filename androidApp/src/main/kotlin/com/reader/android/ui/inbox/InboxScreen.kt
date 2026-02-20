@@ -30,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,10 +51,17 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InboxScreen(
+    initialFilter: InboxFilter? = null,
     viewModel: InboxViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showFilterMenu by remember { mutableStateOf(false) }
+
+    LaunchedEffect(initialFilter) {
+        if (initialFilter != null) {
+            viewModel.setFilter(initialFilter)
+        }
+    }
     var blockPendingMessage by remember { mutableStateOf<Message?>(null) }
     val navigationHandler = koinInject<NavigationHandler>()
 

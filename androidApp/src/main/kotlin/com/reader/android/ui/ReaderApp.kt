@@ -8,14 +8,14 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +25,8 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -36,7 +38,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.compose.runtime.DisposableEffect
+import com.reader.android.data.PendingNotificationAction
 import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.WebBrowserScreen
 import com.reader.android.ui.feed.FeedScreen
@@ -47,9 +49,10 @@ import com.reader.android.ui.search.SearchScreen
 import com.reader.android.ui.settings.SettingsScreen
 import com.reader.android.ui.subreddit.SubredditListScreen
 import com.reader.android.ui.subreddit.SubredditScreen
+import com.reader.shared.domain.model.InboxFilter
+import org.koin.compose.koinInject
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import org.koin.compose.koinInject
 
 sealed class Screen(
     val route: String,
@@ -103,6 +106,17 @@ fun ReaderApp() {
     val currentDestination = navBackStackEntry?.destination
     val navigationHandler = koinInject<NavigationHandler>()
 
+    LaunchedEffect(navController) {
+        PendingNotificationAction.openInboxUnread.collect { shouldOpen ->
+            if (shouldOpen) {
+                PendingNotificationAction.consumeOpenInboxUnread()
+                navController.navigate("inbox?filter=${InboxFilter.UNREAD.name}") {
+                    launchSingleTop = true
+                }
+            }
+        }
+    }
+
     DisposableEffect(navController) {
         navigationHandler.onSubredditClick = { name ->
             navController.navigate(DetailScreen.SubredditDetail.createRoute(name))
@@ -129,7 +143,7 @@ fun ReaderApp() {
     }
     
     val showBottomBar = bottomNavItems.any { screen ->
-        currentDestination?.hierarchy?.any { it.route == screen.route } == true
+        currentDestination?.hierarchy?.any { it.route?.substringBefore('?') == screen.route } == true
     }
 
     Scaffold(
@@ -137,7 +151,7 @@ fun ReaderApp() {
             if (showBottomBar) {
                 NavigationBar {
                     bottomNavItems.forEach { screen ->
-                        val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
+                        val selected = currentDestination?.hierarchy?.any { it.route?.substringBefore('?') == screen.route } == true
                         NavigationBarItem(
                             icon = {
                                 Icon(
@@ -215,8 +229,13 @@ fun ReaderApp() {
                 )
             }
             
-            composable(Screen.Inbox.route) {
-                InboxScreen()
+            composable(
+                route = "inbox?filter={filter}",
+                arguments = listOf(navArgument("filter") { type = NavType.StringType; nullable = true; defaultValue = null })
+            ) { backStackEntry ->
+                val filterName = backStackEntry.arguments?.getString("filter")
+                val initialFilter = filterName?.let { runCatching { InboxFilter.valueOf(it) }.getOrNull() }
+                InboxScreen(initialFilter = initialFilter)
             }
             
             composable(Screen.Profile.route) {

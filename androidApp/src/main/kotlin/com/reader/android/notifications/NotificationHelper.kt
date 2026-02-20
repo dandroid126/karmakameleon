@@ -19,6 +19,7 @@ import com.reader.shared.domain.model.MessageType
 object NotificationHelper {
 
     const val CHANNEL_ID = "inbox_notifications"
+    const val EXTRA_OPEN_INBOX_UNREAD = "open_inbox_unread"
     private const val CHANNEL_NAME = "Inbox"
     private const val CHANNEL_DESCRIPTION = "Notifications for new inbox messages"
     private const val SUMMARY_NOTIFICATION_ID = 0
@@ -45,7 +46,8 @@ object NotificationHelper {
             context,
             0,
             Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra(EXTRA_OPEN_INBOX_UNREAD, true)
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
