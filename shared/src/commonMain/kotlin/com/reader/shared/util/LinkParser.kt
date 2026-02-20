@@ -2,6 +2,21 @@ package com.reader.shared.util
 
 import io.ktor.http.Url
 
+private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "avif", "heic", "heif", "ico")
+private val videoExtensions = setOf("mp4", "webm")
+
+fun isImageUrl(url: String): Boolean {
+    val path = url.substringBefore("?").substringBefore("#")
+    val ext = path.substringAfterLast(".", "").lowercase()
+    return ext in imageExtensions
+}
+
+fun isVideoUrl(url: String): Boolean {
+    val path = url.substringBefore("?").substringBefore("#")
+    val ext = path.substringAfterLast(".", "").lowercase()
+    return ext in videoExtensions
+}
+
 sealed class RedditLink {
     data class Subreddit(val name: String) : RedditLink()
     data class User(val name: String) : RedditLink()

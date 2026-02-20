@@ -40,7 +40,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.reader.android.data.PendingNotificationAction
 import com.reader.android.navigation.NavigationHandler
+import com.reader.android.ui.components.FullScreenImageViewer
+import com.reader.android.ui.components.FullScreenVideoScreen
 import com.reader.android.ui.components.WebBrowserScreen
+import com.reader.shared.util.isImageUrl
+import com.reader.shared.util.isVideoUrl
 import com.reader.android.ui.feed.FeedScreen
 import com.reader.android.ui.inbox.InboxScreen
 import com.reader.android.ui.post.PostDetailScreen
@@ -88,6 +92,12 @@ sealed class DetailScreen(val route: String) {
         fun createRoute(url: String) = "web/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
     }
     data object Settings : DetailScreen("settings")
+    data object ImageViewer : DetailScreen("image/{url}") {
+        fun createRoute(url: String) = "image/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
+    }
+    data object VideoViewer : DetailScreen("video/{url}") {
+        fun createRoute(url: String) = "video/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
+    }
 }
 
 val bottomNavItems = listOf(
@@ -133,12 +143,20 @@ fun ReaderApp() {
         navigationHandler.onCommentClick = { subreddit, postId, commentId, context ->
             navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, commentId, context))
         }
+        navigationHandler.onImageLinkClick = { url ->
+            navController.navigate(DetailScreen.ImageViewer.createRoute(url))
+        }
+        navigationHandler.onVideoLinkClick = { url ->
+            navController.navigate(DetailScreen.VideoViewer.createRoute(url))
+        }
         onDispose {
             navigationHandler.onSubredditClick = {}
             navigationHandler.onUserClick = {}
             navigationHandler.onExternalLinkClick = {}
             navigationHandler.onPostClick = { _, _ -> }
             navigationHandler.onCommentClick = { _, _, _, _ -> }
+            navigationHandler.onImageLinkClick = {}
+            navigationHandler.onVideoLinkClick = {}
         }
     }
     
@@ -195,7 +213,11 @@ fun ReaderApp() {
                         navController.navigate(DetailScreen.UserProfile.createRoute(username))
                     },
                     onLinkClick = { url ->
-                        navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        when {
+                            isImageUrl(url) -> navController.navigate(DetailScreen.ImageViewer.createRoute(url))
+                            isVideoUrl(url) -> navController.navigate(DetailScreen.VideoViewer.createRoute(url))
+                            else -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        }
                     }
                 )
             }
@@ -224,7 +246,11 @@ fun ReaderApp() {
                         navController.navigate(DetailScreen.UserProfile.createRoute(username))
                     },
                     onLinkClick = { url ->
-                        navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        when {
+                            isImageUrl(url) -> navController.navigate(DetailScreen.ImageViewer.createRoute(url))
+                            isVideoUrl(url) -> navController.navigate(DetailScreen.VideoViewer.createRoute(url))
+                            else -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        }
                     }
                 )
             }
@@ -250,7 +276,11 @@ fun ReaderApp() {
                         navController.navigate(DetailScreen.SubredditDetail.createRoute(subredditName))
                     },
                     onLinkClick = { url ->
-                        navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        when {
+                            isImageUrl(url) -> navController.navigate(DetailScreen.ImageViewer.createRoute(url))
+                            isVideoUrl(url) -> navController.navigate(DetailScreen.VideoViewer.createRoute(url))
+                            else -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        }
                     },
                     onSettingsClick = {
                         navController.navigate(DetailScreen.Settings.route)
@@ -292,7 +322,11 @@ fun ReaderApp() {
                         navController.navigate(DetailScreen.SubredditDetail.createRoute(name))
                     },
                     onLinkClick = { url ->
-                        navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        when {
+                            isImageUrl(url) -> navController.navigate(DetailScreen.ImageViewer.createRoute(url))
+                            isVideoUrl(url) -> navController.navigate(DetailScreen.VideoViewer.createRoute(url))
+                            else -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+                        }
                     }
                 )
             }
@@ -362,6 +396,38 @@ fun ReaderApp() {
                 val url = java.net.URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString())
                 WebBrowserScreen(
                     url = url,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = DetailScreen.ImageViewer.route,
+                arguments = listOf(navArgument("url") { type = NavType.StringType }),
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) { backStackEntry ->
+                val encodedUrl = backStackEntry.arguments?.getString("url") ?: ""
+                val url = java.net.URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString())
+                FullScreenImageViewer(
+                    imageUrls = listOf(url),
+                    onDismiss = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = DetailScreen.VideoViewer.route,
+                arguments = listOf(navArgument("url") { type = NavType.StringType }),
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) { backStackEntry ->
+                val encodedUrl = backStackEntry.arguments?.getString("url") ?: ""
+                val url = java.net.URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString())
+                FullScreenVideoScreen(
+                    videoUrl = url,
                     onBackClick = { navController.popBackStack() }
                 )
             }
