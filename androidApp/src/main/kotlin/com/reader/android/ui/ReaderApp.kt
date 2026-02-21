@@ -43,8 +43,11 @@ import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.FullScreenImageViewer
 import com.reader.android.ui.components.FullScreenVideoScreen
 import com.reader.android.ui.components.WebBrowserScreen
+import com.reader.android.ui.components.YouTubeVideoScreen
+import com.reader.shared.util.extractYouTubeVideoId
 import com.reader.shared.util.isImageUrl
 import com.reader.shared.util.isVideoUrl
+import com.reader.shared.util.isYouTubeUrl
 import com.reader.android.ui.feed.FeedScreen
 import com.reader.android.ui.inbox.InboxScreen
 import com.reader.android.ui.post.PostDetailScreen
@@ -98,6 +101,9 @@ sealed class DetailScreen(val route: String) {
     data object VideoViewer : DetailScreen("video/{url}") {
         fun createRoute(url: String) = "video/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
     }
+    data object YouTubeViewer : DetailScreen("youtube/{videoId}") {
+        fun createRoute(videoId: String) = "youtube/$videoId"
+    }
 }
 
 val bottomNavItems = listOf(
@@ -149,6 +155,14 @@ fun ReaderApp() {
         navigationHandler.onVideoLinkClick = { url ->
             navController.navigate(DetailScreen.VideoViewer.createRoute(url))
         }
+        navigationHandler.onYouTubeLinkClick = { url ->
+            val videoId = extractYouTubeVideoId(url)
+            if (videoId != null) {
+                navController.navigate(DetailScreen.YouTubeViewer.createRoute(videoId))
+            } else {
+                navController.navigate(DetailScreen.WebBrowser.createRoute(url))
+            }
+        }
         onDispose {
             navigationHandler.onSubredditClick = {}
             navigationHandler.onUserClick = {}
@@ -157,6 +171,7 @@ fun ReaderApp() {
             navigationHandler.onCommentClick = { _, _, _, _ -> }
             navigationHandler.onImageLinkClick = {}
             navigationHandler.onVideoLinkClick = {}
+            navigationHandler.onYouTubeLinkClick = {}
         }
     }
     
@@ -216,6 +231,7 @@ fun ReaderApp() {
                         when {
                             isImageUrl(url) -> navController.navigate(DetailScreen.ImageViewer.createRoute(url))
                             isVideoUrl(url) -> navController.navigate(DetailScreen.VideoViewer.createRoute(url))
+                            isYouTubeUrl(url) -> extractYouTubeVideoId(url)?.let { navController.navigate(DetailScreen.YouTubeViewer.createRoute(it)) } ?: navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                             else -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                         }
                     }
@@ -249,6 +265,7 @@ fun ReaderApp() {
                         when {
                             isImageUrl(url) -> navController.navigate(DetailScreen.ImageViewer.createRoute(url))
                             isVideoUrl(url) -> navController.navigate(DetailScreen.VideoViewer.createRoute(url))
+                            isYouTubeUrl(url) -> extractYouTubeVideoId(url)?.let { navController.navigate(DetailScreen.YouTubeViewer.createRoute(it)) } ?: navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                             else -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                         }
                     }
@@ -279,6 +296,7 @@ fun ReaderApp() {
                         when {
                             isImageUrl(url) -> navController.navigate(DetailScreen.ImageViewer.createRoute(url))
                             isVideoUrl(url) -> navController.navigate(DetailScreen.VideoViewer.createRoute(url))
+                            isYouTubeUrl(url) -> extractYouTubeVideoId(url)?.let { navController.navigate(DetailScreen.YouTubeViewer.createRoute(it)) } ?: navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                             else -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                         }
                     },
@@ -325,6 +343,7 @@ fun ReaderApp() {
                         when {
                             isImageUrl(url) -> navController.navigate(DetailScreen.ImageViewer.createRoute(url))
                             isVideoUrl(url) -> navController.navigate(DetailScreen.VideoViewer.createRoute(url))
+                            isYouTubeUrl(url) -> extractYouTubeVideoId(url)?.let { navController.navigate(DetailScreen.YouTubeViewer.createRoute(it)) } ?: navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                             else -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                         }
                     }
@@ -428,6 +447,21 @@ fun ReaderApp() {
                 val url = java.net.URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString())
                 FullScreenVideoScreen(
                     videoUrl = url,
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+
+            composable(
+                route = DetailScreen.YouTubeViewer.route,
+                arguments = listOf(navArgument("videoId") { type = NavType.StringType }),
+                enterTransition = { fadeIn(animationSpec = tween(300)) },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { fadeOut(animationSpec = tween(300)) }
+            ) { backStackEntry ->
+                val videoId = backStackEntry.arguments?.getString("videoId") ?: ""
+                YouTubeVideoScreen(
+                    videoId = videoId,
                     onBackClick = { navController.popBackStack() }
                 )
             }

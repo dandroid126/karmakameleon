@@ -2,9 +2,7 @@ package com.reader.android.ui.components
 
 import android.app.Activity
 import android.content.pm.ActivityInfo
-import android.os.Build
 import android.view.TextureView
-import android.view.WindowManager
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -43,7 +41,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,9 +61,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -93,6 +90,7 @@ fun VideoPlayer(
     var duration by remember { mutableLongStateOf(0L) }
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isFullscreen by remember { mutableStateOf(false) }
+    var inlineViewKey by remember { mutableIntStateOf(0) }
     var videoAspectRatio by remember { mutableStateOf(16f / 9f) }
     val hasRetriedWithoutAudio = remember { mutableStateOf(false) }
 
@@ -202,19 +200,21 @@ fun VideoPlayer(
                 }
             }
     ) {
-        AndroidView(
-            factory = { ctx ->
-                TextureView(ctx).also { textureView ->
-                    exoPlayer.setVideoTextureView(textureView)
-                }
-            },
-            onRelease = {
-                exoPlayer.clearVideoTextureView(it)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(videoAspectRatio)
-        )
+        key(inlineViewKey) {
+            AndroidView(
+                factory = { ctx ->
+                    TextureView(ctx).also { textureView ->
+                        exoPlayer.setVideoTextureView(textureView)
+                    }
+                },
+                onRelease = {
+                    exoPlayer.clearVideoTextureView(it)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(videoAspectRatio)
+            )
+        }
 
         // Controls overlay
         AnimatedVisibility(
@@ -283,19 +283,7 @@ fun VideoPlayer(
                 activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
 
                 val dialogWindow = (dialogView.parent as? DialogWindowProvider)?.window
-                dialogWindow?.let { window ->
-                    WindowCompat.setDecorFitsSystemWindows(window, false)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        window.attributes = window.attributes.also {
-                            it.layoutInDisplayCutoutMode =
-                                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                        }
-                    }
-                    val controller = WindowCompat.getInsetsController(window, dialogView)
-                    controller.hide(WindowInsetsCompat.Type.systemBars())
-                    controller.systemBarsBehavior =
-                        WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                }
+                dialogWindow?.let { window -> hideSystemBars(window, dialogView) }
                 onDispose {
                     activity?.requestedOrientation =
                         originalOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -398,6 +386,7 @@ fun VideoPlayer(
                         onFullscreenClick = {
                             lastInteractionTime = System.currentTimeMillis()
                             isFullscreen = false
+                            inlineViewKey++
                         }
                     )
                 }

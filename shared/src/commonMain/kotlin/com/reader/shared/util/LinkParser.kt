@@ -4,6 +4,11 @@ import io.ktor.http.Url
 
 private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "avif", "heic", "heif", "ico")
 private val videoExtensions = setOf("mp4", "webm")
+private val youTubeHosts = setOf(
+    "youtube.com", "www.youtube.com", "m.youtube.com",
+    "youtu.be", "www.youtu.be",
+    "youtube-nocookie.com", "www.youtube-nocookie.com"
+)
 
 fun isImageUrl(url: String): Boolean {
     val path = url.substringBefore("?").substringBefore("#")
@@ -16,6 +21,27 @@ fun isVideoUrl(url: String): Boolean {
     val ext = path.substringAfterLast(".", "").lowercase()
     return ext in videoExtensions
 }
+
+fun extractYouTubeVideoId(url: String): String? {
+    return try {
+        val parsedUrl = Url(url)
+        val host = parsedUrl.host.lowercase()
+        if (host !in youTubeHosts) return null
+        val segments = parsedUrl.segments.filter { it.isNotEmpty() }
+        when {
+            host == "youtu.be" || host == "www.youtu.be" -> segments.firstOrNull()
+            segments.firstOrNull() == "watch" -> parsedUrl.parameters["v"]
+            segments.firstOrNull() == "embed" && segments.size >= 2 -> segments[1]
+            segments.firstOrNull() == "v" && segments.size >= 2 -> segments[1]
+            segments.firstOrNull() == "shorts" && segments.size >= 2 -> segments[1]
+            else -> null
+        }?.takeIf { it.isNotEmpty() }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+fun isYouTubeUrl(url: String): Boolean = extractYouTubeVideoId(url) != null
 
 sealed class RedditLink {
     data class Subreddit(val name: String) : RedditLink()

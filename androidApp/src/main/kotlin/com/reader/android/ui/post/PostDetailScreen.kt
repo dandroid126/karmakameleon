@@ -88,8 +88,10 @@ import com.reader.android.ui.components.MarkdownText
 import com.reader.android.ui.components.ProgressiveAsyncImage
 import com.reader.android.ui.components.ReplyBar
 import com.reader.android.ui.components.VideoPlayer
+import com.reader.android.ui.components.YouTubePlayer
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
+import com.reader.shared.util.extractYouTubeVideoId
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.domain.model.CommentSort
 import com.reader.shared.domain.model.MoreComments
@@ -853,39 +855,48 @@ private fun PostHeader(
                     modifier = Modifier.fillMaxWidth()
                 )
             } else {
-                val mp4Url = post.preview?.images?.firstOrNull()?.mp4Url
-                if (mp4Url != null && !post.isNsfw) {
+                val youTubeVideoId = extractYouTubeVideoId(post.url)
+                if (youTubeVideoId != null && !post.isNsfw) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    VideoPlayer(
-                        videoUrl = mp4Url,
-                        isGif = true,
+                    YouTubePlayer(
+                        videoId = youTubeVideoId,
                         modifier = Modifier.fillMaxWidth()
                     )
                 } else {
-                    val previewImage = post.preview?.images?.firstOrNull()
-                    val galleryUrl = galleryItems.firstOrNull()?.url
-                    val highResUrl = previewImage?.source?.url
-                        ?: galleryUrl
-                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
-                        ?: post.url.takeIf { post.isImagePost }
-                    val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
-                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
-                    if (highResUrl != null && !post.isNsfw) {
+                    val mp4Url = post.preview?.images?.firstOrNull()?.mp4Url
+                    if (mp4Url != null && !post.isNsfw) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        ProgressiveAsyncImage(
-                            lowResUrl = lowResUrl,
-                            highResUrl = highResUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    if (post.isLinkPost) navigationHandler.handleLink(post.url)
-                                    else onImageClick(listOf(highResUrl), 0)
-                                },
-                            contentScale = ContentScale.Fit
+                        VideoPlayer(
+                            videoUrl = mp4Url,
+                            isGif = true,
+                            modifier = Modifier.fillMaxWidth()
                         )
+                    } else {
+                        val previewImage = post.preview?.images?.firstOrNull()
+                        val galleryUrl = galleryItems.firstOrNull()?.url
+                        val highResUrl = previewImage?.source?.url
+                            ?: galleryUrl
+                            ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                            ?: post.url.takeIf { post.isImagePost }
+                        val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
+                            ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                        if (highResUrl != null && !post.isNsfw) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            ProgressiveAsyncImage(
+                                lowResUrl = lowResUrl,
+                                highResUrl = highResUrl,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        if (post.isLinkPost) navigationHandler.handleLink(post.url)
+                                        else onImageClick(listOf(highResUrl), 0)
+                                    },
+                                contentScale = ContentScale.Fit
+                            )
+                        }
                     }
                 }
             }

@@ -3,6 +3,7 @@ package com.reader.android.navigation
 import com.reader.shared.util.RedditLink
 import com.reader.shared.util.isImageUrl
 import com.reader.shared.util.isVideoUrl
+import com.reader.shared.util.isYouTubeUrl
 import com.reader.shared.util.parseRedditLink
 
 class NavigationHandler {
@@ -13,11 +14,13 @@ class NavigationHandler {
     var onCommentClick: (subreddit: String, postId: String, commentId: String, context: Int?) -> Unit = { _, _, _, _ -> }
     var onImageLinkClick: (String) -> Unit = {}
     var onVideoLinkClick: (String) -> Unit = {}
+    var onYouTubeLinkClick: (String) -> Unit = {}
 
     fun handleLink(url: String) {
         when {
             isImageUrl(url) -> onImageLinkClick(url)
             isVideoUrl(url) -> onVideoLinkClick(url)
+            isYouTubeUrl(url) -> onYouTubeLinkClick(url)
             else -> when (val link = parseRedditLink(url)) {
                 is RedditLink.Subreddit -> onSubredditClick(link.name)
                 is RedditLink.User -> onUserClick(link.name)
