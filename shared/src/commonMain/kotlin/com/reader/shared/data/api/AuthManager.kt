@@ -22,7 +22,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 
-class AuthManager(
+open class AuthManager(
     private val httpClient: HttpClient,
     private val settings: Settings,
 ) {
@@ -58,13 +58,13 @@ class AuthManager(
         }
     }
 
-    fun getClientId(): String = settings[KEY_CLIENT_ID] ?: ""
+    open fun getClientId(): String = settings[KEY_CLIENT_ID] ?: ""
 
-    fun setClientId(clientId: String) {
+    open fun setClientId(clientId: String) {
         settings[KEY_CLIENT_ID] = clientId
     }
 
-    fun getAuthorizationUrl(state: String): String {
+    open fun getAuthorizationUrl(state: String): String {
         val clientId = getClientId()
         return buildString {
             append("https://www.reddit.com/api/v1/authorize.compact")
@@ -77,7 +77,7 @@ class AuthManager(
         }
     }
 
-    suspend fun exchangeCodeForToken(code: String): Boolean {
+    open suspend fun exchangeCodeForToken(code: String): Boolean {
         return try {
             val response = httpClient.post("$AUTH_URL/access_token") {
                 header(HttpHeaders.Authorization, "Basic ${encodeCredentials()}")
@@ -102,7 +102,7 @@ class AuthManager(
         }
     }
 
-    suspend fun getAccessToken(): String? {
+    open suspend fun getAccessToken(): String? {
         return mutex.withLock {
             val token = cachedToken ?: return@withLock getAnonymousToken()
             
@@ -195,12 +195,12 @@ class AuthManager(
         settings[KEY_TOKEN_INFO] = json.encodeToString(tokenInfo)
     }
 
-    fun clearToken() {
+    open fun clearToken() {
         cachedToken = null
         settings.remove(KEY_TOKEN_INFO)
     }
 
-    fun isLoggedIn(): Boolean {
+    open fun isLoggedIn(): Boolean {
         return cachedToken?.refreshToken != null
     }
 

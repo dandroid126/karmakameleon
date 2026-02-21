@@ -1,0 +1,125 @@
+package com.reader.shared.domain.model
+
+import com.reader.shared.createTestPost
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+class PostTest {
+
+    @Test
+    fun isTextPost_selfHint() {
+        val post = createTestPost(postHint = "self", selfText = "text", url = "https://reddit.com/r/test")
+        assertTrue(post.isTextPost)
+    }
+
+    @Test
+    fun isTextPost_redditUrlWithSelfText() {
+        val post = createTestPost(url = "https://www.reddit.com/r/test/comments/abc", selfText = "text")
+        assertTrue(post.isTextPost)
+    }
+
+    @Test
+    fun isTextPost_externalUrl() {
+        val post = createTestPost(url = "https://example.com", selfText = null, postHint = null)
+        assertFalse(post.isTextPost)
+    }
+
+    @Test
+    fun isImagePost_imageHint() {
+        val post = createTestPost(postHint = "image", url = "https://example.com")
+        assertTrue(post.isImagePost)
+    }
+
+    @Test
+    fun isImagePost_jpgExtension() {
+        val post = createTestPost(url = "https://i.imgur.com/abc.jpg")
+        assertTrue(post.isImagePost)
+    }
+
+    @Test
+    fun isImagePost_jpegExtension() {
+        val post = createTestPost(url = "https://i.imgur.com/abc.jpeg")
+        assertTrue(post.isImagePost)
+    }
+
+    @Test
+    fun isImagePost_pngExtension() {
+        val post = createTestPost(url = "https://i.imgur.com/abc.png")
+        assertTrue(post.isImagePost)
+    }
+
+    @Test
+    fun isImagePost_gifExtension() {
+        val post = createTestPost(url = "https://i.imgur.com/abc.gif")
+        assertTrue(post.isImagePost)
+    }
+
+    @Test
+    fun isVideoPost_hostedVideoHint() {
+        val post = createTestPost(postHint = "hosted:video")
+        assertTrue(post.isVideoPost)
+    }
+
+    @Test
+    fun isVideoPost_richVideoHint() {
+        val post = createTestPost(postHint = "rich:video")
+        assertTrue(post.isVideoPost)
+    }
+
+    @Test
+    fun isVideoPost_notVideo() {
+        val post = createTestPost(postHint = "image")
+        assertFalse(post.isVideoPost)
+    }
+
+    @Test
+    fun isGallery_withGalleryData() {
+        val post = createTestPost(galleryData = GalleryData(items = listOf(
+            GalleryItem(mediaId = "m1", id = 1L, caption = null)
+        )))
+        assertTrue(post.isGallery)
+    }
+
+    @Test
+    fun isGallery_withoutGalleryData() {
+        val post = createTestPost(galleryData = null)
+        assertFalse(post.isGallery)
+    }
+
+    @Test
+    fun isLinkPost_externalLink() {
+        val post = createTestPost(
+            url = "https://example.com/article",
+            postHint = "link",
+            selfText = null,
+            galleryData = null
+        )
+        assertTrue(post.isLinkPost)
+    }
+
+    @Test
+    fun voteState_upvoted() {
+        val post = createTestPost(likes = true)
+        assertEquals(VoteState.UPVOTED, post.voteState)
+    }
+
+    @Test
+    fun voteState_downvoted() {
+        val post = createTestPost(likes = false)
+        assertEquals(VoteState.DOWNVOTED, post.voteState)
+    }
+
+    @Test
+    fun voteState_none() {
+        val post = createTestPost(likes = null)
+        assertEquals(VoteState.NONE, post.voteState)
+    }
+
+    @Test
+    fun createdInstant_convertsFromEpoch() {
+        val post = createTestPost(createdUtc = 1700000000L)
+        assertEquals(1700000000L, post.createdInstant.epochSeconds)
+    }
+}

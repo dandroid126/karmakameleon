@@ -18,3 +18,4 @@ local.properties
 **/build
 .resources
 .kotlin
+.env

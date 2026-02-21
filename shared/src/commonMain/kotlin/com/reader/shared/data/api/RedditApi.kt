@@ -66,7 +66,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-class RedditApi(
+open class RedditApi(
     private val httpClient: HttpClient,
     private val authManager: AuthManager,
 ) {
@@ -96,7 +96,7 @@ class RedditApi(
 
     // ==================== Posts ====================
 
-    suspend fun getPosts(
+    open suspend fun getPosts(
         subreddit: String? = null,
         sort: PostSort = PostSort.HOT,
         time: TimeFilter? = null,
@@ -118,7 +118,7 @@ class RedditApi(
         return parsePostListing(redditResponse.data)
     }
 
-    suspend fun fetchPostsByIds(fullnames: List<String>): List<Post> {
+    open suspend fun fetchPostsByIds(fullnames: List<String>): List<Post> {
         return try {
             val response = authenticatedRequest {
                 method = HttpMethod.Get
@@ -134,7 +134,7 @@ class RedditApi(
         }
     }
 
-    suspend fun getPost(subreddit: String, postId: String): Post? {
+    open suspend fun getPost(subreddit: String, postId: String): Post? {
         val response = authenticatedRequest {
             method = HttpMethod.Get
             url("$BASE_URL/r/$subreddit/comments/$postId")
@@ -148,7 +148,7 @@ class RedditApi(
         return parsePost(postData)
     }
 
-    suspend fun getPostWithComments(
+    open suspend fun getPostWithComments(
         subreddit: String,
         postId: String,
         sort: CommentSort = CommentSort.CONFIDENCE,
@@ -177,7 +177,7 @@ class RedditApi(
         return post to comments
     }
 
-    suspend fun getMoreComments(
+    open suspend fun getMoreComments(
         linkId: String,
         children: List<String>,
         sort: CommentSort = CommentSort.CONFIDENCE
@@ -208,7 +208,7 @@ class RedditApi(
 
     // ==================== Voting ====================
 
-    suspend fun vote(thingId: String, direction: Int): Boolean {
+    open suspend fun vote(thingId: String, direction: Int): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/vote")
@@ -223,7 +223,7 @@ class RedditApi(
 
     // ==================== Save ====================
 
-    suspend fun save(thingId: String): Boolean {
+    open suspend fun save(thingId: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/save")
@@ -235,7 +235,7 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
-    suspend fun unsave(thingId: String): Boolean {
+    open suspend fun unsave(thingId: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/unsave")
@@ -249,7 +249,7 @@ class RedditApi(
 
     // ==================== Hide ====================
 
-    suspend fun hide(thingId: String): Boolean {
+    open suspend fun hide(thingId: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/hide")
@@ -261,7 +261,7 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
-    suspend fun unhide(thingId: String): Boolean {
+    open suspend fun unhide(thingId: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/unhide")
@@ -275,7 +275,7 @@ class RedditApi(
 
     // ==================== Subreddits ====================
 
-    suspend fun getSubreddit(name: String): Subreddit? {
+    open suspend fun getSubreddit(name: String): Subreddit? {
         val response = authenticatedRequest {
             method = HttpMethod.Get
             url("$BASE_URL/r/$name/about")
@@ -287,7 +287,7 @@ class RedditApi(
         return mapSubreddit(redditResponse.data)
     }
 
-    suspend fun getSubscribedSubreddits(
+    open suspend fun getSubscribedSubreddits(
         after: String? = null,
         limit: Int = 100
     ): Listing<Subreddit> {
@@ -304,7 +304,7 @@ class RedditApi(
         return parseSubredditListing(redditResponse.data)
     }
 
-    suspend fun subscribe(subredditName: String): Boolean {
+    open suspend fun subscribe(subredditName: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/subscribe")
@@ -317,7 +317,7 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
-    suspend fun unsubscribe(subredditName: String): Boolean {
+    open suspend fun unsubscribe(subredditName: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/subscribe")
@@ -330,7 +330,7 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
-    suspend fun searchSubreddits(query: String, limit: Int = 10): List<Subreddit> {
+    open suspend fun searchSubreddits(query: String, limit: Int = 10): List<Subreddit> {
         val response = authenticatedRequest {
             method = HttpMethod.Get
             url("$BASE_URL/subreddits/search")
@@ -344,7 +344,7 @@ class RedditApi(
         return parseSubredditListing(redditResponse.data).items
     }
 
-    suspend fun getPopularSubreddits(
+    open suspend fun getPopularSubreddits(
         after: String? = null,
         limit: Int = 25
     ): Listing<Subreddit> {
@@ -363,7 +363,7 @@ class RedditApi(
 
     // ==================== User ====================
 
-    suspend fun getMe(): Account? {
+    open suspend fun getMe(): Account? {
         val response = authenticatedRequest {
             method = HttpMethod.Get
             url("$BASE_URL/api/v1/me")
@@ -377,7 +377,7 @@ class RedditApi(
         return mapAccount(accountDto)
     }
 
-    suspend fun getUser(username: String): User? {
+    open suspend fun getUser(username: String): User? {
         val response = authenticatedRequest {
             method = HttpMethod.Get
             url("$BASE_URL/user/$username/about")
@@ -389,7 +389,7 @@ class RedditApi(
         return mapUser(redditResponse.data)
     }
 
-    suspend fun getUserPosts(
+    open suspend fun getUserPosts(
         username: String,
         sort: PostSort = PostSort.NEW,
         timeFilter: TimeFilter? = null,
@@ -413,7 +413,7 @@ class RedditApi(
         return parsePostListing(redditResponse.data)
     }
 
-    suspend fun getUserComments(
+    open suspend fun getUserComments(
         username: String,
         sort: PostSort = PostSort.NEW,
         timeFilter: TimeFilter? = null,
@@ -437,7 +437,7 @@ class RedditApi(
         return parseCommentListing(redditResponse.data)
     }
 
-    suspend fun getSavedPosts(
+    open suspend fun getSavedPosts(
         username: String,
         after: String? = null,
         limit: Int = 25
@@ -456,7 +456,7 @@ class RedditApi(
         return parsePostListing(redditResponse.data)
     }
 
-    suspend fun getSavedComments(
+    open suspend fun getSavedComments(
         username: String,
         after: String? = null,
         limit: Int = 25
@@ -475,7 +475,7 @@ class RedditApi(
         return parseCommentListing(redditResponse.data)
     }
 
-    suspend fun getUpvotedPosts(
+    open suspend fun getUpvotedPosts(
         username: String,
         after: String? = null,
         limit: Int = 25
@@ -493,7 +493,7 @@ class RedditApi(
         return parsePostListing(redditResponse.data)
     }
 
-    suspend fun getDownvotedPosts(
+    open suspend fun getDownvotedPosts(
         username: String,
         after: String? = null,
         limit: Int = 25
@@ -513,7 +513,7 @@ class RedditApi(
 
     // ==================== Search ====================
 
-    suspend fun search(
+    open suspend fun search(
         query: String,
         subreddit: String? = null,
         sort: SearchSort = SearchSort.RELEVANCE,
@@ -542,7 +542,7 @@ class RedditApi(
 
     // ==================== Comments ====================
 
-    suspend fun submitComment(parentId: String, text: String): Comment? {
+    open suspend fun submitComment(parentId: String, text: String): Comment? {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/comment")
@@ -567,7 +567,7 @@ class RedditApi(
         }
     }
 
-    suspend fun editComment(thingId: String, text: String): Boolean {
+    open suspend fun editComment(thingId: String, text: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/editusertext")
@@ -581,7 +581,7 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
-    suspend fun deleteComment(thingId: String): Boolean {
+    open suspend fun deleteComment(thingId: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/del")
@@ -595,7 +595,7 @@ class RedditApi(
 
     // ==================== Messages ====================
 
-    suspend fun getInbox(
+    open suspend fun getInbox(
         filter: InboxFilter = InboxFilter.ALL,
         after: String? = null,
         limit: Int = 25
@@ -613,7 +613,7 @@ class RedditApi(
         return parseMessageListing(redditResponse.data)
     }
 
-    suspend fun sendMessage(to: String, subject: String, body: String): Boolean {
+    open suspend fun sendMessage(to: String, subject: String, body: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/compose")
@@ -628,7 +628,7 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
-    suspend fun markMessageRead(thingId: String): Boolean {
+    open suspend fun markMessageRead(thingId: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/read_message")
@@ -640,7 +640,7 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
-    suspend fun markMessageUnread(thingId: String): Boolean {
+    open suspend fun markMessageUnread(thingId: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/unread_message")
@@ -652,7 +652,7 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
-    suspend fun blockUser(username: String): Boolean {
+    open suspend fun blockUser(username: String): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/block_user")
@@ -664,7 +664,7 @@ class RedditApi(
         return response.status.isSuccess()
     }
 
-    suspend fun markAllMessagesRead(): Boolean {
+    open suspend fun markAllMessagesRead(): Boolean {
         val response = authenticatedRequest {
             method = HttpMethod.Post
             url("$BASE_URL/api/read_all_messages")
@@ -675,7 +675,7 @@ class RedditApi(
 
     // ==================== Submit ====================
 
-    suspend fun submitPost(
+    open suspend fun submitPost(
         subreddit: String,
         title: String,
         kind: String, // "self", "link", "image", "video"
