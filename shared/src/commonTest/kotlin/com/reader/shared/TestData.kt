@@ -64,6 +64,8 @@ fun createTestPost(
     galleryData: GalleryData? = null,
     crosspostParent: String? = null,
     isCrosspost: Boolean = false,
+    crosspostParentSubreddit: String? = null,
+    crosspostParentPermalink: String? = null,
 ) = Post(
     id = id,
     name = name,
@@ -103,6 +105,8 @@ fun createTestPost(
     galleryData = galleryData,
     crosspostParent = crosspostParent,
     isCrosspost = isCrosspost,
+    crosspostParentSubreddit = crosspostParentSubreddit,
+    crosspostParentPermalink = crosspostParentPermalink,
 )
 
 fun createTestComment(

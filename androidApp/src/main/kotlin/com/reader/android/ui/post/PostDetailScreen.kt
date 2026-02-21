@@ -953,6 +953,19 @@ private fun PostHeader(
                 modifier = Modifier.clickable { navigationHandler.handleLink(post.url) }
             )
         }
+        if (post.isCrosspost && post.crosspostParentSubreddit != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "View original post at r/${post.crosspostParentSubreddit}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.clickable {
+                    post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                }
+            )
+        }
         } // end Column inside AnimatedVisibility
         } // end AnimatedVisibility
 

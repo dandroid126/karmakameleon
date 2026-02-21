@@ -849,7 +849,9 @@ open class RedditApi(
                 mapGallery(it, dto.mediaMetadata ?: dto.crosspostParentList?.firstOrNull()?.mediaMetadata)
             },
             crosspostParent = dto.crosspostParent,
-            isCrosspost = dto.crosspostParent != null
+            isCrosspost = dto.crosspostParent != null,
+            crosspostParentSubreddit = dto.crosspostParentList?.firstOrNull()?.subreddit,
+            crosspostParentPermalink = dto.crosspostParentList?.firstOrNull()?.permalink,
         )
     }
 

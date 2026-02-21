@@ -40,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.SortBottomSheet
 import com.reader.shared.data.repository.ReadPostsRepository
@@ -55,7 +56,8 @@ fun FeedScreen(
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
-    viewModel: FeedViewModel = koinViewModel()
+    viewModel: FeedViewModel = koinViewModel(),
+    navigationHandler: NavigationHandler = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -176,6 +178,9 @@ fun FeedScreen(
                             onBlockSubreddit = { viewModel.blockSubreddit(post.subreddit) },
                             isLoggedIn = uiState.isLoggedIn,
                             onLinkClick = onLinkClick,
+                            onCrosspostClick = {
+                                post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                            },
                             isRead = readPostIds.contains(post.id)
                         )
                     }

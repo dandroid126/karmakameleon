@@ -44,6 +44,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.SortBottomSheet
 import com.reader.android.ui.components.formatNumber
@@ -62,7 +63,8 @@ fun SubredditScreen(
     onUserClick: (String) -> Unit,
     onSubredditClick: (String) -> Unit = {},
     onLinkClick: (String) -> Unit = {},
-    viewModel: SubredditViewModel = koinViewModel { parametersOf(subredditName) }
+    viewModel: SubredditViewModel = koinViewModel { parametersOf(subredditName) },
+    navigationHandler: NavigationHandler = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -153,6 +155,9 @@ fun SubredditScreen(
                             onHide = { viewModel.hide(post) },
                             isLoggedIn = uiState.isLoggedIn,
                             onLinkClick = onLinkClick,
+                            onCrosspostClick = {
+                                post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                            },
                             isRead = readPostIds.contains(post.id)
                         )
                     }

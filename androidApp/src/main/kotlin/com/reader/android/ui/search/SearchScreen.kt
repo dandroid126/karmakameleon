@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.PostCard
 import com.reader.shared.data.repository.ReadPostsRepository
 import com.reader.shared.domain.model.SearchSort
@@ -61,7 +62,8 @@ fun SearchScreen(
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
-    viewModel: SearchViewModel = koinViewModel()
+    viewModel: SearchViewModel = koinViewModel(),
+    navigationHandler: NavigationHandler = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -220,6 +222,9 @@ fun SearchScreen(
                                 onHide = {},
                                 isLoggedIn = false,
                                 onLinkClick = onLinkClick,
+                                onCrosspostClick = {
+                                    post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                                },
                                 isRead = readPostIds.contains(post.id)
                             )
                         }

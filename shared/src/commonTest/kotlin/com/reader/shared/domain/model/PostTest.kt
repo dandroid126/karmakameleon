@@ -122,4 +122,48 @@ class PostTest {
         val post = createTestPost(createdUtc = 1700000000L)
         assertEquals(1700000000L, post.createdInstant.epochSeconds)
     }
+
+    @Test
+    fun isCrosspost_whenCrosspostParentSet() {
+        val post = createTestPost(crosspostParent = "t3_original", isCrosspost = true)
+        assertTrue(post.isCrosspost)
+    }
+
+    @Test
+    fun isCrosspost_whenNoCrosspostParent() {
+        val post = createTestPost(crosspostParent = null, isCrosspost = false)
+        assertFalse(post.isCrosspost)
+    }
+
+    @Test
+    fun crosspostParentSubreddit_isNullByDefault() {
+        val post = createTestPost()
+        assertEquals(null, post.crosspostParentSubreddit)
+    }
+
+    @Test
+    fun crosspostParentSubreddit_storesValue() {
+        val post = createTestPost(
+            isCrosspost = true,
+            crosspostParent = "t3_original",
+            crosspostParentSubreddit = "originalsubreddit"
+        )
+        assertEquals("originalsubreddit", post.crosspostParentSubreddit)
+    }
+
+    @Test
+    fun crosspostParentPermalink_isNullByDefault() {
+        val post = createTestPost()
+        assertEquals(null, post.crosspostParentPermalink)
+    }
+
+    @Test
+    fun crosspostParentPermalink_storesValue() {
+        val post = createTestPost(
+            isCrosspost = true,
+            crosspostParent = "t3_original",
+            crosspostParentPermalink = "/r/originalsubreddit/comments/orig123/original_title/"
+        )
+        assertEquals("/r/originalsubreddit/comments/orig123/original_title/", post.crosspostParentPermalink)
+    }
 }

@@ -69,6 +69,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.CommentItem
 import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.ReplyBar
@@ -430,6 +431,7 @@ fun ProfileScreen(
                                                 val readPostIds by readPostsRepository.readPostIds.collectAsState()
                                                 LazyColumn {
                                                     items(savedPosts, key = { it.id }) { post ->
+                                                        val navigationHandler: NavigationHandler = koinInject()
                                                         PostCard(
                                                             post = post,
                                                             onClick = {
@@ -444,6 +446,9 @@ fun ProfileScreen(
                                                             onHide = {},
                                                             isLoggedIn = uiState.isLoggedIn,
                                                             onLinkClick = onLinkClick,
+                                                            onCrosspostClick = {
+                                                                post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                                                            },
                                                             isRead = readPostIds.contains(post.id)
                                                         )
                                                     }
@@ -539,6 +544,7 @@ fun ProfileScreen(
                                 } else {
                                     val readPostsRepository: ReadPostsRepository = koinInject()
                                     val readPostIds by readPostsRepository.readPostIds.collectAsState()
+                                    val navigationHandler: NavigationHandler = koinInject()
                                     LazyColumn {
                                         items(posts, key = { it.id }) { post ->
                                             PostCard(
@@ -555,6 +561,9 @@ fun ProfileScreen(
                                                 onHide = {},
                                                 isLoggedIn = uiState.isLoggedIn,
                                                 onLinkClick = onLinkClick,
+                                                onCrosspostClick = {
+                                                    post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                                                },
                                                 isRead = readPostIds.contains(post.id)
                                             )
                                         }

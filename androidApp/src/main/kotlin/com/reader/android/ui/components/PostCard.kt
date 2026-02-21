@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.automirrored.filled.CallMerge
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -76,6 +77,7 @@ fun PostCard(
     onBlockSubreddit: () -> Unit = {},
     isLoggedIn: Boolean,
     onLinkClick: (String) -> Unit = {},
+    onCrosspostClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     isRead: Boolean = false
 ) {
@@ -358,6 +360,20 @@ fun PostCard(
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
                             contentDescription = "Open link",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                // Crosspost link
+                if (post.isCrosspost) {
+                    IconButton(
+                        onClick = onCrosspostClick,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.CallMerge,
+                            contentDescription = "View original post",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
