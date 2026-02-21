@@ -38,6 +38,6 @@ jobs:
           files: androidApp/build/outputs/apk/release/androidApp-release.apk
           tag_name: ${{ steps.tag_name.outputs.version }}
           draft: false
-          prerelease: false
+          prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
