@@ -87,7 +87,10 @@ import com.reader.android.ui.components.FullScreenImageViewer
 import com.reader.android.ui.components.MarkdownText
 import com.reader.android.ui.components.ProgressiveAsyncImage
 import com.reader.android.ui.components.ReplyBar
+import com.reader.android.ui.components.LongPressMenuBox
 import com.reader.android.ui.components.VideoPlayer
+import com.reader.android.ui.components.imageMenuItems
+import com.reader.android.ui.components.videoMenuItems
 import com.reader.android.ui.components.YouTubePlayer
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
@@ -805,22 +808,27 @@ private fun PostHeader(
                         VideoPlayer(
                             videoUrl = item.url!!,
                             isGif = true,
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxSize(),
+                            menuItems = videoMenuItems(item.url!!)
                         )
                     } else {
-                        AsyncImage(
-                            model = item.url,
-                            contentDescription = item.caption,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clickable {
-                                    val imageItems = galleryItems.filter { !it.isVideo }
-                                    val imageUrls = imageItems.mapNotNull { it.url }
-                                    val imageIndex = imageItems.indexOf(item).coerceAtLeast(0)
-                                    onImageClick(imageUrls, imageIndex)
-                                },
-                            contentScale = ContentScale.Fit
-                        )
+                        LongPressMenuBox(
+                            menuItems = imageMenuItems(item.url ?: ""),
+                            modifier = Modifier.fillMaxSize(),
+                            onClick = {
+                                val imageItems = galleryItems.filter { !it.isVideo }
+                                val imageUrls = imageItems.mapNotNull { it.url }
+                                val imageIndex = imageItems.indexOf(item).coerceAtLeast(0)
+                                onImageClick(imageUrls, imageIndex)
+                            }
+                        ) {
+                            AsyncImage(
+                                model = item.url,
+                                contentDescription = item.caption,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit
+                            )
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
@@ -852,7 +860,8 @@ private fun PostHeader(
                 VideoPlayer(
                     videoUrl = redditVideo.fallbackUrl,
                     isGif = redditVideo.isGif,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    menuItems = videoMenuItems(redditVideo.fallbackUrl)
                 )
             } else {
                 val youTubeVideoId = extractYouTubeVideoId(post.url)
@@ -869,7 +878,8 @@ private fun PostHeader(
                         VideoPlayer(
                             videoUrl = mp4Url,
                             isGif = true,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            menuItems = videoMenuItems(mp4Url)
                         )
                     } else {
                         val previewImage = post.preview?.images?.firstOrNull()
@@ -882,20 +892,25 @@ private fun PostHeader(
                             ?: post.thumbnail?.takeIf { it.startsWith("http") }
                         if (highResUrl != null && !post.isNsfw) {
                             Spacer(modifier = Modifier.height(12.dp))
-                            ProgressiveAsyncImage(
-                                lowResUrl = lowResUrl,
-                                highResUrl = highResUrl,
-                                contentDescription = null,
+                            LongPressMenuBox(
+                                menuItems = imageMenuItems(highResUrl),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable {
-                                        if (post.isLinkPost) navigationHandler.handleLink(post.url)
-                                        else onImageClick(listOf(highResUrl), 0)
-                                    },
-                                contentScale = ContentScale.Fit
-                            )
+                                    .clip(RoundedCornerShape(8.dp)),
+                                onClick = {
+                                    if (post.isLinkPost) navigationHandler.handleLink(post.url)
+                                    else onImageClick(listOf(highResUrl), 0)
+                                }
+                            ) {
+                                ProgressiveAsyncImage(
+                                    lowResUrl = lowResUrl,
+                                    highResUrl = highResUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Fit
+                                )
+                            }
                         }
                     }
                 }

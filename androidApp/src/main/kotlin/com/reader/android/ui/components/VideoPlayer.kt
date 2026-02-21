@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -78,7 +79,8 @@ import kotlinx.coroutines.delay
 fun VideoPlayer(
     videoUrl: String,
     isGif: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    menuItems: List<MediaMenuItem> = emptyList()
 ) {
     val context = LocalContext.current
 
@@ -92,6 +94,7 @@ fun VideoPlayer(
     var isFullscreen by remember { mutableStateOf(false) }
     var inlineViewKey by remember { mutableIntStateOf(0) }
     var videoAspectRatio by remember { mutableStateOf(16f / 9f) }
+    var showMenu by remember { mutableStateOf(false) }
     val hasRetriedWithoutAudio = remember { mutableStateOf(false) }
 
     val exoPlayer = remember {
@@ -188,17 +191,19 @@ fun VideoPlayer(
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .background(Color.Black)
-            .clickable(
+            .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                if (isOverlayVisible) {
-                    isOverlayVisible = false
-                } else {
-                    isOverlayVisible = true
-                    lastInteractionTime = System.currentTimeMillis()
-                }
-            }
+                indication = null,
+                onClick = {
+                    if (isOverlayVisible) {
+                        isOverlayVisible = false
+                    } else {
+                        isOverlayVisible = true
+                        lastInteractionTime = System.currentTimeMillis()
+                    }
+                },
+                onLongClick = { if (menuItems.isNotEmpty()) showMenu = true }
+            )
     ) {
         key(inlineViewKey) {
             AndroidView(
@@ -213,6 +218,14 @@ fun VideoPlayer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(videoAspectRatio)
+            )
+        }
+
+        Box(modifier = Modifier.align(Alignment.BottomEnd)) {
+            MediaLongPressMenu(
+                items = menuItems,
+                expanded = showMenu,
+                onDismiss = { showMenu = false }
             )
         }
 

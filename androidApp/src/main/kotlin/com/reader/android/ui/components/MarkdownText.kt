@@ -1,10 +1,5 @@
 package com.reader.android.ui.components
 
-import android.content.ContentValues
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,25 +16,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import android.content.ClipData
-import androidx.compose.ui.platform.ClipEntry
-import androidx.compose.ui.platform.LocalClipboard
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.TextLinkStyles
@@ -54,11 +42,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import io.github.aakira.napier.Napier
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import com.reader.android.navigation.NavigationHandler
-import java.io.File
 import org.koin.compose.koinInject
 
 @Composable
@@ -736,9 +720,7 @@ private fun InlineImage(
 ) {
     var aspectRatio by remember(url) { mutableStateOf(aspectRatioCache[url]) }
     var showMenu by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val clipboard = LocalClipboard.current
-    val scope = rememberCoroutineScope()
+    val menuItems = imageMenuItems(url)
 
     Box(
         modifier = modifier
@@ -771,91 +753,11 @@ private fun InlineImage(
             }
         )
         Box(modifier = Modifier.align(Alignment.BottomEnd)) {
-            DropdownMenu(
+            MediaLongPressMenu(
+                items = menuItems,
                 expanded = showMenu,
-                onDismissRequest = { showMenu = false }
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Copy Image URL") },
-                    onClick = {
-                        scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", url))) }
-                        showMenu = false
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Save Image") },
-                    onClick = {
-                        showMenu = false
-                        scope.launch {
-                            saveImageToGallery(context, url)
-                        }
-                    }
-                )
-            }
-        }
-    }
-}
-
-private suspend fun saveImageToGallery(context: android.content.Context, url: String) {
-    withContext(Dispatchers.IO) {
-        try {
-            val filename = url.substringAfterLast("/").substringBefore("?").let {
-                if (it.contains(".")) it else "${it}.jpg"
-            }
-            val mimeType = when {
-                filename.endsWith(".gif") -> "image/gif"
-                filename.endsWith(".png") -> "image/png"
-                filename.endsWith(".webp") -> "image/webp"
-                else -> "image/jpeg"
-            }
-
-            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-                    put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES)
-                }
-                context.contentResolver.insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    contentValues
-                )
-            } else {
-                val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES)
-                if (!dir.exists()) dir.mkdirs()
-                val file = File(dir, filename)
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.Images.Media.DISPLAY_NAME, filename)
-                    put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-                    put(MediaStore.Images.Media.DATA, file.absolutePath)
-                }
-                context.contentResolver.insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    contentValues
-                )
-            }
-
-            if (uri != null) {
-                val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-                try {
-                    connection.connectTimeout = 15000
-                    connection.readTimeout = 15000
-                    connection.connect()
-                    connection.inputStream.use { input ->
-                        context.contentResolver.openOutputStream(uri)?.use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(context, "Image saved", Toast.LENGTH_SHORT).show()
-                    }
-                } finally {
-                    connection.disconnect()
-                }
-            }
-        } catch (e: Exception) {
-            withContext(Dispatchers.Main) {
-                Toast.makeText(context, "Failed to save image", Toast.LENGTH_SHORT).show()
-            }
+                onDismiss = { showMenu = false }
+            )
         }
     }
 }
