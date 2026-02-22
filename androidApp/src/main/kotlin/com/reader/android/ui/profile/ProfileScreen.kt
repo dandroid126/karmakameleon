@@ -170,7 +170,7 @@ fun ProfileScreen(
     ) { padding ->
         val pullToRefreshState = rememberPullToRefreshState()
         PullToRefreshBox(
-            isRefreshing = uiState.isLoading && (uiState.account != null || uiState.user != null),
+            isRefreshing = uiState.isRefreshing,
             onRefresh = viewModel::refresh,
             state = pullToRefreshState,
             modifier = Modifier

@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 data class InboxUiState(
     val messages: List<Message> = emptyList(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     val currentFilter: InboxFilter = InboxFilter.ALL,
     val after: String? = null,
@@ -56,7 +57,13 @@ class InboxViewModel(
         if (_uiState.value.isLoading && !forceRefresh) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { 
+                it.copy(
+                    isLoading = !forceRefresh, 
+                    isRefreshing = forceRefresh,
+                    error = null
+                )
+            }
 
             val result = messageRepository.getInbox(_uiState.value.currentFilter)
 
@@ -67,13 +74,18 @@ class InboxViewModel(
                             messages = listing.items,
                             after = listing.after,
                             hasMore = listing.after != null,
-                            isLoading = false
+                            isLoading = false,
+                            isRefreshing = false
                         )
                     }
                 },
                 onFailure = { error ->
                     _uiState.update {
-                        it.copy(isLoading = false, error = error.message)
+                        it.copy(
+                            isLoading = false, 
+                            isRefreshing = false,
+                            error = error.message
+                        )
                     }
                 }
             )

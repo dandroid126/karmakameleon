@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 data class PostDetailUiState(
     val post: Post? = null,
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     val commentSort: CommentSort = CommentSort.CONFIDENCE,
     val isLoggedIn: Boolean = false,
@@ -108,9 +109,15 @@ class PostDetailViewModel(
         }
     }
 
-    fun loadPostWithComments() {
+    fun loadPostWithComments(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { 
+                it.copy(
+                    isLoading = !forceRefresh, 
+                    isRefreshing = forceRefresh,
+                    error = null
+                )
+            }
             
             val result = postRepository.getPostWithComments(
                 subreddit = subreddit,
@@ -122,11 +129,23 @@ class PostDetailViewModel(
             
             result.fold(
                 onSuccess = { (post, comments) ->
-                    _uiState.update { it.copy(post = post, isLoading = false) }
+                    _uiState.update { 
+                        it.copy(
+                            post = post, 
+                            isLoading = false,
+                            isRefreshing = false
+                        )
+                    }
                     commentViewModel.setComments(comments)
                 },
                 onFailure = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.message ?: "Failed to load post") }
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false, 
+                            isRefreshing = false,
+                            error = error.message ?: "Failed to load post"
+                        )
+                    }
                 }
             )
         }

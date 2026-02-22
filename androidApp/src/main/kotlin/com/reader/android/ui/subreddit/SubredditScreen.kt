@@ -114,7 +114,7 @@ fun SubredditScreen(
         }
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = uiState.isLoading && uiState.posts.isNotEmpty(),
+            isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.loadPosts(forceRefresh = true) },
             state = pullToRefreshState,
             modifier = Modifier

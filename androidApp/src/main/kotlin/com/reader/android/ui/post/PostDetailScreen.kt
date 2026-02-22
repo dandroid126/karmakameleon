@@ -316,8 +316,8 @@ fun PostDetailScreen(
         }
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = uiState.isLoading && uiState.post != null,
-            onRefresh = { viewModel.loadPostWithComments() },
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = { viewModel.loadPostWithComments(forceRefresh = true) },
             state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()

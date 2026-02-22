@@ -122,7 +122,7 @@ fun InboxScreen(
         }
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = uiState.isLoading && uiState.messages.isNotEmpty(),
+            isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.loadMessages(forceRefresh = true) },
             state = pullToRefreshState,
             modifier = Modifier

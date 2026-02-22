@@ -31,6 +31,7 @@ data class ProfileUiState(
     val upvotedPosts: List<Post> = emptyList(),
     val downvotedPosts: List<Post> = emptyList(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val isLoadingContent: Boolean = false,
     val error: String? = null,
     val isLoggedIn: Boolean = false,
@@ -119,32 +120,67 @@ class ProfileViewModel(
         _uiState.update { it.copy(clientId = clientId) }
     }
 
-    fun loadCurrentUser() {
+    fun loadCurrentUser(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            _uiState.update { 
+                it.copy(
+                    isLoading = !forceRefresh, 
+                    isRefreshing = forceRefresh
+                )
+            }
             val result = userRepository.loadCurrentUser()
             result.fold(
                 onSuccess = { account ->
-                    _uiState.update { it.copy(account = account, isLoading = false) }
+                    _uiState.update { 
+                        it.copy(
+                            account = account, 
+                            isLoading = false,
+                            isRefreshing = false
+                        )
+                    }
                 },
                 onFailure = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.message) }
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false, 
+                            isRefreshing = false,
+                            error = error.message
+                        )
+                    }
                 }
             )
         }
     }
 
-    fun loadUser(username: String) {
+    fun loadUser(username: String, forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, isOwnProfile = false) }
+            _uiState.update { 
+                it.copy(
+                    isLoading = !forceRefresh, 
+                    isRefreshing = forceRefresh,
+                    isOwnProfile = false
+                )
+            }
             val result = userRepository.getUser(username)
             result.fold(
                 onSuccess = { user ->
-                    _uiState.update { it.copy(user = user, isLoading = false) }
+                    _uiState.update { 
+                        it.copy(
+                            user = user, 
+                            isLoading = false,
+                            isRefreshing = false
+                        )
+                    }
                     loadUserPosts(username)
                 },
                 onFailure = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.message) }
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false, 
+                            isRefreshing = false,
+                            error = error.message
+                        )
+                    }
                 }
             )
         }
@@ -349,7 +385,7 @@ class ProfileViewModel(
             }
             ProfileTab.UPVOTED -> loadUpvotedPosts(forceRefresh = true)
             ProfileTab.DOWNVOTED -> loadDownvotedPosts(forceRefresh = true)
-            ProfileTab.ABOUT -> if (_uiState.value.isOwnProfile) loadCurrentUser() else loadUser(username)
+            ProfileTab.ABOUT -> if (_uiState.value.isOwnProfile) loadCurrentUser(forceRefresh = true) else loadUser(username, forceRefresh = true)
         }
     }
 

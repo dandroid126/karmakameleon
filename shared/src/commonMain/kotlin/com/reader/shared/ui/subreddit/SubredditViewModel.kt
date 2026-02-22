@@ -23,6 +23,7 @@ data class SubredditUiState(
     val posts: List<Post> = emptyList(),
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
+    val isRefreshing: Boolean = false,
     val error: String? = null,
     val currentSort: PostSort = PostSort.HOT,
     val currentTimeFilter: TimeFilter = TimeFilter.DAY,
@@ -80,7 +81,13 @@ class SubredditViewModel(
         if (_uiState.value.isLoading && !forceRefresh) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { 
+                it.copy(
+                    isLoading = !forceRefresh, 
+                    isRefreshing = forceRefresh,
+                    error = null
+                )
+            }
 
             val result = postRepository.getPosts(
                 subreddit = subredditName,
@@ -101,14 +108,19 @@ class SubredditViewModel(
                             posts = filteredItems,
                             after = listing.after,
                             hasMore = listing.hasMore,
-                            isLoading = false
+                            isLoading = false,
+                            isRefreshing = false
                         )
                     }
                     enrichPosts(filteredItems)
                 },
                 onFailure = { error ->
                     _uiState.update {
-                        it.copy(isLoading = false, error = error.message)
+                        it.copy(
+                            isLoading = false, 
+                            isRefreshing = false,
+                            error = error.message
+                        )
                     }
                 }
             )
