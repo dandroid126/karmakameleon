@@ -428,14 +428,20 @@ fun ProfileScreen(
                                                 }
                                             } else {
                                                 val readPostsRepository: ReadPostsRepository = koinInject()
+                                                val settingsRepository: com.reader.shared.data.repository.SettingsRepository = koinInject()
                                                 val readPostIds by readPostsRepository.readPostIds.collectAsState()
+                                                val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
+                                                val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
+                                                val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
+                                                val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else com.reader.shared.domain.model.NsfwPreviewMode.DO_NOT_PREFETCH
+                                                val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else com.reader.shared.domain.model.NsfwHistoryMode.DONT_SAVE_ANY_NSFW
                                                 LazyColumn {
                                                     items(savedPosts, key = { it.id }) { post ->
                                                         val navigationHandler: NavigationHandler = koinInject()
                                                         PostCard(
                                                             post = post,
                                                             onClick = {
-                                                                readPostsRepository.markAsRead(post.id)
+                                                                readPostsRepository.markAsRead(post, effectiveNsfwHistoryMode)
                                                                 onPostClick(post.subreddit, post.id)
                                                             },
                                                             onSubredditClick = { onSubredditClick(post.subreddit) },
@@ -449,7 +455,8 @@ fun ProfileScreen(
                                                             onCrosspostClick = {
                                                                 post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
                                                             },
-                                                            isRead = readPostIds.contains(post.id)
+                                                            isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
+                                                            nsfwPreviewMode = effectiveNsfwPreviewMode
                                                         )
                                                     }
                                                 }
@@ -543,14 +550,20 @@ fun ProfileScreen(
                                     }
                                 } else {
                                     val readPostsRepository: ReadPostsRepository = koinInject()
+                                    val settingsRepository: com.reader.shared.data.repository.SettingsRepository = koinInject()
                                     val readPostIds by readPostsRepository.readPostIds.collectAsState()
+                                    val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
+                                    val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
+                                    val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
+                                    val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else com.reader.shared.domain.model.NsfwPreviewMode.DO_NOT_PREFETCH
+                                    val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else com.reader.shared.domain.model.NsfwHistoryMode.DONT_SAVE_ANY_NSFW
                                     val navigationHandler: NavigationHandler = koinInject()
                                     LazyColumn {
                                         items(posts, key = { it.id }) { post ->
                                             PostCard(
                                                 post = post,
                                                 onClick = {
-                                                    readPostsRepository.markAsRead(post.id)
+                                                    readPostsRepository.markAsRead(post, effectiveNsfwHistoryMode)
                                                     onPostClick(post.subreddit, post.id)
                                                 },
                                                 onSubredditClick = { onSubredditClick(post.subreddit) },
@@ -564,7 +577,8 @@ fun ProfileScreen(
                                                 onCrosspostClick = {
                                                     post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
                                                 },
-                                                isRead = readPostIds.contains(post.id)
+                                                isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
+                                                nsfwPreviewMode = effectiveNsfwPreviewMode
                                             )
                                         }
                                     }

@@ -3,6 +3,7 @@ package com.reader.shared.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.reader.shared.data.repository.PostRepository
+import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.SearchSort
@@ -35,7 +36,8 @@ data class SearchUiState(
 
 class SearchViewModel(
     private val postRepository: PostRepository,
-    private val subredditRepository: SubredditRepository
+    private val subredditRepository: SubredditRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchUiState())
@@ -85,6 +87,7 @@ class SearchViewModel(
     }
 
     private suspend fun searchPosts(query: String) {
+        val nsfwEnabled = settingsRepository.nsfwEnabled.value
         val result = postRepository.search(
             query = query,
             sort = _uiState.value.searchSort,
@@ -93,9 +96,10 @@ class SearchViewModel(
 
         result.fold(
             onSuccess = { listing ->
+                val posts = if (nsfwEnabled) listing.items else listing.items.filter { !it.isNsfw }
                 _uiState.update {
                     it.copy(
-                        posts = listing.items,
+                        posts = posts,
                         after = listing.after,
                         hasMore = listing.hasMore,
                         isLoading = false
@@ -109,7 +113,10 @@ class SearchViewModel(
     }
 
     private suspend fun searchSubreddits(query: String) {
-        val result = subredditRepository.searchSubreddits(query)
+        val nsfwEnabled = settingsRepository.nsfwEnabled.value
+        val nsfwSearchEnabled = settingsRepository.nsfwSearchEnabled.value
+        val includeOver18 = nsfwEnabled && nsfwSearchEnabled
+        val result = subredditRepository.searchSubreddits(query, includeOver18 = includeOver18)
 
         result.fold(
             onSuccess = { subreddits ->
@@ -155,6 +162,7 @@ class SearchViewModel(
         if (currentState.isLoading || !currentState.hasMore || currentState.after == null) return
 
         viewModelScope.launch {
+            val nsfwEnabled = settingsRepository.nsfwEnabled.value
             _uiState.update { it.copy(isLoading = true) }
 
             val result = postRepository.search(
@@ -166,9 +174,10 @@ class SearchViewModel(
 
             result.fold(
                 onSuccess = { listing ->
+                    val posts = if (nsfwEnabled) listing.items else listing.items.filter { !it.isNsfw }
                     _uiState.update {
                         it.copy(
-                            posts = it.posts + listing.items,
+                            posts = it.posts + posts,
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoading = false

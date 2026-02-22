@@ -60,12 +60,18 @@ fun SubredditListScreen(
     
     val subscribedSubreddits by subredditRepository.sortedSubscribedSubreddits.collectAsState(emptyList())
     val favoriteSubreddits by settingsRepository.favoriteSubreddits.collectAsState()
+    val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
+    val nsfwSearchEnabled by settingsRepository.nsfwSearchEnabled.collectAsState()
     val isLoggedIn by userRepository.isLoggedIn.collectAsState()
     var isLoading by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<Subreddit>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    val filteredSubscribedSubreddits = remember(subscribedSubreddits, nsfwEnabled) {
+        if (nsfwEnabled) subscribedSubreddits else subscribedSubreddits.filter { !it.isNsfw }
+    }
 
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn && subscribedSubreddits.isEmpty()) {
@@ -75,10 +81,11 @@ fun SubredditListScreen(
         }
     }
 
-    LaunchedEffect(searchQuery) {
+    LaunchedEffect(searchQuery, nsfwEnabled, nsfwSearchEnabled) {
         if (searchQuery.length >= 2) {
             isSearching = true
-            val result = subredditRepository.searchSubreddits(searchQuery)
+            val includeOver18 = nsfwEnabled && nsfwSearchEnabled
+            val result = subredditRepository.searchSubreddits(searchQuery, includeOver18 = includeOver18)
             result.onSuccess { searchResults = it }
             isSearching = false
         } else {
@@ -152,7 +159,7 @@ fun SubredditListScreen(
                         )
                     }
                 }
-            } else if (subscribedSubreddits.isEmpty()) {
+            } else if (filteredSubscribedSubreddits.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -169,7 +176,7 @@ fun SubredditListScreen(
                         )
                     }
                     items(
-                        items = subscribedSubreddits,
+                        items = filteredSubscribedSubreddits,
                         key = { it.id }
                     ) { subreddit ->
                         SubredditListItem(

@@ -47,6 +47,9 @@ import androidx.compose.ui.unit.dp
 import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.PostCard
 import com.reader.shared.data.repository.ReadPostsRepository
+import com.reader.shared.data.repository.SettingsRepository
+import com.reader.shared.domain.model.NsfwHistoryMode
+import com.reader.shared.domain.model.NsfwPreviewMode
 import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.SearchType
 import com.reader.shared.ui.search.SearchViewModel
@@ -68,7 +71,13 @@ fun SearchScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val readPostsRepository: ReadPostsRepository = koinInject()
+    val settingsRepository: SettingsRepository = koinInject()
     val readPostIds by readPostsRepository.readPostIds.collectAsState()
+    val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
+    val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
+    val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
+    val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else NsfwPreviewMode.DO_NOT_PREFETCH
+    val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW
     var showSortMenu by remember { mutableStateOf(false) }
 
     val shouldLoadMore by remember {
@@ -211,7 +220,7 @@ fun SearchScreen(
                             PostCard(
                                 post = post,
                                 onClick = {
-                                    readPostsRepository.markAsRead(post.id)
+                                    readPostsRepository.markAsRead(post, effectiveNsfwHistoryMode)
                                     onPostClick(post.subreddit, post.id)
                                 },
                                 onSubredditClick = { onSubredditClick(post.subreddit) },
@@ -225,7 +234,8 @@ fun SearchScreen(
                                 onCrosspostClick = {
                                     post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
                                 },
-                                isRead = readPostIds.contains(post.id)
+                                isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
+                                nsfwPreviewMode = effectiveNsfwPreviewMode
                             )
                         }
 

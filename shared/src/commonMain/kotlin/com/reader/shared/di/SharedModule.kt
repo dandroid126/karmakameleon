@@ -20,7 +20,8 @@ val sharedModule = module {
     single { createHttpClientWithConfig() }
     single { Settings() }
     single { AuthManager(get(), get()) }
-    single { RedditApi(get(), get()) }
+    single { SettingsRepository(get()) }
+    single { RedditApi(get(), get(), get()) }
     
     // Repositories
     single { PostRepository(get()) }
@@ -29,7 +30,6 @@ val sharedModule = module {
     single { CommentRepository(get()) }
     single { MessageRepository(get()) }
     single { InboxPoller(get(), get()) }
-    single { SettingsRepository(get()) }
     single { ReadPostsRepository(get()) }
     single { CommentDraftRepository(get()) }
 }

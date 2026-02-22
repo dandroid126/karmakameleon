@@ -115,7 +115,7 @@ class FakeRedditApi(
     override suspend fun unsubscribe(subredditName: String): Boolean =
         throwOrReturn(unsubscribeResult)
 
-    override suspend fun searchSubreddits(query: String, limit: Int): List<Subreddit> =
+    override suspend fun searchSubreddits(query: String, limit: Int, includeOver18: Boolean): List<Subreddit> =
         throwOrReturn(searchSubredditsResult)
 
     override suspend fun getPopularSubreddits(after: String?, limit: Int): Listing<Subreddit> =

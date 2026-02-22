@@ -129,6 +129,7 @@ fun PostDetailScreen(
     val context = LocalContext.current
     val settingsRepository: SettingsRepository = koinInject()
     val inlineImagesEnabled by settingsRepository.inlineImagesEnabled.collectAsState()
+    val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
 
     var showCommentSortSheet by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()
@@ -394,7 +395,8 @@ fun PostDetailScreen(
                                 onInlineImageClick = { url ->
                                     imageViewerUrls = listOf(url)
                                     imageViewerInitialPage = 0
-                                }
+                                },
+                                nsfwEnabled = nsfwEnabled
                             )
                         }
 
@@ -717,6 +719,7 @@ private fun PostHeader(
     onTouchStart: () -> Unit = {},
     renderInlineImages: Boolean = true,
     onInlineImageClick: (String) -> Unit = {},
+    nsfwEnabled: Boolean = false,
     navigationHandler: NavigationHandler = koinInject()
 ) {
     var isBodyExpanded by rememberSaveable { mutableStateOf(true) }
@@ -796,7 +799,7 @@ private fun PostHeader(
         ) {
         Column {
         val galleryItems = post.galleryData?.items?.filter { it.url != null } ?: emptyList()
-        if (galleryItems.size > 1 && !post.isNsfw) {
+        if (galleryItems.size > 1 && (!post.isNsfw || nsfwEnabled)) {
             Spacer(modifier = Modifier.height(12.dp))
             val pagerState = rememberPagerState(pageCount = { galleryItems.size })
             val galleryUrls = remember(galleryItems) { galleryItems.mapNotNull { it.url } }
@@ -860,7 +863,7 @@ private fun PostHeader(
         } else {
             val redditVideo = post.media?.redditVideo
                 ?: post.preview?.redditVideoPreview
-            if (redditVideo != null && !post.isNsfw) {
+            if (redditVideo != null && (!post.isNsfw || nsfwEnabled)) {
                 Spacer(modifier = Modifier.height(12.dp))
                 VideoPlayer(
                     videoUrl = redditVideo.fallbackUrl,
@@ -870,7 +873,7 @@ private fun PostHeader(
                 )
             } else {
                 val youTubeVideoId = extractYouTubeVideoId(post.url)
-                if (youTubeVideoId != null && !post.isNsfw) {
+                if (youTubeVideoId != null && (!post.isNsfw || nsfwEnabled)) {
                     Spacer(modifier = Modifier.height(12.dp))
                     YouTubePlayer(
                         videoId = youTubeVideoId,
@@ -878,7 +881,7 @@ private fun PostHeader(
                     )
                 } else {
                     val mp4Url = post.preview?.images?.firstOrNull()?.mp4Url
-                    if (mp4Url != null && !post.isNsfw) {
+                    if (mp4Url != null && (!post.isNsfw || nsfwEnabled)) {
                         Spacer(modifier = Modifier.height(12.dp))
                         VideoPlayer(
                             videoUrl = mp4Url,
@@ -895,7 +898,7 @@ private fun PostHeader(
                             ?: post.url.takeIf { post.isImagePost }
                         val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
                             ?: post.thumbnail?.takeIf { it.startsWith("http") }
-                        if (highResUrl != null && !post.isNsfw) {
+                        if (highResUrl != null && (!post.isNsfw || nsfwEnabled)) {
                             Spacer(modifier = Modifier.height(12.dp))
                             LongPressMenuBox(
                                 menuItems = imageMenuItems(highResUrl),

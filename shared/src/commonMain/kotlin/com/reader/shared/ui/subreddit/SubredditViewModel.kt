@@ -3,6 +3,7 @@ package com.reader.shared.ui.subreddit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.reader.shared.data.repository.PostRepository
+import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.Post
@@ -34,7 +35,8 @@ class SubredditViewModel(
     private val subredditName: String,
     private val subredditRepository: SubredditRepository,
     private val postRepository: PostRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SubredditUiState())
@@ -90,15 +92,19 @@ class SubredditViewModel(
 
             result.fold(
                 onSuccess = { listing ->
+                    val nsfwEnabled = settingsRepository.nsfwEnabled.value
+                    val filteredItems = listing.items.filter { post ->
+                        nsfwEnabled || !post.isNsfw
+                    }
                     _uiState.update {
                         it.copy(
-                            posts = listing.items,
+                            posts = filteredItems,
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoading = false
                         )
                     }
-                    enrichPosts(listing.items)
+                    enrichPosts(filteredItems)
                 },
                 onFailure = { error ->
                     _uiState.update {
@@ -127,15 +133,19 @@ class SubredditViewModel(
 
             result.fold(
                 onSuccess = { listing ->
+                    val nsfwEnabled = settingsRepository.nsfwEnabled.value
+                    val filteredItems = listing.items.filter { post ->
+                        nsfwEnabled || !post.isNsfw
+                    }
                     _uiState.update {
                         it.copy(
-                            posts = it.posts + listing.items,
+                            posts = it.posts + filteredItems,
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoadingMore = false
                         )
                     }
-                    enrichPosts(listing.items)
+                    enrichPosts(filteredItems)
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMore = false) }

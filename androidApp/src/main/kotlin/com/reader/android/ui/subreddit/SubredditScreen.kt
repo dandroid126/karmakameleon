@@ -50,6 +50,9 @@ import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.SortBottomSheet
 import com.reader.android.ui.components.formatNumber
 import com.reader.shared.data.repository.ReadPostsRepository
+import com.reader.shared.data.repository.SettingsRepository
+import com.reader.shared.domain.model.NsfwHistoryMode
+import com.reader.shared.domain.model.NsfwPreviewMode
 import com.reader.shared.ui.subreddit.SubredditViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -70,7 +73,13 @@ fun SubredditScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val readPostsRepository: ReadPostsRepository = koinInject()
+    val settingsRepository: SettingsRepository = koinInject()
     val readPostIds by readPostsRepository.readPostIds.collectAsState()
+    val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
+    val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
+    val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
+    val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else NsfwPreviewMode.DO_NOT_PREFETCH
+    val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW
     var showSortSheet by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()
 
@@ -146,7 +155,7 @@ fun SubredditScreen(
                         PostCard(
                             post = post,
                             onClick = {
-                                readPostsRepository.markAsRead(post.id)
+                                readPostsRepository.markAsRead(post, effectiveNsfwHistoryMode)
                                 onPostClick(post.subreddit, post.id)
                             },
                             onSubredditClick = {},
@@ -160,7 +169,8 @@ fun SubredditScreen(
                             onCrosspostClick = {
                                 post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
                             },
-                            isRead = readPostIds.contains(post.id)
+                            isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
+                            nsfwPreviewMode = effectiveNsfwPreviewMode
                         )
                     }
 

@@ -38,8 +38,13 @@ import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.Subreddit
 import com.reader.shared.domain.model.TimeFilter
 import com.reader.shared.domain.model.User
+import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.domain.model.UserSubreddit
 import io.github.aakira.napier.Napier
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.FormDataContent
@@ -69,7 +74,10 @@ import kotlinx.serialization.json.jsonPrimitive
 open class RedditApi(
     private val httpClient: HttpClient,
     private val authManager: AuthManager,
+    private val settingsRepository: SettingsRepository? = null,
 ) {
+    private val apiScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -330,18 +338,20 @@ open class RedditApi(
         return response.status.isSuccess()
     }
 
-    open suspend fun searchSubreddits(query: String, limit: Int = 10): List<Subreddit> {
+    open suspend fun searchSubreddits(query: String, limit: Int = 10, includeOver18: Boolean = true): List<Subreddit> {
         val response = authenticatedRequest {
             method = HttpMethod.Get
             url("$BASE_URL/subreddits/search")
             parameter("q", query)
             parameter("limit", limit)
             parameter("raw_json", 1)
+            parameter("include_over_18", includeOver18)
         }
         
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
-        return parseSubredditListing(redditResponse.data).items
+        val subreddits = parseSubredditListing(redditResponse.data).items
+        return if (includeOver18) subreddits else subreddits.filter { !it.isNsfw }
     }
 
     open suspend fun getPopularSubreddits(
@@ -719,6 +729,18 @@ open class RedditApi(
     // ==================== Parsing Helpers ====================
 
     private fun parsePostListing(data: ListingData): Listing<Post> {
+        val uncachedSubreddits = data.children
+            .filter { it.kind == "t3" }
+            .mapNotNull { runCatching { json.decodeFromJsonElement<PostDto>(it.data).subreddit }.getOrNull() }
+            .distinct()
+            .filter { settingsRepository?.isSubredditNsfwCached(it) != true }
+
+        if (uncachedSubreddits.isNotEmpty()) {
+            apiScope.launch {
+                fetchSubredditsBatch(uncachedSubreddits)
+            }
+        }
+
         val posts = data.children.mapNotNull { thing ->
             if (thing.kind == "t3") parsePost(thing.data) else null
         }
@@ -777,6 +799,37 @@ open class RedditApi(
         return mapPost(dto)
     }
 
+    private suspend fun fetchSubredditsBatch(subredditNames: List<String>) {
+        subredditNames.chunked(100).forEach { batch ->
+            try {
+                val response = authenticatedRequest {
+                    method = HttpMethod.Get
+                    url("$BASE_URL/api/info.json")
+                    parameter("sr_name", batch.joinToString(","))
+                    parameter("raw_json", 1)
+                }
+                val body = response.bodyAsText()
+                val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
+                parseSubredditListing(redditResponse.data).items.forEach { subreddit ->
+                    settingsRepository?.setSubredditNsfw(subreddit.displayName, subreddit.isNsfw)
+                }
+            } catch (e: Exception) {
+                Napier.e("Failed to batch fetch subreddits", e)
+                batch.forEach { fetchAndCacheSubredditNsfw(it) }
+            }
+        }
+    }
+
+    private suspend fun fetchAndCacheSubredditNsfw(subredditName: String) {
+        try {
+            val subreddit = getSubreddit(subredditName)
+            settingsRepository?.setSubredditNsfw(subredditName, subreddit?.isNsfw ?: false)
+        } catch (e: Exception) {
+            Napier.e("Failed to fetch subreddit NSFW status: $subredditName", e)
+            settingsRepository?.setSubredditNsfw(subredditName, false)
+        }
+    }
+
     private fun parseComment(data: JsonElement, depth: Int): Comment {
         val dto = json.decodeFromJsonElement<CommentDto>(data)
         return mapComment(dto, depth)
@@ -809,6 +862,8 @@ open class RedditApi(
     // ==================== Mappers ====================
 
     private fun mapPost(dto: PostDto): Post {
+        val subredditNsfwKnown = settingsRepository?.isSubredditNsfwCached(dto.subreddit) == true
+        val subredditIsNsfw = if (subredditNsfwKnown) settingsRepository!!.getSubredditNsfw(dto.subreddit) else false
         return Post(
             id = dto.id,
             name = dto.name,
@@ -830,6 +885,8 @@ open class RedditApi(
             created = dto.created.toLong(),
             createdUtc = dto.createdUtc.toLong(),
             isNsfw = dto.over18,
+            subredditIsNsfw = subredditIsNsfw,
+            subredditNsfwKnown = subredditNsfwKnown,
             isSpoiler = dto.spoiler,
             isStickied = dto.stickied,
             isLocked = dto.locked,

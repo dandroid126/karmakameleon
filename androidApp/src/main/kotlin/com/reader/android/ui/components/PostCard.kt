@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.reader.shared.domain.model.NsfwPreviewMode
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
 
@@ -79,7 +80,8 @@ fun PostCard(
     onLinkClick: (String) -> Unit = {},
     onCrosspostClick: () -> Unit = {},
     modifier: Modifier = Modifier,
-    isRead: Boolean = false
+    isRead: Boolean = false,
+    nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val clipboard = LocalClipboard.current
@@ -182,41 +184,80 @@ fun PostCard(
                     val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
                         ?: post.thumbnail?.takeIf { it.startsWith("http") }
 
-                    if (highResUrl != null && !post.isNsfw) {
+                    if (highResUrl != null) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Box {
-                            ProgressiveAsyncImage(
-                                lowResUrl = lowResUrl,
-                                highResUrl = highResUrl,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 300.dp)
-                                    .clip(RoundedCornerShape(8.dp)),
-                                // Commenting this out for now, but this is where we would add the clickability of the image to follow the link.
-                                // I can't decide if I like it or not.
-                                // Maybe this will be configurable in the settings.
+                        if (post.isNsfw) {
+                            when (nsfwPreviewMode) {
+                                NsfwPreviewMode.DO_NOT_PREFETCH -> NsfwBlackBox()
+                                NsfwPreviewMode.PREFETCH_AND_BLUR -> NsfwBlurredImage(
+                                    lowResUrl = lowResUrl,
+                                    highResUrl = highResUrl
+                                )
+                                NsfwPreviewMode.SHOW_PREVIEWS -> Box {
+                                    ProgressiveAsyncImage(
+                                        lowResUrl = lowResUrl,
+                                        highResUrl = highResUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .heightIn(max = 300.dp)
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                    val galleryCount = post.galleryData?.items?.size ?: 0
+                                    if (galleryCount > 1) {
+                                        Surface(
+                                            color = Color.Black.copy(alpha = 0.6f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(8.dp)
+                                        ) {
+                                            Text(
+                                                text = "1/$galleryCount",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color.White,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Box {
+                                ProgressiveAsyncImage(
+                                    lowResUrl = lowResUrl,
+                                    highResUrl = highResUrl,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(max = 300.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    // Commenting this out for now, but this is where we would add the clickability of the image to follow the link.
+                                    // I can't decide if I like it or not.
+                                    // Maybe this will be configurable in the settings.
 //                                    .then(
 //                                        if (post.isLinkPost) Modifier.clickable { onLinkClick(post.url) }
 //                                        else Modifier
 //                                    ),
-                                contentScale = ContentScale.Crop
-                            )
-                            val galleryCount = post.galleryData?.items?.size ?: 0
-                            if (galleryCount > 1) {
-                                Surface(
-                                    color = Color.Black.copy(alpha = 0.6f),
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(8.dp)
-                                ) {
-                                    Text(
-                                        text = "1/$galleryCount",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
+                                    contentScale = ContentScale.Crop
+                                )
+                                val galleryCount = post.galleryData?.items?.size ?: 0
+                                if (galleryCount > 1) {
+                                    Surface(
+                                        color = Color.Black.copy(alpha = 0.6f),
+                                        shape = RoundedCornerShape(12.dp),
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "1/$galleryCount",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Color.White,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
                                 }
                             }
                         }

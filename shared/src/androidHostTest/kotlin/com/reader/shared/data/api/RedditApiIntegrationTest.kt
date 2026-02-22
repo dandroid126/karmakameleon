@@ -148,6 +148,22 @@ class RedditApiIntegrationTest {
             subreddit.displayName.equals("AskReddit", ignoreCase = true),
             "Display name should be AskReddit"
         )
+        assertTrue(
+            !subreddit.isNsfw,
+            "isNsfw should be false for r/AskReddit"
+        )
+        assertTrue(subreddit.subscribers > 0, "Should have subscribers")
+    }
+
+    @Test
+    fun getNsfwSubreddit() = runTest {
+        val api = createApi() ?: return@runTest
+        val subreddit = api.getSubreddit("GoneWild")
+        assertNotNull(subreddit, "r/GoneWild should exist")
+        assertTrue(
+            subreddit.isNsfw,
+            "isNsfw should be true for r/GoneWild"
+        )
         assertTrue(subreddit.subscribers > 0, "Should have subscribers")
     }
 

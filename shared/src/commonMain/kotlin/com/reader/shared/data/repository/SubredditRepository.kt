@@ -102,9 +102,9 @@ class SubredditRepository(
         }
     }
 
-    suspend fun searchSubreddits(query: String): Result<List<Subreddit>> {
+    suspend fun searchSubreddits(query: String, includeOver18: Boolean = true): Result<List<Subreddit>> {
         return try {
-            val subreddits = redditApi.searchSubreddits(query)
+            val subreddits = redditApi.searchSubreddits(query, includeOver18 = includeOver18)
             Result.success(subreddits)
         } catch (e: Exception) {
             Result.failure(e)

@@ -25,6 +25,8 @@ data class Post(
     val created: Long,
     val createdUtc: Long,
     val isNsfw: Boolean,
+    val subredditIsNsfw: Boolean = false,
+    val subredditNsfwKnown: Boolean = false,
     val isSpoiler: Boolean,
     val isStickied: Boolean,
     val isLocked: Boolean,

@@ -52,15 +52,17 @@ class FeedViewModel(
         viewModelScope.launch {
             combine(
                 userRepository.isLoggedIn,
-                settingsRepository.blockedSubreddits
-            ) { isLoggedIn, blockedSubs ->
-                isLoggedIn to blockedSubs
-            }.collect { (isLoggedIn, blockedSubs) ->
+                settingsRepository.blockedSubreddits,
+                settingsRepository.nsfwEnabled
+            ) { isLoggedIn, blockedSubs, nsfwEnabled ->
+                Triple(isLoggedIn, blockedSubs, nsfwEnabled)
+            }.collect { (isLoggedIn, blockedSubs, nsfwEnabled) ->
                 _uiState.update { state ->
                     state.copy(
                         isLoggedIn = isLoggedIn,
                         posts = state.posts.filter { post ->
-                            post.subreddit.lowercase() !in blockedSubs.map { it.lowercase() }
+                            post.subreddit.lowercase() !in blockedSubs.map { it.lowercase() } &&
+                                (nsfwEnabled || !post.isNsfw)
                         }
                     )
                 }
@@ -100,15 +102,19 @@ class FeedViewModel(
             
             result.fold(
                 onSuccess = { listing ->
+                    val nsfwEnabled = settingsRepository.nsfwEnabled.value
+                    val filteredItems = listing.items.filter { post ->
+                        nsfwEnabled || !post.isNsfw
+                    }
                     _uiState.update {
                         it.copy(
-                            posts = listing.items,
+                            posts = filteredItems,
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoading = false
                         )
                     }
-                    enrichPosts(listing.items)
+                    enrichPosts(filteredItems)
                 },
                 onFailure = { error ->
                     _uiState.update {
@@ -140,15 +146,19 @@ class FeedViewModel(
             
             result.fold(
                 onSuccess = { listing ->
+                    val nsfwEnabled = settingsRepository.nsfwEnabled.value
+                    val filteredItems = listing.items.filter { post ->
+                        nsfwEnabled || !post.isNsfw
+                    }
                     _uiState.update {
                         it.copy(
-                            posts = it.posts + listing.items,
+                            posts = it.posts + filteredItems,
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoadingMore = false
                         )
                     }
-                    enrichPosts(listing.items)
+                    enrichPosts(filteredItems)
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMore = false) }
