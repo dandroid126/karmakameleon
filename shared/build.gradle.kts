@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinSerialization)
+    id("jacoco")
 }
 
 // Load .env file for test configuration
@@ -64,5 +65,64 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
         }
+    }
+}
+
+// JaCoCo configuration
+jacoco {
+    toolVersion = "0.8.14"
+}
+
+// Configure JaCoCo for Android tests
+tasks.register("jacocoTestReport", org.gradle.testing.jacoco.tasks.JacocoReport::class) {
+    dependsOn("testAndroidHostTest")
+    
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports for Android tests"
+    
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+    
+    // Source files for coverage
+    sourceDirectories.setFrom(
+        files(
+            "$projectDir/src/commonMain/kotlin",
+            "$projectDir/src/androidMain/kotlin"
+        )
+    )
+    
+    // Class files for coverage
+    classDirectories.setFrom(
+        files(
+            fileTree(layout.buildDirectory.dir("classes/kotlin/android/main").get()) {
+                exclude("**/R.class")
+                exclude("**/R$*.class")
+                exclude("**/BuildConfig.*")
+                exclude("**/Manifest*.*")
+            }
+        )
+    )
+    
+    // Execution data from test runs
+    executionData.setFrom(
+        files(
+            layout.buildDirectory.file("jacoco/testAndroidHostTest.exec").get()
+        )
+    )
+}
+
+// Configure test environment variables and JaCoCo for all test tasks
+tasks.withType<Test> {
+    envVars.forEach { (key, value) ->
+        systemProperty(key, value)
+    }
+    
+    // Configure JaCoCo for test tasks
+    extensions.configure(org.gradle.testing.jacoco.plugins.JacocoTaskExtension::class) {
+        isIncludeNoLocationClasses = true
+        excludes = listOf("jdk.internal.*")
     }
 }
