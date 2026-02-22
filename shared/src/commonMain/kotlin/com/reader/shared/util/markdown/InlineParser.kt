@@ -243,7 +243,11 @@ private fun parseInlineRecursive(text: String, activeDelimiters: Set<String>): L
             val url = text.substring(i, endIdx)
             val httpsUrl = if (url.startsWith("http://")) url.replace("http://", "https://") else url
             flushText(i)
-            result.add(MarkdownInline.Link(listOf(MarkdownInline.Text(url)), httpsUrl))
+            if (previewRedditUrlPattern.matches(httpsUrl)) {
+                result.add(MarkdownInline.Image(httpsUrl))
+            } else {
+                result.add(MarkdownInline.Link(listOf(MarkdownInline.Text(url)), httpsUrl))
+            }
             i = endIdx
             textStart = i
             continue
