@@ -19,12 +19,15 @@ jobs:
       
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
-      
-      - name: Build Debug APK
-        run: ./gradlew :androidApp:assembleDebug
+
+      - name: Run unit tests
+        run: ./gradlew :shared:testAndroidHostTest
         env:
           REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
-      
+
+      - name: Build Debug APK
+        run: ./gradlew :androidApp:assembleDebug
+
       - name: Get commit info
         id: commit_info
         run: |
