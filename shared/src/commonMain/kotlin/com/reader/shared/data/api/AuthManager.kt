@@ -18,6 +18,9 @@ import io.ktor.http.encodeURLParameter
 import io.ktor.http.isSuccess
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
@@ -41,9 +44,13 @@ open class AuthManager(
     private val json = Json { ignoreUnknownKeys = true }
     private val mutex = Mutex()
     private var cachedToken: TokenInfo? = null
+    
+    private val _isLoggedInFlow = MutableStateFlow(false)
+    val isLoggedInFlow: StateFlow<Boolean> = _isLoggedInFlow.asStateFlow()
 
     init {
         loadCachedToken()
+        _isLoggedInFlow.value = isLoggedIn()
     }
 
     private fun loadCachedToken() {
@@ -193,11 +200,13 @@ open class AuthManager(
         )
         cachedToken = tokenInfo
         settings[KEY_TOKEN_INFO] = json.encodeToString(tokenInfo)
+        _isLoggedInFlow.value = isLoggedIn()
     }
 
     open fun clearToken() {
         cachedToken = null
         settings.remove(KEY_TOKEN_INFO)
+        _isLoggedInFlow.value = false
     }
 
     open fun isLoggedIn(): Boolean {

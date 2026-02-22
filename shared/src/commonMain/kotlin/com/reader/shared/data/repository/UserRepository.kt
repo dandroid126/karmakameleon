@@ -9,9 +9,12 @@ import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.TimeFilter
 import com.reader.shared.domain.model.User
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class UserRepository(
     private val redditApi: RedditApi,
@@ -25,6 +28,11 @@ class UserRepository(
 
     init {
         _isLoggedIn.value = authManager.isLoggedIn()
+        CoroutineScope(Dispatchers.Default).launch {
+            authManager.isLoggedInFlow.collect { isLoggedIn ->
+                _isLoggedIn.value = isLoggedIn
+            }
+        }
     }
 
     suspend fun loadCurrentUser(): Result<Account> {
