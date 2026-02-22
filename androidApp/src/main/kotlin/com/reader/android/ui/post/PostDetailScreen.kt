@@ -32,7 +32,6 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -51,6 +50,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -130,6 +131,7 @@ fun PostDetailScreen(
     val inlineImagesEnabled by settingsRepository.inlineImagesEnabled.collectAsState()
 
     var showCommentSortSheet by remember { mutableStateOf(false) }
+    val pullToRefreshState = rememberPullToRefreshState()
     var deleteConfirmCommentId by remember { mutableStateOf<String?>(null) }
     var showLoadDraftDialog by remember { mutableStateOf(false) }
     var pendingDraftText by remember { mutableStateOf<String?>(null) }
@@ -237,11 +239,6 @@ fun PostDetailScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                actions = {
-                    IconButton(onClick = { viewModel.loadPostWithComments() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
-                }
             )
         },
         bottomBar = {
@@ -317,10 +314,17 @@ fun PostDetailScreen(
             }
         }
     ) { padding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading && uiState.post != null,
+            onRefresh = { viewModel.loadPostWithComments() },
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+        ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
                         while (true) {
@@ -533,6 +537,7 @@ fun PostDetailScreen(
                     }
                 }
             }
+        }
         }
     }
 

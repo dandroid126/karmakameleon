@@ -96,7 +96,7 @@ private fun RenderBlock(
                 3 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                 4 -> MaterialTheme.typography.titleLarge
                 5 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                else -> MaterialTheme.typography.titleMedium.copy(textDecoration = TextDecoration.Underline)
+                else -> MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.Underline)
             }
             val padding = when (block.level) {
                 1 -> Modifier.padding(top = 8.dp, bottom = 8.dp)

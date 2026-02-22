@@ -25,7 +25,6 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
@@ -43,12 +42,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.PrimaryScrollableTabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -135,11 +136,6 @@ fun ProfileScreen(
                     }
                 },
                 actions = {
-                    if (uiState.isLoggedIn || !isOwnProfile) {
-                        IconButton(onClick = viewModel::refresh) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "Refresh")
-                        }
-                    }
                     if (isOwnProfile) {
                         IconButton(onClick = onSettingsClick) {
                             Icon(Icons.Filled.Settings, contentDescription = "Settings")
@@ -172,7 +168,11 @@ fun ProfileScreen(
             }
         }
     ) { padding ->
-        Box(
+        val pullToRefreshState = rememberPullToRefreshState()
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading && (uiState.account != null || uiState.user != null),
+            onRefresh = viewModel::refresh,
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)

@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -29,6 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -71,6 +72,7 @@ fun SubredditScreen(
     val readPostsRepository: ReadPostsRepository = koinInject()
     val readPostIds by readPostsRepository.readPostIds.collectAsState()
     var showSortSheet by remember { mutableStateOf(false) }
+    val pullToRefreshState = rememberPullToRefreshState()
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -98,14 +100,14 @@ fun SubredditScreen(
                     IconButton(onClick = { showSortSheet = true }) {
                         Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort")
                     }
-                    IconButton(onClick = { viewModel.loadPosts(forceRefresh = true) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
                 }
             )
         }
     ) { padding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading && uiState.posts.isNotEmpty(),
+            onRefresh = { viewModel.loadPosts(forceRefresh = true) },
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)

@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Inbox
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -29,6 +28,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,6 +57,7 @@ fun InboxScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showFilterMenu by remember { mutableStateOf(false) }
+    val pullToRefreshState = rememberPullToRefreshState()
 
     LaunchedEffect(initialFilter) {
         if (initialFilter != null) {
@@ -104,9 +106,6 @@ fun InboxScreen(
                                 }
                             }
                         }
-                        IconButton(onClick = { viewModel.loadMessages(forceRefresh = true) }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                        }
                     }
                 }
             )
@@ -122,7 +121,10 @@ fun InboxScreen(
             }
         }
     ) { padding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading && uiState.messages.isNotEmpty(),
+            onRefresh = { viewModel.loadMessages(forceRefresh = true) },
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)

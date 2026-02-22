@@ -15,9 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -29,6 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -80,6 +81,8 @@ fun FeedScreen(
         }
     }
 
+    val pullToRefreshState = rememberPullToRefreshState()
+
     var previousFeedType by remember { mutableStateOf(uiState.currentFeedType) }
     LaunchedEffect(uiState.currentFeedType) {
         if (uiState.currentFeedType != previousFeedType) {
@@ -123,14 +126,14 @@ fun FeedScreen(
                     IconButton(onClick = { showSortSheet = true }) {
                         Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort")
                     }
-                    IconButton(onClick = { viewModel.loadPosts(forceRefresh = true) }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Refresh")
-                    }
                 }
             )
         }
     ) { padding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = uiState.isLoading && uiState.posts.isNotEmpty(),
+            onRefresh = { viewModel.loadPosts(forceRefresh = true) },
+            state = pullToRefreshState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
