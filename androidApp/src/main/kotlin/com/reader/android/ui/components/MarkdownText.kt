@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,9 +31,10 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -41,8 +44,10 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import io.github.aakira.napier.Napier
 import com.reader.android.navigation.NavigationHandler
+import com.reader.shared.domain.markdown.MarkdownBlock
+import com.reader.shared.domain.markdown.MarkdownInline
+import com.reader.shared.util.markdown.parseMarkdown
 import org.koin.compose.koinInject
 
 @Composable
@@ -56,202 +61,331 @@ fun MarkdownText(
     navigationHandler: NavigationHandler = koinInject()
 ) {
     val handleLinkClick: (String) -> Unit = { url -> navigationHandler.handleLink(url) }
-    val lines = markdown.split("\n")
+    val blocks = remember(markdown) { parseMarkdown(markdown) }
     val density = LocalDensity.current
     Column(modifier = modifier) {
-        var i = 0
-        while (i < lines.size) {
-            val line = lines[i]
-            when {
-                isTableStart(lines, i) -> {
-                    val tableEndIdx = findTableEnd(lines, i)
-                    val tableLines = lines.subList(i, tableEndIdx)
-                    RenderTable(tableLines, style, handleLinkClick, onTextClick)
-                    i = tableEndIdx - 1
-                }
-                line.startsWith("###") -> {
-                    RenderMixedContent(
-                        text = line.removePrefix("###").trimStart(),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
-                        onLinkClick = handleLinkClick,
-                        onTextClick = onTextClick,
-                        renderInlineImages = renderInlineImages,
-                        onImageClick = onImageClick
+        for (block in blocks) {
+            RenderBlock(
+                block = block,
+                style = style,
+                onLinkClick = handleLinkClick,
+                onTextClick = onTextClick,
+                renderInlineImages = renderInlineImages,
+                onImageClick = onImageClick,
+                density = density
+            )
+        }
+    }
+}
+
+@Composable
+private fun RenderBlock(
+    block: MarkdownBlock,
+    style: TextStyle,
+    onLinkClick: (String) -> Unit,
+    onTextClick: (() -> Unit)?,
+    renderInlineImages: Boolean,
+    onImageClick: (String) -> Unit,
+    density: androidx.compose.ui.unit.Density
+) {
+    when (block) {
+        is MarkdownBlock.Heading -> {
+            val headingStyle = when (block.level) {
+                1 -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                2 -> MaterialTheme.typography.headlineSmall
+                3 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                4 -> MaterialTheme.typography.titleLarge
+                5 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                else -> MaterialTheme.typography.titleMedium.copy(textDecoration = TextDecoration.Underline)
+            }
+            val padding = when (block.level) {
+                1 -> Modifier.padding(top = 8.dp, bottom = 8.dp)
+                2 -> Modifier.padding(top = 6.dp, bottom = 6.dp)
+                3, 4 -> Modifier.padding(top = 4.dp, bottom = 4.dp)
+                else -> Modifier.padding(top = 2.dp, bottom = 2.dp)
+            }
+            RenderInlineList(
+                inlines = block.children,
+                style = headingStyle,
+                modifier = padding,
+                onLinkClick = onLinkClick,
+                onTextClick = onTextClick,
+                renderInlineImages = renderInlineImages,
+                onImageClick = onImageClick
+            )
+        }
+        is MarkdownBlock.Paragraph -> {
+            RenderInlineList(
+                inlines = block.children,
+                style = style,
+                modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
+                onLinkClick = onLinkClick,
+                onTextClick = onTextClick,
+                renderInlineImages = renderInlineImages,
+                onImageClick = onImageClick
+            )
+        }
+        is MarkdownBlock.BulletListItem -> {
+            RenderInlineList(
+                inlines = block.children,
+                style = style,
+                modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
+                onLinkClick = onLinkClick,
+                onTextClick = onTextClick,
+                renderInlineImages = renderInlineImages,
+                onImageClick = onImageClick
+            )
+        }
+        is MarkdownBlock.OrderedListItem -> {
+            RenderInlineList(
+                inlines = block.children,
+                style = style,
+                modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
+                onLinkClick = onLinkClick,
+                onTextClick = onTextClick,
+                renderInlineImages = renderInlineImages,
+                onImageClick = onImageClick
+            )
+        }
+        is MarkdownBlock.BlockQuote -> {
+            Row(
+                modifier = Modifier
+                    .padding(start = 12.dp, top = 4.dp, bottom = 4.dp)
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
                     )
-                }
-                line.startsWith("##") -> {
-                    RenderMixedContent(
-                        text = line.removePrefix("##").trimStart(),
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
-                        onLinkClick = handleLinkClick,
-                        onTextClick = onTextClick,
-                        renderInlineImages = renderInlineImages,
-                        onImageClick = onImageClick
-                    )
-                }
-                line.startsWith("#") -> {
-                    RenderMixedContent(
-                        text = line.removePrefix("#").trimStart(),
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
-                        onLinkClick = handleLinkClick,
-                        onTextClick = onTextClick,
-                        renderInlineImages = renderInlineImages,
-                        onImageClick = onImageClick
-                    )
-                }
-                line.startsWith(">") -> {
-                    val quoteLines = mutableListOf(line.removePrefix(">").removePrefix(" "))
-                    while (i + 1 < lines.size && lines[i + 1].startsWith(">")) {
-                        i++
-                        quoteLines.add(lines[i].removePrefix(">").removePrefix(" "))
-                    }
-                    RenderMixedContent(
-                        text = quoteLines.joinToString("\n"),
-                        style = style.copy(fontStyle = FontStyle.Italic),
-                        modifier = Modifier
-                            .padding(start = 12.dp, top = 4.dp, bottom = 4.dp)
-                            .padding(start = 8.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant, shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
-                            .padding(8.dp),
-                        onLinkClick = handleLinkClick,
-                        onTextClick = onTextClick,
-                        renderInlineImages = renderInlineImages,
-                        onImageClick = onImageClick
-                    )
-                }
-                line.startsWith("    ") -> {
-                    Text(
-                        text = line.substring(4),
-                        style = style.copy(fontFamily = FontFamily.Monospace),
-                        modifier = Modifier
-                            .padding(top = 2.dp, bottom = 2.dp)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(8.dp)
-                    )
-                }
-                line.matches(Regex("^-{3,}$")) -> {
-                    androidx.compose.material3.HorizontalDivider(
-                        modifier = Modifier.padding(vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-                line.startsWith("- ") || line.startsWith("* ") -> {
-                    RenderMixedContent(
-                        text = "• " + line.substring(2),
-                        style = style,
-                        modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
-                        onLinkClick = handleLinkClick,
-                        onTextClick = onTextClick,
-                        renderInlineImages = renderInlineImages,
-                        onImageClick = onImageClick
-                    )
-                }
-                line.matches(Regex("^\\d+\\.\\s+.*")) -> {
-                    val match = Regex("^(\\d+)\\.\\s+(.*)").find(line)
-                    if (match != null) {
-                        RenderMixedContent(
-                            text = "${match.groupValues[1]}. ${match.groupValues[2]}",
-                            style = style,
-                            modifier = Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp),
-                            onLinkClick = handleLinkClick,
+                    .height(IntrinsicSize.Min)
+                    .padding(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(4.dp)
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.outline)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    for (child in block.children) {
+                        RenderBlock(
+                            block = child,
+                            style = style.copy(fontStyle = FontStyle.Italic),
+                            onLinkClick = onLinkClick,
                             onTextClick = onTextClick,
                             renderInlineImages = renderInlineImages,
-                            onImageClick = onImageClick
+                            onImageClick = onImageClick,
+                            density = density
                         )
                     }
                 }
-                line.isNotBlank() -> {
-                    val paragraphLines = mutableListOf(line)
-                    while (i + 1 < lines.size && lines[i + 1].isNotBlank() && !isSpecialLine(lines, i + 1)) {
-                        i++
-                        paragraphLines.add(lines[i])
-                    }
-                    val merged = buildString {
-                        paragraphLines.forEachIndexed { idx, l ->
-                            if (idx > 0) {
-                                if (paragraphLines[idx - 1].endsWith("  ")) {
-                                    append("\n")
-                                } else {
-                                    append(" ")
-                                }
-                            }
-                            append(l.trimEnd())
-                        }
-                    }
-                    RenderMixedContent(
-                        text = merged,
+            }
+        }
+        is MarkdownBlock.CodeBlock -> {
+            Text(
+                text = block.text,
+                style = style.copy(fontFamily = FontFamily.Monospace),
+                modifier = Modifier
+                    .padding(top = 2.dp, bottom = 2.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(8.dp)
+            )
+        }
+        is MarkdownBlock.Table -> {
+            RenderTable(
+                table = block,
+                style = style,
+                onLinkClick = onLinkClick,
+                onTextClick = onTextClick
+            )
+        }
+        MarkdownBlock.HorizontalRule -> {
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
+        MarkdownBlock.BlankLine -> {
+            val spacerHeight = with(density) { style.fontSize.toPx().toDp() }
+            Spacer(modifier = Modifier.height(spacerHeight))
+        }
+    }
+}
+
+private sealed class InlineSegment {
+    data class TextRun(val inlines: List<MarkdownInline>) : InlineSegment()
+    data class ImageItem(val url: String) : InlineSegment()
+}
+
+private fun splitInlinesIntoSegments(inlines: List<MarkdownInline>): List<InlineSegment> {
+    val segments = mutableListOf<InlineSegment>()
+    val textBuffer = mutableListOf<MarkdownInline>()
+    for (inline in inlines) {
+        if (inline is MarkdownInline.Image) {
+            if (textBuffer.isNotEmpty()) {
+                segments.add(InlineSegment.TextRun(textBuffer.toList()))
+                textBuffer.clear()
+            }
+            segments.add(InlineSegment.ImageItem(inline.url))
+        } else {
+            textBuffer.add(inline)
+        }
+    }
+    if (textBuffer.isNotEmpty()) {
+        segments.add(InlineSegment.TextRun(textBuffer.toList()))
+    }
+    return segments
+}
+
+@Composable
+private fun RenderInlineList(
+    inlines: List<MarkdownInline>,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    onLinkClick: (String) -> Unit = {},
+    onTextClick: (() -> Unit)? = null,
+    renderInlineImages: Boolean = true,
+    onImageClick: (String) -> Unit = {}
+) {
+    val hasSpoilers = inlines.any { containsSpoiler(it) }
+    val hasImages = renderInlineImages && inlines.any { it is MarkdownInline.Image }
+
+    if (!hasSpoilers && !hasImages) {
+        val linkColor = MaterialTheme.colorScheme.primary
+        val superscriptSize = MaterialTheme.typography.bodySmall.fontSize
+        val annotated = buildAnnotatedString {
+            for (inline in inlines) {
+                appendInline(inline, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+            }
+        }
+        ClickableMarkdownText(text = annotated, style = style, modifier = modifier, onTextClick = onTextClick)
+        return
+    }
+
+    val linkColor = MaterialTheme.colorScheme.primary
+    val superscriptSize = MaterialTheme.typography.bodySmall.fontSize
+    val segments = splitInlinesIntoSegments(inlines)
+
+    Column(modifier = modifier) {
+        for (segment in segments) {
+            when (segment) {
+                is InlineSegment.TextRun -> {
+                    RenderInlineSegment(
+                        inlines = segment.inlines,
                         style = style,
-                        modifier = Modifier.padding(top = 2.dp, bottom = 2.dp),
-                        onLinkClick = handleLinkClick,
+                        linkColor = linkColor,
+                        superscriptSize = superscriptSize,
+                        onLinkClick = onLinkClick,
                         onTextClick = onTextClick,
+                        renderInlineImages = renderInlineImages,
+                        onImageClick = onImageClick
+                    )
+                }
+                is InlineSegment.ImageItem -> {
+                    InlineImage(url = segment.url, modifier = Modifier.padding(vertical = 4.dp), onImageClick = onImageClick)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RenderInlineSegment(
+    inlines: List<MarkdownInline>,
+    style: TextStyle,
+    linkColor: Color,
+    superscriptSize: androidx.compose.ui.unit.TextUnit,
+    onLinkClick: (String) -> Unit,
+    onTextClick: (() -> Unit)?,
+    renderInlineImages: Boolean,
+    onImageClick: (String) -> Unit
+) {
+    val hasSpoilers = inlines.any { containsSpoiler(it) }
+
+    if (!hasSpoilers) {
+        val annotated = buildAnnotatedString {
+            for (inline in inlines) {
+                appendInline(inline, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+            }
+        }
+        ClickableMarkdownText(text = annotated, style = style, onTextClick = onTextClick)
+        return
+    }
+
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        for (inline in inlines) {
+            when (inline) {
+                is MarkdownInline.Spoiler -> {
+                    SpoilerComponent(
+                        children = inline.children,
+                        style = style,
+                        linkColor = linkColor,
+                        superscriptSize = superscriptSize,
+                        onLinkClick = onLinkClick,
                         renderInlineImages = renderInlineImages,
                         onImageClick = onImageClick
                     )
                 }
                 else -> {
-                    while (i + 1 < lines.size && lines[i + 1].isBlank()) {
-                        i++
+                    val annotated = buildAnnotatedString {
+                        appendInline(inline, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
                     }
-                    if (i + 1 < lines.size) {
-                        val spacerHeight = with(density) { style.fontSize.toPx().toDp() }
-                        Spacer(modifier = Modifier.height(spacerHeight))
-                    }
+                    ClickableMarkdownText(text = annotated, style = style, onTextClick = onTextClick)
                 }
             }
-            i++
         }
     }
 }
 
-private fun isSpecialLine(lines: List<String>, i: Int): Boolean {
-    val line = lines[i]
-    return line.startsWith("#") ||
-            line.startsWith(">") ||
-            line.startsWith("    ") ||
-            line.matches(Regex("^-{3,}$")) ||
-            line.startsWith("- ") || line.startsWith("* ") ||
-            line.matches(Regex("^\\d+\\.\\s+.*")) ||
-            isTableStart(lines, i)
-}
-
-private fun isTableStart(lines: List<String>, index: Int): Boolean {
-    if (index + 1 >= lines.size) return false
-    val currentLine = lines[index]
-    val nextLine = lines[index + 1]
-    
-    return currentLine.contains("|") && nextLine.matches(Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$"))
-}
-
-private fun findTableEnd(lines: List<String>, startIndex: Int): Int {
-    var i = startIndex + 2
-    while (i < lines.size && lines[i].contains("|")) {
-        i++
+private fun containsSpoiler(inline: MarkdownInline): Boolean {
+    return when (inline) {
+        is MarkdownInline.Spoiler -> true
+        is MarkdownInline.Bold -> inline.children.any { containsSpoiler(it) }
+        is MarkdownInline.Italic -> inline.children.any { containsSpoiler(it) }
+        is MarkdownInline.BoldItalic -> inline.children.any { containsSpoiler(it) }
+        is MarkdownInline.Strikethrough -> inline.children.any { containsSpoiler(it) }
+        is MarkdownInline.Superscript -> inline.children.any { containsSpoiler(it) }
+        is MarkdownInline.Link -> inline.text.any { containsSpoiler(it) }
+        else -> false
     }
-    return i
 }
 
-private fun parseTableRow(line: String): List<String> {
-    val cells = mutableListOf<String>()
-    val parts = line.split("|")
-    for (i in parts.indices) {
-        val trimmed = parts[i].trim()
-        if (i == 0 && trimmed.isEmpty()) continue
-        if (i == parts.size - 1 && trimmed.isEmpty()) continue
-        cells.add(trimmed)
+@Composable
+private fun SpoilerComponent(
+    children: List<MarkdownInline>,
+    style: TextStyle,
+    linkColor: Color,
+    superscriptSize: androidx.compose.ui.unit.TextUnit,
+    onLinkClick: (String) -> Unit,
+    renderInlineImages: Boolean,
+    onImageClick: (String) -> Unit
+) {
+    var isRevealed by remember { mutableStateOf(false) }
+    val spoilerColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val textColor = if (isRevealed) MaterialTheme.colorScheme.onSurface else spoilerColor
+
+    val annotated = buildAnnotatedString {
+        for (child in children) {
+            appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+        }
     }
-    return cells
-}
 
-private fun isTableSeparator(line: String): Boolean {
-    return line.matches(Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$"))
+    Box(
+        modifier = Modifier
+            .background(if (isRevealed) Color.Transparent else spoilerColor)
+            .clickable { isRevealed = !isRevealed }
+            .padding(horizontal = 2.dp)
+    ) {
+        Text(
+            text = annotated,
+            style = style.copy(color = textColor),
+            modifier = Modifier.padding(2.dp)
+        )
+    }
 }
 
 @Composable
 private fun ClickableMarkdownText(
-    text: androidx.compose.ui.text.AnnotatedString,
+    text: AnnotatedString,
     style: TextStyle,
     modifier: Modifier = Modifier,
     onTextClick: (() -> Unit)? = null
@@ -268,28 +402,85 @@ private fun ClickableMarkdownText(
     )
 }
 
+private fun AnnotatedString.Builder.appendInline(
+    inline: MarkdownInline,
+    linkColor: Color,
+    superscriptSize: androidx.compose.ui.unit.TextUnit,
+    onLinkClick: (String) -> Unit,
+    renderInlineImages: Boolean,
+    onImageClick: (String) -> Unit
+) {
+    when (inline) {
+        is MarkdownInline.Text -> append(inline.text)
+        is MarkdownInline.Bold -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+        }
+        is MarkdownInline.Italic -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+        }
+        is MarkdownInline.BoldItalic -> withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
+            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+        }
+        is MarkdownInline.Strikethrough -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
+            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+        }
+        is MarkdownInline.Code -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+            append(inline.text)
+        }
+        is MarkdownInline.Superscript -> withStyle(SpanStyle(fontSize = superscriptSize)) {
+            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+        }
+        is MarkdownInline.Spoiler -> {
+        }
+        is MarkdownInline.Link -> {
+            val url = inline.url
+            pushLink(
+                LinkAnnotation.Clickable(
+                    tag = url,
+                    styles = TextLinkStyles(style = SpanStyle(color = linkColor)),
+                    linkInteractionListener = { onLinkClick(url) }
+                )
+            )
+            withStyle(SpanStyle(color = linkColor)) {
+                for (child in inline.text) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+            }
+            pop()
+        }
+        is MarkdownInline.Image -> {
+            if (!renderInlineImages) {
+                val isGif = inline.url.contains("giphy") || inline.url.endsWith(".gif")
+                val label = if (isGif) "[gif]" else "[img]"
+                val url = inline.url
+                pushLink(
+                    LinkAnnotation.Clickable(
+                        tag = url,
+                        styles = TextLinkStyles(style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
+                        linkInteractionListener = { onImageClick(url) }
+                    )
+                )
+                append(label)
+                pop()
+            }
+        }
+    }
+}
+
 @Composable
 private fun RenderTable(
-    tableLines: List<String>,
+    table: MarkdownBlock.Table,
     style: TextStyle,
     onLinkClick: (String) -> Unit = {},
     onTextClick: (() -> Unit)? = null
 ) {
-    if (tableLines.isEmpty()) return
-    
-    val headerRow = parseTableRow(tableLines[0])
-    val dataRows = tableLines.drop(2)
-        .filter { !isTableSeparator(it) }
-        .map { parseTableRow(it) }
-    
-    if (headerRow.isEmpty()) return
-    
-    val columnCount = headerRow.size
+    if (table.header.isEmpty()) return
+
+    val columnCount = table.header.size
     val borderColor = MaterialTheme.colorScheme.outline
     val borderWidth = 1.dp
-    
-    val allRows = listOf(headerRow) + dataRows
-    
+    val allRows = listOf(table.header) + table.rows
+    val linkColor = MaterialTheme.colorScheme.primary
+    val superscriptSize = MaterialTheme.typography.bodySmall.fontSize
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -309,6 +500,7 @@ private fun RenderTable(
             ) {
                 repeat(columnCount) { colIndex ->
                     val cellContent = if (colIndex < row.size) row[colIndex] else ""
+                    val cellInlines = com.reader.shared.util.markdown.parseInlineMarkdown(cellContent)
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -317,393 +509,19 @@ private fun RenderTable(
                             .padding(8.dp),
                         contentAlignment = Alignment.TopStart
                     ) {
+                        val cellStyle = if (rowIndex == 0) style.copy(fontWeight = FontWeight.Bold) else style
+                        val annotated = buildAnnotatedString {
+                            for (inline in cellInlines) {
+                                appendInline(inline, linkColor, superscriptSize, onLinkClick, true, {})
+                            }
+                        }
                         ClickableMarkdownText(
-                            text = parseInlineMarkdown(cellContent, onLinkClick),
-                            style = if (rowIndex == 0) style.copy(fontWeight = FontWeight.Bold) else style,
+                            text = annotated,
+                            style = cellStyle,
                             modifier = Modifier.wrapContentHeight(),
                             onTextClick = onTextClick
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-private data class InlineMatch(
-    val text: String,
-    val style: SpanStyle? = null,
-    val linkUrl: String? = null,
-    val endIndex: Int
-)
-
-private fun delimitedPattern(delimiter: String, style: SpanStyle): (String, Int) -> InlineMatch? = { t, i ->
-    if (t.startsWith(delimiter, i)) {
-        val closeIdx = t.indexOf(delimiter, i + delimiter.length)
-        if (closeIdx != -1) {
-            InlineMatch(
-                text = t.substring(i + delimiter.length, closeIdx),
-                style = style,
-                endIndex = closeIdx + delimiter.length
-            )
-        } else null
-    } else null
-}
-
-@Composable
-private fun parseInlineMarkdown(text: String, onLinkClick: (String) -> Unit = {}): androidx.compose.ui.text.AnnotatedString {
-    val linkColor = MaterialTheme.colorScheme.primary
-    val superscriptSize = MaterialTheme.typography.bodySmall.fontSize
-    val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[', ']', '(', ')', '#', '-', '.', '+', '|', '/')
-
-    val patterns: List<(String, Int) -> InlineMatch?> = listOf(
-        // Escaped subreddit \/r/ or user \/u/ → plain text, no link
-        { t, i ->
-            when {
-                t.startsWith("\\/r/", i) -> {
-                    val nameStart = i + 4
-                    val endIdx = (nameStart until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
-                    InlineMatch("/r/" + t.substring(nameStart, endIdx), endIndex = endIdx)
-                }
-                t.startsWith("\\/u/", i) -> {
-                    val nameStart = i + 4
-                    val endIdx = (nameStart until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
-                    InlineMatch("/u/" + t.substring(nameStart, endIdx), endIndex = endIdx)
-                }
-                else -> null
-            }
-        },
-        // Backslash escape
-        { t, i ->
-            if (t.startsWith("\\", i) && i + 1 < t.length && t[i + 1] in escapeChars) {
-                InlineMatch(text = t[i + 1].toString(), endIndex = i + 2)
-            } else null
-        },
-        // Links: [text](url) and [text][ref]
-        { t, i ->
-            if (t.startsWith("[", i)) {
-                val closeTextIdx = t.indexOf("]", i + 1)
-                if (closeTextIdx != -1) {
-                    when {
-                        t.getOrNull(closeTextIdx + 1) == '(' -> {
-                            val closeUrlIdx = t.indexOf(")", closeTextIdx + 2)
-                            if (closeUrlIdx != -1) {
-                                val linkText = t.substring(i + 1, closeTextIdx)
-                                val linkUrl = t.substring(closeTextIdx + 2, closeUrlIdx)
-                                InlineMatch(linkText, SpanStyle(color = linkColor), linkUrl, closeUrlIdx + 1)
-                            } else null
-                        }
-                        t.getOrNull(closeTextIdx + 1) == '[' -> {
-                            val refCloseIdx = t.indexOf("]", closeTextIdx + 2)
-                            if (refCloseIdx != -1) {
-                                val linkText = t.substring(i + 1, closeTextIdx)
-                                InlineMatch(linkText, SpanStyle(color = linkColor), linkText, refCloseIdx + 1)
-                            } else null
-                        }
-                        else -> null
-                    }
-                } else null
-            } else null
-        },
-        // Bold+Italic ___...___ and ***...***
-        delimitedPattern("___", SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)),
-        delimitedPattern("***", SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)),
-        // Bold __...__ and **...**
-        delimitedPattern("__", SpanStyle(fontWeight = FontWeight.Bold)),
-        delimitedPattern("**", SpanStyle(fontWeight = FontWeight.Bold)),
-        // Strikethrough ~~...~~
-        delimitedPattern("~~", SpanStyle(textDecoration = TextDecoration.LineThrough)),
-        // Spoiler >!...!<
-        { t, i ->
-            if (t.startsWith(">!", i)) {
-                val closeIdx = t.indexOf("!<", i + 2)
-                if (closeIdx != -1) {
-                    InlineMatch(t.substring(i + 2, closeIdx), SpanStyle(background = Color.Gray), endIndex = closeIdx + 2)
-                } else null
-            } else null
-        },
-        // Superscript ^(...)
-        { t, i ->
-            if (t.startsWith("^(", i)) {
-                val closeIdx = t.indexOf(")", i + 2)
-                if (closeIdx != -1) {
-                    InlineMatch(t.substring(i + 2, closeIdx), SpanStyle(fontSize = superscriptSize), endIndex = closeIdx + 1)
-                } else null
-            } else null
-        },
-        // Superscript ^word
-        { t, i ->
-            if (t.startsWith("^", i) && i + 1 < t.length && t[i + 1] != '(') {
-                val endIdx = (i + 1 until t.length).firstOrNull { t[it].isWhitespace() } ?: t.length
-                InlineMatch(t.substring(i + 1, endIdx), SpanStyle(fontSize = superscriptSize), endIndex = endIdx)
-            } else null
-        },
-        // Italic _..._ (not __)
-        { t, i ->
-            if (t.startsWith("_", i) && !t.startsWith("__", i)) {
-                val closeIdx = t.indexOf("_", i + 1)
-                if (closeIdx != -1) {
-                    InlineMatch(t.substring(i + 1, closeIdx), SpanStyle(fontStyle = FontStyle.Italic), endIndex = closeIdx + 1)
-                } else null
-            } else null
-        },
-        // Italic *...* (not ** or ***)
-        { t, i ->
-            if (t.startsWith("*", i) && !t.startsWith("**", i)) {
-                val closeIdx = t.indexOf("*", i + 1)
-                if (closeIdx != -1) {
-                    InlineMatch(t.substring(i + 1, closeIdx), SpanStyle(fontStyle = FontStyle.Italic), endIndex = closeIdx + 1)
-                } else null
-            } else null
-        },
-        // Inline code `...`
-        delimitedPattern("`", SpanStyle(fontFamily = FontFamily.Monospace)),
-        // Bare URL
-        { t, i ->
-            if (t.startsWith("https://", i) || t.startsWith("http://", i)) {
-                val endIdx = (i until t.length).firstOrNull { t[it].isWhitespace() } ?: t.length
-                val url = t.substring(i, endIdx)
-                val httpsUrl = if (url.startsWith("http://")) {
-                    url.replace("http://", "https://")
-                } else {
-                    url
-                }
-                InlineMatch(url, SpanStyle(color = linkColor), httpsUrl, endIdx)
-            } else null
-        },
-        // Subreddit reference r/ or /r/
-        { t, i ->
-            when {
-                t.startsWith("/r/", i) -> {
-                    val nameStart = i + 3
-                    val endIdx = (nameStart until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
-                    val ref = "r/" + t.substring(nameStart, endIdx)
-                    InlineMatch(t.substring(i, endIdx), SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
-                }
-                t.startsWith("r/", i) -> {
-                    val endIdx = (i + 2 until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
-                    val ref = t.substring(i, endIdx)
-                    InlineMatch(ref, SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
-                }
-                else -> null
-            }
-        },
-        // User reference u/ or /u/
-        { t, i ->
-            when {
-                t.startsWith("/u/", i) -> {
-                    val nameStart = i + 3
-                    val endIdx = (nameStart until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
-                    val ref = "u/" + t.substring(nameStart, endIdx)
-                    InlineMatch(t.substring(i, endIdx), SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
-                }
-                t.startsWith("u/", i) -> {
-                    val endIdx = (i + 2 until t.length).firstOrNull { !t[it].isLetterOrDigit() && t[it] != '_' } ?: t.length
-                    val ref = t.substring(i, endIdx)
-                    InlineMatch(ref, SpanStyle(color = linkColor), "https://www.reddit.com/$ref", endIdx)
-                }
-                else -> null
-            }
-        }
-    )
-
-    return buildAnnotatedString {
-        var current = 0
-        var i = 0
-        while (i < text.length) {
-            val match = patterns.firstNotNullOfOrNull { it(text, i) }
-            if (match != null) {
-                append(text.substring(current, i))
-                if (match.linkUrl != null) {
-                    pushLink(
-                        LinkAnnotation.Clickable(
-                            tag = match.linkUrl,
-                            styles = TextLinkStyles(style = match.style),
-                            linkInteractionListener = { onLinkClick(match.linkUrl) }
-                        )
-                    )
-                    if (match.style != null) {
-                        withStyle(match.style) { append(match.text) }
-                    } else {
-                        append(match.text)
-                    }
-                    pop()
-                } else if (match.style != null) {
-                    withStyle(match.style) { append(match.text) }
-                } else {
-                    append(match.text)
-                }
-                i = match.endIndex
-                current = i
-            } else {
-                i++
-            }
-        }
-        append(text.substring(current))
-    }
-}
-
-private sealed class ContentSegment {
-    data class Text(val text: String) : ContentSegment()
-    data class Image(val url: String) : ContentSegment()
-}
-
-private val inlineImagePattern = Regex("""!\[img]\(([^)]+)\)""")
-private val inlineGifPattern = Regex("""!\[gif]\(giphy\|([^)]+)\)""")
-private val previewRedditUrlPattern = Regex("""https://preview\.redd\.it/[^\s)]+""")
-
-private fun splitIntoContentSegments(text: String): List<ContentSegment> {
-    data class ImageMatch(val range: IntRange, val url: String)
-
-    val imageMatches = mutableListOf<ImageMatch>()
-
-    for (match in inlineImagePattern.findAll(text)) {
-        val content = match.groupValues[1]
-        val url = if (content.startsWith("http")) {
-            content
-        } else {
-            "https://preview.redd.it/${content}.jpeg"
-        }
-        imageMatches.add(ImageMatch(match.range, url))
-    }
-
-    for (match in inlineGifPattern.findAll(text)) {
-        val parts = match.groupValues[1].split("|")
-        val gifId = parts[0]
-        val params = parts.drop(1)
-        val knownParams = setOf("downsized")
-        val unknownParams = params.filter { it !in knownParams }
-        if (unknownParams.isNotEmpty()) {
-            Napier.w("Unknown giphy parameters: $unknownParams in ${match.value}")
-        }
-        val suffix = when {
-            "downsized" in params -> "giphy-downsized.gif"
-            else -> "giphy.gif"
-        }
-        imageMatches.add(ImageMatch(match.range, "https://i.giphy.com/${gifId}/${suffix}"))
-    }
-
-    for (match in previewRedditUrlPattern.findAll(text)) {
-        if (imageMatches.none { it.range.first <= match.range.first && match.range.last <= it.range.last }) {
-            imageMatches.add(ImageMatch(match.range, match.value))
-        }
-    }
-
-    if (imageMatches.isEmpty()) {
-        return listOf(ContentSegment.Text(text))
-    }
-
-    val sorted = imageMatches.sortedBy { it.range.first }
-    val segments = mutableListOf<ContentSegment>()
-    var lastEnd = 0
-
-    for (img in sorted) {
-        if (img.range.first > lastEnd) {
-            val textBefore = text.substring(lastEnd, img.range.first).trim()
-            if (textBefore.isNotEmpty()) {
-                segments.add(ContentSegment.Text(textBefore))
-            }
-        }
-        segments.add(ContentSegment.Image(img.url))
-        lastEnd = img.range.last + 1
-    }
-
-    if (lastEnd < text.length) {
-        val textAfter = text.substring(lastEnd).trim()
-        if (textAfter.isNotEmpty()) {
-            segments.add(ContentSegment.Text(textAfter))
-        }
-    }
-
-    return segments
-}
-
-@Composable
-private fun RenderMixedContent(
-    text: String,
-    style: TextStyle,
-    modifier: Modifier = Modifier,
-    onLinkClick: (String) -> Unit = {},
-    onTextClick: (() -> Unit)? = null,
-    renderInlineImages: Boolean = true,
-    onImageClick: (String) -> Unit = {}
-) {
-    if (!renderInlineImages) {
-        val segments = splitIntoContentSegments(text)
-        if (segments.all { it is ContentSegment.Text }) {
-            ClickableMarkdownText(
-                text = parseInlineMarkdown(text, onLinkClick),
-                style = style,
-                modifier = modifier,
-                onTextClick = onTextClick
-            )
-        } else {
-            Column(modifier = modifier) {
-                for (segment in segments) {
-                    when (segment) {
-                        is ContentSegment.Text -> {
-                            ClickableMarkdownText(
-                                text = parseInlineMarkdown(segment.text, onLinkClick),
-                                style = style,
-                                onTextClick = onTextClick
-                            )
-                        }
-                        is ContentSegment.Image -> {
-                            val isGif = segment.url.contains("giphy") || segment.url.endsWith(".gif")
-                            val label = if (isGif) "[gif]" else "[img]"
-                            val linkColor = MaterialTheme.colorScheme.primary
-                            val annotated = buildAnnotatedString {
-                                pushLink(
-                                    LinkAnnotation.Clickable(
-                                        tag = segment.url,
-                                        styles = TextLinkStyles(style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
-                                        linkInteractionListener = { onImageClick(segment.url) }
-                                    )
-                                )
-                                append(label)
-                                pop()
-                            }
-                            Text(
-                                text = annotated,
-                                style = style,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        return
-    }
-
-    val segments = splitIntoContentSegments(text)
-
-    if (segments.size == 1 && segments[0] is ContentSegment.Text) {
-        ClickableMarkdownText(
-            text = parseInlineMarkdown(text, onLinkClick),
-            style = style,
-            modifier = modifier,
-            onTextClick = onTextClick
-        )
-        return
-    }
-
-    Column(modifier = modifier) {
-        for (segment in segments) {
-            when (segment) {
-                is ContentSegment.Text -> {
-                    ClickableMarkdownText(
-                        text = parseInlineMarkdown(segment.text, onLinkClick),
-                        style = style,
-                        onTextClick = onTextClick
-                    )
-                }
-                is ContentSegment.Image -> {
-                    InlineImage(
-                        url = segment.url,
-                        modifier = Modifier.padding(vertical = 4.dp),
-                        onImageClick = onImageClick
-                    )
                 }
             }
         }
