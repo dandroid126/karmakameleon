@@ -27,7 +27,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -55,6 +54,7 @@ import com.reader.shared.domain.model.NsfwHistoryMode
 import com.reader.shared.domain.model.NsfwPreviewMode
 import com.reader.shared.ui.subreddit.SubredditViewModel
 import org.koin.androidx.compose.koinViewModel
+import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 
@@ -62,6 +62,7 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun SubredditScreen(
     subredditName: String,
+    currentRoute: String? = null,
     onBackClick: () -> Unit,
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onUserClick: (String) -> Unit,
@@ -98,7 +99,8 @@ fun SubredditScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            UniversalTopAppBar(
+                currentRoute = currentRoute,
                 title = { Text("r/$subredditName") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {

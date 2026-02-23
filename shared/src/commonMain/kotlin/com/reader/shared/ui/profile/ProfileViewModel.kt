@@ -16,8 +16,6 @@ import com.reader.shared.ui.comment.CommentViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -47,7 +45,8 @@ data class ProfileUiState(
     val upvotedAfter: String? = null,
     val downvotedAfter: String? = null,
     val authUrl: String? = null,
-    val isOwnProfile: Boolean = true,
+    val isOwnProfile: Boolean = false,
+    val errorMessage: String? = null,
     val clientId: String = "",
     val savedContentType: SavedContentType = SavedContentType.POSTS
 )
@@ -78,41 +77,12 @@ class ProfileViewModel(
     private val _uiState = MutableStateFlow(ProfileUiState(clientId = authManager.getClientId()))
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
-    init {
-        viewModelScope.launch {
-            userRepository.isLoggedIn.collect { isLoggedIn ->
-                _uiState.update { it.copy(isLoggedIn = isLoggedIn) }
-                if (isLoggedIn) {
-                    loadCurrentUser()
-                }
-            }
-        }
-        
-        viewModelScope.launch {
-            userRepository.currentAccount.collect { account ->
-                _uiState.update { it.copy(account = account) }
-                if (account != null) {
-                    loadUserPosts(account.name)
-                }
-            }
-        }
-        postRepository.postUpdates
-            .onEach { updatedPost ->
-                _uiState.update { state ->
-                    state.copy(
-                        posts = state.posts.map { if (it.id == updatedPost.id) updatedPost else it },
-                        savedPosts = if (updatedPost.isSaved) {
-                            state.savedPosts.map { if (it.id == updatedPost.id) updatedPost else it }
-                        } else {
-                            state.savedPosts.filter { it.id != updatedPost.id }
-                        },
-                        upvotedPosts = state.upvotedPosts.map { if (it.id == updatedPost.id) updatedPost else it },
-                        downvotedPosts = state.downvotedPosts.map { if (it.id == updatedPost.id) updatedPost else it }
-                    )
-                }
-            }
-            .launchIn(viewModelScope)
+    fun clearAllData() {
+        _uiState.value = ProfileUiState(clientId = authManager.getClientId())
+    }
 
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
     }
 
     fun setClientId(clientId: String) {
@@ -120,31 +90,34 @@ class ProfileViewModel(
         _uiState.update { it.copy(clientId = clientId) }
     }
 
-    fun loadCurrentUser(forceRefresh: Boolean = false) {
+    fun loadOwnProfile(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
-                    isLoading = !forceRefresh, 
-                    isRefreshing = forceRefresh
+                    isLoading = !forceRefresh,
+                    isRefreshing = forceRefresh,
+                    isOwnProfile = true,
+                    isLoggedIn = true
                 )
             }
             val result = userRepository.loadCurrentUser()
             result.fold(
                 onSuccess = { account ->
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
-                            account = account, 
+                            account = account,
                             isLoading = false,
                             isRefreshing = false
                         )
                     }
+                    loadUserPosts(account.name)
                 },
                 onFailure = { error ->
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
-                            isLoading = false, 
+                            isLoading = false,
                             isRefreshing = false,
-                            error = error.message
+                            errorMessage = error.message
                         )
                     }
                 }
@@ -152,11 +125,11 @@ class ProfileViewModel(
         }
     }
 
-    fun loadUser(username: String, forceRefresh: Boolean = false) {
+    fun loadUserProfile(username: String, forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
-                    isLoading = !forceRefresh, 
+                    isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
                     isOwnProfile = false
                 )
@@ -164,9 +137,9 @@ class ProfileViewModel(
             val result = userRepository.getUser(username)
             result.fold(
                 onSuccess = { user ->
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
-                            user = user, 
+                            user = user,
                             isLoading = false,
                             isRefreshing = false
                         )
@@ -174,11 +147,11 @@ class ProfileViewModel(
                     loadUserPosts(username)
                 },
                 onFailure = { error ->
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
-                            isLoading = false, 
+                            isLoading = false,
                             isRefreshing = false,
-                            error = error.message
+                            errorMessage = error.message
                         )
                     }
                 }
@@ -187,11 +160,8 @@ class ProfileViewModel(
     }
 
     private fun getUsername(): String? {
-        return if (_uiState.value.isOwnProfile) {
-            _uiState.value.account?.name
-        } else {
-            _uiState.value.user?.name
-        }
+        return if (_uiState.value.isOwnProfile) _uiState.value.account?.name
+        else _uiState.value.user?.name
     }
 
     private fun loadUserPosts(
@@ -385,7 +355,7 @@ class ProfileViewModel(
             }
             ProfileTab.UPVOTED -> loadUpvotedPosts(forceRefresh = true)
             ProfileTab.DOWNVOTED -> loadDownvotedPosts(forceRefresh = true)
-            ProfileTab.ABOUT -> if (_uiState.value.isOwnProfile) loadCurrentUser(forceRefresh = true) else loadUser(username, forceRefresh = true)
+            ProfileTab.ABOUT -> if (_uiState.value.isOwnProfile) loadOwnProfile(forceRefresh = true) else loadUserProfile(username, forceRefresh = true)
         }
     }
 
@@ -401,9 +371,7 @@ class ProfileViewModel(
 
     fun logout() {
         userRepository.logout()
-        _uiState.update {
-            ProfileUiState(isLoggedIn = false)
-        }
+        clearAllData()
     }
 
     fun vote(post: Post, direction: Int) {

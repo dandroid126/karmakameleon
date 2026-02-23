@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Email
@@ -27,7 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -46,6 +46,7 @@ import com.reader.android.ui.components.ReplyBar
 import com.reader.shared.domain.model.InboxFilter
 import com.reader.shared.domain.model.Message
 import com.reader.shared.ui.inbox.InboxViewModel
+import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
@@ -53,6 +54,8 @@ import org.koin.compose.koinInject
 @Composable
 fun InboxScreen(
     initialFilter: InboxFilter? = null,
+    currentRoute: String? = null,
+    onBackClick: () -> Unit = {},
     viewModel: InboxViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -77,8 +80,16 @@ fun InboxScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            UniversalTopAppBar(
+                currentRoute = currentRoute,
+                excludeInbox = true,
                 title = { Text("Inbox") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+
+                },
                 actions = {
                     if (uiState.isLoggedIn) {
                         IconButton(onClick = viewModel::markAllAsRead) {

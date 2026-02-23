@@ -32,7 +32,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,12 +53,14 @@ import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.SearchType
 import com.reader.shared.ui.search.SearchViewModel
 import com.reader.shared.util.RedditLink
+import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
+    currentRoute: String? = null,
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, _ -> onPostClick(s, p) },
     onSubredditClick: (String) -> Unit,
@@ -96,7 +97,10 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             Column {
-                TopAppBar(title = { Text("Search") })
+                UniversalTopAppBar(
+                    currentRoute = currentRoute,
+                    title = { Text("Search") }
+                )
                 
                 OutlinedTextField(
                     value = uiState.query,

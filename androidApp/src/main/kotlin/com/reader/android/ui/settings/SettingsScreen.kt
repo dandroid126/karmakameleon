@@ -27,7 +27,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -44,11 +43,13 @@ import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.domain.model.NotificationInterval
 import com.reader.shared.domain.model.NsfwHistoryMode
 import com.reader.shared.domain.model.NsfwPreviewMode
+import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
+    currentRoute: String? = null,
     onBackClick: () -> Unit,
     settingsRepository: SettingsRepository = koinInject(),
     readPostsRepository: ReadPostsRepository = koinInject()
@@ -92,7 +93,9 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            UniversalTopAppBar(
+                currentRoute = currentRoute,
+                excludeSettings = true,
                 title = { Text("Settings") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {

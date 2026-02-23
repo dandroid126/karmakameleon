@@ -1,7 +1,6 @@
 package com.reader.android.ui.profile
 
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +24,6 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material3.AlertDialog
@@ -47,10 +45,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -78,6 +76,7 @@ import com.reader.android.ui.components.SortBottomSheet
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
 import com.reader.shared.data.repository.ReadPostsRepository
+import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.Account
 import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.TimeFilter
@@ -85,6 +84,7 @@ import com.reader.shared.domain.model.User
 import com.reader.shared.ui.profile.ProfileTab
 import com.reader.shared.ui.profile.ProfileViewModel
 import com.reader.shared.ui.profile.SavedContentType
+import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import androidx.core.net.toUri
@@ -93,26 +93,47 @@ import androidx.core.net.toUri
 @Composable
 fun ProfileScreen(
     username: String? = null,
+    currentRoute: String? = null,
     onBackClick: (() -> Unit)? = null,
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, c -> onPostClick(s, p) },
     onSubredditClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
-    onSettingsClick: () -> Unit = {},
-    viewModel: ProfileViewModel = koinViewModel()
+    viewModel: ProfileViewModel = koinViewModel(),
+    userRepository: UserRepository = koinInject()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val commentState by viewModel.commentViewModel.uiState.collectAsState()
+    val currentAccount by userRepository.currentAccount.collectAsState()
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
-    val isOwnProfile = username == null
     var selectedCommentId by remember { mutableStateOf<String?>(null) }
     var deleteConfirmCommentId by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(username) {
-        if (username != null) {
-            viewModel.loadUser(username)
+    DisposableEffect(Unit) {
+        onDispose { viewModel.clearAllData() }
+    }
+
+    LaunchedEffect(username, currentAccount) {
+        viewModel.clearAllData()
+        when {
+            username == null -> {
+                // Not logged in - show login prompt
+            }
+            username == currentAccount?.name -> {
+                viewModel.loadOwnProfile()
+            }
+            else -> {
+                viewModel.loadUserProfile(username)
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            viewModel.clearErrorMessage()
         }
     }
 
@@ -126,8 +147,17 @@ fun ProfileScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(username ?: "Profile") },
+            UniversalTopAppBar(
+                currentRoute = currentRoute,
+                excludeProfile = uiState.isOwnProfile,
+                title = {
+                    val titleText = if (uiState.isOwnProfile) {
+                        uiState.account?.name ?: "Profile"
+                    } else {
+                        username.orEmpty()
+                    }
+                    Text(titleText)
+                },
                 navigationIcon = {
                     if (onBackClick != null) {
                         IconButton(onClick = onBackClick) {
@@ -136,14 +166,9 @@ fun ProfileScreen(
                     }
                 },
                 actions = {
-                    if (isOwnProfile) {
-                        IconButton(onClick = onSettingsClick) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Settings")
-                        }
-                        if (uiState.isLoggedIn) {
-                            IconButton(onClick = viewModel::logout) {
-                                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
-                            }
+                    if (uiState.isOwnProfile && uiState.isLoggedIn) {
+                        IconButton(onClick = viewModel::logout) {
+                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
                         }
                     }
                 }
@@ -177,7 +202,7 @@ fun ProfileScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (!uiState.isLoggedIn && isOwnProfile) {
+            if (username == null) {
                 LoginPrompt(
                     clientId = uiState.clientId,
                     onClientIdChange = viewModel::setClientId,
@@ -186,10 +211,10 @@ fun ProfileScreen(
             } else if (uiState.isLoading && uiState.account == null && uiState.user == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
-                val displayName = if (isOwnProfile) uiState.account?.name else uiState.user?.name
-                val iconUrl = if (isOwnProfile) uiState.account?.iconUrl else uiState.user?.iconUrl
-                val karma = if (isOwnProfile) uiState.account?.totalKarma else uiState.user?.totalKarma
-                val created = if (isOwnProfile) uiState.account?.createdUtc else uiState.user?.createdUtc
+                val displayName = if (uiState.isOwnProfile) uiState.account?.name else uiState.user?.name
+                val iconUrl = if (uiState.isOwnProfile) uiState.account?.iconUrl else uiState.user?.iconUrl
+                val karma = if (uiState.isOwnProfile) uiState.account?.totalKarma else uiState.user?.totalKarma
+                val created = if (uiState.isOwnProfile) uiState.account?.createdUtc else uiState.user?.createdUtc
 
                 if (displayName != null) {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -200,7 +225,7 @@ fun ProfileScreen(
                             created = created ?: 0L
                         )
 
-                        val tabs = if (isOwnProfile) {
+                        val tabs = if (uiState.isOwnProfile) {
                             listOf(
                                 ProfileTab.POSTS,
                                 ProfileTab.COMMENTS,
@@ -299,7 +324,7 @@ fun ProfileScreen(
 
                         when (uiState.selectedTab) {
                             ProfileTab.ABOUT -> {
-                                if (isOwnProfile) {
+                                if (uiState.isOwnProfile) {
                                     AboutTab(account = uiState.account)
                                 } else {
                                     AboutTabForUser(user = uiState.user)

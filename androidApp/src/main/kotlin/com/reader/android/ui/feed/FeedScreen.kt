@@ -27,7 +27,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
@@ -50,12 +49,14 @@ import com.reader.shared.domain.model.NsfwHistoryMode
 import com.reader.shared.domain.model.NsfwPreviewMode
 import com.reader.shared.ui.feed.FeedType
 import com.reader.shared.ui.feed.FeedViewModel
+import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
+    currentRoute: String? = null,
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
@@ -102,7 +103,8 @@ fun FeedScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            UniversalTopAppBar(
+                currentRoute = currentRoute,
                 title = {
                     Box {
                         Row(

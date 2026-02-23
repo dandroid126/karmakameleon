@@ -7,11 +7,13 @@ import com.reader.shared.ui.profile.ProfileViewModel
 import com.reader.shared.ui.search.SearchViewModel
 import com.reader.shared.ui.subreddit.SubredditViewModel
 import com.reader.android.navigation.NavigationHandler
+import com.reader.android.ui.menu.GlobalMenuManager
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val androidModule = module {
     single { NavigationHandler() }
+    single { GlobalMenuManager() }
     // ViewModels (Android-specific registration using viewModel DSL)
     viewModel { FeedViewModel(get(), get(), get(), get()) }
     viewModel { params -> PostDetailViewModel(params[0], params[1], get(), get(), get(), get(), params.values.getOrNull(2) as? String, params.values.getOrNull(3) as? Int) }

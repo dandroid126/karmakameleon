@@ -10,13 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -27,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -44,6 +41,8 @@ import com.reader.android.ui.components.FullScreenImageViewer
 import com.reader.android.ui.components.FullScreenVideoScreen
 import com.reader.android.ui.components.WebBrowserScreen
 import com.reader.android.ui.components.YouTubeVideoScreen
+import com.reader.android.ui.menu.GlobalMenuManager
+import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.util.extractYouTubeVideoId
 import com.reader.shared.util.isImageUrl
 import com.reader.shared.util.isVideoUrl
@@ -70,8 +69,6 @@ sealed class Screen(
     data object Feed : Screen("feed", "Feed", Icons.Filled.Home, Icons.Outlined.Home)
     data object Subreddits : Screen("subreddits", "Subreddits", Icons.AutoMirrored.Filled.List, Icons.AutoMirrored.Outlined.List)
     data object Search : Screen("search", "Search", Icons.Filled.Search, Icons.Outlined.Search)
-    data object Inbox : Screen("inbox", "Inbox", Icons.Filled.Email, Icons.Outlined.Email)
-    data object Profile : Screen("profile", "Profile", Icons.Filled.Person, Icons.Outlined.Person)
 }
 
 sealed class DetailScreen(val route: String) {
@@ -91,6 +88,11 @@ sealed class DetailScreen(val route: String) {
     data object UserProfile : DetailScreen("user/{username}") {
         fun createRoute(username: String) = "user/$username"
     }
+    data object OwnProfile : DetailScreen("profile")
+    data object Inbox : DetailScreen("inbox?filter={filter}") {
+        fun createRoute(filter: InboxFilter? = null) =
+            if (filter != null) "inbox?filter=${filter.name}" else "inbox"
+    }
     data object WebBrowser : DetailScreen("web/{url}") {
         fun createRoute(url: String) = "web/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
     }
@@ -109,9 +111,7 @@ sealed class DetailScreen(val route: String) {
 val bottomNavItems = listOf(
     Screen.Feed,
     Screen.Subreddits,
-    Screen.Search,
-    Screen.Inbox,
-    Screen.Profile
+    Screen.Search
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,13 +120,32 @@ fun ReaderApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val currentRoute = navBackStackEntry?.destination?.route
     val navigationHandler = koinInject<NavigationHandler>()
+    val globalMenuManager = koinInject<GlobalMenuManager>()
+    val userRepository = koinInject<UserRepository>()
+    val currentAccount by userRepository.currentAccount.collectAsState()
+
+    LaunchedEffect(Unit) {
+        userRepository.loadCurrentUser()
+    }
+
+    LaunchedEffect(currentAccount) {
+        val onProfileRoute = currentRoute?.startsWith("profile") == true ||
+            currentRoute?.startsWith("user/") == true
+        if (onProfileRoute) {
+            navController.navigate(Screen.Feed.route) {
+                popUpTo(Screen.Feed.route) { inclusive = false }
+                launchSingleTop = true
+            }
+        }
+    }
 
     LaunchedEffect(navController) {
         PendingNotificationAction.openInboxUnread.collect { shouldOpen ->
             if (shouldOpen) {
                 PendingNotificationAction.consumeOpenInboxUnread()
-                navController.navigate("inbox?filter=${InboxFilter.UNREAD.name}") {
+                navController.navigate(DetailScreen.Inbox.createRoute(InboxFilter.UNREAD)) {
                     launchSingleTop = true
                 }
             }
@@ -134,6 +153,18 @@ fun ReaderApp() {
     }
 
     DisposableEffect(navController) {
+        globalMenuManager.onNavigateToProfile = { username ->
+            navController.navigate(DetailScreen.UserProfile.createRoute(username))
+        }
+        globalMenuManager.onNavigateToOwnProfile = {
+            navController.navigate(DetailScreen.OwnProfile.route)
+        }
+        globalMenuManager.onNavigateToInbox = {
+            navController.navigate(DetailScreen.Inbox.createRoute())
+        }
+        globalMenuManager.onNavigateToSettings = {
+            navController.navigate(DetailScreen.Settings.route)
+        }
         navigationHandler.onSubredditClick = { name ->
             navController.navigate(DetailScreen.SubredditDetail.createRoute(name))
         }
@@ -164,6 +195,10 @@ fun ReaderApp() {
             }
         }
         onDispose {
+            globalMenuManager.onNavigateToProfile = {}
+            globalMenuManager.onNavigateToOwnProfile = {}
+            globalMenuManager.onNavigateToInbox = {}
+            globalMenuManager.onNavigateToSettings = {}
             navigationHandler.onSubredditClick = {}
             navigationHandler.onUserClick = {}
             navigationHandler.onExternalLinkClick = {}
@@ -218,6 +253,7 @@ fun ReaderApp() {
         ) {
             composable(Screen.Feed.route) {
                 FeedScreen(
+                    currentRoute = currentRoute,
                     onPostClick = { subreddit, postId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
                     },
@@ -241,6 +277,7 @@ fun ReaderApp() {
             
             composable(Screen.Subreddits.route) {
                 SubredditListScreen(
+                    currentRoute = currentRoute,
                     onSubredditClick = { subredditName ->
                         navController.navigate(DetailScreen.SubredditDetail.createRoute(subredditName))
                     }
@@ -249,6 +286,7 @@ fun ReaderApp() {
             
             composable(Screen.Search.route) {
                 SearchScreen(
+                    currentRoute = currentRoute,
                     onPostClick = { subreddit, postId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
                     },
@@ -273,16 +311,34 @@ fun ReaderApp() {
             }
             
             composable(
-                route = "inbox?filter={filter}",
-                arguments = listOf(navArgument("filter") { type = NavType.StringType; nullable = true; defaultValue = null })
+                route = DetailScreen.Inbox.route,
+                arguments = listOf(navArgument("filter") { type = NavType.StringType; nullable = true; defaultValue = null }),
+                enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } }
             ) { backStackEntry ->
                 val filterName = backStackEntry.arguments?.getString("filter")
                 val initialFilter = filterName?.let { runCatching { InboxFilter.valueOf(it) }.getOrNull() }
-                InboxScreen(initialFilter = initialFilter)
+                InboxScreen(
+                    initialFilter = initialFilter,
+                    currentRoute = currentRoute,
+                    onBackClick = { navController.popBackStack() }
+                )
             }
-            
-            composable(Screen.Profile.route) {
+
+            composable(
+                route = DetailScreen.OwnProfile.route,
+                enterTransition = { slideInHorizontally(animationSpec = tween(300)) { it } },
+                exitTransition = { fadeOut(animationSpec = tween(300)) },
+                popEnterTransition = { fadeIn(animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } }
+            ) {
+                val ownUsername = currentAccount?.name
                 ProfileScreen(
+                    username = ownUsername,
+                    currentRoute = currentRoute,
+                    onBackClick = { navController.popBackStack() },
                     onPostClick = { subreddit, postId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
                     },
@@ -299,9 +355,6 @@ fun ReaderApp() {
                             isYouTubeUrl(url) -> extractYouTubeVideoId(url)?.let { navController.navigate(DetailScreen.YouTubeViewer.createRoute(it)) } ?: navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                             else -> navController.navigate(DetailScreen.WebBrowser.createRoute(url))
                         }
-                    },
-                    onSettingsClick = {
-                        navController.navigate(DetailScreen.Settings.route)
                     }
                 )
             }
@@ -314,6 +367,7 @@ fun ReaderApp() {
                 popExitTransition = { slideOutHorizontally(animationSpec = tween(300)) { it } }
             ) {
                 SettingsScreen(
+                    currentRoute = currentRoute,
                     onBackClick = { navController.popBackStack() }
                 )
             }
@@ -329,6 +383,7 @@ fun ReaderApp() {
                 val subredditName = backStackEntry.arguments?.getString("subredditName") ?: ""
                 SubredditScreen(
                     subredditName = subredditName,
+                    currentRoute = currentRoute,
                     onBackClick = { navController.popBackStack() },
                     onPostClick = { subreddit, postId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))
@@ -372,6 +427,7 @@ fun ReaderApp() {
                     postId = postId,
                     commentId = commentId,
                     commentContext = commentContext,
+                    currentRoute = currentRoute,
                     onBackClick = { navController.popBackStack() },
                     onGoToCommentNav = { targetCommentId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId, targetCommentId))
@@ -390,6 +446,7 @@ fun ReaderApp() {
                 val username = backStackEntry.arguments?.getString("username") ?: ""
                 ProfileScreen(
                     username = username,
+                    currentRoute = currentRoute,
                     onBackClick = { navController.popBackStack() },
                     onPostClick = { subreddit, postId ->
                         navController.navigate(DetailScreen.PostDetail.createRoute(subreddit, postId))

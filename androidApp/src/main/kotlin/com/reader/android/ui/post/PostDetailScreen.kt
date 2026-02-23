@@ -49,7 +49,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -106,6 +105,7 @@ import com.reader.shared.ui.post.PostDetailViewModel
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -117,6 +117,7 @@ fun PostDetailScreen(
     postId: String,
     commentId: String? = null,
     commentContext: Int? = null,
+    currentRoute: String? = null,
     onBackClick: () -> Unit,
     onGoToCommentNav: (commentId: String) -> Unit = {},
     viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId, commentId, commentContext) }
@@ -233,7 +234,8 @@ fun PostDetailScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            UniversalTopAppBar(
+                currentRoute = currentRoute,
                 title = { Text("Comments") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {

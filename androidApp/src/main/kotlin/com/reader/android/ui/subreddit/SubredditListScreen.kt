@@ -26,7 +26,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -47,11 +46,13 @@ import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.Subreddit
+import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubredditListScreen(
+    currentRoute: String? = null,
     onSubredditClick: (String) -> Unit
 ) {
     val subredditRepository: SubredditRepository = koinInject()
@@ -95,7 +96,8 @@ fun SubredditListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            UniversalTopAppBar(
+                currentRoute = currentRoute,
                 title = { Text("Subreddits") }
             )
         }
