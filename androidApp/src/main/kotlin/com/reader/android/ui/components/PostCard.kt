@@ -316,6 +316,9 @@ fun PostCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
+                val votingDisabled = post.isVotingDisabled
+                val commentingDisabled = post.isCommentingDisabled
+
                 // Vote buttons
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -327,45 +330,56 @@ fun PostCard(
                         .padding(horizontal = 4.dp)
                 ) {
                     IconButton(
-                        onClick = onUpvote,
+                        onClick = if (votingDisabled) {
+                            { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
+                        } else onUpvote,
                         enabled = isLoggedIn,
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = if (post.voteState == VoteState.UPVOTED) 
+                            imageVector = if (post.voteState == VoteState.UPVOTED)
                                 Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
                             contentDescription = "Upvote",
-                            tint = if (post.voteState == VoteState.UPVOTED) 
-                                Color(0xFFFF4500) else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = when {
+                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                post.voteState == VoteState.UPVOTED -> Color(0xFFFF4500)
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
-                    
+
                     Text(
                         text = formatNumber(post.score),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = when (post.voteState) {
-                            VoteState.UPVOTED -> Color(0xFFFF4500)
-                            VoteState.DOWNVOTED -> Color(0xFF7193FF)
-                            VoteState.NONE -> MaterialTheme.colorScheme.onSurface
+                        color = when {
+                            votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            post.voteState == VoteState.UPVOTED -> Color(0xFFFF4500)
+                            post.voteState == VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                            else -> MaterialTheme.colorScheme.onSurface
                         }
                     )
-                    
+
                     IconButton(
-                        onClick = onDownvote,
+                        onClick = if (votingDisabled) {
+                            { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
+                        } else onDownvote,
                         enabled = isLoggedIn,
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = if (post.voteState == VoteState.DOWNVOTED) 
+                            imageVector = if (post.voteState == VoteState.DOWNVOTED)
                                 Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
                             contentDescription = "Downvote",
-                            tint = if (post.voteState == VoteState.DOWNVOTED) 
-                                Color(0xFF7193FF) else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = when {
+                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                post.voteState == VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
                 }
-                
+
                 // Comments
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -375,18 +389,27 @@ fun PostCard(
                             RoundedCornerShape(20.dp)
                         )
                         .padding(horizontal = 12.dp, vertical = 6.dp)
+                        .then(
+                            if (commentingDisabled) Modifier.clickable {
+                                Toast.makeText(context, post.commentingDisabledReason, Toast.LENGTH_SHORT).show()
+                            } else Modifier
+                        )
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ChatBubbleOutline,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (commentingDisabled)
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = formatNumber(post.numComments),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (commentingDisabled)
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 

@@ -225,8 +225,12 @@ open class RedditApi(
                 append("dir", direction.toString())
             }))
         }
-        response.bodyAsText() // Consume body to release connection
-        return response.status.isSuccess()
+        val body = response.bodyAsText()
+        if (!response.status.isSuccess()) {
+            parseApiErrors(body)?.let { throw it }
+            return false
+        }
+        return true
     }
 
     // ==================== Save ====================
@@ -564,13 +568,25 @@ open class RedditApi(
         }
         
         val body = response.bodyAsText() // Always consume body to release connection
-        if (!response.status.isSuccess()) return null
+        if (!response.status.isSuccess()) {
+            parseApiErrors(body)?.let { throw it }
+            return null
+        }
         // Parse the response to extract the new comment
         return try {
             val jsonResponse = json.parseToJsonElement(body).jsonObject
+            val errors = jsonResponse["json"]?.jsonObject?.get("errors")?.jsonArray
+            if (!errors.isNullOrEmpty()) {
+                val firstError = errors.firstOrNull()?.jsonArray
+                val errorCode = firstError?.getOrNull(0)?.jsonPrimitive?.content ?: "UNKNOWN"
+                val errorMessage = firstError?.getOrNull(1)?.jsonPrimitive?.content ?: "Unknown error"
+                throw RedditApiException(errorCode, errorMessage)
+            }
             val data = jsonResponse["json"]?.jsonObject?.get("data")?.jsonObject
             val things = data?.get("things")?.jsonArray?.firstOrNull()?.jsonObject
             things?.get("data")?.let { parseComment(it, 0) }
+        } catch (e: RedditApiException) {
+            throw e
         } catch (e: Exception) {
             Napier.e("Failed to parse comment response", e)
             null
@@ -727,6 +743,22 @@ open class RedditApi(
     }
 
     // ==================== Parsing Helpers ====================
+
+    private fun parseApiErrors(body: String): RedditApiException? {
+        return try {
+            val jsonResponse = json.parseToJsonElement(body).jsonObject
+            val errors = jsonResponse["json"]?.jsonObject?.get("errors")?.jsonArray
+                ?: jsonResponse["errors"]?.jsonArray
+            if (!errors.isNullOrEmpty()) {
+                val firstError = errors.firstOrNull()?.jsonArray
+                val errorCode = firstError?.getOrNull(0)?.jsonPrimitive?.content ?: "UNKNOWN"
+                val errorMessage = firstError?.getOrNull(1)?.jsonPrimitive?.content ?: "Unknown error"
+                RedditApiException(errorCode, errorMessage)
+            } else null
+        } catch (_: Exception) {
+            null
+        }
+    }
 
     private fun parsePostListing(data: ListingData): Listing<Post> {
         val uncachedSubreddits = data.children

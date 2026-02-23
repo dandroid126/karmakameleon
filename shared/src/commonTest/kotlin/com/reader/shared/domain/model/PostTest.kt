@@ -4,6 +4,7 @@ import com.reader.shared.createTestPost
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PostTest {
@@ -165,5 +166,135 @@ class PostTest {
             crosspostParentPermalink = "/r/originalsubreddit/comments/orig123/original_title/"
         )
         assertEquals("/r/originalsubreddit/comments/orig123/original_title/", post.crosspostParentPermalink)
+    }
+
+    // ==================== isDeleted ====================
+
+    @Test
+    fun isDeleted_whenAuthorIsDeletedMarker() {
+        val post = createTestPost(author = "[deleted]")
+        assertTrue(post.isDeleted)
+    }
+
+    @Test
+    fun isDeleted_whenAuthorIsNormal() {
+        val post = createTestPost(author = "someuser")
+        assertFalse(post.isDeleted)
+    }
+
+    // ==================== isVotingDisabled ====================
+
+    @Test
+    fun isVotingDisabled_whenLocked() {
+        val post = createTestPost(isLocked = true)
+        assertTrue(post.isVotingDisabled)
+    }
+
+    @Test
+    fun isVotingDisabled_whenDeleted() {
+        val post = createTestPost(author = "[deleted]")
+        assertTrue(post.isVotingDisabled)
+    }
+
+    @Test
+    fun isVotingDisabled_whenArchived() {
+        val post = createTestPost(isArchived = true)
+        assertTrue(post.isVotingDisabled)
+    }
+
+    @Test
+    fun isVotingDisabled_whenNormal() {
+        val post = createTestPost(isLocked = false, isArchived = false, author = "someuser")
+        assertFalse(post.isVotingDisabled)
+    }
+
+    @Test
+    fun isVotingDisabled_whenLockedAndArchived() {
+        val post = createTestPost(isLocked = true, isArchived = true)
+        assertTrue(post.isVotingDisabled)
+    }
+
+    // ==================== votingDisabledReason ====================
+
+    @Test
+    fun votingDisabledReason_whenLocked() {
+        val post = createTestPost(isLocked = true)
+        assertEquals("This post is locked and cannot be voted on", post.votingDisabledReason)
+    }
+
+    @Test
+    fun votingDisabledReason_whenDeleted() {
+        val post = createTestPost(author = "[deleted]")
+        assertEquals("This post has been deleted and cannot be voted on", post.votingDisabledReason)
+    }
+
+    @Test
+    fun votingDisabledReason_whenArchived() {
+        val post = createTestPost(isArchived = true)
+        assertEquals("This post has been archived and cannot be voted on", post.votingDisabledReason)
+    }
+
+    @Test
+    fun votingDisabledReason_whenNormal() {
+        val post = createTestPost(isLocked = false, isArchived = false, author = "someuser")
+        assertNull(post.votingDisabledReason)
+    }
+
+    @Test
+    fun votingDisabledReason_lockedTakesPriorityOverDeleted() {
+        val post = createTestPost(isLocked = true, author = "[deleted]")
+        assertEquals("This post is locked and cannot be voted on", post.votingDisabledReason)
+    }
+
+    // ==================== isCommentingDisabled ====================
+
+    @Test
+    fun isCommentingDisabled_whenLocked() {
+        val post = createTestPost(isLocked = true)
+        assertTrue(post.isCommentingDisabled)
+    }
+
+    @Test
+    fun isCommentingDisabled_whenDeleted() {
+        val post = createTestPost(author = "[deleted]")
+        assertFalse(post.isCommentingDisabled)
+    }
+
+    @Test
+    fun isCommentingDisabled_whenArchived() {
+        val post = createTestPost(isArchived = true)
+        assertTrue(post.isCommentingDisabled)
+    }
+
+    @Test
+    fun isCommentingDisabled_whenNormal() {
+        val post = createTestPost(isLocked = false, isArchived = false, author = "someuser")
+        assertFalse(post.isCommentingDisabled)
+    }
+
+    // ==================== commentingDisabledReason ====================
+
+    @Test
+    fun commentingDisabledReason_whenLocked() {
+        val post = createTestPost(isLocked = true)
+        assertEquals("This post is locked and cannot be commented on", post.commentingDisabledReason)
+    }
+
+    @Test
+    fun commentingDisabledReason_whenDeleted() {
+        val post = createTestPost(author = "[deleted]")
+        assertNull(post.commentingDisabledReason)
+    }
+
+    @Test
+    fun commentingDisabledReason_whenArchived() {
+        val post = createTestPost(isArchived = true)
+        assertEquals("This post has been archived and cannot be commented on", post.commentingDisabledReason)
+    }
+
+    @Test
+    fun commentingDisabledReason_whenNormal() {
+        val post = createTestPost(isLocked = false, isArchived = false, author = "someuser")
+        assertNull(post.commentingDisabledReason)
     }
 }

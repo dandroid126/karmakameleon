@@ -571,6 +571,24 @@ class CommentViewModel(
         }
     }
 
+    suspend fun submitReplyWithError(isReplyToPost: Boolean): String? {
+        val parentId = _uiState.value.replyingTo ?: return null
+        val text = _uiState.value.replyText.trim()
+        if (text.isEmpty()) return null
+
+        val result = commentRepository.submitComment(parentId, text)
+        return result.fold(
+            onSuccess = { newComment ->
+                deleteDraft(parentId)
+                val adjustedComment = newComment.copy(likes = true, score = 1)
+                _uiState.update { it.copy(replyingTo = null, replyText = "", savedDraftText = null) }
+                addReplyToTree(parentId, adjustedComment, isReplyToPost)
+                null
+            },
+            onFailure = { error -> error.message }
+        )
+    }
+
     fun submitEdit() {
         val editingId = _uiState.value.editingCommentId ?: return
         val text = _uiState.value.replyText.trim()

@@ -59,7 +59,26 @@ data class Post(
         false -> VoteState.DOWNVOTED
         null -> VoteState.NONE
     }
-    
+
+    val isDeleted: Boolean get() = author == "[deleted]"
+
+    val isVotingDisabled: Boolean get() = isLocked || isDeleted || isArchived
+
+    val votingDisabledReason: String? get() = when {
+        isLocked -> "This post is locked and cannot be voted on"
+        isDeleted -> "This post has been deleted and cannot be voted on"
+        isArchived -> "This post has been archived and cannot be voted on"
+        else -> null
+    }
+
+    val isCommentingDisabled: Boolean get() = isLocked || isArchived
+
+    val commentingDisabledReason: String? get() = when {
+        isLocked -> "This post is locked and cannot be commented on"
+        isArchived -> "This post has been archived and cannot be commented on"
+        else -> null
+    }
+
     val createdInstant: Instant get() = Instant.fromEpochSeconds(createdUtc)
 }
 

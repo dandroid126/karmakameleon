@@ -23,6 +23,7 @@ data class PostDetailUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null,
+    val actionError: String? = null,
     val commentSort: CommentSort = CommentSort.CONFIDENCE,
     val isLoggedIn: Boolean = false,
     val loggedInUsername: String? = null,
@@ -186,9 +187,14 @@ class PostDetailViewModel(
         val post = _uiState.value.post ?: return
         viewModelScope.launch {
             val result = postRepository.vote(post, direction)
-            result.onSuccess { updatedPost ->
-                _uiState.update { it.copy(post = updatedPost) }
-            }
+            result.fold(
+                onSuccess = { updatedPost ->
+                    _uiState.update { it.copy(post = updatedPost) }
+                },
+                onFailure = { error ->
+                    _uiState.update { it.copy(actionError = error.message) }
+                }
+            )
         }
     }
 
@@ -262,6 +268,15 @@ class PostDetailViewModel(
         val parentId = commentViewModel.uiState.value.replyingTo ?: return
         val post = _uiState.value.post
         val isReplyToPost = post != null && parentId == post.name
-        commentViewModel.submitReply(isReplyToPost)
+        viewModelScope.launch {
+            val error = commentViewModel.submitReplyWithError(isReplyToPost)
+            if (error != null) {
+                _uiState.update { it.copy(actionError = error) }
+            }
+        }
+    }
+
+    fun clearActionError() {
+        _uiState.update { it.copy(actionError = null) }
     }
 }

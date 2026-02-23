@@ -199,6 +199,17 @@ class PostRepositoryTest {
         assertTrue(result.isFailure)
     }
 
+    @Test
+    fun vote_redditApiExceptionPreservesMessage() = runTest {
+        val (repo, api) = createRepo()
+        val post = createTestPost(id = "p1")
+        api.shouldThrow = com.reader.shared.data.api.RedditApiException("THREAD_LOCKED", "you are not allowed to do that")
+
+        val result = repo.vote(post, 1)
+        assertTrue(result.isFailure)
+        assertEquals("you are not allowed to do that", result.exceptionOrNull()?.message)
+    }
+
     // ==================== voteComment ====================
 
     @Test

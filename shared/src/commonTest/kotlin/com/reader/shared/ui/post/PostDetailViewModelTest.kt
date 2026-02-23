@@ -180,6 +180,38 @@ class PostDetailViewModelTest {
     }
 
     @Test
+    fun votePost_setsActionErrorOnFailure() = runTest {
+        val post = createTestPost(id = "abc123")
+        fakeApi.postWithCommentsResult = post to emptyList()
+        val vm = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo)
+        advanceUntilIdle()
+        assertNotNull(vm.uiState.value.post)
+
+        fakeApi.shouldThrow = com.reader.shared.data.api.RedditApiException("THREAD_LOCKED", "you are not allowed to do that")
+        vm.votePost(1)
+        advanceUntilIdle()
+
+        assertEquals("you are not allowed to do that", vm.uiState.value.actionError)
+    }
+
+    @Test
+    fun clearActionError_clearsError() = runTest {
+        val post = createTestPost(id = "abc123")
+        fakeApi.postWithCommentsResult = post to emptyList()
+        val vm = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo)
+        advanceUntilIdle()
+        assertNotNull(vm.uiState.value.post)
+
+        fakeApi.shouldThrow = Exception("Vote failed")
+        vm.votePost(1)
+        advanceUntilIdle()
+
+        assertNotNull(vm.uiState.value.actionError)
+        vm.clearActionError()
+        assertNull(vm.uiState.value.actionError)
+    }
+
+    @Test
     fun savePost_updatesPost() = runTest {
         viewModel.savePost()
         advanceUntilIdle()

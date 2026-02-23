@@ -128,6 +128,13 @@ fun PostDetailScreen(
     val coroutineScope = rememberCoroutineScope()
     val clipboard = LocalClipboard.current
     val context = LocalContext.current
+
+    LaunchedEffect(uiState.actionError) {
+        uiState.actionError?.let { error ->
+            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+            viewModel.clearActionError()
+        }
+    }
     val settingsRepository: SettingsRepository = koinInject()
     val inlineImagesEnabled by settingsRepository.inlineImagesEnabled.collectAsState()
     val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
@@ -981,6 +988,10 @@ private fun PostHeader(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        val votingDisabled = post.isVotingDisabled
+        val commentingDisabled = post.isCommentingDisabled
+        val context = LocalContext.current
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -991,27 +1002,48 @@ private fun PostHeader(
                     .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
                     .padding(horizontal = 4.dp)
             ) {
-                IconButton(onClick = onUpvote, enabled = isLoggedIn, modifier = Modifier.size(36.dp)) {
+                IconButton(
+                    onClick = if (votingDisabled) {
+                        { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
+                    } else onUpvote,
+                    enabled = isLoggedIn,
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
                         if (post.voteState == VoteState.UPVOTED) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
                         contentDescription = "Upvote",
-                        tint = if (post.voteState == VoteState.UPVOTED) Color(0xFFFF4500) else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = when {
+                            votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            post.voteState == VoteState.UPVOTED -> Color(0xFFFF4500)
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
                 }
                 Text(
                     text = formatNumber(post.score),
                     fontWeight = FontWeight.Bold,
-                    color = when (post.voteState) {
-                        VoteState.UPVOTED -> Color(0xFFFF4500)
-                        VoteState.DOWNVOTED -> Color(0xFF7193FF)
-                        VoteState.NONE -> MaterialTheme.colorScheme.onSurface
+                    color = when {
+                        votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        post.voteState == VoteState.UPVOTED -> Color(0xFFFF4500)
+                        post.voteState == VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                        else -> MaterialTheme.colorScheme.onSurface
                     }
                 )
-                IconButton(onClick = onDownvote, enabled = isLoggedIn, modifier = Modifier.size(36.dp)) {
+                IconButton(
+                    onClick = if (votingDisabled) {
+                        { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
+                    } else onDownvote,
+                    enabled = isLoggedIn,
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
                         if (post.voteState == VoteState.DOWNVOTED) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
                         contentDescription = "Downvote",
-                        tint = if (post.voteState == VoteState.DOWNVOTED) Color(0xFF7193FF) else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = when {
+                            votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            post.voteState == VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
                 }
             }
@@ -1035,8 +1067,20 @@ private fun PostHeader(
                         tint = if (post.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                IconButton(onClick = onReply) {
-                    Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Reply")
+                IconButton(
+                    onClick = if (commentingDisabled) {
+                        { Toast.makeText(context, post.commentingDisabledReason, Toast.LENGTH_SHORT).show() }
+                    } else onReply,
+                    enabled = true
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Reply, 
+                        contentDescription = "Reply",
+                        tint = if (commentingDisabled)
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
