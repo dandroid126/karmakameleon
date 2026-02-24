@@ -102,6 +102,14 @@ fun FeedScreen(
         }
     }
 
+    var previousIsRefreshing by remember { mutableStateOf(uiState.isRefreshing) }
+    LaunchedEffect(uiState.isRefreshing) {
+        if (previousIsRefreshing && !uiState.isRefreshing) {
+            listState.animateScrollToItem(0)
+        }
+        previousIsRefreshing = uiState.isRefreshing
+    }
+
     Scaffold(
         topBar = {
             UniversalTopAppBar(
