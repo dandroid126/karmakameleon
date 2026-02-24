@@ -81,6 +81,7 @@ fun SubredditScreen(
     val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
     val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else NsfwPreviewMode.DO_NOT_PREFETCH
     val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW
+    val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
     var showSortSheet by remember { mutableStateOf(false) }
     val pullToRefreshState = rememberPullToRefreshState()
 
@@ -172,7 +173,8 @@ fun SubredditScreen(
                                 post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
                             },
                             isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
-                            nsfwPreviewMode = effectiveNsfwPreviewMode
+                            nsfwPreviewMode = effectiveNsfwPreviewMode,
+                            spoilerPreviewsEnabled = spoilerPreviewsEnabled
                         )
                     }
 

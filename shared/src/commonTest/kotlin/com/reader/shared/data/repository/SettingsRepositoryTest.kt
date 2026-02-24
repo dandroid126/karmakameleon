@@ -477,4 +477,37 @@ class SettingsRepositoryTest {
         val repo = SettingsRepository(settings)
         assertEquals(NsfwHistoryMode.DONT_SAVE_ANY_NSFW, repo.nsfwHistoryMode.value)
     }
+
+    // ==================== Spoiler Previews Enabled ====================
+
+    @Test
+    fun spoilerPreviewsEnabled_defaultsToFalse() {
+        val repo = createRepo()
+        assertFalse(repo.spoilerPreviewsEnabled.value)
+    }
+
+    @Test
+    fun setSpoilerPreviewsEnabled_updatesState() {
+        val repo = createRepo()
+        repo.setSpoilerPreviewsEnabled(true)
+        assertTrue(repo.spoilerPreviewsEnabled.value)
+    }
+
+    @Test
+    fun setSpoilerPreviewsEnabled_toFalse_updatesState() {
+        val repo = createRepo()
+        repo.setSpoilerPreviewsEnabled(true)
+        repo.setSpoilerPreviewsEnabled(false)
+        assertFalse(repo.spoilerPreviewsEnabled.value)
+    }
+
+    @Test
+    fun setSpoilerPreviewsEnabled_persistsAcrossInstances() {
+        val settings = MapSettings()
+        val repo1 = SettingsRepository(settings)
+        repo1.setSpoilerPreviewsEnabled(true)
+
+        val repo2 = SettingsRepository(settings)
+        assertTrue(repo2.spoilerPreviewsEnabled.value)
+    }
 }

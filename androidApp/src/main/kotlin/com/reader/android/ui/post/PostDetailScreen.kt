@@ -1,7 +1,11 @@
 package com.reader.android.ui.post
 
+import android.content.ClipData
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,17 +26,14 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
@@ -71,7 +72,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import android.content.ClipData
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -84,17 +84,17 @@ import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.CommentItem
 import com.reader.android.ui.components.FlairChip
 import com.reader.android.ui.components.FullScreenImageViewer
+import com.reader.android.ui.components.LongPressMenuBox
 import com.reader.android.ui.components.MarkdownText
 import com.reader.android.ui.components.ProgressiveAsyncImage
 import com.reader.android.ui.components.ReplyBar
-import com.reader.android.ui.components.LongPressMenuBox
+import com.reader.android.ui.components.UniversalTopAppBar
 import com.reader.android.ui.components.VideoPlayer
-import com.reader.android.ui.components.imageMenuItems
-import com.reader.android.ui.components.videoMenuItems
 import com.reader.android.ui.components.YouTubePlayer
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
-import com.reader.shared.util.extractYouTubeVideoId
+import com.reader.android.ui.components.imageMenuItems
+import com.reader.android.ui.components.videoMenuItems
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.domain.model.CommentSort
 import com.reader.shared.domain.model.MoreComments
@@ -102,10 +102,10 @@ import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
 import com.reader.shared.ui.comment.FlatCommentItem
 import com.reader.shared.ui.post.PostDetailViewModel
+import com.reader.shared.util.extractYouTubeVideoId
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -764,7 +764,7 @@ private fun PostHeader(
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (post.isNsfw) FlairChip("NSFW", Color(0xFFFF4444))
-            if (post.isSpoiler) FlairChip("Spoiler", Color(0xFF888888))
+            if (post.isSpoiler) FlairChip("Spoiler", Color(0xFFFFD700))
             post.linkFlairText?.let { FlairChip(it, Color.Gray) }
         }
 

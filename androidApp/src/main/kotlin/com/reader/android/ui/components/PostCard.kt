@@ -1,5 +1,6 @@
 package com.reader.android.ui.components
 
+import android.content.ClipData
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -16,9 +17,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.CallMerge
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Block
-import androidx.compose.material.icons.automirrored.filled.CallMerge
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -42,26 +43,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import android.content.ClipData
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.reader.shared.domain.model.NsfwPreviewMode
 import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.VoteState
+import kotlinx.coroutines.launch
 
 private val POST_CARD_MAX_CONTENT_HEIGHT = 400.dp
 
@@ -81,7 +80,8 @@ fun PostCard(
     onCrosspostClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     isRead: Boolean = false,
-    nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH
+    nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH,
+    spoilerPreviewsEnabled: Boolean = false
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val clipboard = LocalClipboard.current
@@ -138,7 +138,7 @@ fun PostCard(
                     FlairChip(text = "NSFW", color = Color(0xFFFF4444))
                 }
                 if (post.isSpoiler) {
-                    FlairChip(text = "Spoiler", color = Color(0xFF888888))
+                    FlairChip(text = "Spoiler", color = Color(0xFFFFD700))
                 }
                 if (post.isStickied) {
                     FlairChip(text = "Pinned", color = Color(0xFF00AA00))
@@ -167,33 +167,70 @@ fun PostCard(
             )
             
             // Content preview with max height and fade
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = POST_CARD_MAX_CONTENT_HEIGHT)
-                    .clipToBounds()
-            ) {
-                Column {
-                    // Thumbnail/Preview (for both videos and images)
-                    val previewImage = post.preview?.images?.firstOrNull()
-                    val galleryUrl = post.galleryData?.items?.firstOrNull()?.url
-                    val highResUrl = previewImage?.source?.url
-                        ?: galleryUrl
-                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
-                        ?: post.url.takeIf { post.isImagePost }
-                    val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
-                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
+            if (post.isSpoiler && !spoilerPreviewsEnabled) {
+                Spacer(modifier = Modifier.height(8.dp))
+                SpoilerBlackBox(
+                    modifier = Modifier.clickable { onClick() }
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = POST_CARD_MAX_CONTENT_HEIGHT)
+                        .clipToBounds()
+                ) {
+                    Column {
+                        // Thumbnail/Preview (for both videos and images)
+                        val previewImage = post.preview?.images?.firstOrNull()
+                        val galleryUrl = post.galleryData?.items?.firstOrNull()?.url
+                        val highResUrl = previewImage?.source?.url
+                            ?: galleryUrl
+                            ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                            ?: post.url.takeIf { post.isImagePost }
+                        val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
+                            ?: post.thumbnail?.takeIf { it.startsWith("http") }
 
-                    if (highResUrl != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        if (post.isNsfw) {
-                            when (nsfwPreviewMode) {
-                                NsfwPreviewMode.DO_NOT_PREFETCH -> NsfwBlackBox()
-                                NsfwPreviewMode.PREFETCH_AND_BLUR -> NsfwBlurredImage(
-                                    lowResUrl = lowResUrl,
-                                    highResUrl = highResUrl
-                                )
-                                NsfwPreviewMode.SHOW_PREVIEWS -> Box {
+                        if (highResUrl != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            if (post.isNsfw) {
+                                when (nsfwPreviewMode) {
+                                    NsfwPreviewMode.DO_NOT_PREFETCH -> NsfwBlackBox()
+                                    NsfwPreviewMode.PREFETCH_AND_BLUR -> NsfwBlurredImage(
+                                        lowResUrl = lowResUrl,
+                                        highResUrl = highResUrl
+                                    )
+                                    NsfwPreviewMode.SHOW_PREVIEWS -> Box {
+                                        ProgressiveAsyncImage(
+                                            lowResUrl = lowResUrl,
+                                            highResUrl = highResUrl,
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 300.dp)
+                                                .clip(RoundedCornerShape(8.dp)),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                        val galleryCount = post.galleryData?.items?.size ?: 0
+                                        if (galleryCount > 1) {
+                                            Surface(
+                                                color = Color.Black.copy(alpha = 0.6f),
+                                                shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .padding(8.dp)
+                                            ) {
+                                                Text(
+                                                    text = "1/$galleryCount",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = Color.White,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                Box {
                                     ProgressiveAsyncImage(
                                         lowResUrl = lowResUrl,
                                         highResUrl = highResUrl,
@@ -202,6 +239,13 @@ fun PostCard(
                                             .fillMaxWidth()
                                             .heightIn(max = 300.dp)
                                             .clip(RoundedCornerShape(8.dp)),
+                                        // Commenting this out for now, but this is where we would add the clickability of the image to follow the link.
+                                        // I can't decide if I like it or not.
+                                        // Maybe this will be configurable in the settings.
+//                                    .then(
+//                                        if (post.isLinkPost) Modifier.clickable { onLinkClick(post.url) }
+//                                        else Modifier
+//                                    ),
                                         contentScale = ContentScale.Crop
                                     )
                                     val galleryCount = post.galleryData?.items?.size ?: 0
@@ -223,89 +267,35 @@ fun PostCard(
                                     }
                                 }
                             }
-                        } else {
-                            Box {
-                                ProgressiveAsyncImage(
-                                    lowResUrl = lowResUrl,
-                                    highResUrl = highResUrl,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .heightIn(max = 300.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                    // Commenting this out for now, but this is where we would add the clickability of the image to follow the link.
-                                    // I can't decide if I like it or not.
-                                    // Maybe this will be configurable in the settings.
-//                                    .then(
-//                                        if (post.isLinkPost) Modifier.clickable { onLinkClick(post.url) }
-//                                        else Modifier
-//                                    ),
-                                    contentScale = ContentScale.Crop
-                                )
-                                val galleryCount = post.galleryData?.items?.size ?: 0
-                                if (galleryCount > 1) {
-                                    Surface(
-                                        color = Color.Black.copy(alpha = 0.6f),
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .padding(8.dp)
-                                    ) {
-                                        Text(
-                                            text = "1/$galleryCount",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Color.White,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
+                        }
+
+                        // Self text preview (plain text, no clickable links)
+                        if (post.isTextPost) {
+                            post.selfText?.let { text ->
+                                if (text.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = text,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 6,
+                                        overflow = TextOverflow.Ellipsis,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
                         }
-                    }
 
-                    // Self text preview (plain text, no clickable links)
-                    if (post.isTextPost) {
-                        post.selfText?.let { text ->
-                            if (text.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    text = text,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 6,
-                                    overflow = TextOverflow.Ellipsis,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                        // Link domain
+                        if (post.isLinkPost) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = post.domain,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
                         }
                     }
-
-                    // Link domain
-                    if (post.isLinkPost) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = post.domain,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
-                    }
                 }
-
-                // Fade-out gradient at bottom when content is tall
-                // TODO: this isn't working, and I can't seem to fix it.
-//                Box(
-//                    modifier = Modifier
-//                        .align(Alignment.BottomCenter)
-//                        .fillMaxWidth()
-//                        .height(32.dp)
-//                        .background(
-//                            Brush.verticalGradient(
-//                                colors = listOf(
-//                                    Color.Transparent,
-//                                    MaterialTheme.colorScheme.surfaceContainerLow
-//                                )
-//                            )
-//                        )
-//                )
             }
             
             Spacer(modifier = Modifier.height(8.dp))

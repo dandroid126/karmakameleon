@@ -460,6 +460,7 @@ fun ProfileScreen(
                                                 val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
                                                 val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else com.reader.shared.domain.model.NsfwPreviewMode.DO_NOT_PREFETCH
                                                 val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else com.reader.shared.domain.model.NsfwHistoryMode.DONT_SAVE_ANY_NSFW
+                                                val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
                                                 LazyColumn {
                                                     items(savedPosts, key = { it.id }) { post ->
                                                         val navigationHandler: NavigationHandler = koinInject()
@@ -481,7 +482,8 @@ fun ProfileScreen(
                                                                 post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
                                                             },
                                                             isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
-                                                            nsfwPreviewMode = effectiveNsfwPreviewMode
+                                                            nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                                            spoilerPreviewsEnabled = spoilerPreviewsEnabled
                                                         )
                                                     }
                                                 }
@@ -582,6 +584,7 @@ fun ProfileScreen(
                                     val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
                                     val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else com.reader.shared.domain.model.NsfwPreviewMode.DO_NOT_PREFETCH
                                     val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else com.reader.shared.domain.model.NsfwHistoryMode.DONT_SAVE_ANY_NSFW
+                                    val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
                                     val navigationHandler: NavigationHandler = koinInject()
                                     LazyColumn {
                                         items(posts, key = { it.id }) { post ->
@@ -603,7 +606,8 @@ fun ProfileScreen(
                                                     post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
                                                 },
                                                 isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
-                                                nsfwPreviewMode = effectiveNsfwPreviewMode
+                                                nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                                spoilerPreviewsEnabled = spoilerPreviewsEnabled
                                             )
                                         }
                                     }

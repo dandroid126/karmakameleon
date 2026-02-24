@@ -62,6 +62,7 @@ fun SettingsScreen(
     val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
     val nsfwSearchEnabled by settingsRepository.nsfwSearchEnabled.collectAsState()
     val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
+    val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
     val context = LocalContext.current
     var showPurgeConfirmDialog by remember { mutableStateOf(false) }
 
@@ -329,6 +330,45 @@ fun SettingsScreen(
                             }
                         }
                     }
+                }
+            }
+
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+
+            // Spoiler Settings
+            item {
+                Text(
+                    text = "Spoiler Content",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Show Spoiler Previews",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Show image and video previews for spoiler posts in feeds",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = spoilerPreviewsEnabled,
+                        onCheckedChange = { settingsRepository.setSpoilerPreviewsEnabled(it) }
+                    )
                 }
             }
 
