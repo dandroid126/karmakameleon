@@ -78,7 +78,7 @@ fun SearchScreen(
     val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
     val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
     val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else NsfwPreviewMode.DO_NOT_PREFETCH
-    val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW
+    val effectiveNsfwHistoryMode by remember { derivedStateOf { if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW } }
     val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
     var showSortMenu by remember { mutableStateOf(false) }
 
