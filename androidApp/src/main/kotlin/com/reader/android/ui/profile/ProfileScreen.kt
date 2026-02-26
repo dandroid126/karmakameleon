@@ -2,7 +2,6 @@ package com.reader.android.ui.profile
 
 import android.content.Intent
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,12 +15,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
@@ -30,8 +29,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -51,6 +48,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,18 +57,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import android.content.ClipData
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.reader.android.navigation.NavigationHandler
-import com.reader.android.ui.components.CommentItem
-import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.ReplyBar
 import com.reader.android.ui.components.SortBottomSheet
 import com.reader.android.ui.components.formatNumber
@@ -322,6 +315,101 @@ fun ProfileScreen(
                             }
                         }
 
+                        val readPostsRepository: ReadPostsRepository = koinInject()
+                        val settingsRepository: com.reader.shared.data.repository.SettingsRepository = koinInject()
+                        val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
+                        val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
+                        val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
+                        val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else com.reader.shared.domain.model.NsfwPreviewMode.DO_NOT_PREFETCH
+                        val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else com.reader.shared.domain.model.NsfwHistoryMode.DONT_SAVE_ANY_NSFW
+                        val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
+                        val navigationHandler: NavigationHandler = koinInject()
+
+                        val postsListState = rememberLazyListState()
+                        val commentsListState = rememberLazyListState()
+                        val savedPostsListState = rememberLazyListState()
+                        val savedCommentsListState = rememberLazyListState()
+                        val upvotedListState = rememberLazyListState()
+                        val downvotedListState = rememberLazyListState()
+
+                        val shouldLoadMorePosts by remember {
+                            derivedStateOf {
+                                val lastVisible = postsListState.layoutInfo.visibleItemsInfo.lastOrNull()
+                                lastVisible != null && lastVisible.index >= uiState.posts.size - 5
+                            }
+                        }
+
+                        val shouldLoadMoreComments by remember {
+                            derivedStateOf {
+                                val lastVisible = commentsListState.layoutInfo.visibleItemsInfo.lastOrNull()
+                                lastVisible != null && lastVisible.index >= uiState.comments.size - 5
+                            }
+                        }
+
+                        val shouldLoadMoreSavedPosts by remember {
+                            derivedStateOf {
+                                val lastVisible = savedPostsListState.layoutInfo.visibleItemsInfo.lastOrNull()
+                                lastVisible != null && lastVisible.index >= uiState.savedPosts.size - 5
+                            }
+                        }
+
+                        val shouldLoadMoreSavedComments by remember {
+                            derivedStateOf {
+                                val lastVisible = savedCommentsListState.layoutInfo.visibleItemsInfo.lastOrNull()
+                                lastVisible != null && lastVisible.index >= uiState.savedComments.size - 5
+                            }
+                        }
+
+                        val shouldLoadMoreUpvoted by remember {
+                            derivedStateOf {
+                                val lastVisible = upvotedListState.layoutInfo.visibleItemsInfo.lastOrNull()
+                                lastVisible != null && lastVisible.index >= uiState.upvotedPosts.size - 5
+                            }
+                        }
+
+                        val shouldLoadMoreDownvoted by remember {
+                            derivedStateOf {
+                                val lastVisible = downvotedListState.layoutInfo.visibleItemsInfo.lastOrNull()
+                                lastVisible != null && lastVisible.index >= uiState.downvotedPosts.size - 5
+                            }
+                        }
+
+                        LaunchedEffect(shouldLoadMorePosts) {
+                            if (uiState.selectedTab == ProfileTab.POSTS && shouldLoadMorePosts && !uiState.isLoadingMorePosts && uiState.hasMorePosts) {
+                                viewModel.loadMoreUserPosts()
+                            }
+                        }
+
+                        LaunchedEffect(shouldLoadMoreComments) {
+                            if (uiState.selectedTab == ProfileTab.COMMENTS && shouldLoadMoreComments && !uiState.isLoadingMoreComments && uiState.hasMoreComments) {
+                                viewModel.loadMoreUserComments()
+                            }
+                        }
+
+                        LaunchedEffect(shouldLoadMoreSavedPosts) {
+                            if (uiState.selectedTab == ProfileTab.SAVED && uiState.savedContentType == SavedContentType.POSTS && shouldLoadMoreSavedPosts && !uiState.isLoadingMoreSavedPosts && uiState.hasMoreSavedPosts) {
+                                viewModel.loadMoreSavedPosts()
+                            }
+                        }
+
+                        LaunchedEffect(shouldLoadMoreSavedComments) {
+                            if (uiState.selectedTab == ProfileTab.SAVED && uiState.savedContentType == SavedContentType.COMMENTS && shouldLoadMoreSavedComments && !uiState.isLoadingMoreSavedComments && uiState.hasMoreSavedComments) {
+                                viewModel.loadMoreSavedComments()
+                            }
+                        }
+
+                        LaunchedEffect(shouldLoadMoreUpvoted) {
+                            if (uiState.selectedTab == ProfileTab.UPVOTED && shouldLoadMoreUpvoted && !uiState.isLoadingMoreUpvoted && uiState.hasMoreUpvoted) {
+                                viewModel.loadMoreUpvotedPosts()
+                            }
+                        }
+
+                        LaunchedEffect(shouldLoadMoreDownvoted) {
+                            if (uiState.selectedTab == ProfileTab.DOWNVOTED && shouldLoadMoreDownvoted && !uiState.isLoadingMoreDownvoted && uiState.hasMoreDownvoted) {
+                                viewModel.loadMoreDownvotedPosts()
+                            }
+                        }
+
                         when (uiState.selectedTab) {
                             ProfileTab.ABOUT -> {
                                 if (uiState.isOwnProfile) {
@@ -330,289 +418,104 @@ fun ProfileScreen(
                                     AboutTabForUser(user = uiState.user)
                                 }
                             }
-                            ProfileTab.COMMENTS -> {
-                                val comments = uiState.comments
-                                if (uiState.isLoadingContent && comments.isEmpty()) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator()
-                                    }
-                                } else if (comments.isEmpty()) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("No comments")
-                                    }
-                                } else {
-                                    LazyColumn {
-                                        items(comments, key = { it.id }) { comment ->
-                                            CommentItem(
-                                                comment = comment,
-                                                isSelected = selectedCommentId == comment.id,
-                                                isHidden = false,
-                                                onSelect = { 
-                                                    selectedCommentId = if (selectedCommentId == comment.id) null else comment.id
-                                                },
-                                                onDone = { selectedCommentId = null },
-                                                onHide = {},
-                                                onPrev = {},
-                                                onNext = {},
-                                                onRoot = {},
-                                                onParent = {},
-                                                onCommentUpdated = { updatedComment ->
-                                                    viewModel.updateComment(updatedComment)
-                                                },
-                                                onShare = {
-                                                    coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", "https://reddit.com${comment.permalink}"))) }
-                                                },
-                                                onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
-                                                onEdit = { viewModel.commentViewModel.startEditComment(comment) },
-                                                onDelete = { deleteConfirmCommentId = comment.id },
-                                                onSave = {
-                                                    viewModel.saveComment(comment)
-                                                    Toast.makeText(
-                                                        context,
-                                                        if (comment.isSaved) "Unsaved comment" else "Saved comment",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                },
-                                                isLoggedIn = uiState.isLoggedIn,
-                                                loggedInUsername = uiState.account?.name,
-                                                showTopControls = false,
-                                                showSubreddit = true,
-                                                onGoToCommentNav = { commentId ->
-                                                    val postId = comment.linkId.removePrefix("t3_")
-                                                    onCommentClick(comment.subreddit, postId, commentId)
-                                                },
-                                                modifier = Modifier.padding(vertical = 4.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                            ProfileTab.SAVED -> {
-                                var showSavedTypeMenu by remember { mutableStateOf(false) }
-                                val savedPosts = uiState.savedPosts
-                                val savedComments = uiState.savedComments
-                                val currentItems = when (uiState.savedContentType) {
-                                    SavedContentType.POSTS -> savedPosts
-                                    SavedContentType.COMMENTS -> savedComments
-                                }
-
-                                Column(modifier = Modifier.fillMaxSize()) {
-                                    // Dropdown selector header
-                                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            modifier = Modifier.clickable { showSavedTypeMenu = true }
-                                        ) {
-                                            Text(
-                                                uiState.savedContentType.displayName,
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            Icon(
-                                                Icons.Default.ArrowDropDown,
-                                                contentDescription = "Change saved type"
-                                            )
-                                        }
-                                        DropdownMenu(
-                                            expanded = showSavedTypeMenu,
-                                            onDismissRequest = { showSavedTypeMenu = false }
-                                        ) {
-                                            SavedContentType.entries.forEach { type ->
-                                                DropdownMenuItem(
-                                                    text = { Text(type.displayName) },
-                                                    onClick = {
-                                                        viewModel.setSavedContentType(type)
-                                                        showSavedTypeMenu = false
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-
-                                    when (uiState.savedContentType) {
-                                        SavedContentType.POSTS -> {
-                                            if (uiState.isLoadingContent && savedPosts.isEmpty()) {
-                                                Box(
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    CircularProgressIndicator()
-                                                }
-                                            } else if (savedPosts.isEmpty()) {
-                                                Box(
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text("No saved posts")
-                                                }
-                                            } else {
-                                                val readPostsRepository: ReadPostsRepository = koinInject()
-                                                val settingsRepository: com.reader.shared.data.repository.SettingsRepository = koinInject()
-                                                val readPostIds by readPostsRepository.readPostIds.collectAsState()
-                                                val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
-                                                val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
-                                                val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
-                                                val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else com.reader.shared.domain.model.NsfwPreviewMode.DO_NOT_PREFETCH
-                                                val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else com.reader.shared.domain.model.NsfwHistoryMode.DONT_SAVE_ANY_NSFW
-                                                val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
-                                                LazyColumn {
-                                                    items(savedPosts, key = { it.id }) { post ->
-                                                        val navigationHandler: NavigationHandler = koinInject()
-                                                        PostCard(
-                                                            post = post,
-                                                            onClick = {
-                                                                readPostsRepository.markAsRead(post, effectiveNsfwHistoryMode)
-                                                                onPostClick(post.subreddit, post.id)
-                                                            },
-                                                            onSubredditClick = { onSubredditClick(post.subreddit) },
-                                                            onUserClick = {},
-                                                            onUpvote = { viewModel.vote(post, if (post.likes == true) 0 else 1) },
-                                                            onDownvote = { viewModel.vote(post, if (post.likes == false) 0 else -1) },
-                                                            onSave = { viewModel.save(post) },
-                                                            onHide = {},
-                                                            isLoggedIn = uiState.isLoggedIn,
-                                                            onLinkClick = onLinkClick,
-                                                            onCrosspostClick = {
-                                                                post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
-                                                            },
-                                                            isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
-                                                            nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                                            spoilerPreviewsEnabled = spoilerPreviewsEnabled
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        SavedContentType.COMMENTS -> {
-                                            if (uiState.isLoadingContent && savedComments.isEmpty()) {
-                                                Box(
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    CircularProgressIndicator()
-                                                }
-                                            } else if (savedComments.isEmpty()) {
-                                                Box(
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    Text("No saved comments")
-                                                }
-                                            } else {
-                                                LazyColumn {
-                                                    items(savedComments, key = { it.id }) { comment ->
-                                                        CommentItem(
-                                                            comment = comment,
-                                                            isSelected = selectedCommentId == comment.id,
-                                                            isHidden = false,
-                                                            onSelect = { 
-                                                                selectedCommentId = if (selectedCommentId == comment.id) null else comment.id
-                                                            },
-                                                            onDone = { selectedCommentId = null },
-                                                            onHide = {},
-                                                            onPrev = {},
-                                                            onNext = {},
-                                                            onRoot = {},
-                                                            onParent = {},
-                                                            onCommentUpdated = { updatedComment ->
-                                                                viewModel.updateComment(updatedComment)
-                                                            },
-                                                            onShare = {
-                                                                coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", "https://reddit.com${comment.permalink}"))) }
-                                                            },
-                                                            onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
-                                                            onEdit = { viewModel.commentViewModel.startEditComment(comment) },
-                                                            onDelete = { deleteConfirmCommentId = comment.id },
-                                                            onSave = {
-                                                                viewModel.saveComment(comment)
-                                                                Toast.makeText(
-                                                                    context,
-                                                                    if (comment.isSaved) "Unsaved comment" else "Saved comment",
-                                                                    Toast.LENGTH_SHORT
-                                                                ).show()
-                                                            },
-                                                            isLoggedIn = uiState.isLoggedIn,
-                                                            loggedInUsername = uiState.account?.name,
-                                                            showTopControls = false,
-                                                            showSubreddit = true,
-                                                            onGoToCommentNav = { commentId ->
-                                                                val postId = comment.linkId.removePrefix("t3_")
-                                                                onCommentClick(comment.subreddit, postId, commentId)
-                                                            },
-                                                            modifier = Modifier.padding(vertical = 4.dp)
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            else -> {
-                                val posts = when (uiState.selectedTab) {
-                                    ProfileTab.UPVOTED -> uiState.upvotedPosts
-                                    ProfileTab.DOWNVOTED -> uiState.downvotedPosts
-                                    else -> uiState.posts
-                                }
-
-                                if (uiState.isLoadingContent && posts.isEmpty()) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator()
-                                    }
-                                } else if (posts.isEmpty()) {
-                                    Box(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("No posts")
-                                    }
-                                } else {
-                                    val readPostsRepository: ReadPostsRepository = koinInject()
-                                    val settingsRepository: com.reader.shared.data.repository.SettingsRepository = koinInject()
-                                    val readPostIds by readPostsRepository.readPostIds.collectAsState()
-                                    val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
-                                    val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
-                                    val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
-                                    val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else com.reader.shared.domain.model.NsfwPreviewMode.DO_NOT_PREFETCH
-                                    val effectiveNsfwHistoryMode = if (nsfwEnabled) nsfwHistoryMode else com.reader.shared.domain.model.NsfwHistoryMode.DONT_SAVE_ANY_NSFW
-                                    val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
-                                    val navigationHandler: NavigationHandler = koinInject()
-                                    LazyColumn {
-                                        items(posts, key = { it.id }) { post ->
-                                            PostCard(
-                                                post = post,
-                                                onClick = {
-                                                    readPostsRepository.markAsRead(post, effectiveNsfwHistoryMode)
-                                                    onPostClick(post.subreddit, post.id)
-                                                },
-                                                onSubredditClick = { onSubredditClick(post.subreddit) },
-                                                onUserClick = {},
-                                                onUpvote = { viewModel.vote(post, if (post.likes == true) 0 else 1) },
-                                                onDownvote = { viewModel.vote(post, if (post.likes == false) 0 else -1) },
-                                                onSave = { viewModel.save(post) },
-                                                onHide = {},
-                                                isLoggedIn = uiState.isLoggedIn,
-                                                onLinkClick = onLinkClick,
-                                                onCrosspostClick = {
-                                                    post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
-                                                },
-                                                isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
-                                                nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                                spoilerPreviewsEnabled = spoilerPreviewsEnabled
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                            ProfileTab.COMMENTS -> ProfileCommentsTab(
+                                comments = uiState.comments,
+                                isLoadingContent = uiState.isLoadingContent,
+                                isLoadingMore = uiState.isLoadingMoreComments,
+                                isLoggedIn = uiState.isLoggedIn,
+                                loggedInUsername = uiState.account?.name,
+                                listState = commentsListState,
+                                selectedCommentId = selectedCommentId,
+                                onSelectComment = { selectedCommentId = it },
+                                onCommentUpdated = { viewModel.updateComment(it) },
+                                onReply = { viewModel.commentViewModel.setReplyingTo(it) },
+                                onEdit = { viewModel.commentViewModel.startEditComment(it) },
+                                onDelete = { deleteConfirmCommentId = it },
+                                onSave = { viewModel.saveComment(it) },
+                                onCommentClick = onCommentClick,
+                            )
+                            ProfileTab.SAVED -> ProfileSavedTab(
+                                savedContentType = uiState.savedContentType,
+                                savedPosts = uiState.savedPosts,
+                                savedComments = uiState.savedComments,
+                                isLoadingContent = uiState.isLoadingContent,
+                                isLoadingMorePosts = uiState.isLoadingMoreSavedPosts,
+                                isLoadingMoreComments = uiState.isLoadingMoreSavedComments,
+                                isLoggedIn = uiState.isLoggedIn,
+                                loggedInUsername = uiState.account?.name,
+                                savedPostsListState = savedPostsListState,
+                                savedCommentsListState = savedCommentsListState,
+                                selectedCommentId = selectedCommentId,
+                                readPostsRepository = readPostsRepository,
+                                nsfwHistoryMode = effectiveNsfwHistoryMode,
+                                nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                navigationHandler = navigationHandler,
+                                onSetSavedContentType = { viewModel.setSavedContentType(it) },
+                                onPostClick = onPostClick,
+                                onSubredditClick = onSubredditClick,
+                                onLinkClick = onLinkClick,
+                                onVote = { post, dir -> viewModel.vote(post, dir) },
+                                onSavePost = { viewModel.save(it) },
+                                onSelectComment = { selectedCommentId = it },
+                                onCommentUpdated = { viewModel.updateComment(it) },
+                                onReply = { viewModel.commentViewModel.setReplyingTo(it) },
+                                onEdit = { viewModel.commentViewModel.startEditComment(it) },
+                                onDelete = { deleteConfirmCommentId = it },
+                                onSaveComment = { viewModel.saveComment(it) },
+                                onCommentClick = onCommentClick,
+                            )
+                            ProfileTab.POSTS -> ProfilePostsTab(
+                                posts = uiState.posts,
+                                isLoadingContent = uiState.isLoadingContent,
+                                isLoadingMore = uiState.isLoadingMorePosts,
+                                isLoggedIn = uiState.isLoggedIn,
+                                listState = postsListState,
+                                readPostsRepository = readPostsRepository,
+                                nsfwHistoryMode = effectiveNsfwHistoryMode,
+                                nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                navigationHandler = navigationHandler,
+                                onPostClick = onPostClick,
+                                onSubredditClick = onSubredditClick,
+                                onLinkClick = onLinkClick,
+                                onVote = { post, dir -> viewModel.vote(post, dir) },
+                                onSave = { viewModel.save(it) },
+                            )
+                            ProfileTab.UPVOTED -> ProfileUpvotedTab(
+                                posts = uiState.upvotedPosts,
+                                isLoadingContent = uiState.isLoadingContent,
+                                isLoadingMore = uiState.isLoadingMoreUpvoted,
+                                isLoggedIn = uiState.isLoggedIn,
+                                listState = upvotedListState,
+                                readPostsRepository = readPostsRepository,
+                                nsfwHistoryMode = effectiveNsfwHistoryMode,
+                                nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                navigationHandler = navigationHandler,
+                                onPostClick = onPostClick,
+                                onSubredditClick = onSubredditClick,
+                                onLinkClick = onLinkClick,
+                                onVote = { post, dir -> viewModel.vote(post, dir) },
+                                onSave = { viewModel.save(it) },
+                            )
+                            ProfileTab.DOWNVOTED -> ProfileDownvotedTab(
+                                posts = uiState.downvotedPosts,
+                                isLoadingContent = uiState.isLoadingContent,
+                                isLoadingMore = uiState.isLoadingMoreDownvoted,
+                                isLoggedIn = uiState.isLoggedIn,
+                                listState = downvotedListState,
+                                readPostsRepository = readPostsRepository,
+                                nsfwHistoryMode = effectiveNsfwHistoryMode,
+                                nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                navigationHandler = navigationHandler,
+                                onPostClick = onPostClick,
+                                onSubredditClick = onSubredditClick,
+                                onLinkClick = onLinkClick,
+                                onVote = { post, dir -> viewModel.vote(post, dir) },
+                                onSave = { viewModel.save(it) },
+                            )
                         }
                     }
                 }

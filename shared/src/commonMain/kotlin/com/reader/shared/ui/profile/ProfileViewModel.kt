@@ -31,6 +31,18 @@ data class ProfileUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val isLoadingContent: Boolean = false,
+    val isLoadingMorePosts: Boolean = false,
+    val isLoadingMoreComments: Boolean = false,
+    val isLoadingMoreSavedPosts: Boolean = false,
+    val isLoadingMoreSavedComments: Boolean = false,
+    val isLoadingMoreUpvoted: Boolean = false,
+    val isLoadingMoreDownvoted: Boolean = false,
+    val hasMorePosts: Boolean = true,
+    val hasMoreComments: Boolean = true,
+    val hasMoreSavedPosts: Boolean = true,
+    val hasMoreSavedComments: Boolean = true,
+    val hasMoreUpvoted: Boolean = true,
+    val hasMoreDownvoted: Boolean = true,
     val error: String? = null,
     val isLoggedIn: Boolean = false,
     val selectedTab: ProfileTab = ProfileTab.POSTS,
@@ -171,7 +183,13 @@ class ProfileViewModel(
         forceRefresh: Boolean = false
     ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true, posts = if (forceRefresh) emptyList() else it.posts) }
+            _uiState.update {
+                it.copy(
+                    isLoadingContent = true,
+                    posts = if (forceRefresh) emptyList() else it.posts,
+                    hasMorePosts = true
+                )
+            }
             val result = userRepository.getUserPosts(username, sort, timeFilter)
             result.fold(
                 onSuccess = { listing ->
@@ -179,12 +197,38 @@ class ProfileViewModel(
                         it.copy(
                             posts = listing.items,
                             postsAfter = listing.after,
+                            hasMorePosts = listing.hasMore,
                             isLoadingContent = false
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
+                }
+            )
+        }
+    }
+
+    fun loadMoreUserPosts() {
+        val currentState = _uiState.value
+        if (currentState.isLoadingMorePosts || !currentState.hasMorePosts || currentState.postsAfter == null) return
+        val username = getUsername() ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMorePosts = true) }
+            val result = userRepository.getUserPosts(username, currentState.postsSort, currentState.postsTimeFilter, currentState.postsAfter)
+            result.fold(
+                onSuccess = { listing ->
+                    _uiState.update {
+                        it.copy(
+                            posts = it.posts + listing.items,
+                            postsAfter = listing.after,
+                            hasMorePosts = listing.hasMore,
+                            isLoadingMorePosts = false
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isLoadingMorePosts = false) }
                 }
             )
         }
@@ -197,7 +241,13 @@ class ProfileViewModel(
         forceRefresh: Boolean = false
     ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true, comments = if (forceRefresh) emptyList() else it.comments) }
+            _uiState.update {
+                it.copy(
+                    isLoadingContent = true,
+                    comments = if (forceRefresh) emptyList() else it.comments,
+                    hasMoreComments = true
+                )
+            }
             val result = userRepository.getUserComments(username, sort, timeFilter)
             result.fold(
                 onSuccess = { listing ->
@@ -205,12 +255,38 @@ class ProfileViewModel(
                         it.copy(
                             comments = listing.items,
                             commentsAfter = listing.after,
+                            hasMoreComments = listing.hasMore,
                             isLoadingContent = false
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
+                }
+            )
+        }
+    }
+
+    fun loadMoreUserComments() {
+        val currentState = _uiState.value
+        if (currentState.isLoadingMoreComments || !currentState.hasMoreComments || currentState.commentsAfter == null) return
+        val username = getUsername() ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMoreComments = true) }
+            val result = userRepository.getUserComments(username, currentState.commentsSort, currentState.commentsTimeFilter, currentState.commentsAfter)
+            result.fold(
+                onSuccess = { listing ->
+                    _uiState.update {
+                        it.copy(
+                            comments = it.comments + listing.items,
+                            commentsAfter = listing.after,
+                            hasMoreComments = listing.hasMore,
+                            isLoadingMoreComments = false
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isLoadingMoreComments = false) }
                 }
             )
         }
@@ -218,7 +294,13 @@ class ProfileViewModel(
 
     private fun loadSavedPosts(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true, savedPosts = if (forceRefresh) emptyList() else it.savedPosts) }
+            _uiState.update {
+                it.copy(
+                    isLoadingContent = true,
+                    savedPosts = if (forceRefresh) emptyList() else it.savedPosts,
+                    hasMoreSavedPosts = true
+                )
+            }
             val result = userRepository.getSavedPosts()
             result.fold(
                 onSuccess = { listing ->
@@ -226,12 +308,37 @@ class ProfileViewModel(
                         it.copy(
                             savedPosts = listing.items,
                             savedPostsAfter = listing.after,
+                            hasMoreSavedPosts = listing.hasMore,
                             isLoadingContent = false
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
+                }
+            )
+        }
+    }
+
+    fun loadMoreSavedPosts() {
+        val currentState = _uiState.value
+        if (currentState.isLoadingMoreSavedPosts || !currentState.hasMoreSavedPosts || currentState.savedPostsAfter == null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMoreSavedPosts = true) }
+            val result = userRepository.getSavedPosts(currentState.savedPostsAfter)
+            result.fold(
+                onSuccess = { listing ->
+                    _uiState.update {
+                        it.copy(
+                            savedPosts = it.savedPosts + listing.items,
+                            savedPostsAfter = listing.after,
+                            hasMoreSavedPosts = listing.hasMore,
+                            isLoadingMoreSavedPosts = false
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isLoadingMoreSavedPosts = false) }
                 }
             )
         }
@@ -239,7 +346,13 @@ class ProfileViewModel(
 
     private fun loadSavedComments(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true, savedComments = if (forceRefresh) emptyList() else it.savedComments) }
+            _uiState.update {
+                it.copy(
+                    isLoadingContent = true,
+                    savedComments = if (forceRefresh) emptyList() else it.savedComments,
+                    hasMoreSavedComments = true
+                )
+            }
             val result = userRepository.getSavedComments()
             result.fold(
                 onSuccess = { listing ->
@@ -247,12 +360,37 @@ class ProfileViewModel(
                         it.copy(
                             savedComments = listing.items,
                             savedCommentsAfter = listing.after,
+                            hasMoreSavedComments = listing.hasMore,
                             isLoadingContent = false
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
+                }
+            )
+        }
+    }
+
+    fun loadMoreSavedComments() {
+        val currentState = _uiState.value
+        if (currentState.isLoadingMoreSavedComments || !currentState.hasMoreSavedComments || currentState.savedCommentsAfter == null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMoreSavedComments = true) }
+            val result = userRepository.getSavedComments(currentState.savedCommentsAfter)
+            result.fold(
+                onSuccess = { listing ->
+                    _uiState.update {
+                        it.copy(
+                            savedComments = it.savedComments + listing.items,
+                            savedCommentsAfter = listing.after,
+                            hasMoreSavedComments = listing.hasMore,
+                            isLoadingMoreSavedComments = false
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isLoadingMoreSavedComments = false) }
                 }
             )
         }
@@ -260,7 +398,13 @@ class ProfileViewModel(
 
     private fun loadUpvotedPosts(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true, upvotedPosts = if (forceRefresh) emptyList() else it.upvotedPosts) }
+            _uiState.update {
+                it.copy(
+                    isLoadingContent = true,
+                    upvotedPosts = if (forceRefresh) emptyList() else it.upvotedPosts,
+                    hasMoreUpvoted = true
+                )
+            }
             val result = userRepository.getUpvotedPosts()
             result.fold(
                 onSuccess = { listing ->
@@ -268,6 +412,7 @@ class ProfileViewModel(
                         it.copy(
                             upvotedPosts = listing.items,
                             upvotedAfter = listing.after,
+                            hasMoreUpvoted = listing.hasMore,
                             isLoadingContent = false
                         )
                     }
@@ -279,9 +424,39 @@ class ProfileViewModel(
         }
     }
 
+    fun loadMoreUpvotedPosts() {
+        val currentState = _uiState.value
+        if (currentState.isLoadingMoreUpvoted || !currentState.hasMoreUpvoted || currentState.upvotedAfter == null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMoreUpvoted = true) }
+            val result = userRepository.getUpvotedPosts(currentState.upvotedAfter)
+            result.fold(
+                onSuccess = { listing ->
+                    _uiState.update {
+                        it.copy(
+                            upvotedPosts = it.upvotedPosts + listing.items,
+                            upvotedAfter = listing.after,
+                            hasMoreUpvoted = listing.hasMore,
+                            isLoadingMoreUpvoted = false
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isLoadingMoreUpvoted = false) }
+                }
+            )
+        }
+    }
+
     private fun loadDownvotedPosts(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingContent = true, downvotedPosts = if (forceRefresh) emptyList() else it.downvotedPosts) }
+            _uiState.update {
+                it.copy(
+                    isLoadingContent = true,
+                    downvotedPosts = if (forceRefresh) emptyList() else it.downvotedPosts,
+                    hasMoreDownvoted = true
+                )
+            }
             val result = userRepository.getDownvotedPosts()
             result.fold(
                 onSuccess = { listing ->
@@ -289,12 +464,37 @@ class ProfileViewModel(
                         it.copy(
                             downvotedPosts = listing.items,
                             downvotedAfter = listing.after,
+                            hasMoreDownvoted = listing.hasMore,
                             isLoadingContent = false
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
+                }
+            )
+        }
+    }
+
+    fun loadMoreDownvotedPosts() {
+        val currentState = _uiState.value
+        if (currentState.isLoadingMoreDownvoted || !currentState.hasMoreDownvoted || currentState.downvotedAfter == null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMoreDownvoted = true) }
+            val result = userRepository.getDownvotedPosts(currentState.downvotedAfter)
+            result.fold(
+                onSuccess = { listing ->
+                    _uiState.update {
+                        it.copy(
+                            downvotedPosts = it.downvotedPosts + listing.items,
+                            downvotedAfter = listing.after,
+                            hasMoreDownvoted = listing.hasMore,
+                            isLoadingMoreDownvoted = false
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(isLoadingMoreDownvoted = false) }
                 }
             )
         }

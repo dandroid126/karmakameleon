@@ -2,8 +2,10 @@ package com.reader.shared.ui.profile
 
 import com.reader.shared.FakeRedditApi
 import com.reader.shared.FakeAuthManager
-import com.reader.shared.createTestPost
+import com.reader.shared.createTestAccount
 import com.reader.shared.createTestComment
+import com.reader.shared.createTestListing
+import com.reader.shared.createTestPost
 import com.reader.shared.data.api.AuthManager
 import com.reader.shared.data.repository.CommentRepository
 import com.reader.shared.data.repository.PostRepository
@@ -259,6 +261,233 @@ class ProfileViewModelTest {
         advanceUntilIdle()
         
         assertTrue(viewModel.uiState.value.posts.any { it.id == post.id })
+    }
+
+    // ==================== Load More: Posts ====================
+
+    @Test
+    fun loadMoreUserPosts_appendsToExistingPosts() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        val initialCount = viewModel.uiState.value.posts.size
+
+        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p2")))
+        viewModel.loadMoreUserPosts()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.posts.size > initialCount)
+        assertFalse(viewModel.uiState.value.isLoadingMorePosts)
+    }
+
+    @Test
+    fun loadMoreUserPosts_preventsLoadWhenNoMore() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = null)
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+
+        viewModel.loadMoreUserPosts()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoadingMorePosts)
+        assertEquals(1, viewModel.uiState.value.posts.size)
+    }
+
+    @Test
+    fun loadMoreUserPosts_updatesAfterToken() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+
+        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p2")), after = "token2")
+        viewModel.loadMoreUserPosts()
+        advanceUntilIdle()
+
+        assertEquals("token2", viewModel.uiState.value.postsAfter)
+        assertTrue(viewModel.uiState.value.hasMorePosts)
+    }
+
+    // ==================== Load More: Comments ====================
+
+    @Test
+    fun loadMoreUserComments_appendsToExistingComments() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1")), after = "token1")
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.COMMENTS)
+        advanceUntilIdle()
+        val initialCount = viewModel.uiState.value.comments.size
+
+        fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c2")))
+        viewModel.loadMoreUserComments()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.comments.size > initialCount)
+        assertFalse(viewModel.uiState.value.isLoadingMoreComments)
+    }
+
+    @Test
+    fun loadMoreUserComments_preventsLoadWhenNoMore() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1")), after = null)
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.COMMENTS)
+        advanceUntilIdle()
+
+        viewModel.loadMoreUserComments()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoadingMoreComments)
+        assertEquals(1, viewModel.uiState.value.comments.size)
+    }
+
+    // ==================== Load More: Saved Posts ====================
+
+    @Test
+    fun loadMoreSavedPosts_appendsToExistingSavedPosts() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")), after = "token1")
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.SAVED)
+        advanceUntilIdle()
+        val initialCount = viewModel.uiState.value.savedPosts.size
+
+        fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s2")))
+        viewModel.loadMoreSavedPosts()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.savedPosts.size > initialCount)
+        assertFalse(viewModel.uiState.value.isLoadingMoreSavedPosts)
+    }
+
+    @Test
+    fun loadMoreSavedPosts_preventsLoadWhenNoMore() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")), after = null)
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.SAVED)
+        advanceUntilIdle()
+
+        viewModel.loadMoreSavedPosts()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoadingMoreSavedPosts)
+        assertEquals(1, viewModel.uiState.value.savedPosts.size)
+    }
+
+    // ==================== Load More: Saved Comments ====================
+
+    @Test
+    fun loadMoreSavedComments_appendsToExistingSavedComments() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")), after = "token1")
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.SAVED)
+        advanceUntilIdle()
+        val initialCount = viewModel.uiState.value.savedComments.size
+
+        fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc2")))
+        viewModel.loadMoreSavedComments()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.savedComments.size > initialCount)
+        assertFalse(viewModel.uiState.value.isLoadingMoreSavedComments)
+    }
+
+    @Test
+    fun loadMoreSavedComments_preventsLoadWhenNoMore() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")), after = null)
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.SAVED)
+        advanceUntilIdle()
+
+        viewModel.loadMoreSavedComments()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoadingMoreSavedComments)
+        assertEquals(1, viewModel.uiState.value.savedComments.size)
+    }
+
+    // ==================== Load More: Upvoted ====================
+
+    @Test
+    fun loadMoreUpvotedPosts_appendsToExistingUpvotedPosts() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")), after = "token1")
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.UPVOTED)
+        advanceUntilIdle()
+        val initialCount = viewModel.uiState.value.upvotedPosts.size
+
+        fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u2")))
+        viewModel.loadMoreUpvotedPosts()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.upvotedPosts.size > initialCount)
+        assertFalse(viewModel.uiState.value.isLoadingMoreUpvoted)
+    }
+
+    @Test
+    fun loadMoreUpvotedPosts_preventsLoadWhenNoMore() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")), after = null)
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.UPVOTED)
+        advanceUntilIdle()
+
+        viewModel.loadMoreUpvotedPosts()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoadingMoreUpvoted)
+        assertEquals(1, viewModel.uiState.value.upvotedPosts.size)
+    }
+
+    // ==================== Load More: Downvoted ====================
+
+    @Test
+    fun loadMoreDownvotedPosts_appendsToExistingDownvotedPosts() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")), after = "token1")
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
+        advanceUntilIdle()
+        val initialCount = viewModel.uiState.value.downvotedPosts.size
+
+        fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d2")))
+        viewModel.loadMoreDownvotedPosts()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.downvotedPosts.size > initialCount)
+        assertFalse(viewModel.uiState.value.isLoadingMoreDownvoted)
+    }
+
+    @Test
+    fun loadMoreDownvotedPosts_preventsLoadWhenNoMore() = runTest {
+        fakeApi.meResult = createTestAccount(name = "testuser")
+        fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")), after = null)
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+        viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
+        advanceUntilIdle()
+
+        viewModel.loadMoreDownvotedPosts()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isLoadingMoreDownvoted)
+        assertEquals(1, viewModel.uiState.value.downvotedPosts.size)
     }
 
     // ==================== Error Handling ====================
