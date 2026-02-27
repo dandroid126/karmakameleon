@@ -133,7 +133,7 @@ fun ReaderApp() {
     LaunchedEffect(currentAccount) {
         val onProfileRoute = currentRoute?.startsWith("profile") == true ||
             currentRoute?.startsWith("user/") == true
-        if (onProfileRoute) {
+        if (onProfileRoute && currentAccount == null) {
             navController.navigate(Screen.Feed.route) {
                 popUpTo(Screen.Feed.route) { inclusive = false }
                 launchSingleTop = true
