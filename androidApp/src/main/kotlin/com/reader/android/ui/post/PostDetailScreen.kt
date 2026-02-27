@@ -1094,16 +1094,23 @@ private fun MoreCommentsButton(
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
-    TextButton(
-        onClick = onClick,
-        enabled = !isLoading,
-        modifier = modifier.padding(start = (more.depth * 12).dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = (more.depth * 12).dp)
+            .clickable(enabled = !isLoading, onClick = onClick)
+            .padding(vertical = 8.dp, horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (isLoading) {
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
             Spacer(modifier = Modifier.width(8.dp))
         }
-        Text("Load ${more.count} more ${if (more.count == 1) "reply" else "replies"}")
+        Text(
+            text = "Load ${more.count} more ${if (more.count == 1) "reply" else "replies"}",
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelLarge
+        )
     }
 }
 
