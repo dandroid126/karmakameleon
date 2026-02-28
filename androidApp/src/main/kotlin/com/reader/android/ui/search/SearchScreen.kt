@@ -176,6 +176,7 @@ fun SearchScreen(
                                 is RedditLink.Comment -> onCommentClick(link.subreddit, link.postId, link.commentId)
                                 is RedditLink.Subreddit -> onSubredditClick(link.name)
                                 is RedditLink.User -> onUserClick(link.name)
+                                is RedditLink.ShareLink -> navigationHandler.onShareLinkClick(link.subreddit, link.shareId)
                                 is RedditLink.External, null -> {}
                             }
                         }
@@ -199,6 +200,7 @@ fun SearchScreen(
                                     is RedditLink.Comment -> "Open comment in r/${link.subreddit}"
                                     is RedditLink.Subreddit -> "Open r/${link.name}"
                                     is RedditLink.User -> "Open u/${link.name}"
+                                    is RedditLink.ShareLink -> "Open post in r/${link.subreddit}"
                                     is RedditLink.External, null -> ""
                                 },
                                 style = MaterialTheme.typography.bodyLarge

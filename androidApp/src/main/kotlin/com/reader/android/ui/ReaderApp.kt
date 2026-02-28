@@ -38,6 +38,7 @@ import androidx.navigation.navArgument
 import com.reader.android.data.PendingNotificationAction
 import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.FullScreenImageViewer
+import com.reader.shared.data.api.RedditApi
 import com.reader.android.ui.components.FullScreenVideoScreen
 import com.reader.android.ui.components.WebBrowserScreen
 import com.reader.android.ui.components.YouTubeVideoScreen
@@ -56,6 +57,8 @@ import com.reader.android.ui.settings.SettingsScreen
 import com.reader.android.ui.subreddit.SubredditListScreen
 import com.reader.android.ui.subreddit.SubredditScreen
 import com.reader.shared.domain.model.InboxFilter
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -124,6 +127,8 @@ fun ReaderApp() {
     val navigationHandler = koinInject<NavigationHandler>()
     val globalMenuManager = koinInject<GlobalMenuManager>()
     val userRepository = koinInject<UserRepository>()
+    val redditApi = koinInject<RedditApi>()
+    val coroutineScope = rememberCoroutineScope()
     val currentAccount by userRepository.currentAccount.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -194,6 +199,14 @@ fun ReaderApp() {
                 navController.navigate(DetailScreen.WebBrowser.createRoute(url))
             }
         }
+        navigationHandler.onShareLinkClick = { subreddit, shareId ->
+            coroutineScope.launch {
+                val resolved = redditApi.resolveShareLink(subreddit, shareId)
+                if (resolved != null) {
+                    navController.navigate(DetailScreen.PostDetail.createRoute(resolved.first, resolved.second))
+                }
+            }
+        }
         onDispose {
             globalMenuManager.onNavigateToProfile = {}
             globalMenuManager.onNavigateToOwnProfile = {}
@@ -207,6 +220,7 @@ fun ReaderApp() {
             navigationHandler.onImageLinkClick = {}
             navigationHandler.onVideoLinkClick = {}
             navigationHandler.onYouTubeLinkClick = {}
+            navigationHandler.onShareLinkClick = { _, _ -> }
         }
     }
     

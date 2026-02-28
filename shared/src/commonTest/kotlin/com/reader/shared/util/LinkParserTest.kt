@@ -252,6 +252,22 @@ class LinkParserTest {
     }
 
     @Test
+    fun parseRedditLink_shareLink() {
+        val result = parseRedditLink("https://www.reddit.com/r/hockey/s/5fboTbvlcR")
+        assertTrue(result is RedditLink.ShareLink)
+        assertEquals("hockey", result.subreddit)
+        assertEquals("5fboTbvlcR", result.shareId)
+    }
+
+    @Test
+    fun parseRedditLink_shareLinkOldReddit() {
+        val result = parseRedditLink("https://old.reddit.com/r/hockey/s/5fboTbvlcR")
+        assertTrue(result is RedditLink.ShareLink)
+        assertEquals("hockey", result.subreddit)
+        assertEquals("5fboTbvlcR", result.shareId)
+    }
+
+    @Test
     fun parseRedditLink_externalUrl() {
         val result = parseRedditLink("https://example.com/page")
         assertTrue(result is RedditLink.External)

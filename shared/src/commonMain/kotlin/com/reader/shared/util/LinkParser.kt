@@ -48,6 +48,7 @@ sealed class RedditLink {
     data class User(val name: String) : RedditLink()
     data class Post(val subreddit: String, val postId: String) : RedditLink()
     data class Comment(val subreddit: String, val postId: String, val commentId: String, val context: Int? = null) : RedditLink()
+    data class ShareLink(val subreddit: String, val shareId: String) : RedditLink()
     data class External(val url: String) : RedditLink()
 }
 
@@ -93,6 +94,15 @@ fun parseRedditLink(url: String): RedditLink {
             RedditLink.Post(
                 subreddit = pathSegments[1],
                 postId = pathSegments[3]
+            )
+        }
+
+        pathSegments.size >= 4
+                && pathSegments[0] == "r"
+                && pathSegments[2] == "s" -> {
+            RedditLink.ShareLink(
+                subreddit = pathSegments[1],
+                shareId = pathSegments[3]
             )
         }
 

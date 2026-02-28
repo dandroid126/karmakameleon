@@ -40,6 +40,8 @@ import com.reader.shared.domain.model.TimeFilter
 import com.reader.shared.domain.model.User
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.domain.model.UserSubreddit
+import com.reader.shared.util.RedditLink
+import com.reader.shared.util.parseRedditLink
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -1222,6 +1224,29 @@ open class RedditApi(
                 }
             }
         )
+    }
+
+    open suspend fun resolveShareLink(subreddit: String, shareId: String): Pair<String, String>? {
+        return try {
+            val noRedirectClient = okhttp3.OkHttpClient.Builder()
+                .followRedirects(false)
+                .build()
+            val request = okhttp3.Request.Builder()
+                .url("$WWW_URL/r/$subreddit/s/$shareId")
+                .header("User-Agent", "Reader/1.0.0 (Android)")
+                .build()
+            val locationUrl = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                noRedirectClient.newCall(request).execute().use { response ->
+                    response.header("Location")
+                }
+            } ?: return null
+            when (val parsed = parseRedditLink(locationUrl)) {
+                is RedditLink.Post -> Pair(parsed.subreddit, parsed.postId)
+                else -> null
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun resolveRedditMediaUrl(url: String): String {

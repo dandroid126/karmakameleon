@@ -1099,7 +1099,7 @@ private fun MoreCommentsButton(
             .fillMaxWidth()
             .padding(start = (more.depth * 12).dp)
             .clickable(enabled = !isLoading, onClick = onClick)
-            .padding(vertical = 8.dp, horizontal = 12.dp),
+            .padding(vertical = 10.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (isLoading) {
