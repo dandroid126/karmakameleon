@@ -1,3 +1,5 @@
+<img src="KarmaKameleon.png" alt="Logo" width="100" height="100">
+
 # Karma Kameleon - Modern Reddit Client for Android
 
 A modern, feature-rich Reddit client built with Kotlin Multiplatform (KMP) and Jetpack Compose. Inspired by Reddit is Fun (RIF) but rebuilt with modern Android development practices.
@@ -18,7 +20,7 @@ A modern, feature-rich Reddit client built with Kotlin Multiplatform (KMP) and J
 ### Advanced Features
 - **Rich Media Support** - Images, GIFs, videos (including HLS streams), and YouTube integration
 - **Full-Screen Media** - Immersive image and video viewing with gesture controls
-- **Web Browser** - Built-in browser for external links with reader mode
+- **Web Browser** - Built-in browser for external links
 - **Markdown Rendering** - Complete markdown support including tables, code blocks, spoilers, and nested elements
 - **NSFW Controls** - Granular NSFW preview and history settings
 - **Notifications** - Background inbox polling with configurable intervals
