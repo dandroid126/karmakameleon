@@ -26,7 +26,7 @@ tasks.withType<Test> {
 
 kotlin {
     androidLibrary {
-        namespace = "com.reader.shared"
+        namespace = "com.karmakameleon.shared"
         compileSdk = 36
         minSdk = 24
 

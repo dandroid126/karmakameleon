@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.reader.android"
+    namespace = "com.karmakameleon.android"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.reader.android"
+        applicationId = "com.karmakameleon.android"
         minSdk = 24
         targetSdk = 36
         versionCode = 1

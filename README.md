@@ -1,4 +1,4 @@
-# Reader - Modern Reddit Client for Android
+# Karma Kameleon - Modern Reddit Client for Android
 
 A modern, feature-rich Reddit client built with Kotlin Multiplatform (KMP) and Jetpack Compose. Inspired by Reddit is Fun (RIF) but rebuilt with modern Android development practices.
 
@@ -105,7 +105,7 @@ A modern, feature-rich Reddit client built with Kotlin Multiplatform (KMP) and J
 1. Visit https://www.reddit.com/prefs/apps
 2. Click "Create App" or "Create Another App"
 3. Select "installed app" type
-4. Set redirect URI to `reader://oauth`
+4. Set redirect URI to `karmakameleon://oauth`
 5. Copy the client ID (14-character string)
 
 ### Test Configuration
@@ -137,7 +137,7 @@ REDDIT_CLIENT_ID=your_client_id_here
 ./gradlew test
 
 # Run specific test class
-./gradlew :shared:testDebugUnitTest --tests "com.reader.shared.data.repository.PostRepositoryTest"
+./gradlew :shared:testDebugUnitTest --tests "com.karmakameleon.shared.data.repository.PostRepositoryTest"
 
 # Generate coverage report (outputs to shared/build/reports/jacoco/)
 ./gradlew :shared:jacocoTestReport

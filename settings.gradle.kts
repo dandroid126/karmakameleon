@@ -16,6 +16,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Reader"
+rootProject.name = "KarmaKameleon"
 include(":androidApp")
 include(":shared")

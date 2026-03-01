@@ -9,11 +9,11 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
--keep,includedescriptorclasses class com.reader.**$$serializer { *; }
--keepclassmembers class com.reader.** {
+-keep,includedescriptorclasses class com.karmakameleon.**$$serializer { *; }
+-keepclassmembers class com.karmakameleon.** {
     *** Companion;
 }
--keepclasseswithmembers class com.reader.** {
+-keepclasseswithmembers class com.karmakameleon.** {
     kotlinx.serialization.KSerializer serializer(...);
 }
 
