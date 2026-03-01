@@ -38,12 +38,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.reader.android.notifications.InboxNotificationWorker
+import com.reader.android.ui.components.UniversalTopAppBar
 import com.reader.shared.data.repository.ReadPostsRepository
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.domain.model.NotificationInterval
 import com.reader.shared.domain.model.NsfwHistoryMode
 import com.reader.shared.domain.model.NsfwPreviewMode
-import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)

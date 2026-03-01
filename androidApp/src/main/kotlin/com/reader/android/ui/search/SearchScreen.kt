@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.PostCard
+import com.reader.android.ui.components.UniversalTopAppBar
 import com.reader.shared.data.repository.ReadPostsRepository
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.domain.model.NsfwHistoryMode
@@ -53,7 +54,6 @@ import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.SearchType
 import com.reader.shared.ui.search.SearchViewModel
 import com.reader.shared.util.RedditLink
-import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 

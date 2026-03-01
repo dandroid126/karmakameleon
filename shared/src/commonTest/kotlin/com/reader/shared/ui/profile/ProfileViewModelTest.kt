@@ -1,17 +1,14 @@
 package com.reader.shared.ui.profile
 
-import com.reader.shared.FakeRedditApi
 import com.reader.shared.FakeAuthManager
+import com.reader.shared.FakeRedditApi
 import com.reader.shared.createTestAccount
 import com.reader.shared.createTestComment
 import com.reader.shared.createTestListing
 import com.reader.shared.createTestPost
-import com.reader.shared.data.api.AuthManager
 import com.reader.shared.data.repository.CommentRepository
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.UserRepository
-import com.reader.shared.domain.model.Comment
-import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.TimeFilter
 import kotlinx.coroutines.Dispatchers

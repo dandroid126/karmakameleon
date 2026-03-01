@@ -1,10 +1,7 @@
 package com.reader.shared.ui.subreddit
 
-import com.reader.shared.FakeRedditApi
 import com.reader.shared.FakeAuthManager
-import com.reader.shared.createTestPost
-import com.reader.shared.createTestSubreddit
-import com.reader.shared.createTestListing
+import com.reader.shared.FakeRedditApi
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.data.repository.SubredditRepository
@@ -25,7 +22,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 

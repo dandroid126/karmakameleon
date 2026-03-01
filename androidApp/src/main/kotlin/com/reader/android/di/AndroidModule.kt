@@ -1,13 +1,13 @@
 package com.reader.android.di
 
+import com.reader.android.navigation.NavigationHandler
+import com.reader.android.ui.menu.GlobalMenuManager
 import com.reader.shared.ui.feed.FeedViewModel
 import com.reader.shared.ui.inbox.InboxViewModel
 import com.reader.shared.ui.post.PostDetailViewModel
 import com.reader.shared.ui.profile.ProfileViewModel
 import com.reader.shared.ui.search.SearchViewModel
 import com.reader.shared.ui.subreddit.SubredditViewModel
-import com.reader.android.navigation.NavigationHandler
-import com.reader.android.ui.menu.GlobalMenuManager
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 

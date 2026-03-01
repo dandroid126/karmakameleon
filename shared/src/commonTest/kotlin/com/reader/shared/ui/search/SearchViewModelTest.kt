@@ -1,14 +1,10 @@
 package com.reader.shared.ui.search
 
-import com.reader.shared.FakeRedditApi
 import com.reader.shared.FakeAuthManager
-import com.reader.shared.createTestPost
-import com.reader.shared.createTestSubreddit
-import com.reader.shared.createTestListing
+import com.reader.shared.FakeRedditApi
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.data.repository.SubredditRepository
-import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.SearchType
 import com.reader.shared.domain.model.TimeFilter
@@ -25,7 +21,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)

@@ -39,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,14 +48,13 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.core.graphics.toColorInt
 import com.reader.android.navigation.NavigationHandler
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.VoteState
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import androidx.core.graphics.toColorInt
 
 @Composable
 fun CommentItem(

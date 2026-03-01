@@ -1,16 +1,15 @@
 package com.reader.shared.ui.post
 
-import com.reader.shared.FakeRedditApi
 import com.reader.shared.FakeAuthManager
-import com.reader.shared.createTestPost
+import com.reader.shared.FakeRedditApi
 import com.reader.shared.createTestComment
+import com.reader.shared.createTestPost
 import com.reader.shared.data.api.CommentOrMore
 import com.reader.shared.data.repository.CommentDraftRepository
 import com.reader.shared.data.repository.CommentRepository
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.CommentSort
-import com.reader.shared.domain.model.Post
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,7 +25,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PostDetailViewModelTest {

@@ -1,14 +1,11 @@
 package com.reader.shared.ui.inbox
 
-import com.reader.shared.FakeRedditApi
 import com.reader.shared.FakeAuthManager
-import com.reader.shared.createTestMessage
-import com.reader.shared.createTestListing
+import com.reader.shared.FakeRedditApi
 import com.reader.shared.data.repository.InboxPoller
 import com.reader.shared.data.repository.MessageRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.InboxFilter
-import com.reader.shared.domain.model.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

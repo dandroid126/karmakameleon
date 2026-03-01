@@ -43,10 +43,10 @@ import androidx.compose.ui.unit.dp
 import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.MessageItem
 import com.reader.android.ui.components.ReplyBar
+import com.reader.android.ui.components.UniversalTopAppBar
 import com.reader.shared.domain.model.InboxFilter
 import com.reader.shared.domain.model.Message
 import com.reader.shared.ui.inbox.InboxViewModel
-import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
 

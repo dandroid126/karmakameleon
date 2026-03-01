@@ -9,12 +9,10 @@ import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.TimeFilter
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 class PostRepository(

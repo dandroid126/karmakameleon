@@ -16,6 +16,7 @@ import com.reader.shared.data.api.dto.SubredditDto
 import com.reader.shared.data.api.dto.ThingData
 import com.reader.shared.data.api.dto.UserDto
 import com.reader.shared.data.api.dto.UserSubredditDto
+import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.domain.model.Account
 import com.reader.shared.domain.model.Comment
 import com.reader.shared.domain.model.CommentSort
@@ -38,15 +39,10 @@ import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.Subreddit
 import com.reader.shared.domain.model.TimeFilter
 import com.reader.shared.domain.model.User
-import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.domain.model.UserSubreddit
 import com.reader.shared.util.RedditLink
 import com.reader.shared.util.parseRedditLink
 import io.github.aakira.napier.Napier
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.FormDataContent
@@ -61,6 +57,10 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.Parameters
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject

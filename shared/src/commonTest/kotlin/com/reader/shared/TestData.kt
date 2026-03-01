@@ -1,27 +1,17 @@
 package com.reader.shared
 
-import com.reader.shared.data.api.CommentOrMore
 import com.reader.shared.domain.model.Account
 import com.reader.shared.domain.model.Comment
-import com.reader.shared.domain.model.CommentSort
 import com.reader.shared.domain.model.FlairRichtext
 import com.reader.shared.domain.model.GalleryData
-import com.reader.shared.domain.model.GalleryItem
-import com.reader.shared.domain.model.ImageSource
-import com.reader.shared.domain.model.InboxFilter
 import com.reader.shared.domain.model.Listing
 import com.reader.shared.domain.model.Media
 import com.reader.shared.domain.model.Message
 import com.reader.shared.domain.model.MessageType
 import com.reader.shared.domain.model.MoreComments
 import com.reader.shared.domain.model.Post
-import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.Preview
-import com.reader.shared.domain.model.PreviewImage
-import com.reader.shared.domain.model.RedditVideo
-import com.reader.shared.domain.model.SearchSort
 import com.reader.shared.domain.model.Subreddit
-import com.reader.shared.domain.model.TimeFilter
 import com.reader.shared.domain.model.User
 import com.reader.shared.domain.model.UserSubreddit
 

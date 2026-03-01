@@ -1,7 +1,7 @@
 package com.reader.shared.domain.model
 
-import kotlin.time.Instant
 import kotlinx.serialization.Serializable
+import kotlin.time.Instant
 
 @Serializable
 data class Comment(

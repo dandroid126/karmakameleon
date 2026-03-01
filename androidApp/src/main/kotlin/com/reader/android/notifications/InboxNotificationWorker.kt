@@ -1,12 +1,12 @@
 package com.reader.android.notifications
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import androidx.core.content.edit
 import com.reader.shared.data.api.AuthManager
 import com.reader.shared.data.repository.MessageRepository
 import com.reader.shared.data.repository.SettingsRepository

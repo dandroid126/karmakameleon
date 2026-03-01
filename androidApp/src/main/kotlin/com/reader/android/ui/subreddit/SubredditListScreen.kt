@@ -41,12 +41,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.reader.android.ui.components.UniversalTopAppBar
 import com.reader.android.ui.components.formatNumber
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.data.repository.UserRepository
 import com.reader.shared.domain.model.Subreddit
-import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)

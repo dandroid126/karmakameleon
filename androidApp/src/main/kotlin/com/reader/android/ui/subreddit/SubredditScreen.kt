@@ -47,6 +47,7 @@ import coil3.compose.AsyncImage
 import com.reader.android.navigation.NavigationHandler
 import com.reader.android.ui.components.PostCard
 import com.reader.android.ui.components.SortBottomSheet
+import com.reader.android.ui.components.UniversalTopAppBar
 import com.reader.android.ui.components.formatNumber
 import com.reader.shared.data.repository.ReadPostsRepository
 import com.reader.shared.data.repository.SettingsRepository
@@ -54,7 +55,6 @@ import com.reader.shared.domain.model.NsfwHistoryMode
 import com.reader.shared.domain.model.NsfwPreviewMode
 import com.reader.shared.ui.subreddit.SubredditViewModel
 import org.koin.androidx.compose.koinViewModel
-import com.reader.android.ui.components.UniversalTopAppBar
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 

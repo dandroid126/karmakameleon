@@ -1,14 +1,11 @@
 package com.reader.shared.ui.feed
 
-import com.reader.shared.FakeRedditApi
 import com.reader.shared.FakeAuthManager
-import com.reader.shared.createTestPost
-import com.reader.shared.createTestListing
+import com.reader.shared.FakeRedditApi
 import com.reader.shared.data.repository.PostRepository
 import com.reader.shared.data.repository.SettingsRepository
 import com.reader.shared.data.repository.SubredditRepository
 import com.reader.shared.data.repository.UserRepository
-import com.reader.shared.domain.model.Post
 import com.reader.shared.domain.model.PostSort
 import com.reader.shared.domain.model.TimeFilter
 import com.russhwolf.settings.MapSettings
