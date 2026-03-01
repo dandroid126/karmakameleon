@@ -1,5 +1,7 @@
 # Karma Kameleon - Modern Reddit Client for Android
 
+TEST PR
+
 A modern, feature-rich Reddit client built with Kotlin Multiplatform (KMP) and Jetpack Compose. Inspired by Reddit is Fun (RIF) but rebuilt with modern Android development practices.
 
 ## Features
