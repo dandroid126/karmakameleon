@@ -116,6 +116,8 @@ private fun ZoomableImage(
 ) {
     var scale by remember(url) { mutableFloatStateOf(1f) }
     var offset by remember(url) { mutableStateOf(Offset.Zero) }
+    var showMenu by remember { mutableStateOf(false) }
+    val menuItems = imageMenuItems(url)
 
     Box(
         modifier = modifier
@@ -162,7 +164,8 @@ private fun ZoomableImage(
                         } else {
                             scale = 3f
                         }
-                    }
+                    },
+                    onLongPress = { showMenu = true }
                 )
             },
         contentAlignment = Alignment.Center
@@ -188,5 +191,12 @@ private fun ZoomableImage(
                 }
             }
         )
+        Box(modifier = Modifier.align(Alignment.BottomEnd)) {
+            MediaLongPressMenu(
+                items = menuItems,
+                expanded = showMenu,
+                onDismiss = { showMenu = false }
+            )
+        }
     }
 }

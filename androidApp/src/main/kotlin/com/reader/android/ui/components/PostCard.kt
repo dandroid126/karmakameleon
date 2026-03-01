@@ -24,7 +24,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -481,16 +481,28 @@ fun PostCard(
                             )
                         }
                         DropdownMenuItem(
-                            text = { Text("Share") },
+                            text = { Text("Copy comments link") },
                             onClick = {
                                 val link = "https://www.reddit.com${post.permalink}"
                                 coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) }
                                 showMenu = false
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.Share, contentDescription = null)
+                                Icon(Icons.Default.Link, contentDescription = null)
                             }
                         )
+                        post.contentLink?.let { contentLink ->
+                            DropdownMenuItem(
+                                text = { Text("Copy post link") },
+                                onClick = {
+                                    coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", contentLink))) }
+                                    showMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Link, contentDescription = null)
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = { Text("Block r/${post.subreddit}") },
                             onClick = {

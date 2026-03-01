@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -40,8 +41,11 @@ fun imageMenuItems(url: String): List<MediaMenuItem> {
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
     return listOf(
-        MediaMenuItem("Copy Image URL") {
+        MediaMenuItem("Copy Image Link") {
             scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", url))) }
+        },
+        MediaMenuItem("Copy Image to Clipboard") {
+            scope.launch { copyImageToClipboard(context, url) }
         },
         MediaMenuItem("Save Image") {
             scope.launch { saveImageToGallery(context, url) }
@@ -62,6 +66,25 @@ fun videoMenuItems(videoUrl: String): List<MediaMenuItem> {
     return listOf(
         MediaMenuItem("Save $ext Video") {
             scope.launch { saveVideoToGallery(context, videoUrl) }
+        }
+    )
+}
+
+@Composable
+fun gifMenuItems(gifUrl: String, gifImageUrl: String? = null): List<MediaMenuItem> {
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
+    val imageUrl = gifImageUrl ?: gifUrl
+    return listOf(
+        MediaMenuItem("Copy GIF Link") {
+            scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", gifUrl))) }
+        },
+        MediaMenuItem("Copy GIF to Clipboard") {
+            scope.launch { copyImageToClipboard(context, imageUrl) }
+        },
+        MediaMenuItem("Save GIF") {
+            scope.launch { saveImageToGallery(context, imageUrl) }
         }
     )
 }
@@ -109,6 +132,53 @@ fun LongPressMenuBox(
                 expanded = showMenu,
                 onDismiss = { showMenu = false }
             )
+        }
+    }
+}
+
+internal suspend fun copyImageToClipboard(context: android.content.Context, url: String) {
+    withContext(Dispatchers.IO) {
+        try {
+            val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            try {
+                connection.connectTimeout = 15000
+                connection.readTimeout = 15000
+                connection.instanceFollowRedirects = true
+                connection.connect()
+                val bytes = connection.inputStream.use { it.readBytes() }
+                val filename = url.substringAfterLast("/").substringBefore("?").let {
+                    if (it.contains(".")) it else "${it}.jpg"
+                }
+                val mimeType = when {
+                    filename.endsWith(".gif") -> "image/gif"
+                    filename.endsWith(".png") -> "image/png"
+                    filename.endsWith(".webp") -> "image/webp"
+                    else -> "image/jpeg"
+                }
+                val cacheDir = File(context.cacheDir, "shared_images")
+                if (!cacheDir.exists()) cacheDir.mkdirs()
+                val file = File(cacheDir, filename)
+                file.writeBytes(bytes)
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+                withContext(Dispatchers.Main) {
+                    val clipData = ClipData.newUri(context.contentResolver, "image", uri)
+                    clipData.description.extras = android.os.PersistableBundle().apply {
+                        putString("android.content.extra.MIME_TYPES", mimeType)
+                    }
+                    val clipboardManager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    clipboardManager.setPrimaryClip(clipData)
+                }
+            } finally {
+                connection.disconnect()
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Failed to copy image", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

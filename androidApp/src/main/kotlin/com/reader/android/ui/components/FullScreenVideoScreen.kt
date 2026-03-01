@@ -74,7 +74,8 @@ fun FullScreenVideoScreen(
                     scaleY = scale
                     translationX = offsetX
                     translationY = offsetY
-                }
+                },
+            menuItems = videoMenuItems(videoUrl)
         )
 
         IconButton(

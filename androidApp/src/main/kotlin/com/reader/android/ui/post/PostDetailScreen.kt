@@ -93,6 +93,7 @@ import com.reader.android.ui.components.VideoPlayer
 import com.reader.android.ui.components.YouTubePlayer
 import com.reader.android.ui.components.formatNumber
 import com.reader.android.ui.components.formatTimeAgo
+import com.reader.android.ui.components.gifMenuItems
 import com.reader.android.ui.components.imageMenuItems
 import com.reader.android.ui.components.videoMenuItems
 import com.reader.shared.data.repository.SettingsRepository
@@ -826,7 +827,7 @@ private fun PostHeader(
                             videoUrl = item.url!!,
                             isGif = true,
                             modifier = Modifier.fillMaxSize(),
-                            menuItems = videoMenuItems(item.url!!)
+                            menuItems = gifMenuItems(item.url!!, gifImageUrl = item.gifUrl)
                         )
                     } else {
                         LongPressMenuBox(
@@ -878,7 +879,7 @@ private fun PostHeader(
                     videoUrl = redditVideo.fallbackUrl,
                     isGif = redditVideo.isGif,
                     modifier = Modifier.fillMaxWidth(),
-                    menuItems = videoMenuItems(redditVideo.fallbackUrl)
+                    menuItems = if (redditVideo.isGif) gifMenuItems(redditVideo.fallbackUrl, gifImageUrl = post.url) else videoMenuItems(redditVideo.fallbackUrl)
                 )
             } else {
                 val youTubeVideoId = extractYouTubeVideoId(post.url)
@@ -896,7 +897,7 @@ private fun PostHeader(
                             videoUrl = mp4Url,
                             isGif = true,
                             modifier = Modifier.fillMaxWidth(),
-                            menuItems = videoMenuItems(mp4Url)
+                            menuItems = gifMenuItems(mp4Url, gifImageUrl = post.url)
                         )
                     } else {
                         val previewImage = post.preview?.images?.firstOrNull()

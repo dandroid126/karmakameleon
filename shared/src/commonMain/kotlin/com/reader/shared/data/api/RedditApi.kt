@@ -998,6 +998,7 @@ open class RedditApi(
                 val meta = metadata?.get(item.mediaId)
                 val isAnimated = meta?.e == "AnimatedImage"
                 val mp4Url = meta?.s?.mp4?.let { decodeHtml(it) }
+                val gifUrl = meta?.s?.gif?.let { decodeHtml(it) }
                 val imageUrl = meta?.s?.u?.let { decodeHtml(it) }
                 val url = if (isAnimated) mp4Url ?: imageUrl else imageUrl
                 if (url != null || metadata == null) {
@@ -1006,7 +1007,8 @@ open class RedditApi(
                         id = item.id,
                         caption = item.caption,
                         url = url,
-                        isVideo = isAnimated && mp4Url != null
+                        isVideo = isAnimated && mp4Url != null,
+                        gifUrl = gifUrl
                     )
                 } else null
             }

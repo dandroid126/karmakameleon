@@ -2,6 +2,7 @@ package com.reader.shared.domain.model
 
 import kotlin.time.Instant
 import kotlinx.serialization.Serializable
+import com.reader.shared.util.extractYouTubeVideoId
 
 @Serializable
 data class Post(
@@ -80,6 +81,17 @@ data class Post(
     }
 
     val createdInstant: Instant get() = Instant.fromEpochSeconds(createdUtc)
+
+    val isYouTubePost: Boolean get() = extractYouTubeVideoId(url) != null
+
+    val contentLink: String? get() = when {
+        isImagePost -> url
+        isYouTubePost -> url
+        isVideoPost -> media?.redditVideo?.fallbackUrl ?: preview?.redditVideoPreview?.fallbackUrl
+        isGallery -> url
+        isLinkPost -> url
+        else -> null // text posts have no content link
+    }
 }
 
 @Serializable
@@ -128,7 +140,8 @@ data class GalleryItem(
     val id: Long,
     val caption: String?,
     val url: String? = null,
-    val isVideo: Boolean = false
+    val isVideo: Boolean = false,
+    val gifUrl: String? = null
 )
 
 enum class VoteState {

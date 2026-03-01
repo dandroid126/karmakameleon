@@ -1,43 +1,79 @@
 package com.reader.android.ui.components
 
+import android.content.ClipData
+import android.content.Intent
+import android.net.Uri
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.reader.android.ui.menu.GlobalMenuManager
+import com.reader.android.ui.menu.OverflowMenuItem
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WebBrowserScreen(
     url: String,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    globalMenuManager: GlobalMenuManager = koinInject()
 ) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(true) }
     var canGoBack by remember { mutableStateOf(false) }
     var webViewRef: WebView? by remember { mutableStateOf(null) }
 
+    DisposableEffect(url) {
+        globalMenuManager.setScreenItems(listOf(
+            OverflowMenuItem(
+                title = "Copy Link",
+                icon = Icons.Default.Link,
+                onClick = {
+                    coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", url))) }
+                }
+            ),
+            OverflowMenuItem(
+                title = "Open in Browser",
+                icon = Icons.Default.OpenInBrowser,
+                onClick = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                }
+            )
+        ))
+        onDispose { globalMenuManager.clearScreenItems() }
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
+            UniversalTopAppBar(
                 title = { Text(url.take(50)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {

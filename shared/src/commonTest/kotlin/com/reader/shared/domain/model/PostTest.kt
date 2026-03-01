@@ -297,4 +297,111 @@ class PostTest {
         val post = createTestPost(isLocked = false, isArchived = false, author = "someuser")
         assertNull(post.commentingDisabledReason)
     }
+
+    // ==================== contentLink ====================
+
+    @Test
+    fun contentLink_imagePost_returnsUrl() {
+        val post = createTestPost(postHint = "image", url = "https://i.imgur.com/abc.jpg")
+        assertEquals("https://i.imgur.com/abc.jpg", post.contentLink)
+    }
+
+    @Test
+    fun contentLink_videoPost_returnsRedditVideoFallbackUrl() {
+        val post = createTestPost(
+            postHint = "hosted:video",
+            media = Media(redditVideo = RedditVideo(
+                fallbackUrl = "https://v.redd.it/abc/DASH_720.mp4",
+                height = 720,
+                width = 1280,
+                duration = 30,
+                isGif = false
+            ))
+        )
+        assertEquals("https://v.redd.it/abc/DASH_720.mp4", post.contentLink)
+    }
+
+    @Test
+    fun contentLink_videoPost_fallsBackToPreviewRedditVideo() {
+        val post = createTestPost(
+            postHint = "hosted:video",
+            media = Media(redditVideo = null),
+            preview = Preview(
+                images = emptyList(),
+                enabled = true,
+                redditVideoPreview = RedditVideo(
+                    fallbackUrl = "https://v.redd.it/preview/abc.mp4",
+                    height = 720,
+                    width = 1280,
+                    duration = 10,
+                    isGif = true
+                )
+            )
+        )
+        assertEquals("https://v.redd.it/preview/abc.mp4", post.contentLink)
+    }
+
+    @Test
+    fun contentLink_galleryPost_returnsGalleryUrl() {
+        val post = createTestPost(
+            url = "https://reddit.com/r/test/comments/abc/gallery",
+            galleryData = GalleryData(items = listOf(
+                GalleryItem(mediaId = "m1", id = 1L, caption = null, url = "https://i.redd.it/gallery1.jpg"),
+                GalleryItem(mediaId = "m2", id = 2L, caption = null, url = "https://i.redd.it/gallery2.jpg")
+            ))
+        )
+        assertEquals("https://reddit.com/r/test/comments/abc/gallery", post.contentLink)
+    }
+
+    @Test
+    fun contentLink_linkPost_returnsUrl() {
+        val post = createTestPost(
+            url = "https://example.com/article",
+            postHint = "link",
+            selfText = null,
+            galleryData = null
+        )
+        assertEquals("https://example.com/article", post.contentLink)
+    }
+
+    @Test
+    fun contentLink_textPost_returnsNull() {
+        val post = createTestPost(
+            postHint = "self",
+            selfText = "Some text content",
+            url = "https://reddit.com/r/test/comments/abc"
+        )
+        assertNull(post.contentLink)
+    }
+
+    @Test
+    fun contentLink_youtubePost_returnsUrl() {
+        val post = createTestPost(
+            url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            postHint = "link",
+            selfText = null,
+            galleryData = null
+        )
+        assertEquals("https://www.youtube.com/watch?v=dQw4w9WgXcQ", post.contentLink)
+    }
+
+    // ==================== isYouTubePost ====================
+
+    @Test
+    fun isYouTubePost_withYouTubeUrl() {
+        val post = createTestPost(url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+        assertTrue(post.isYouTubePost)
+    }
+
+    @Test
+    fun isYouTubePost_withYouTubeShortUrl() {
+        val post = createTestPost(url = "https://youtu.be/dQw4w9WgXcQ")
+        assertTrue(post.isYouTubePost)
+    }
+
+    @Test
+    fun isYouTubePost_withNonYouTubeUrl() {
+        val post = createTestPost(url = "https://example.com/video")
+        assertFalse(post.isYouTubePost)
+    }
 }
