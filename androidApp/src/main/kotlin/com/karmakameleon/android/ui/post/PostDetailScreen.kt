@@ -81,6 +81,8 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.data.PendingQuote
 import com.karmakameleon.android.navigation.NavigationHandler
+import com.karmakameleon.android.ui.theme.postFlairColors
+import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.android.ui.components.CommentItem
 import com.karmakameleon.android.ui.components.FlairChip
 import com.karmakameleon.android.ui.components.FullScreenImageViewer
@@ -764,8 +766,8 @@ private fun PostHeader(
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (post.isNsfw) FlairChip("NSFW", Color(0xFFFF4444))
-            if (post.isSpoiler) FlairChip("Spoiler", Color(0xFFFFD700))
+            if (post.isNsfw) FlairChip("NSFW", postFlairColors().nsfwColor)
+            if (post.isSpoiler) FlairChip("Spoiler", postFlairColors().spoilerColor)
             post.linkFlairText?.let { FlairChip(it, Color.Gray) }
         }
 
@@ -1015,21 +1017,24 @@ private fun PostHeader(
                         contentDescription = "Upvote",
                         tint = when {
                             votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            post.voteState == VoteState.UPVOTED -> Color(0xFFFF4500)
+                            post.voteState == VoteState.UPVOTED -> voteColors().upvoteColor
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                     )
                 }
+
                 Text(
                     text = formatNumber(post.score),
+                    style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = when {
                         votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        post.voteState == VoteState.UPVOTED -> Color(0xFFFF4500)
-                        post.voteState == VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                        post.voteState == VoteState.UPVOTED -> voteColors().upvoteColor
+                        post.voteState == VoteState.DOWNVOTED -> voteColors().downvoteColor
                         else -> MaterialTheme.colorScheme.onSurface
                     }
                 )
+
                 IconButton(
                     onClick = if (votingDisabled) {
                         { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
@@ -1042,7 +1047,7 @@ private fun PostHeader(
                         contentDescription = "Downvote",
                         tint = when {
                             votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            post.voteState == VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                            post.voteState == VoteState.DOWNVOTED -> voteColors().downvoteColor
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                     )

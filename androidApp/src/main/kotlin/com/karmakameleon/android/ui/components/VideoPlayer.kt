@@ -61,6 +61,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.karmakameleon.android.ui.theme.mediaColors
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -479,7 +480,7 @@ private fun VideoControlsOverlay(
                     Icon(
                         imageVector = Icons.Filled.Repeat,
                         contentDescription = if (isLooping) "Disable loop" else "Enable loop",
-                        tint = if (isLooping) Color(0xFF4FC3F7) else Color.White,
+                        tint = if (isLooping) mediaColors().loopActiveColor else Color.White,
                         modifier = Modifier.size(28.dp)
                     )
                 }

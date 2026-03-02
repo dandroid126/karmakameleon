@@ -21,11 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.karmakameleon.android.ui.theme.postFlairColors
 
 @Composable
 fun SpoilerBlackBox(
     modifier: Modifier = Modifier
 ) {
+    val flairColors = postFlairColors()
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -38,14 +40,14 @@ fun SpoilerBlackBox(
             Icon(
                 imageVector = Icons.Default.VisibilityOff,
                 contentDescription = null,
-                tint = Color(0xFFFFD700),
+                tint = flairColors.spoilerColor,
                 modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Spoiler",
                 style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFFFFD700)
+                color = flairColors.spoilerColor
             )
             Text(
                 text = "Tap to view",

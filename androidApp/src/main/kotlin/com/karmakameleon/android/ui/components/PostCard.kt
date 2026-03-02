@@ -57,10 +57,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.karmakameleon.android.ui.theme.postFlairColors
+import com.karmakameleon.android.ui.theme.readStateColors
+import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.VoteState
 import kotlinx.coroutines.launch
+import androidx.core.graphics.toColorInt
 
 private val POST_CARD_MAX_CONTENT_HEIGHT = 400.dp
 
@@ -87,6 +91,9 @@ fun PostCard(
     val clipboard = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val voteColors = voteColors()
+    val postFlairColors = postFlairColors()
+    val readStateColors = readStateColors()
     
     Card(
         modifier = modifier
@@ -135,13 +142,13 @@ fun PostCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (post.isNsfw) {
-                    FlairChip(text = "NSFW", color = Color(0xFFFF4444))
+                    FlairChip(text = "NSFW", color = postFlairColors.nsfwColor)
                 }
                 if (post.isSpoiler) {
-                    FlairChip(text = "Spoiler", color = Color(0xFFFFD700))
+                    FlairChip(text = "Spoiler", color = postFlairColors.spoilerColor)
                 }
                 if (post.isStickied) {
-                    FlairChip(text = "Pinned", color = Color(0xFF00AA00))
+                    FlairChip(text = "Pinned", color = postFlairColors.pinnedColor)
                 }
                 post.linkFlairText?.let { flair ->
                     FlairChip(
@@ -161,7 +168,7 @@ fun PostCard(
                 text = post.title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = if (isRead) FontWeight.Normal else FontWeight.Bold,
-                color = if (isRead) Color(0xFF8090B0) else MaterialTheme.colorScheme.onSurface,
+                color = if (isRead) readStateColors.readTitleColor else MaterialTheme.colorScheme.onSurface,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
@@ -332,7 +339,7 @@ fun PostCard(
                             contentDescription = "Upvote",
                             tint = when {
                                 votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                post.voteState == VoteState.UPVOTED -> Color(0xFFFF4500)
+                                post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
                                 else -> MaterialTheme.colorScheme.onSurfaceVariant
                             }
                         )
@@ -344,8 +351,8 @@ fun PostCard(
                         fontWeight = FontWeight.Bold,
                         color = when {
                             votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            post.voteState == VoteState.UPVOTED -> Color(0xFFFF4500)
-                            post.voteState == VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                            post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
+                            post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
                             else -> MaterialTheme.colorScheme.onSurface
                         }
                     )
@@ -363,7 +370,7 @@ fun PostCard(
                             contentDescription = "Downvote",
                             tint = when {
                                 votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                post.voteState == VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                                post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
                                 else -> MaterialTheme.colorScheme.onSurfaceVariant
                             }
                         )
@@ -608,7 +615,7 @@ fun formatNumber(num: Int): String {
 fun parseColor(colorString: String): Color {
     return try {
         if (colorString.startsWith("#") && colorString.length >= 7) {
-            Color(android.graphics.Color.parseColor(colorString))
+            Color(colorString.toColorInt())
         } else {
             Color.Gray
         }

@@ -49,6 +49,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
+import com.karmakameleon.android.ui.theme.commentColors
+import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.domain.model.Comment
@@ -99,15 +101,9 @@ fun CommentItem(
         }
     }
     
-    val depthColors = listOf(
-        Color(0xFFFF4500),
-        Color(0xFF0079D3),
-        Color(0xFF46A508),
-        Color(0xFFFFD635),
-        Color(0xFF7193FF),
-        Color(0xFFFF66AC)
-    )
-    val depthColor = depthColors[comment.depth % depthColors.size]
+    val commentColors = commentColors()
+    val voteColors = voteColors()
+    val depthColor = commentColors.depthColors[comment.depth % commentColors.depthColors.size]
     val hasParentComment = comment.parentId.startsWith("t1_")
     val showParentControls = if (isSingleThreadMode) hasParentComment else comment.depth > 0
 
@@ -116,7 +112,7 @@ fun CommentItem(
             .fillMaxWidth()
             .padding(start = (comment.depth * 12).dp)
             .then(
-                if (isSelected) Modifier.background(Color(0xFF0079D3).copy(alpha = 0.08f))
+                if (isSelected) Modifier.background(commentColors.selectedBackground)
                 else Modifier
             )
             .clickable { onSelect() }
@@ -183,17 +179,17 @@ fun CommentItem(
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
                         color = when {
-                            comment.isSubmitter -> Color(0xFF0079D3)
-                            comment.distinguished == "moderator" -> Color(0xFF46A508)
-                            comment.distinguished == "admin" -> Color(0xFFFF4500)
-                            loggedInUsername != null && comment.author == loggedInUsername -> Color(0xFFFF0000)
+                            comment.isSubmitter -> commentColors.submitterColor
+                            comment.distinguished == "moderator" -> commentColors.moderatorColor
+                            comment.distinguished == "admin" -> commentColors.adminColor
+                            loggedInUsername != null && comment.author == loggedInUsername -> commentColors.ownCommentColor
                             else -> MaterialTheme.colorScheme.onSurface
                         },
                         modifier = Modifier.clickable { navigationHandler.onUserClick(comment.author) }
                     )
                     if (comment.isSubmitter) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("OP", style = MaterialTheme.typography.labelSmall, color = Color(0xFF0079D3))
+                        Text("OP", style = MaterialTheme.typography.labelSmall, color = commentColors.submitterColor)
                     }
                     val flairText = comment.authorFlairText
                     val flairColor = comment.authorFlairBackgroundColor?.let {
@@ -217,8 +213,8 @@ fun CommentItem(
                         text = if (comment.scoreHidden) "[score hidden]" else formatNumber(comment.score),
                         style = MaterialTheme.typography.labelSmall,
                         color = when (comment.voteState) {
-                            VoteState.UPVOTED -> Color(0xFFFF4500)
-                            VoteState.DOWNVOTED -> Color(0xFF7193FF)
+                            VoteState.UPVOTED -> voteColors.upvoteColor
+                            VoteState.DOWNVOTED -> voteColors.downvoteColor
                             VoteState.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
                         }
                     )
@@ -298,7 +294,7 @@ fun CommentItem(
                                 if (comment.voteState == VoteState.UPVOTED) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
                                 contentDescription = "Upvote",
                                 modifier = Modifier.size(24.dp),
-                                tint = if (comment.voteState == VoteState.UPVOTED) Color(0xFFFF4500) else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = if (comment.voteState == VoteState.UPVOTED) voteColors.upvoteColor else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         IconButton(
@@ -310,7 +306,7 @@ fun CommentItem(
                                 if (comment.voteState == VoteState.DOWNVOTED) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
                                 contentDescription = "Downvote",
                                 modifier = Modifier.size(24.dp),
-                                tint = if (comment.voteState == VoteState.DOWNVOTED) Color(0xFF7193FF) else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = if (comment.voteState == VoteState.DOWNVOTED) voteColors.downvoteColor else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Box {

@@ -23,11 +23,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import com.karmakameleon.android.ui.theme.postFlairColors
 
 @Composable
 fun NsfwBlackBox(
     modifier: Modifier = Modifier
 ) {
+    val flairColors = postFlairColors()
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -40,14 +42,14 @@ fun NsfwBlackBox(
             Icon(
                 imageVector = Icons.Default.VisibilityOff,
                 contentDescription = null,
-                tint = Color(0xFFFF4444),
+                tint = flairColors.nsfwColor,
                 modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "NSFW",
                 style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFFFF4444)
+                color = flairColors.nsfwColor
             )
             Text(
                 text = "Tap to view",

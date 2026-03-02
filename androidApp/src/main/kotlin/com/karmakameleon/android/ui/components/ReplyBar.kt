@@ -40,7 +40,7 @@ fun ReplyBar(
     val maxHeight = (LocalConfiguration.current.screenHeightDp / 2).dp
 
     Surface(
-        tonalElevation = 3.dp,
+        color = MaterialTheme.colorScheme.surface,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(

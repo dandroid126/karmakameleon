@@ -48,6 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
+import com.karmakameleon.android.ui.theme.messageColors
+import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.shared.domain.model.Message
 import com.karmakameleon.shared.domain.model.MessageType
 import org.koin.compose.koinInject
@@ -82,7 +84,7 @@ fun MessageItem(
         modifier = Modifier
             .fillMaxWidth()
             .then(
-                if (isSelected) Modifier.background(Color(0xFF0079D3).copy(alpha = 0.08f))
+                if (isSelected) Modifier.background(messageColors().selectedBackground)
                 else Modifier
             )
             .clickable { onSelect() }
@@ -94,7 +96,7 @@ fun MessageItem(
                     fontWeight = if (message.isNew) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = if (message.isNew) Color(0xFFFF0000) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (message.isNew) messageColors().newMessageColor else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
             supportingContent = {
@@ -158,7 +160,7 @@ fun MessageItem(
                         if (message.likes == true) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
                         contentDescription = "Upvote",
                         modifier = Modifier.size(24.dp),
-                        tint = if (message.likes == true) Color(0xFFFF4500) else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (message.likes == true) voteColors().upvoteColor else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 IconButton(
@@ -170,7 +172,7 @@ fun MessageItem(
                         if (message.likes == false) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
                         contentDescription = "Downvote",
                         modifier = Modifier.size(24.dp),
-                        tint = if (message.likes == false) Color(0xFF7193FF) else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (message.likes == false) voteColors().downvoteColor else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 Box {
