@@ -344,6 +344,97 @@ class PostRepositoryTest {
         assertTrue(result.isEmpty())
     }
 
+    // ==================== preserveCachedPreviewData ====================
+
+    @Test
+    fun getPostWithComments_preservesCachedPreviewWhenFreshPostLacksIt() = runTest {
+        val (repo, api) = createRepo()
+        val preview = com.karmakameleon.shared.domain.model.Preview(
+            images = listOf(
+                com.karmakameleon.shared.domain.model.PreviewImage(
+                    source = com.karmakameleon.shared.domain.model.ImageSource(url = "https://preview.redd.it/image.jpg", width = 1024, height = 768),
+                    resolutions = emptyList()
+                )
+            ),
+            enabled = true
+        )
+        val cachedPost = createTestPost(id = "p1", preview = preview, thumbnail = "https://thumb.redd.it/thumb.jpg")
+        api.postsResult = createTestListing(items = listOf(cachedPost))
+        repo.getPosts()
+
+        val freshPost = createTestPost(id = "p1", preview = null, thumbnail = null)
+        api.postWithCommentsResult = freshPost to emptyList()
+
+        val result = repo.getPostWithComments("sub", "p1")
+        assertTrue(result.isSuccess)
+        val resultPost = result.getOrThrow().first
+        assertEquals(preview, resultPost.preview)
+        assertEquals("https://thumb.redd.it/thumb.jpg", resultPost.thumbnail)
+    }
+
+    @Test
+    fun getPostWithComments_usesFreshPreviewWhenAvailable() = runTest {
+        val (repo, api) = createRepo()
+        val cachedPreview = com.karmakameleon.shared.domain.model.Preview(
+            images = listOf(
+                com.karmakameleon.shared.domain.model.PreviewImage(
+                    source = com.karmakameleon.shared.domain.model.ImageSource(url = "https://old.jpg", width = 100, height = 100),
+                    resolutions = emptyList()
+                )
+            ),
+            enabled = true
+        )
+        val freshPreview = com.karmakameleon.shared.domain.model.Preview(
+            images = listOf(
+                com.karmakameleon.shared.domain.model.PreviewImage(
+                    source = com.karmakameleon.shared.domain.model.ImageSource(url = "https://new.jpg", width = 200, height = 200),
+                    resolutions = emptyList()
+                )
+            ),
+            enabled = true
+        )
+        val cachedPost = createTestPost(id = "p1", preview = cachedPreview)
+        api.postsResult = createTestListing(items = listOf(cachedPost))
+        repo.getPosts()
+
+        val freshPost = createTestPost(id = "p1", preview = freshPreview, thumbnail = "https://new-thumb.jpg")
+        api.postWithCommentsResult = freshPost to emptyList()
+
+        val result = repo.getPostWithComments("sub", "p1")
+        assertTrue(result.isSuccess)
+        val resultPost = result.getOrThrow().first
+        assertEquals(freshPreview, resultPost.preview)
+        assertEquals("https://new-thumb.jpg", resultPost.thumbnail)
+    }
+
+    @Test
+    fun getPostWithComments_preservesCachedThumbnailWhenFreshLacksIt() = runTest {
+        val (repo, api) = createRepo()
+        val preview = com.karmakameleon.shared.domain.model.Preview(
+            images = listOf(
+                com.karmakameleon.shared.domain.model.PreviewImage(
+                    source = com.karmakameleon.shared.domain.model.ImageSource(url = "https://preview.jpg", width = 100, height = 100),
+                    resolutions = emptyList()
+                )
+            ),
+            enabled = true
+        )
+        val cachedPost = createTestPost(id = "p1", preview = null, thumbnail = "https://thumb.jpg", thumbnailWidth = 140, thumbnailHeight = 90)
+        api.postsResult = createTestListing(items = listOf(cachedPost))
+        repo.getPosts()
+
+        val freshPost = createTestPost(id = "p1", preview = preview, thumbnail = null, thumbnailWidth = null, thumbnailHeight = null)
+        api.postWithCommentsResult = freshPost to emptyList()
+
+        val result = repo.getPostWithComments("sub", "p1")
+        assertTrue(result.isSuccess)
+        val resultPost = result.getOrThrow().first
+        assertEquals(preview, resultPost.preview)
+        assertEquals("https://thumb.jpg", resultPost.thumbnail)
+        assertEquals(140, resultPost.thumbnailWidth)
+        assertEquals(90, resultPost.thumbnailHeight)
+    }
+
     // ==================== getCachedPost ====================
 
     @Test

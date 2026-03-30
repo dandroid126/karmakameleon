@@ -150,6 +150,7 @@ fun PostDetailScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     var pendingDismissAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var showDiscardDraftOption by remember { mutableStateOf(false) }
+    var isBodyExpanded by rememberSaveable { mutableStateOf(true) }
     var imageViewerUrls by remember { mutableStateOf<List<String>>(emptyList()) }
     var imageViewerInitialPage by remember { mutableStateOf(0) }
     var selectionVersion by remember { mutableIntStateOf(0) }
@@ -388,6 +389,8 @@ fun PostDetailScreen(
                         item {
                             PostHeader(
                                 post = post,
+                                isBodyExpanded = isBodyExpanded,
+                                onToggleBodyExpanded = { isBodyExpanded = !isBodyExpanded },
                                 onUpvote = { viewModel.votePost(if (post.likes == true) 0 else 1) },
                                 onDownvote = { viewModel.votePost(if (post.likes == false) 0 else -1) },
                                 onSave = { viewModel.savePost() },
@@ -720,6 +723,8 @@ private val POST_DETAIL_IMAGE_MAX_HEIGHT = 400.dp
 @Composable
 private fun PostHeader(
     post: Post,
+    isBodyExpanded: Boolean,
+    onToggleBodyExpanded: () -> Unit,
     onUpvote: () -> Unit,
     onDownvote: () -> Unit,
     onSave: () -> Unit,
@@ -734,7 +739,6 @@ private fun PostHeader(
     nsfwEnabled: Boolean = false,
     navigationHandler: NavigationHandler = koinInject()
 ) {
-    var isBodyExpanded by rememberSaveable { mutableStateOf(true) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -795,7 +799,7 @@ private fun PostHeader(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End
         ) {
-            IconButton(onClick = { isBodyExpanded = !isBodyExpanded }) {
+            IconButton(onClick = onToggleBodyExpanded) {
                 Icon(
                     imageVector = if (isBodyExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isBodyExpanded) "Collapse post body" else "Expand post body",

@@ -82,11 +82,23 @@ class PostRepository(
     ): Result<Pair<Post, List<CommentOrMore>>> {
         return try {
             val result = redditApi.getPostWithComments(subreddit, postId, sort, commentId = commentId, context = context)
-            _cachedPosts.update { it + (postId to result.first) }
-            Result.success(result)
+            val post = preserveCachedPreviewData(result.first)
+            _cachedPosts.update { it + (postId to post) }
+            Result.success(post to result.second)
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun preserveCachedPreviewData(freshPost: Post): Post {
+        val cached = _cachedPosts.value[freshPost.id] ?: return freshPost
+        if (freshPost.preview != null && freshPost.thumbnail != null) return freshPost
+        return freshPost.copy(
+            preview = freshPost.preview ?: cached.preview,
+            thumbnail = freshPost.thumbnail ?: cached.thumbnail,
+            thumbnailWidth = freshPost.thumbnailWidth ?: cached.thumbnailWidth,
+            thumbnailHeight = freshPost.thumbnailHeight ?: cached.thumbnailHeight
+        )
     }
 
     suspend fun getMoreComments(
