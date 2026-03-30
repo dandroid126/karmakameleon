@@ -46,8 +46,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import androidx.core.graphics.toColorInt
 import com.karmakameleon.android.ui.theme.commentColors
 import com.karmakameleon.android.ui.theme.voteColors
@@ -199,24 +201,30 @@ fun CommentItem(
                         Spacer(modifier = Modifier.width(4.dp))
                         RichFlairChip(
                             richtext = comment.authorFlairRichtext,
-                            color = flairColor
+                            color = flairColor,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                     } else if (!flairText.isNullOrBlank()) {
                         Spacer(modifier = Modifier.width(4.dp))
                         FlairChip(
                             text = flairText,
-                            color = flairColor
+                            color = flairColor,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
+                    val scoreContext = LocalContext.current
                     Text(
-                        text = if (comment.scoreHidden) "[score hidden]" else formatNumber(comment.score),
+                        text = if (comment.scoreHidden) "[~]" else formatNumber(comment.score),
                         style = MaterialTheme.typography.labelSmall,
                         color = when (comment.voteState) {
                             VoteState.UPVOTED -> voteColors.upvoteColor
                             VoteState.DOWNVOTED -> voteColors.downvoteColor
                             VoteState.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        },
+                        modifier = if (comment.scoreHidden) Modifier.clickable {
+                            Toast.makeText(scoreContext, "Score hidden by subreddit rules", Toast.LENGTH_SHORT).show()
+                        } else Modifier
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(

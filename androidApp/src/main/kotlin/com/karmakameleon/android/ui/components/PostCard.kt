@@ -543,6 +543,8 @@ fun FlairChip(
             text = text,
             style = MaterialTheme.typography.labelSmall,
             color = color,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
         )
     }
@@ -557,7 +559,7 @@ fun RichFlairChip(
     Surface(
         color = color.copy(alpha = 0.2f),
         shape = RoundedCornerShape(4.dp),
-        modifier = modifier
+        modifier = modifier.clipToBounds()
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -570,7 +572,9 @@ fun RichFlairChip(
                             Text(
                                 text = it,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = color
+                                color = color,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
