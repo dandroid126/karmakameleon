@@ -38,9 +38,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASE_TOKEN }}
           files: androidApp/build/outputs/apk/release/androidApp-release-unsigned.apk
           tag_name: ${{ steps.tag_name.outputs.version }}
           draft: false
           prerelease: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}

@@ -39,6 +39,7 @@ jobs:
       - name: Create Debug Release
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.RELEASE_TOKEN }}
           files: androidApp/build/outputs/apk/debug/androidApp-debug.apk
           name: Debug Build - ${{ steps.commit_info.outputs.date }}
           tag_name: debug-latest
@@ -51,5 +52,3 @@ jobs:
             This is an unsigned debug build for testing purposes.
           draft: false
           prerelease: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
