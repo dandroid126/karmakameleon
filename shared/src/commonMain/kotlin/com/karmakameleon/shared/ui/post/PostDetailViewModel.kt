@@ -6,6 +6,7 @@ import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
+import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.MoreComments
@@ -25,6 +26,8 @@ data class PostDetailUiState(
     val error: String? = null,
     val actionError: String? = null,
     val commentSort: CommentSort = CommentSort.CONFIDENCE,
+    val suggestedSort: CommentSort? = null,
+    val useSuggestedSort: Boolean = true,
     val isLoggedIn: Boolean = false,
     val loggedInUsername: String? = null,
     val focusedCommentId: String? = null
@@ -37,14 +40,19 @@ class PostDetailViewModel(
     commentRepository: CommentRepository,
     private val userRepository: UserRepository,
     commentDraftRepository: CommentDraftRepository,
+    private val settingsRepository: SettingsRepository,
     private val commentId: String? = null,
     private val context: Int? = null
 ) : ViewModel() {
 
     val commentViewModel = CommentViewModel(commentRepository, commentDraftRepository)
 
-    private val _uiState = MutableStateFlow(PostDetailUiState())
+    private val _uiState = MutableStateFlow(PostDetailUiState(
+        useSuggestedSort = settingsRepository.useSuggestedSort.value
+    ))
     val uiState: StateFlow<PostDetailUiState> = _uiState.asStateFlow()
+
+    private var isInitialLoad = true
 
     init {
         postRepository.getCachedPost(postId)?.let { cachedPost ->
@@ -110,6 +118,12 @@ class PostDetailViewModel(
         }
     }
 
+    private fun getEffectiveSort(): CommentSort? {
+        val state = _uiState.value
+        if (isInitialLoad && state.useSuggestedSort) return null
+        return state.commentSort
+    }
+
     fun loadPostWithComments(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { 
@@ -123,23 +137,33 @@ class PostDetailViewModel(
             val result = postRepository.getPostWithComments(
                 subreddit = subreddit,
                 postId = postId,
-                sort = _uiState.value.commentSort,
+                sort = getEffectiveSort(),
                 commentId = commentId,
                 context = context
             )
             
             result.fold(
                 onSuccess = { (post, comments) ->
+                    val suggestedSort = post.suggestedSort
+                    val effectiveSort = if (isInitialLoad && _uiState.value.useSuggestedSort) {
+                        suggestedSort ?: CommentSort.CONFIDENCE
+                    } else {
+                        _uiState.value.commentSort
+                    }
+                    isInitialLoad = false
                     _uiState.update { 
                         it.copy(
                             post = post, 
                             isLoading = false,
-                            isRefreshing = false
+                            isRefreshing = false,
+                            suggestedSort = suggestedSort,
+                            commentSort = effectiveSort
                         )
                     }
                     commentViewModel.setComments(comments)
                 },
                 onFailure = { error ->
+                    isInitialLoad = false
                     _uiState.update { 
                         it.copy(
                             isLoading = false, 
@@ -157,6 +181,11 @@ class PostDetailViewModel(
         _uiState.update { it.copy(commentSort = sort) }
         commentViewModel.clearComments()
         loadPostWithComments()
+    }
+
+    fun setUseSuggestedSort(enabled: Boolean) {
+        settingsRepository.setUseSuggestedSort(enabled)
+        _uiState.update { it.copy(useSuggestedSort = enabled) }
     }
 
     fun loadMoreComments(more: MoreComments) {

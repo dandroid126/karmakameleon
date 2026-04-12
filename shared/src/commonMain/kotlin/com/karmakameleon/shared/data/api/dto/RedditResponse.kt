@@ -69,6 +69,7 @@ data class PostDto(
     @SerialName("is_gallery") val isGallery: Boolean = false,
     @SerialName("is_video") val isVideo: Boolean = false,
     @SerialName("is_self") val isSelf: Boolean = false,
+    @SerialName("suggested_sort") val suggestedSort: String? = null,
 )
 
 @Serializable

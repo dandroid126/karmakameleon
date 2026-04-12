@@ -76,7 +76,7 @@ class PostRepository(
     suspend fun getPostWithComments(
         subreddit: String,
         postId: String,
-        sort: CommentSort = CommentSort.CONFIDENCE,
+        sort: CommentSort? = CommentSort.CONFIDENCE,
         commentId: String? = null,
         context: Int? = null
     ): Result<Pair<Post, List<CommentOrMore>>> {

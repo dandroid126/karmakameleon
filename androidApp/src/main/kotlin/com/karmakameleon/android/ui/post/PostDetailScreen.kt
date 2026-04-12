@@ -48,6 +48,7 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -569,6 +570,11 @@ fun PostDetailScreen(
     if (showCommentSortSheet) {
         CommentSortBottomSheet(
             currentSort = uiState.commentSort,
+            suggestedSort = uiState.suggestedSort,
+            useSuggestedSort = uiState.useSuggestedSort,
+            onUseSuggestedSortChanged = { enabled ->
+                viewModel.setUseSuggestedSort(enabled)
+            },
             onSortSelected = { sort ->
                 viewModel.setCommentSort(sort)
                 showCommentSortSheet = false
@@ -673,6 +679,9 @@ fun PostDetailScreen(
 @Composable
 private fun CommentSortBottomSheet(
     currentSort: CommentSort,
+    suggestedSort: CommentSort?,
+    useSuggestedSort: Boolean,
+    onUseSuggestedSortChanged: (Boolean) -> Unit,
     onSortSelected: (CommentSort) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -693,12 +702,36 @@ private fun CommentSortBottomSheet(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onUseSuggestedSortChanged(!useSuggestedSort) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Use suggested sort",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Switch(
+                    checked = useSuggestedSort,
+                    onCheckedChange = onUseSuggestedSortChanged
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
             CommentSort.entries.forEach { sort ->
                 val isActive = currentSort == sort
+                val isSuggested = sort == suggestedSort
                 ListItem(
                     headlineContent = {
                         Text(
-                            sort.displayName,
+                            buildString {
+                                append(sort.displayName)
+                                if (isSuggested) append(" (suggested)")
+                            },
                             color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                         )
                     },

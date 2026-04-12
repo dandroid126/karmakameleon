@@ -8,6 +8,7 @@ import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
+import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.russhwolf.settings.MapSettings
@@ -35,6 +36,7 @@ class PostDetailViewModelTest {
     private lateinit var commentRepo: CommentRepository
     private lateinit var commentDraftRepo: CommentDraftRepository
     private lateinit var userRepo: UserRepository
+    private lateinit var settingsRepo: SettingsRepository
     private lateinit var viewModel: PostDetailViewModel
 
     @BeforeTest
@@ -46,7 +48,8 @@ class PostDetailViewModelTest {
         commentRepo = CommentRepository(fakeApi)
         commentDraftRepo = CommentDraftRepository(MapSettings())
         userRepo = UserRepository(fakeApi, fakeAuthManager)
-        viewModel = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo)
+        settingsRepo = SettingsRepository(MapSettings())
+        viewModel = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo, settingsRepo)
     }
 
     @AfterTest
@@ -181,7 +184,7 @@ class PostDetailViewModelTest {
     fun votePost_setsActionErrorOnFailure() = runTest {
         val post = createTestPost(id = "abc123")
         fakeApi.postWithCommentsResult = post to emptyList()
-        val vm = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo)
+        val vm = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo, settingsRepo)
         advanceUntilIdle()
         assertNotNull(vm.uiState.value.post)
 
@@ -196,7 +199,7 @@ class PostDetailViewModelTest {
     fun clearActionError_clearsError() = runTest {
         val post = createTestPost(id = "abc123")
         fakeApi.postWithCommentsResult = post to emptyList()
-        val vm = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo)
+        val vm = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo, settingsRepo)
         advanceUntilIdle()
         assertNotNull(vm.uiState.value.post)
 

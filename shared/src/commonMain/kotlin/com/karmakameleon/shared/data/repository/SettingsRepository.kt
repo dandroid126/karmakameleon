@@ -41,6 +41,9 @@ class SettingsRepository(private val settings: Settings) {
     private val _spoilerPreviewsEnabled = MutableStateFlow(settings.getBoolean(KEY_SPOILER_PREVIEWS_ENABLED, false))
     val spoilerPreviewsEnabled: StateFlow<Boolean> = _spoilerPreviewsEnabled.asStateFlow()
 
+    private val _useSuggestedSort = MutableStateFlow(settings.getBoolean(KEY_USE_SUGGESTED_SORT, true))
+    val useSuggestedSort: StateFlow<Boolean> = _useSuggestedSort.asStateFlow()
+
     private val _subredditNsfwCache = MutableStateFlow(loadSubredditNsfwCache())
     val subredditNsfwCache: StateFlow<Map<String, Boolean>> = _subredditNsfwCache.asStateFlow()
 
@@ -171,6 +174,11 @@ class SettingsRepository(private val settings: Settings) {
         settings[KEY_SPOILER_PREVIEWS_ENABLED] = enabled
     }
 
+    fun setUseSuggestedSort(enabled: Boolean) {
+        _useSuggestedSort.value = enabled
+        settings[KEY_USE_SUGGESTED_SORT] = enabled
+    }
+
     private fun loadNsfwHistoryMode(): NsfwHistoryMode {
         val stored = settings.getStringOrNull(KEY_NSFW_HISTORY_MODE) ?: return NsfwHistoryMode.DONT_SAVE_ANY_NSFW
         return NsfwHistoryMode.entries.firstOrNull { it.name == stored } ?: NsfwHistoryMode.DONT_SAVE_ANY_NSFW
@@ -188,5 +196,6 @@ class SettingsRepository(private val settings: Settings) {
         private const val KEY_NSFW_HISTORY_MODE = "nsfw_history_mode"
         private const val KEY_SUBREDDIT_NSFW_CACHE = "subreddit_nsfw_cache"
         private const val KEY_SPOILER_PREVIEWS_ENABLED = "spoiler_previews_enabled"
+        private const val KEY_USE_SUGGESTED_SORT = "use_suggested_sort"
     }
 }

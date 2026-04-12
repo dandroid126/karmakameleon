@@ -9,6 +9,7 @@ import com.karmakameleon.shared.domain.model.Media
 import com.karmakameleon.shared.domain.model.Message
 import com.karmakameleon.shared.domain.model.MessageType
 import com.karmakameleon.shared.domain.model.MoreComments
+import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.Preview
 import com.karmakameleon.shared.domain.model.Subreddit
@@ -58,6 +59,7 @@ fun createTestPost(
     isCrosspost: Boolean = false,
     crosspostParentSubreddit: String? = null,
     crosspostParentPermalink: String? = null,
+    suggestedSort: CommentSort? = null,
 ) = Post(
     id = id,
     name = name,
@@ -101,6 +103,7 @@ fun createTestPost(
     isCrosspost = isCrosspost,
     crosspostParentSubreddit = crosspostParentSubreddit,
     crosspostParentPermalink = crosspostParentPermalink,
+    suggestedSort = suggestedSort,
 )
 
 fun createTestComment(

@@ -79,7 +79,7 @@ class FakeRedditApi(
         throwOrReturn(postResult)
 
     override suspend fun getPostWithComments(
-        subreddit: String, postId: String, sort: CommentSort, limit: Int,
+        subreddit: String, postId: String, sort: CommentSort?, limit: Int,
         commentId: String?, context: Int?
     ): Pair<Post, List<CommentOrMore>> =
         throwOrReturn(postWithCommentsResult ?: throw Exception("No result configured"))

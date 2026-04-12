@@ -48,6 +48,7 @@ data class Post(
     val isCrosspost: Boolean = false,
     val crosspostParentSubreddit: String? = null,
     val crosspostParentPermalink: String? = null,
+    val suggestedSort: CommentSort? = null,
 ) {
     val isTextPost: Boolean get() = postHint == "self" || url.contains("reddit.com") && selfText != null
     val isImagePost: Boolean get() = postHint == "image" || url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".png") || url.endsWith(".gif")

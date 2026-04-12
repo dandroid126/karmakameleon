@@ -161,7 +161,7 @@ open class RedditApi(
     open suspend fun getPostWithComments(
         subreddit: String,
         postId: String,
-        sort: CommentSort = CommentSort.CONFIDENCE,
+        sort: CommentSort? = CommentSort.CONFIDENCE,
         limit: Int = 200,
         commentId: String? = null,
         context: Int? = null
@@ -170,7 +170,7 @@ open class RedditApi(
         val response = authenticatedRequest {
             method = HttpMethod.Get
             url("$BASE_URL/r/$subreddit/comments/$postId$commentPath")
-            parameter("sort", sort.value)
+            if (sort != null) parameter("sort", sort.value)
             parameter("limit", limit)
             parameter("raw_json", 1)
             if (commentId != null) {
@@ -943,6 +943,9 @@ open class RedditApi(
             isCrosspost = dto.crosspostParent != null,
             crosspostParentSubreddit = dto.crosspostParentList?.firstOrNull()?.subreddit,
             crosspostParentPermalink = dto.crosspostParentList?.firstOrNull()?.permalink,
+            suggestedSort = dto.suggestedSort?.let { sortValue ->
+                CommentSort.entries.firstOrNull { it.value == sortValue }
+            },
         )
     }
 
