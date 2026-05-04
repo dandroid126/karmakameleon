@@ -696,12 +696,6 @@ private fun CommentSortBottomSheet(
                 .fillMaxWidth()
                 .padding(bottom = 32.dp)
         ) {
-            Text(
-                text = "Sort comments by",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -721,6 +715,12 @@ private fun CommentSortBottomSheet(
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+            Text(
+                text = "Sort comments by",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
 
             CommentSort.entries.forEach { sort ->
                 val isActive = currentSort == sort

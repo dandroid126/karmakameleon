@@ -123,13 +123,7 @@ class PostRepository(
                     -1 -> false
                     else -> null
                 }
-                val scoreDiff = when {
-                    post.likes == true && direction != 1 -> -1
-                    post.likes == false && direction != -1 -> 1
-                    post.likes == null && direction == 1 -> 1
-                    post.likes == null && direction == -1 -> -1
-                    else -> 0
-                }
+                val scoreDiff = direction - likesToVote(post.likes)
                 val updatedPost = post.copy(
                     likes = newLikes,
                     score = post.score + scoreDiff
@@ -154,13 +148,7 @@ class PostRepository(
                     -1 -> false
                     else -> null
                 }
-                val scoreDiff = when {
-                    comment.likes == true && direction != 1 -> -1
-                    comment.likes == false && direction != -1 -> 1
-                    comment.likes == null && direction == 1 -> 1
-                    comment.likes == null && direction == -1 -> -1
-                    else -> 0
-                }
+                val scoreDiff = direction - likesToVote(comment.likes)
                 val updatedComment = comment.copy(
                     likes = newLikes,
                     score = comment.score + scoreDiff
@@ -251,4 +239,10 @@ class PostRepository(
     }
 
     fun getCachedPost(postId: String): Post? = _cachedPosts.value[postId]
+
+    private fun likesToVote(likes: Boolean?): Int = when (likes) {
+        true -> 1
+        false -> -1
+        null -> 0
+    }
 }

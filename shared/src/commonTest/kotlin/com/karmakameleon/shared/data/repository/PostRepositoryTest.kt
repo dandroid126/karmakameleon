@@ -176,7 +176,46 @@ class PostRepositoryTest {
         assertTrue(result.isSuccess)
         val updated = result.getOrThrow()
         assertEquals(false, updated.likes)
-        assertEquals(10, updated.score)
+        assertEquals(9, updated.score)
+    }
+
+    @Test
+    fun vote_switchFromDownToUp() = runTest {
+        val (repo, api) = createRepo()
+        val post = createTestPost(id = "p1", score = 9, likes = false)
+        api.voteResult = true
+
+        val result = repo.vote(post, 1)
+        assertTrue(result.isSuccess)
+        val updated = result.getOrThrow()
+        assertEquals(true, updated.likes)
+        assertEquals(11, updated.score)
+    }
+
+    @Test
+    fun voteComment_switchFromUpToDown() = runTest {
+        val (repo, api) = createRepo()
+        val comment = createTestComment(id = "c1", score = 6, likes = true)
+        api.voteResult = true
+
+        val result = repo.voteComment(comment, -1)
+        assertTrue(result.isSuccess)
+        val updated = result.getOrThrow()
+        assertEquals(false, updated.likes)
+        assertEquals(4, updated.score)
+    }
+
+    @Test
+    fun voteComment_switchFromDownToUp() = runTest {
+        val (repo, api) = createRepo()
+        val comment = createTestComment(id = "c1", score = 4, likes = false)
+        api.voteResult = true
+
+        val result = repo.voteComment(comment, 1)
+        assertTrue(result.isSuccess)
+        val updated = result.getOrThrow()
+        assertEquals(true, updated.likes)
+        assertEquals(6, updated.score)
     }
 
     @Test
