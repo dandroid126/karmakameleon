@@ -110,8 +110,10 @@ class FeedViewModel(
             result.fold(
                 onSuccess = { listing ->
                     val nsfwEnabled = settingsRepository.nsfwEnabled.value
+                    val blockedSubs = settingsRepository.blockedSubreddits.value
                     val filteredItems = listing.items.filter { post ->
-                        nsfwEnabled || !post.isNsfw
+                        (nsfwEnabled || !post.isNsfw) &&
+                            post.subreddit.lowercase() !in blockedSubs
                     }
                     _uiState.update {
                         it.copy(
@@ -156,8 +158,10 @@ class FeedViewModel(
             result.fold(
                 onSuccess = { listing ->
                     val nsfwEnabled = settingsRepository.nsfwEnabled.value
+                    val blockedSubs = settingsRepository.blockedSubreddits.value
                     val filteredItems = listing.items.filter { post ->
-                        nsfwEnabled || !post.isNsfw
+                        (nsfwEnabled || !post.isNsfw) &&
+                            post.subreddit.lowercase() !in blockedSubs
                     }
                     _uiState.update {
                         it.copy(

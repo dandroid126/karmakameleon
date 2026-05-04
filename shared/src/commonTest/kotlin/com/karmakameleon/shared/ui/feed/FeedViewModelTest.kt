@@ -2,6 +2,8 @@ package com.karmakameleon.shared.ui.feed
 
 import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
+import com.karmakameleon.shared.createTestListing
+import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
@@ -316,6 +318,49 @@ class FeedViewModelTest {
         advanceUntilIdle()
         // Verify no error occurs
         assertNull(viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun loadPosts_filtersBlockedSubreddits() = runTest {
+        fakeApi.postsResult = createTestListing(
+            items = listOf(
+                createTestPost(id = "1", subreddit = "kept"),
+                createTestPost(id = "2", subreddit = "banned"),
+                createTestPost(id = "3", subreddit = "BANNED"),
+            )
+        )
+        settingsRepo.addBlockedSubreddit("banned")
+
+        viewModel.loadPosts(forceRefresh = true)
+        advanceUntilIdle()
+
+        val posts = viewModel.uiState.value.posts
+        assertEquals(1, posts.size)
+        assertEquals("kept", posts.single().subreddit)
+    }
+
+    @Test
+    fun loadMorePosts_filtersBlockedSubreddits() = runTest {
+        fakeApi.postsResult = createTestListing(
+            items = listOf(createTestPost(id = "0", subreddit = "kept")),
+            after = "t3_0",
+        )
+        viewModel.loadPosts(forceRefresh = true)
+        advanceUntilIdle()
+
+        settingsRepo.addBlockedSubreddit("banned")
+        fakeApi.postsResult = createTestListing(
+            items = listOf(
+                createTestPost(id = "1", subreddit = "kept2"),
+                createTestPost(id = "2", subreddit = "banned"),
+            )
+        )
+        viewModel.loadMorePosts()
+        advanceUntilIdle()
+
+        val posts = viewModel.uiState.value.posts
+        assertTrue(posts.none { it.subreddit.equals("banned", ignoreCase = true) })
+        assertTrue(posts.any { it.id == "1" })
     }
 
     // ==================== Voting ====================
