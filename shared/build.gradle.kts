@@ -27,7 +27,7 @@ tasks.withType<Test> {
 kotlin {
     androidLibrary {
         namespace = "com.karmakameleon.shared"
-        compileSdk = 36
+        compileSdk = 37
         minSdk = 24
 
         withHostTest {}
@@ -70,7 +70,7 @@ kotlin {
 
 // JaCoCo configuration
 jacoco {
-    toolVersion = "0.8.14"
+    toolVersion = "0.8.15"
 }
 
 // Configure JaCoCo for Android tests

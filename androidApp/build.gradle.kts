@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.karmakameleon.android"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.karmakameleon.android"

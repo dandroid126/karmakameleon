@@ -31,22 +31,22 @@ A modern, feature-rich Reddit client built with Kotlin Multiplatform (KMP) and J
 ## Tech Stack
 
 ### Shared (Kotlin Multiplatform)
-- **Ktor 3.4.0** - HTTP client for API requests with auth and logging
-- **Kotlinx Serialization 1.10.0** - JSON parsing and serialization
-- **Kotlinx Coroutines 1.10.2** - Async operations and concurrency
-- **Koin 4.1.1** - Dependency injection across platforms
+- **Ktor 3.6.0** - HTTP client for API requests with auth and logging
+- **Kotlinx Serialization 1.11.0** - JSON parsing and serialization
+- **Kotlinx Coroutines 1.11.0** - Async operations and concurrency
+- **Koin 4.2.2** - Dependency injection across platforms
 - **Multiplatform Settings 1.3.0** - Key-value storage with coroutine support
-- **Kotlinx DateTime 0.7.1** - Date and time handling
+- **Kotlinx DateTime 0.8.0** - Date and time handling
 - **Napier 2.7.1** - Multiplatform logging
-- **Lifecycle ViewModel 2.9.6** - KMP-compatible ViewModels
+- **Lifecycle ViewModel 2.11.0** - KMP-compatible ViewModels
 
 ### Android
-- **Jetpack Compose BOM 2026.02.00** - Modern declarative UI framework
+- **Jetpack Compose BOM 2026.09.00** - Modern declarative UI framework
 - **Material 3** - Latest Material Design components and theming
-- **Coil 3.3.0** - Image loading with GIF support and Ktor integration
-- **Navigation Compose 2.9.7** - Type-safe navigation
-- **Media3 1.9.2** - ExoPlayer for video playback and HLS streaming
-- **WorkManager 2.11.1** - Background processing and notifications
+- **Coil 3.6.3** - Image loading with GIF support and Ktor integration
+- **Navigation Compose 2.10.2** - Type-safe navigation
+- **Media3 1.11.1** - ExoPlayer for video playback and HLS streaming
+- **WorkManager 2.12.0** - Background processing and notifications
 - **Android YouTube Player 13.0.0** - Native YouTube video integration
 
 ### Testing & Quality
@@ -98,10 +98,10 @@ A modern, feature-rich Reddit client built with Kotlin Multiplatform (KMP) and J
 ## Setup
 
 ### Prerequisites
-- Android Studio Otter 3 or later (minimum for AGP 9.0.1)
+- Android Studio Quail 4 (2026.1.4) or later (minimum for AGP 9.4)
 - JDK 25+
-- Android SDK 36 (API level 36)
-- Gradle 9.3.1+
+- Android SDK 37 (API level 37)
+- Gradle 9.6.0+ (the wrapper uses 9.8.1)
 
 ### Reddit API Setup
 1. Visit https://www.reddit.com/prefs/apps
