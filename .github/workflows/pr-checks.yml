@@ -22,8 +22,6 @@ jobs:
 
       - name: Run unit tests
         run: ./gradlew :shared:testAndroidHostTest
-        env:
-          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
 
   build-debug:
     name: Debug Build
