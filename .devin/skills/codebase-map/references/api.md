@@ -7,7 +7,8 @@ All networking lives in `shared/src/commonMain/kotlin/com/karmakameleon/shared/d
 | File | Purpose |
 |---|---|
 | `RedditApi.kt` | Single ~1300-line class with every Reddit endpoint. Methods are `open suspend` so `FakeRedditApi` can override them in tests. |
-| `AuthManager.kt` | OAuth2 token storage, refresh, userless (anonymous) tokens, cookie handling for `r/all`. |
+| `AuthManager.kt` | OAuth2 token storage, refresh, userless (anonymous) tokens, cookie handling for `r/all`. Persists client ID + redirect URI. |
+| `OAuthRedirect.kt` | Matches a URL against the saved redirect URI and extracts `code` / `state` / `error`. |
 | `HttpClientFactory.kt` + `.android.kt` / `.ios.kt` | `createHttpClientWithConfig()` (expect) builds a Ktor `HttpClient` with JSON content-negotiation, logging, Auth plugin, User-Agent. |
 | `RedditApiException.kt` | Typed API errors (with HTTP status + body). |
 | `dto/AuthDto.kt` | OAuth token response payloads. |
@@ -24,7 +25,7 @@ All networking lives in `shared/src/commonMain/kotlin/com/karmakameleon/shared/d
 - `ensureValidAccessToken()` - refreshes if expired. Called by `authenticatedRequest` in `RedditApi`.
 - Userless token: used for anonymous reads (no logged-in user). Refreshed on demand.
 - Cookies: certain endpoints (e.g. `r/all`) require session cookies; `AuthManager` manages those.
-- OAuth flow: `androidApp/auth/OAuthActivity.kt` handles `karmakameleon://oauth` redirect, passes the code back to `AuthManager.exchangeCode(...)`.
+- OAuth flow: the user enters the client ID and redirect URI on the sign-in screen (both persisted by `AuthManager`, kept on logout; redirect defaults to `karmakameleon://oauth`). Login runs in an in-app WebView (`androidApp/ui/profile/RedditLoginWebView.kt`) so any redirect URI works; `ProfileViewModel.handleLoginRedirect` uses `OAuthRedirect.parse` to spot the redirect, checks `state`, and calls `UserRepository.handleAuthCallback(code)`.
 
 ## RedditApi method map
 

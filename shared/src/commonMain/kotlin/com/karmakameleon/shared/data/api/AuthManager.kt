@@ -33,8 +33,9 @@ open class AuthManager(
         private const val KEY_TOKEN_INFO = "token_info"
         private const val KEY_DEVICE_ID = "device_id"
         private const val KEY_CLIENT_ID = "client_id"
+        private const val KEY_REDIRECT_URI = "redirect_uri"
         
-        const val REDIRECT_URI = "karmakameleon://oauth"
+        const val DEFAULT_REDIRECT_URI = "karmakameleon://oauth"
         const val SCOPES = "identity edit flair history modconfig modflair modlog modposts modwiki mysubreddits privatemessages read report save submit subscribe vote wikiread"
         
         private const val AUTH_URL = "https://www.reddit.com/api/v1"
@@ -65,10 +66,20 @@ open class AuthManager(
         }
     }
 
-    open fun getClientId(): String = settings[KEY_CLIENT_ID] ?: ""
+    // Neither value can contain whitespace, and pasting often brings a trailing newline along.
+    // Getters also trim, for values saved before whitespace was stripped.
+
+    open fun getClientId(): String = (settings.get<String>(KEY_CLIENT_ID) ?: "").trim()
 
     open fun setClientId(clientId: String) {
-        settings[KEY_CLIENT_ID] = clientId
+        settings[KEY_CLIENT_ID] = clientId.filterNot { it.isWhitespace() }
+    }
+
+    /** Must match the redirect URI registered for the client ID's app at reddit.com/prefs/apps. */
+    open fun getRedirectUri(): String = (settings.get<String>(KEY_REDIRECT_URI) ?: DEFAULT_REDIRECT_URI).trim()
+
+    open fun setRedirectUri(redirectUri: String) {
+        settings[KEY_REDIRECT_URI] = redirectUri.filterNot { it.isWhitespace() }
     }
 
     open fun getAuthorizationUrl(state: String): String {
@@ -78,7 +89,7 @@ open class AuthManager(
             append("?client_id=$clientId")
             append("&response_type=code")
             append("&state=$state")
-            append("&redirect_uri=${REDIRECT_URI.encodeURLParameter()}")
+            append("&redirect_uri=${getRedirectUri().encodeURLParameter()}")
             append("&duration=permanent")
             append("&scope=${SCOPES.encodeURLParameter()}")
         }
@@ -91,7 +102,7 @@ open class AuthManager(
                 setBody(FormDataContent(Parameters.build {
                     append("grant_type", "authorization_code")
                     append("code", code)
-                    append("redirect_uri", REDIRECT_URI)
+                    append("redirect_uri", getRedirectUri())
                 }))
             }
 

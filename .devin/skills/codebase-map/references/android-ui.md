@@ -9,7 +9,6 @@ Android-only Compose code: `androidApp/src/main/kotlin/com/karmakameleon/android
 | `KarmaKameleonApplication.kt` | Application class. `startKoin { modules(sharedModule, platformModule(), androidModule) }`. Napier setup. |
 | `MainActivity.kt` | Single activity hosting Compose. Sets theme + calls `KarmaKameleonApp()`. |
 | `QuoteTextActivity.kt` | Invisible activity registered as `android.intent.action.PROCESS_TEXT` handler. Captures selected text from other apps and funnels into `PendingQuote` so the next PostDetail reply bar prefills with it. |
-| `auth/OAuthActivity.kt` | Deep link `karmakameleon://oauth`. Parses `code` from URI, passes to `AuthManager.exchangeCode`, returns to MainActivity. |
 
 ## Navigation graph - `ui/KarmaKameleonApp.kt`
 
@@ -61,7 +60,7 @@ Reddit share URLs (`/r/<sub>/s/<id>`) don't include a post ID. `onShareLinkClick
 | `post/PostDetailScreen.kt` | `PostDetailViewModel` | Post + comment tree. Supports deep-link to specific comment with context. `onGoToCommentNav` re-navigates to a focused-comment view. |
 | `subreddit/SubredditListScreen.kt` | Uses `UserRepository` + `SubredditRepository` directly via `koinInject` | User's subscribed list. |
 | `subreddit/SubredditScreen.kt` | `SubredditViewModel` | Single-subreddit feed + sidebar. |
-| `profile/ProfileScreen.kt` | `ProfileViewModel` | Tabbed: Posts / Comments / Saved / Upvoted / Downvoted. Tab composables: `ProfilePostsTab.kt`, `ProfileCommentsTab.kt`, `ProfileSavedTab.kt`, `ProfileUpvotedTab.kt`, `ProfileDownvotedTab.kt`. `username==null` -> own profile. |
+| `profile/ProfileScreen.kt` | `ProfileViewModel` | Tabbed: Posts / Comments / Saved / Upvoted / Downvoted. Tab composables: `ProfilePostsTab.kt`, `ProfileCommentsTab.kt`, `ProfileSavedTab.kt`, `ProfileUpvotedTab.kt`, `ProfileDownvotedTab.kt`. `username==null` -> own profile. When logged out shows `LoginPrompt` (client ID + redirect URI fields); `RedditLoginWebView.kt` shows Reddit's authorize page while `uiState.authUrl` is set. |
 | `inbox/InboxScreen.kt` | `InboxViewModel` | Inbox with `InboxFilter` sub-tabs. Deep-linked from notifications via `PendingNotificationAction`. |
 | `search/SearchScreen.kt` | `SearchViewModel` | Unified search (posts/subs/users). |
 | `settings/SettingsScreen.kt` | Uses `SettingsRepository` directly via `koinInject` | All app prefs UI. |
@@ -112,7 +111,7 @@ Reddit share URLs (`/r/<sub>/s/<id>`) don't include a post ID. `onShareLinkClick
 - `mipmap-anydpi-v26/` - adaptive launcher icon.
 - `xml/` - `network_security_config.xml`, backup rules.
 
-`AndroidManifest.xml` declares: MainActivity (LAUNCHER), OAuthActivity (deep link `karmakameleon://oauth`), QuoteTextActivity (PROCESS_TEXT), BootReceiver (BOOT_COMPLETED).
+`AndroidManifest.xml` declares: MainActivity (LAUNCHER), QuoteTextActivity (PROCESS_TEXT), BootReceiver (BOOT_COMPLETED). There is no OAuth deep link: login runs in `ui/profile/RedditLoginWebView.kt`, which intercepts the redirect itself.
 
 ## Adding a new screen - checklist
 

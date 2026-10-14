@@ -3,6 +3,7 @@ package com.karmakameleon.shared.ui.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.karmakameleon.shared.data.api.AuthManager
+import com.karmakameleon.shared.data.api.OAuthRedirect
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
@@ -60,6 +61,8 @@ data class ProfileUiState(
     val isOwnProfile: Boolean = false,
     val errorMessage: String? = null,
     val clientId: String = "",
+    val redirectUri: String = AuthManager.DEFAULT_REDIRECT_URI,
+    val isSigningIn: Boolean = false,
     val savedContentType: SavedContentType = SavedContentType.POSTS
 )
 
@@ -86,11 +89,18 @@ class ProfileViewModel(
 
     val commentViewModel = CommentViewModel(commentRepository)
 
-    private val _uiState = MutableStateFlow(ProfileUiState(clientId = authManager.getClientId()))
+    private val _uiState = MutableStateFlow(initialState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
+    private var pendingLoginState: String? = null
+
+    private fun initialState() = ProfileUiState(
+        clientId = authManager.getClientId(),
+        redirectUri = authManager.getRedirectUri()
+    )
+
     fun clearAllData() {
-        _uiState.value = ProfileUiState(clientId = authManager.getClientId())
+        _uiState.value = initialState()
     }
 
     fun clearErrorMessage() {
@@ -99,7 +109,12 @@ class ProfileViewModel(
 
     fun setClientId(clientId: String) {
         authManager.setClientId(clientId)
-        _uiState.update { it.copy(clientId = clientId) }
+        _uiState.update { it.copy(clientId = authManager.getClientId()) }
+    }
+
+    fun setRedirectUri(redirectUri: String) {
+        authManager.setRedirectUri(redirectUri)
+        _uiState.update { it.copy(redirectUri = authManager.getRedirectUri()) }
     }
 
     fun loadOwnProfile(forceRefresh: Boolean = false) {
@@ -561,12 +576,47 @@ class ProfileViewModel(
 
     fun initiateLogin() {
         val state = generateState()
+        pendingLoginState = state
         val authUrl = userRepository.getAuthorizationUrl(state)
         _uiState.update { it.copy(authUrl = authUrl) }
     }
 
-    fun clearAuthUrl() {
+    fun cancelLogin() {
+        pendingLoginState = null
         _uiState.update { it.copy(authUrl = null) }
+    }
+
+    /**
+     * Called for each page the login WebView is about to load. Returns true if [url] is Reddit's
+     * redirect back to the app, in which case the WebView must not load it.
+     */
+    fun handleLoginRedirect(url: String): Boolean {
+        val redirect = OAuthRedirect.parse(url, authManager.getRedirectUri()) ?: return false
+        // The WebView can report the same redirect more than once; only the first one counts.
+        val expectedState = pendingLoginState ?: return true
+        pendingLoginState = null
+        _uiState.update { it.copy(authUrl = null) }
+
+        val code = redirect.code
+        when {
+            redirect.state != expectedState -> showLoginError("Sign in failed. Please try again.")
+            redirect.error == "access_denied" -> Unit // The user declined on Reddit's page.
+            redirect.error != null -> showLoginError("Sign in failed: ${redirect.error}")
+            code == null -> showLoginError("Sign in failed. Please try again.")
+            else -> {
+                _uiState.update { it.copy(isSigningIn = true) }
+                viewModelScope.launch {
+                    val success = userRepository.handleAuthCallback(code)
+                    _uiState.update { it.copy(isSigningIn = false) }
+                    if (!success) showLoginError("Sign in failed. Check your client ID and redirect URI.")
+                }
+            }
+        }
+        return true
+    }
+
+    private fun showLoginError(message: String) {
+        _uiState.update { it.copy(errorMessage = message) }
     }
 
     fun logout() {

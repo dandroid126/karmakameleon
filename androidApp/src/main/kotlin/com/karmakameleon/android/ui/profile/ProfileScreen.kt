@@ -1,6 +1,5 @@
 package com.karmakameleon.android.ui.profile
 
-import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,11 +15,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
@@ -60,8 +61,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.ReplyBar
@@ -69,6 +70,7 @@ import com.karmakameleon.android.ui.components.SortBottomSheet
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.formatNumber
 import com.karmakameleon.android.ui.components.formatTimeAgo
+import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Account
@@ -129,21 +131,15 @@ fun ProfileScreen(
         }
     }
 
-    LaunchedEffect(uiState.authUrl) {
-        uiState.authUrl?.let { url ->
-            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-            context.startActivity(intent)
-            viewModel.clearAuthUrl()
-        }
-    }
-
     Scaffold(
         topBar = {
             UniversalTopAppBar(
                 currentRoute = currentRoute,
                 excludeProfile = uiState.isOwnProfile,
                 title = {
-                    val titleText = if (uiState.isOwnProfile) {
+                    val titleText = if (uiState.authUrl != null) {
+                        "Sign in to Reddit"
+                    } else if (uiState.isOwnProfile) {
                         uiState.account?.name ?: "Profile"
                     } else {
                         username.orEmpty()
@@ -158,8 +154,16 @@ fun ProfileScreen(
                     }
                 },
                 actions = {
+                    if (uiState.authUrl != null) {
+                        IconButton(onClick = viewModel::cancelLogin) {
+                            Icon(Icons.Default.Close, contentDescription = "Cancel sign in")
+                        }
+                    }
                     if (uiState.isOwnProfile && uiState.isLoggedIn) {
-                        IconButton(onClick = viewModel::logout) {
+                        IconButton(onClick = {
+                            clearRedditLoginSession()
+                            viewModel.logout()
+                        }) {
                             Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
                         }
                     }
@@ -185,6 +189,16 @@ fun ProfileScreen(
             }
         }
     ) { padding ->
+        val authUrl = uiState.authUrl
+        if (username == null && authUrl != null) {
+            RedditLoginWebView(
+                authUrl = authUrl,
+                onRedirect = viewModel::handleLoginRedirect,
+                onCancel = viewModel::cancelLogin,
+                modifier = Modifier.padding(padding)
+            )
+            return@Scaffold
+        }
         val pullToRefreshState = rememberPullToRefreshState()
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
@@ -198,6 +212,9 @@ fun ProfileScreen(
                 LoginPrompt(
                     clientId = uiState.clientId,
                     onClientIdChange = viewModel::setClientId,
+                    redirectUri = uiState.redirectUri,
+                    onRedirectUriChange = viewModel::setRedirectUri,
+                    isSigningIn = uiState.isSigningIn,
                     onLogin = viewModel::initiateLogin
                 )
             } else if (uiState.isLoading && uiState.account == null && uiState.user == null) {
@@ -549,6 +566,9 @@ fun ProfileScreen(
 private fun LoginPrompt(
     clientId: String,
     onClientIdChange: (String) -> Unit,
+    redirectUri: String,
+    onRedirectUriChange: (String) -> Unit,
+    isSigningIn: Boolean,
     onLogin: () -> Unit
 ) {
     Column(
@@ -581,13 +601,28 @@ private fun LoginPrompt(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(0.9f)
         )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = redirectUri,
+            onValueChange = onRedirectUriChange,
+            label = { Text("Redirect URI") },
+            placeholder = { Text(AuthManager.DEFAULT_REDIRECT_URI) },
+            supportingText = { Text("Must match the redirect URI of your app on Reddit") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+            modifier = Modifier.fillMaxWidth(0.9f)
+        )
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onLogin,
             modifier = Modifier.fillMaxWidth(0.7f),
-            enabled = clientId.isNotBlank()
+            enabled = clientId.isNotBlank() && redirectUri.isNotBlank() && !isSigningIn
         ) {
-            Icon(Icons.AutoMirrored.Default.Login, contentDescription = null)
+            if (isSigningIn) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            } else {
+                Icon(Icons.AutoMirrored.Default.Login, contentDescription = null)
+            }
             Spacer(modifier = Modifier.width(8.dp))
             Text("Sign In")
         }

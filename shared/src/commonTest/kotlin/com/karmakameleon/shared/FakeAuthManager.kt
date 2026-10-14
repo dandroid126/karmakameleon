@@ -15,12 +15,17 @@ class FakeAuthManager(
 ) {
     var fakeAccessToken: String? = "fake_token"
     var fakeIsLoggedIn: Boolean = false
+    var exchangeSucceeds: Boolean = true
+    val exchangedCodes = mutableListOf<String>()
 
     override suspend fun getAccessToken(): String? = fakeAccessToken
 
     override fun isLoggedIn(): Boolean = fakeIsLoggedIn
 
-    override suspend fun exchangeCodeForToken(code: String): Boolean = true
+    override suspend fun exchangeCodeForToken(code: String): Boolean {
+        exchangedCodes += code
+        return exchangeSucceeds
+    }
 
     override fun clearToken() {
         fakeIsLoggedIn = false

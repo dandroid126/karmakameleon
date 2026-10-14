@@ -107,7 +107,7 @@ A modern, feature-rich Reddit client built with Kotlin Multiplatform (KMP) and J
 1. Visit https://www.reddit.com/prefs/apps
 2. Click "Create App" or "Create Another App"
 3. Select "installed app" type
-4. Set redirect URI to `karmakameleon://oauth`
+4. Set redirect URI to `karmakameleon://oauth` (or reuse an existing app and enter its redirect URI on the app's sign-in screen)
 5. Copy the client ID (14-character string)
 
 ### Test Configuration

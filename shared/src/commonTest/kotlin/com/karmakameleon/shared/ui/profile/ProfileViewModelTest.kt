@@ -6,11 +6,13 @@ import com.karmakameleon.shared.createTestAccount
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
+import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
+import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -23,6 +25,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -67,6 +70,167 @@ class ProfileViewModelTest {
     @Test
     fun init_setsDefaultClientId() {
         assertEquals("", viewModel.uiState.value.clientId)
+    }
+
+    @Test
+    fun init_setsDefaultRedirectUri() {
+        assertEquals(AuthManager.DEFAULT_REDIRECT_URI, viewModel.uiState.value.redirectUri)
+    }
+
+    // ==================== Login ====================
+
+    private fun startLogin(redirectUri: String = "myclient://callback"): String {
+        viewModel.setClientId("client")
+        viewModel.setRedirectUri(redirectUri)
+        viewModel.initiateLogin()
+        val authUrl = viewModel.uiState.value.authUrl
+        assertNotNull(authUrl)
+        return assertNotNull(Url(authUrl).parameters["state"])
+    }
+
+    @Test
+    fun setRedirectUri_updatesStateAndPersists() {
+        viewModel.setRedirectUri("myclient://callback")
+
+        assertEquals("myclient://callback", viewModel.uiState.value.redirectUri)
+        assertEquals("myclient://callback", fakeAuthManager.getRedirectUri())
+    }
+
+    @Test
+    fun setRedirectUri_pastedWithNewline_isStripped() {
+        viewModel.setRedirectUri("redreader://rr_oauth_redir\r\n")
+
+        assertEquals("redreader://rr_oauth_redir", viewModel.uiState.value.redirectUri)
+    }
+
+    @Test
+    fun init_loadsSavedRedirectUri() {
+        fakeAuthManager.setRedirectUri("myclient://callback")
+        val newViewModel = ProfileViewModel(userRepo, postRepo, commentRepo, fakeAuthManager)
+
+        assertEquals("myclient://callback", newViewModel.uiState.value.redirectUri)
+    }
+
+    @Test
+    fun clearAllData_keepsClientIdAndRedirectUri() {
+        viewModel.setClientId("client")
+        viewModel.setRedirectUri("myclient://callback")
+
+        viewModel.clearAllData()
+
+        assertEquals("client", viewModel.uiState.value.clientId)
+        assertEquals("myclient://callback", viewModel.uiState.value.redirectUri)
+    }
+
+    @Test
+    fun logout_keepsClientIdAndRedirectUri() {
+        viewModel.setClientId("client")
+        viewModel.setRedirectUri("myclient://callback")
+
+        viewModel.logout()
+
+        assertEquals("client", viewModel.uiState.value.clientId)
+        assertEquals("myclient://callback", viewModel.uiState.value.redirectUri)
+    }
+
+    @Test
+    fun initiateLogin_authUrlUsesRedirectUri() {
+        startLogin("myclient://callback")
+
+        val authUrl = assertNotNull(viewModel.uiState.value.authUrl)
+        assertEquals("myclient://callback", Url(authUrl).parameters["redirect_uri"])
+    }
+
+    @Test
+    fun handleLoginRedirect_otherPage_returnsFalseAndKeepsLoginOpen() {
+        startLogin()
+
+        assertFalse(viewModel.handleLoginRedirect("https://www.reddit.com/login"))
+        assertNotNull(viewModel.uiState.value.authUrl)
+    }
+
+    @Test
+    fun handleLoginRedirect_withCode_exchangesCodeAndClosesLogin() = runTest {
+        val state = startLogin()
+
+        assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code#_"))
+        advanceUntilIdle()
+
+        assertEquals(listOf("the_code"), fakeAuthManager.exchangedCodes)
+        assertNull(viewModel.uiState.value.authUrl)
+        assertFalse(viewModel.uiState.value.isSigningIn)
+        assertNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun handleLoginRedirect_wrongState_doesNotExchangeCode() = runTest {
+        startLogin()
+
+        assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=forged&code=the_code"))
+        advanceUntilIdle()
+
+        assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
+        assertNull(viewModel.uiState.value.authUrl)
+        assertNotNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun handleLoginRedirect_duplicate_onlyExchangesOnce() = runTest {
+        val state = startLogin()
+        val redirect = "myclient://callback?state=$state&code=the_code"
+
+        assertTrue(viewModel.handleLoginRedirect(redirect))
+        assertTrue(viewModel.handleLoginRedirect(redirect))
+        advanceUntilIdle()
+
+        assertEquals(listOf("the_code"), fakeAuthManager.exchangedCodes)
+    }
+
+    @Test
+    fun handleLoginRedirect_accessDenied_closesLoginWithoutError() = runTest {
+        val state = startLogin()
+
+        assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&error=access_denied"))
+        advanceUntilIdle()
+
+        assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
+        assertNull(viewModel.uiState.value.authUrl)
+        assertNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun handleLoginRedirect_otherError_showsError() = runTest {
+        val state = startLogin()
+
+        assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&error=invalid_request"))
+        advanceUntilIdle()
+
+        assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
+        assertEquals("Sign in failed: invalid_request", viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun handleLoginRedirect_exchangeFails_showsError() = runTest {
+        fakeAuthManager.exchangeSucceeds = false
+        val state = startLogin()
+
+        viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.isSigningIn)
+        assertNotNull(viewModel.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun cancelLogin_closesLoginAndIgnoresLaterRedirect() = runTest {
+        val state = startLogin()
+
+        viewModel.cancelLogin()
+        viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code")
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.authUrl)
+        assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
     }
 
     // ==================== Tab Selection ====================

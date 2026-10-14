@@ -120,7 +120,7 @@ One VM per screen; each exposes `uiState: StateFlow<XxxUiState>`:
 - `KarmaKameleonApplication.kt` - Application class, Koin init.
 - `MainActivity.kt` - hosts Compose.
 - `QuoteTextActivity.kt` - system "Share text" / process-text entry to post a quote reply.
-- `auth/OAuthActivity.kt` - handles `karmakameleon://oauth` redirect.
+- `ui/profile/RedditLoginWebView.kt` - in-app OAuth login; intercepts the redirect to the user's redirect URI.
 - `ui/KarmaKameleonApp.kt` - **top-level nav graph** (Screen + DetailScreen routes, NavHost, bottom bar). Every new route starts here.
 - `navigation/NavigationHandler.kt` - link-click router (subreddit/user/post/comment/share/image/video/youtube/external). Wired once in `KarmaKameleonApp`.
 - `ui/menu/GlobalMenuManager.kt` - global menu callbacks (profile/inbox/settings navigation from the app-bar).
