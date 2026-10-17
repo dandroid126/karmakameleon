@@ -19,6 +19,20 @@ android {
         }
     }
 
+    signingConfigs {
+        // Optionally sign debug builds with the key CI signs its debug releases with, so local
+        // and GitHub builds can update each other. Set both properties in ~/.gradle/gradle.properties.
+        val debugKeystore = providers.gradleProperty("karmakameleon.debugKeystore").orNull
+        if (debugKeystore != null) {
+            getByName("debug") {
+                storeFile = file(debugKeystore)
+                storePassword = providers.gradleProperty("karmakameleon.debugKeystorePassword").get()
+                keyAlias = "debug"
+                keyPassword = storePassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

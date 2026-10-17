@@ -68,6 +68,26 @@ jobs:
           name: debug-apk
           path: apk
 
+      # Each runner signs debug builds with a new random key, which Android rejects as an
+      # update. Re-sign with a fixed key here, rather than in the build job, so third-party
+      # actions and Gradle plugins never see it.
+      - name: Sign APK with the debug key
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+          DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$DEBUG_KEYSTORE_BASE64" ] || [ -z "$DEBUG_KEYSTORE_PASSWORD" ]; then
+            echo "::error::DEBUG_KEYSTORE_BASE64 and DEBUG_KEYSTORE_PASSWORD secrets must be set"
+            exit 1
+          fi
+          KEYSTORE="$RUNNER_TEMP/debug.p12"
+          echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner"
+          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass env:DEBUG_KEYSTORE_PASSWORD \
+            --ks-key-alias debug apk/androidApp-debug.apk
+          rm "$KEYSTORE"
+          "$APKSIGNER" verify --print-certs apk/androidApp-debug.apk
+
       - name: Create Debug Release
         env:
           SHA: ${{ needs.build.outputs.sha }}
@@ -79,7 +99,7 @@ jobs:
           **Commit**: $SHA
           **Date**: $DATE
 
-          This is an unsigned debug build for testing purposes.
+          This is a debug build for testing purposes, signed with the project's debug key so it installs as an update.
           EOF
           # Recreate the release so the debug-latest tag moves to this commit.
           if gh release view debug-latest > /dev/null 2>&1; then
