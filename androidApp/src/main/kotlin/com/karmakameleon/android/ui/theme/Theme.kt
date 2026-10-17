@@ -99,6 +99,9 @@ data class PostFlairColors(
     val nsfwColor: Color,
     val spoilerColor: Color,
     val pinnedColor: Color,
+    // Text on subreddit-colored flairs; whichever contrasts more with the flair is used
+    val flairDarkTextColor: Color,
+    val flairLightTextColor: Color,
 )
 
 @Composable
@@ -107,6 +110,8 @@ fun postFlairColors(darkTheme: Boolean = isSystemInDarkTheme()): PostFlairColors
         nsfwColor = Color(0xFFFF4444),
         spoilerColor = Color(0xFFFFD700),
         pinnedColor = Color(0xFF00AA00),
+        flairDarkTextColor = Color.Black,
+        flairLightTextColor = Color.White,
     )
 }
 

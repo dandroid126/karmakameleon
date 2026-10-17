@@ -50,7 +50,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
-import androidx.core.graphics.toColorInt
 import com.karmakameleon.android.ui.theme.commentColors
 import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.android.navigation.NavigationHandler
@@ -194,21 +193,18 @@ fun CommentItem(
                         Text("OP", style = MaterialTheme.typography.labelSmall, color = commentColors.submitterColor)
                     }
                     val flairText = comment.authorFlairText
-                    val flairColor = comment.authorFlairBackgroundColor?.let {
-                        try { Color(it.toColorInt()) } catch (_: Exception) { MaterialTheme.colorScheme.secondary }
-                    } ?: MaterialTheme.colorScheme.secondary
                     if (comment.authorFlairRichtext.isNotEmpty()) {
                         Spacer(modifier = Modifier.width(4.dp))
                         RichFlairChip(
                             richtext = comment.authorFlairRichtext,
-                            color = flairColor,
+                            backgroundColor = comment.authorFlairBackgroundColor,
                             modifier = Modifier.weight(1f, fill = false)
                         )
                     } else if (!flairText.isNullOrBlank()) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        FlairChip(
+                        SubredditFlairChip(
                             text = flairText,
-                            color = flairColor,
+                            backgroundColor = comment.authorFlairBackgroundColor,
                             modifier = Modifier.weight(1f, fill = false)
                         )
                     }

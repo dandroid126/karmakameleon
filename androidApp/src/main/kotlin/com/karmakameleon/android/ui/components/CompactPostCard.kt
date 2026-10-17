@@ -237,11 +237,7 @@ fun CompactPostCard(
                             FlairChip(text = "Pinned", color = postFlairColors.pinnedColor)
                         }
                         post.linkFlairText?.let { flair ->
-                            FlairChip(
-                                text = flair,
-                                color = post.linkFlairBackgroundColor?.let { parseColor(it) }
-                                    ?: MaterialTheme.colorScheme.secondaryContainer
-                            )
+                            SubredditFlairChip(text = flair, backgroundColor = post.linkFlairBackgroundColor)
                         }
                     }
                 }

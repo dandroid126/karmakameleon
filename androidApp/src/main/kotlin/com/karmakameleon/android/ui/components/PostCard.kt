@@ -63,8 +63,9 @@ import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.VoteState
+import com.karmakameleon.shared.util.flairNeedsDarkText
+import com.karmakameleon.shared.util.parseFlairColor
 import kotlinx.coroutines.launch
-import androidx.core.graphics.toColorInt
 
 private val POST_CARD_MAX_CONTENT_HEIGHT = 400.dp
 
@@ -151,11 +152,7 @@ fun PostCard(
                     FlairChip(text = "Pinned", color = postFlairColors.pinnedColor)
                 }
                 post.linkFlairText?.let { flair ->
-                    FlairChip(
-                        text = flair,
-                        color = post.linkFlairBackgroundColor?.let { parseColor(it) }
-                            ?: MaterialTheme.colorScheme.secondaryContainer
-                    )
+                    SubredditFlairChip(text = flair, backgroundColor = post.linkFlairBackgroundColor)
                 }
             }
             
@@ -550,14 +547,51 @@ fun FlairChip(
     }
 }
 
+/**
+ * Flair whose color is chosen by the subreddit. Drawn filled like on Reddit, with black or white
+ * text (whichever is more readable) so it stays legible on any background in light and dark mode.
+ * Flairs without a color get a neutral chip.
+ */
+@Composable
+fun SubredditFlairChip(
+    text: String,
+    backgroundColor: String?,
+    modifier: Modifier = Modifier
+) {
+    val (containerColor, contentColor) = subredditFlairColors(backgroundColor)
+    Surface(
+        color = containerColor,
+        shape = RoundedCornerShape(4.dp),
+        modifier = modifier
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@Composable
+private fun subredditFlairColors(backgroundColor: String?): Pair<Color, Color> {
+    val argb = parseFlairColor(backgroundColor)
+        ?: return MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+    val flairColors = postFlairColors()
+    return Color(argb) to if (flairNeedsDarkText(argb)) flairColors.flairDarkTextColor else flairColors.flairLightTextColor
+}
+
 @Composable
 fun RichFlairChip(
     richtext: List<com.karmakameleon.shared.domain.model.FlairRichtext>,
-    color: Color,
+    backgroundColor: String?,
     modifier: Modifier = Modifier
 ) {
+    val (containerColor, contentColor) = subredditFlairColors(backgroundColor)
     Surface(
-        color = color.copy(alpha = 0.2f),
+        color = containerColor,
         shape = RoundedCornerShape(4.dp),
         modifier = modifier.clipToBounds()
     ) {
@@ -572,7 +606,7 @@ fun RichFlairChip(
                             Text(
                                 text = it,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = color,
+                                color = contentColor,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -613,17 +647,5 @@ fun formatNumber(num: Int): String {
         num >= 1_000_000 -> String.format("%.1fM", num / 1_000_000.0)
         num >= 1_000 -> String.format("%.1fK", num / 1_000.0)
         else -> num.toString()
-    }
-}
-
-fun parseColor(colorString: String): Color {
-    return try {
-        if (colorString.startsWith("#") && colorString.length >= 7) {
-            Color(colorString.toColorInt())
-        } else {
-            Color.Gray
-        }
-    } catch (e: Exception) {
-        Color.Gray
     }
 }

@@ -91,6 +91,7 @@ import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
 import com.karmakameleon.android.ui.components.ProgressiveAsyncImage
 import com.karmakameleon.android.ui.components.ReplyBar
+import com.karmakameleon.android.ui.components.SubredditFlairChip
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.VideoPlayer
 import com.karmakameleon.android.ui.components.YouTubePlayer
@@ -805,7 +806,7 @@ private fun PostHeader(
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             if (post.isNsfw) FlairChip("NSFW", postFlairColors().nsfwColor)
             if (post.isSpoiler) FlairChip("Spoiler", postFlairColors().spoilerColor)
-            post.linkFlairText?.let { FlairChip(it, Color.Gray) }
+            post.linkFlairText?.let { SubredditFlairChip(it, post.linkFlairBackgroundColor) }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
