@@ -14,19 +14,24 @@ The code in this repo is written by AI, and there's too much of it for a human t
 
 - [ ] **Branch ruleset on `main`.** Require PRs and require the PR checks to pass before merging; keep the admin bypass for emergencies.
   *Value:* without this, every other checker only reports and doesn't block anything.
-- [ ] **Clean up the workflows.**
+  *Notes:* the "default branch" ruleset already requires a PR, the Unit Tests, Debug Build, Release Build and Gitleaks checks, an up-to-date branch and rebase merges, with an admin bypass. It also requires 1 approval, which GitHub doesn't let you give on your own PR, so for now every merge goes through the admin bypass after you've checked the PR. That stays until all phases are done and the checks have earned enough trust to set approvals to 0. Still to do: require the Dependency Review check.
+- [x] **Clean up the workflows.**
   - Add `permissions: contents: read` to `pr-checks.yml` (it has none, so it gets the default token permissions).
   - Remove the `develop` branch target from `pr-checks.yml`; that branch doesn't exist.
   - Delete `unit-tests.yml`; `debug-release.yml` already runs the same tests on every push to `main`.
   - Combine the PR jobs where it saves setup time, ending in one quality gate task.
 
   *Value:* less CI time, and a smaller token scope if a workflow step is compromised.
-- [ ] **Dependabot** for Gradle (the version catalog), GitHub Actions and the devcontainer, with related updates grouped (e.g. all AndroidX, all Ktor) to keep the PR count manageable.
+  *Notes:* the PR jobs stay separate: they run in parallel, so the PR finishes sooner, and Actions minutes are free for public repos. Combining them into one gate task happens in Phase 2. The repo's default workflow token is already read-only.
+- [x] **Dependabot** for Gradle (the version catalog), GitHub Actions and the devcontainer, with related updates grouped (e.g. all AndroidX, all Ktor) to keep the PR count manageable.
   *Value:* dependencies stay current without manual work, and the required checks validate each update PR automatically.
+  *Notes:* configured in `.github/dependabot.yml`, with a 7-day cooldown on new releases (security updates skip it). Dependabot alerts and security updates are on in the repo settings. Check whether the Gradle wrapper gets updates; if not, update it by hand.
 - [ ] **Dependency review action** on PRs, failing on known-vulnerable dependencies and on licenses that conflict with ours.
   *Value:* Dependabot fixes what's already in the repo; this stops new problems from coming in through a PR.
-- [ ] **GitHub secret scanning with push protection** (repo setting; free for public repos).
+  *Notes:* GitHub can't read Gradle dependencies itself, so `dependency-review.yml` builds the dependency graph with Gradle and submits it on every PR and push to main. Only GitHub's own code sees the write token. Allowed licenses are the ones compatible with GPL-3.0. Its first run had no graph for `main` to compare with, so it checked every dependency and found 3 vulnerabilities (1 critical) in the Bouncy Castle version AGP brings in; the build now requires a fixed version. Still to do: make it a required check.
+- [x] **GitHub secret scanning with push protection** (repo setting; free for public repos).
   *Value:* Gitleaks reports a secret after it's been pushed. Push protection rejects the push.
+  *Notes:* both are on. Scanning for generic (non-provider) patterns and checking whether found secrets are still valid are left off.
 
 ## Phase 2: static analysis on every PR
 
