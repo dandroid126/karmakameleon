@@ -156,14 +156,35 @@ fun messageColors(darkTheme: Boolean = isSystemInDarkTheme()): MessageColors {
     )
 }
 
+// Media UI stays dark in both light and dark mode
 data class MediaColors(
     val loopActiveColor: Color,
+    val mediaBackgroundColor: Color, // behind videos and fullscreen images
+    val overlayBadgeColor: Color, // badge drawn over a thumbnail, e.g. video or gallery count
+    val pageIndicatorBackgroundColor: Color, // "2 / 5" pill in the fullscreen image viewer
+    val controlsBackgroundColor: Color, // video player control bar
+    val onOverlayColor: Color, // icons and text on media, overlays and scrims
+    val noAudioColor: Color, // mute icon when a video has no audio track
+    val seekBarInactiveTrackColor: Color,
+    val blurScrimColor: Color, // darkens a blurred preview
+    val hiddenPreviewColor: Color, // stands in for a hidden NSFW or spoiler preview
+    val hiddenPreviewHintColor: Color, // "Tap to view" on a hidden preview
 )
 
 @Composable
 fun mediaColors(darkTheme: Boolean = isSystemInDarkTheme()): MediaColors {
     return MediaColors(
         loopActiveColor = Color(0xFF4FC3F7),
+        mediaBackgroundColor = Color.Black,
+        overlayBadgeColor = Color.Black.copy(alpha = 0.6f),
+        pageIndicatorBackgroundColor = Color.Black.copy(alpha = 0.5f),
+        controlsBackgroundColor = Color.Black.copy(alpha = 0.6f),
+        onOverlayColor = Color.White,
+        noAudioColor = Color.Red,
+        seekBarInactiveTrackColor = Color.White.copy(alpha = 0.3f),
+        blurScrimColor = Color.Black.copy(alpha = 0.3f),
+        hiddenPreviewColor = Color.Black,
+        hiddenPreviewHintColor = Color.Gray,
     )
 }
 

@@ -30,13 +30,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.SubcomposeAsyncImage
+import com.karmakameleon.android.ui.theme.mediaColors
 
 @Composable
 fun FullScreenImageViewer(
@@ -49,7 +49,7 @@ fun FullScreenImageViewer(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(mediaColors().mediaBackgroundColor)
     ) {
         if (imageUrls.size == 1) {
             ZoomableImage(
@@ -78,14 +78,14 @@ fun FullScreenImageViewer(
                         .align(Alignment.BottomCenter)
                         .padding(bottom = 48.dp)
                         .background(
-                            Color.Black.copy(alpha = 0.5f),
+                            mediaColors().pageIndicatorBackgroundColor,
                             RoundedCornerShape(16.dp)
                         )
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = "${pagerState.currentPage + 1} / ${imageUrls.size}",
-                        color = Color.White,
+                        color = mediaColors().onOverlayColor,
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
@@ -102,7 +102,7 @@ fun FullScreenImageViewer(
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
-                tint = Color.White,
+                tint = mediaColors().onOverlayColor,
                 modifier = Modifier.size(28.dp)
             )
         }

@@ -19,8 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.karmakameleon.android.ui.theme.mediaColors
 import com.karmakameleon.android.ui.theme.postFlairColors
 
 @Composable
@@ -33,7 +33,7 @@ fun SpoilerBlackBox(
             .fillMaxWidth()
             .heightIn(min = 120.dp, max = 300.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black),
+            .background(mediaColors().hiddenPreviewColor),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -52,7 +52,7 @@ fun SpoilerBlackBox(
             Text(
                 text = "Tap to view",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray,
+                color = mediaColors().hiddenPreviewHintColor,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }

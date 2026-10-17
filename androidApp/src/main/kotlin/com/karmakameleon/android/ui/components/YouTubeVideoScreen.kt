@@ -14,8 +14,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.karmakameleon.android.ui.theme.mediaColors
 
 @Composable
 fun YouTubeVideoScreen(
@@ -27,7 +27,7 @@ fun YouTubeVideoScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(mediaColors().mediaBackgroundColor)
     ) {
         YouTubePlayer(
             videoId = videoId,
@@ -46,7 +46,7 @@ fun YouTubeVideoScreen(
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
-                tint = Color.White,
+                tint = mediaColors().onOverlayColor,
                 modifier = Modifier.size(28.dp)
             )
         }

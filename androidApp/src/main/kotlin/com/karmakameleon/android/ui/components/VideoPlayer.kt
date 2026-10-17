@@ -51,7 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -190,7 +189,7 @@ fun VideoPlayer(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black)
+            .background(mediaColors().mediaBackgroundColor)
             .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -306,7 +305,7 @@ fun VideoPlayer(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black)
+                    .background(mediaColors().mediaBackgroundColor)
                     .pointerInput(Unit) {
                         detectTransformGestures { _, pan, zoom, _ ->
                             val newScale = (zoomScale * zoom).coerceIn(1f, 5f)
@@ -426,7 +425,7 @@ private fun VideoControlsOverlay(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.6f))
+            .background(mediaColors().controlsBackgroundColor)
             .padding(horizontal = if (isFullscreen) 24.dp else 8.dp, vertical = 4.dp)
     ) {
         Row(
@@ -437,7 +436,7 @@ private fun VideoControlsOverlay(
             // Timestamp
             Text(
                 text = "${formatDuration(currentPosition)} / ${formatDuration(duration)}",
-                color = Color.White,
+                color = mediaColors().onOverlayColor,
                 style = MaterialTheme.typography.labelMedium
             )
 
@@ -453,7 +452,7 @@ private fun VideoControlsOverlay(
                     Icon(
                         imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                         contentDescription = if (isPlaying) "Pause" else "Play",
-                        tint = Color.White,
+                        tint = mediaColors().onOverlayColor,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -467,7 +466,7 @@ private fun VideoControlsOverlay(
                         imageVector = if (!hasAudio || isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                         contentDescription = if (!hasAudio) "No audio available"
                             else if (isMuted) "Unmute" else "Mute",
-                        tint = if (!hasAudio) Color.Red else Color.White,
+                        tint = if (!hasAudio) mediaColors().noAudioColor else mediaColors().onOverlayColor,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -480,7 +479,7 @@ private fun VideoControlsOverlay(
                     Icon(
                         imageVector = Icons.Filled.Repeat,
                         contentDescription = if (isLooping) "Disable loop" else "Enable loop",
-                        tint = if (isLooping) mediaColors().loopActiveColor else Color.White,
+                        tint = if (isLooping) mediaColors().loopActiveColor else mediaColors().onOverlayColor,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -493,7 +492,7 @@ private fun VideoControlsOverlay(
                     Icon(
                         imageVector = if (isFullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
                         contentDescription = if (isFullscreen) "Exit fullscreen" else "Fullscreen",
-                        tint = Color.White,
+                        tint = mediaColors().onOverlayColor,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -508,9 +507,9 @@ private fun VideoControlsOverlay(
             },
             modifier = Modifier.fillMaxWidth().height(24.dp),
             colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = Color.White,
-                inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                thumbColor = mediaColors().onOverlayColor,
+                activeTrackColor = mediaColors().onOverlayColor,
+                inactiveTrackColor = mediaColors().seekBarInactiveTrackColor
             )
         )
     }

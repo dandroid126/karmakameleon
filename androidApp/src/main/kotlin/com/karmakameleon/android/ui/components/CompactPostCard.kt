@@ -77,6 +77,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.karmakameleon.android.ui.theme.mediaColors
 import com.karmakameleon.android.ui.theme.postFlairColors
 import com.karmakameleon.android.ui.theme.readStateColors
 import com.karmakameleon.android.ui.theme.voteColors
@@ -462,6 +463,7 @@ private fun CompactThumbnail(
     modifier: Modifier = Modifier
 ) {
     val postFlairColors = postFlairColors()
+    val mediaColors = mediaColors()
     val previewImage = post.preview?.images?.firstOrNull()
     // Reddit's preview resolutions run small to large; 216px is enough for a 72dp square
     val thumbnailUrl = previewImage?.resolutions?.firstOrNull { it.width >= 216 }?.url
@@ -509,12 +511,12 @@ private fun CompactThumbnail(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.3f))
+                            .background(mediaColors.blurScrimColor)
                     ) {
                         Icon(
                             imageVector = Icons.Default.VisibilityOff,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = mediaColors.onOverlayColor,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -528,12 +530,13 @@ private fun CompactThumbnail(
 
 @Composable
 private fun HiddenThumbnail(label: String, color: Color) {
+    val mediaColors = mediaColors()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(mediaColors.hiddenPreviewColor)
     ) {
         Icon(
             imageVector = Icons.Default.VisibilityOff,
@@ -555,8 +558,9 @@ private fun MediaBadge(post: Post, modifier: Modifier = Modifier) {
     val galleryCount = post.galleryData?.items?.size ?: 0
     if (!post.isVideoPost && galleryCount <= 1) return
 
+    val mediaColors = mediaColors()
     Surface(
-        color = Color.Black.copy(alpha = 0.6f),
+        color = mediaColors.overlayBadgeColor,
         shape = RoundedCornerShape(6.dp),
         modifier = modifier.padding(4.dp)
     ) {
@@ -567,14 +571,14 @@ private fun MediaBadge(post: Post, modifier: Modifier = Modifier) {
             Icon(
                 imageVector = if (post.isVideoPost) Icons.Default.PlayArrow else Icons.Outlined.PhotoLibrary,
                 contentDescription = null,
-                tint = Color.White,
+                tint = mediaColors.onOverlayColor,
                 modifier = Modifier.size(12.dp)
             )
             if (!post.isVideoPost) {
                 Text(
                     text = "$galleryCount",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
+                    color = mediaColors.onOverlayColor,
                     modifier = Modifier.padding(start = 2.dp)
                 )
             }

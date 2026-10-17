@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.karmakameleon.android.ui.theme.mediaColors
 import com.karmakameleon.android.ui.theme.postFlairColors
 import com.karmakameleon.android.ui.theme.readStateColors
 import com.karmakameleon.android.ui.theme.voteColors
@@ -217,7 +218,7 @@ fun PostCard(
                                         val galleryCount = post.galleryData?.items?.size ?: 0
                                         if (galleryCount > 1) {
                                             Surface(
-                                                color = Color.Black.copy(alpha = 0.6f),
+                                                color = mediaColors().overlayBadgeColor,
                                                 shape = RoundedCornerShape(12.dp),
                                                 modifier = Modifier
                                                     .align(Alignment.TopEnd)
@@ -226,7 +227,7 @@ fun PostCard(
                                                 Text(
                                                     text = "1/$galleryCount",
                                                     style = MaterialTheme.typography.labelSmall,
-                                                    color = Color.White,
+                                                    color = mediaColors().onOverlayColor,
                                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                                 )
                                             }
@@ -255,7 +256,7 @@ fun PostCard(
                                     val galleryCount = post.galleryData?.items?.size ?: 0
                                     if (galleryCount > 1) {
                                         Surface(
-                                            color = Color.Black.copy(alpha = 0.6f),
+                                            color = mediaColors().overlayBadgeColor,
                                             shape = RoundedCornerShape(12.dp),
                                             modifier = Modifier
                                                 .align(Alignment.TopEnd)
@@ -264,7 +265,7 @@ fun PostCard(
                                             Text(
                                                 text = "1/$galleryCount",
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = Color.White,
+                                                color = mediaColors().onOverlayColor,
                                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                             )
                                         }

@@ -20,10 +20,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import com.karmakameleon.android.ui.theme.mediaColors
 
 @Composable
 fun FullScreenVideoScreen(
@@ -39,7 +39,7 @@ fun FullScreenVideoScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(mediaColors().mediaBackgroundColor)
             .pointerInput(Unit) {
                 detectTransformGestures { _, pan, zoom, _ ->
                     val newScale = (scale * zoom).coerceIn(1f, 5f)
@@ -87,7 +87,7 @@ fun FullScreenVideoScreen(
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
-                tint = Color.White,
+                tint = mediaColors().onOverlayColor,
                 modifier = Modifier.size(28.dp)
             )
         }
