@@ -67,11 +67,22 @@ jobs:
 
   dependency-review:
     name: Dependency Review
-    needs: submit-graph
-    # Also runs when the submit job was skipped for a fork, so the review still checks what it can.
-    if: github.event_name == 'pull_request' && !failure() && !cancelled()
+    needs: [ generate-graph, submit-graph ]
+    # Runs even when an earlier job failed, since a skipped required check counts as passing.
+    if: github.event_name == 'pull_request' && !cancelled()
     runs-on: ubuntu-latest
     steps:
+      - name: Check the dependency graph was submitted
+        env:
+          GENERATE_RESULT: ${{ needs.generate-graph.result }}
+          SUBMIT_RESULT: ${{ needs.submit-graph.result }}
+        # Submitting is skipped for PRs from forks, so the review checks what it can without it.
+        run: |
+          if [ "$GENERATE_RESULT" != "success" ] || { [ "$SUBMIT_RESULT" != "success" ] && [ "$SUBMIT_RESULT" != "skipped" ]; }; then
+            echo "::error::The dependency graph wasn't generated and submitted, so the dependencies can't be reviewed"
+            exit 1
+          fi
+
       - name: Review dependency changes
         uses: actions/dependency-review-action@v4
         with:
