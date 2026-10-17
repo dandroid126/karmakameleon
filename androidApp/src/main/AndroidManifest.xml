@@ -20,6 +20,7 @@
             android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.KarmaKameleon">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

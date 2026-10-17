@@ -3,8 +3,11 @@ package com.karmakameleon.android.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -21,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 
@@ -37,11 +41,15 @@ fun ReplyBar(
     hasDraft: Boolean = false,
     showDraftControls: Boolean = false
 ) {
-    val maxHeight = (LocalConfiguration.current.screenHeightDp / 2).dp
+    // Cap the text field at half the space left above the keyboard so the whole bar stays visible.
+    val imeHeight = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp() }
+    val maxHeight = (LocalConfiguration.current.screenHeightDp.dp - imeHeight) / 2
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .imePadding()
     ) {
         Column(
             modifier = Modifier

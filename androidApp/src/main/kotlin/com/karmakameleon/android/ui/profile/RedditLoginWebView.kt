@@ -10,6 +10,7 @@ import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
@@ -43,7 +44,7 @@ fun RedditLoginWebView(
         if (webView != null && webView.canGoBack()) webView.goBack() else onCancel()
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().imePadding()) {
         AndroidView(
             factory = { context ->
                 WebView(context).apply {
