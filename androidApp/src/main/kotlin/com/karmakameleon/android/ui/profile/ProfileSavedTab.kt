@@ -36,7 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.CommentItem
-import com.karmakameleon.android.ui.components.PostCard
+import com.karmakameleon.android.ui.components.PostListItem
+import com.karmakameleon.android.ui.components.rememberCompactPostSelection
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
@@ -62,6 +63,7 @@ internal fun ProfileSavedTab(
     nsfwHistoryMode: NsfwHistoryMode,
     nsfwPreviewMode: NsfwPreviewMode,
     spoilerPreviewsEnabled: Boolean,
+    compactFeed: Boolean,
     navigationHandler: NavigationHandler,
     onSetSavedContentType: (SavedContentType) -> Unit,
     onPostClick: (subreddit: String, postId: String) -> Unit,
@@ -77,6 +79,7 @@ internal fun ProfileSavedTab(
     onSaveComment: (Comment) -> Unit,
     onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit,
 ) {
+    val compactSelection = rememberCompactPostSelection()
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
@@ -124,8 +127,10 @@ internal fun ProfileSavedTab(
                 } else {
                     LazyColumn(state = savedPostsListState) {
                         items(savedPosts, key = { it.id }) { post ->
-                            PostCard(
+                            PostListItem(
                                 post = post,
+                                compact = compactFeed,
+                                compactSelection = compactSelection,
                                 onClick = {
                                     readPostsRepository.markAsRead(post, nsfwHistoryMode)
                                     onPostClick(post.subreddit, post.id)

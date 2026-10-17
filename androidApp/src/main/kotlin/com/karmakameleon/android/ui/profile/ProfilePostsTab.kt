@@ -15,7 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
-import com.karmakameleon.android.ui.components.PostCard
+import com.karmakameleon.android.ui.components.PostListItem
+import com.karmakameleon.android.ui.components.rememberCompactPostSelection
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
@@ -32,6 +33,7 @@ internal fun ProfilePostsTab(
     nsfwHistoryMode: NsfwHistoryMode,
     nsfwPreviewMode: NsfwPreviewMode,
     spoilerPreviewsEnabled: Boolean,
+    compactFeed: Boolean,
     navigationHandler: NavigationHandler,
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onSubredditClick: (String) -> Unit,
@@ -40,6 +42,7 @@ internal fun ProfilePostsTab(
     onSave: (Post) -> Unit,
     emptyText: String = "No posts",
 ) {
+    val compactSelection = rememberCompactPostSelection()
     if (isLoadingContent && posts.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             CircularProgressIndicator()
@@ -51,8 +54,10 @@ internal fun ProfilePostsTab(
     } else {
         LazyColumn(state = listState) {
             items(posts, key = { it.id }) { post ->
-                PostCard(
+                PostListItem(
                     post = post,
+                    compact = compactFeed,
+                    compactSelection = compactSelection,
                     onClick = {
                         readPostsRepository.markAsRead(post, nsfwHistoryMode)
                         onPostClick(post.subreddit, post.id)

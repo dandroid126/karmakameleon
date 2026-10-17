@@ -510,4 +510,29 @@ class SettingsRepositoryTest {
         val repo2 = SettingsRepository(settings)
         assertTrue(repo2.spoilerPreviewsEnabled.value)
     }
+
+    // ==================== Compact Feed Enabled ====================
+
+    @Test
+    fun compactFeedEnabled_defaultsToFalse() {
+        val repo = createRepo()
+        assertFalse(repo.compactFeedEnabled.value)
+    }
+
+    @Test
+    fun setCompactFeedEnabled_updatesState() {
+        val repo = createRepo()
+        repo.setCompactFeedEnabled(true)
+        assertTrue(repo.compactFeedEnabled.value)
+    }
+
+    @Test
+    fun setCompactFeedEnabled_persistsAcrossInstances() {
+        val settings = MapSettings()
+        val repo1 = SettingsRepository(settings)
+        repo1.setCompactFeedEnabled(true)
+
+        val repo2 = SettingsRepository(settings)
+        assertTrue(repo2.compactFeedEnabled.value)
+    }
 }

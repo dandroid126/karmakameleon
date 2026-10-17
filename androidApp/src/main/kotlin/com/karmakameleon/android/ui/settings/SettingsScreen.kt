@@ -63,6 +63,7 @@ fun SettingsScreen(
     val nsfwSearchEnabled by settingsRepository.nsfwSearchEnabled.collectAsState()
     val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
     val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
+    val compactFeedEnabled by settingsRepository.compactFeedEnabled.collectAsState()
     val context = LocalContext.current
     var showPurgeConfirmDialog by remember { mutableStateOf(false) }
 
@@ -132,6 +133,31 @@ fun SettingsScreen(
                     Switch(
                         checked = inlineImagesEnabled,
                         onCheckedChange = { settingsRepository.setInlineImagesEnabled(it) }
+                    )
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Compact Feed",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Show posts as compact cards with small thumbnails. Tap a post for its controls, or tap the thumbnail to open it",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = compactFeedEnabled,
+                        onCheckedChange = { settingsRepository.setCompactFeedEnabled(it) }
                     )
                 }
             }

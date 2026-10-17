@@ -44,8 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
-import com.karmakameleon.android.ui.components.PostCard
+import com.karmakameleon.android.ui.components.PostListItem
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
+import com.karmakameleon.android.ui.components.rememberCompactPostSelection
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
@@ -80,6 +81,8 @@ fun SearchScreen(
     val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else NsfwPreviewMode.DO_NOT_PREFETCH
     val effectiveNsfwHistoryMode by remember { derivedStateOf { if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW } }
     val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
+    val compactFeedEnabled by settingsRepository.compactFeedEnabled.collectAsState()
+    val compactSelection = rememberCompactPostSelection()
     var showSortMenu by remember { mutableStateOf(false) }
 
     val shouldLoadMore by remember {
@@ -224,8 +227,10 @@ fun SearchScreen(
                 } else {
                     LazyColumn(state = listState) {
                         items(uiState.posts, key = { it.id }) { post ->
-                            PostCard(
+                            PostListItem(
                                 post = post,
+                                compact = compactFeedEnabled,
+                                compactSelection = compactSelection,
                                 onClick = {
                                     readPostsRepository.markAsRead(post, effectiveNsfwHistoryMode)
                                     onPostClick(post.subreddit, post.id)

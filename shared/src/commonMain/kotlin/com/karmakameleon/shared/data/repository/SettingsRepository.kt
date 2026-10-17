@@ -44,6 +44,9 @@ class SettingsRepository(private val settings: Settings) {
     private val _useSuggestedSort = MutableStateFlow(settings.getBoolean(KEY_USE_SUGGESTED_SORT, true))
     val useSuggestedSort: StateFlow<Boolean> = _useSuggestedSort.asStateFlow()
 
+    private val _compactFeedEnabled = MutableStateFlow(settings.getBoolean(KEY_COMPACT_FEED_ENABLED, false))
+    val compactFeedEnabled: StateFlow<Boolean> = _compactFeedEnabled.asStateFlow()
+
     private val _subredditNsfwCache = MutableStateFlow(loadSubredditNsfwCache())
     val subredditNsfwCache: StateFlow<Map<String, Boolean>> = _subredditNsfwCache.asStateFlow()
 
@@ -179,6 +182,11 @@ class SettingsRepository(private val settings: Settings) {
         settings[KEY_USE_SUGGESTED_SORT] = enabled
     }
 
+    fun setCompactFeedEnabled(enabled: Boolean) {
+        _compactFeedEnabled.value = enabled
+        settings[KEY_COMPACT_FEED_ENABLED] = enabled
+    }
+
     private fun loadNsfwHistoryMode(): NsfwHistoryMode {
         val stored = settings.getStringOrNull(KEY_NSFW_HISTORY_MODE) ?: return NsfwHistoryMode.DONT_SAVE_ANY_NSFW
         return NsfwHistoryMode.entries.firstOrNull { it.name == stored } ?: NsfwHistoryMode.DONT_SAVE_ANY_NSFW
@@ -197,5 +205,6 @@ class SettingsRepository(private val settings: Settings) {
         private const val KEY_SUBREDDIT_NSFW_CACHE = "subreddit_nsfw_cache"
         private const val KEY_SPOILER_PREVIEWS_ENABLED = "spoiler_previews_enabled"
         private const val KEY_USE_SUGGESTED_SORT = "use_suggested_sort"
+        private const val KEY_COMPACT_FEED_ENABLED = "compact_feed_enabled"
     }
 }

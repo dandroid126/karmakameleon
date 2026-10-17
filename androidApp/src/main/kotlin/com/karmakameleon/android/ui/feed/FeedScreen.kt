@@ -41,9 +41,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
-import com.karmakameleon.android.ui.components.PostCard
+import com.karmakameleon.android.ui.components.PostListItem
 import com.karmakameleon.android.ui.components.SortBottomSheet
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
+import com.karmakameleon.android.ui.components.rememberCompactPostSelection
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
@@ -77,6 +78,8 @@ fun FeedScreen(
     val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else NsfwPreviewMode.DO_NOT_PREFETCH
     val effectiveNsfwHistoryMode by remember { derivedStateOf { if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW } }
     val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
+    val compactFeedEnabled by settingsRepository.compactFeedEnabled.collectAsState()
+    val compactSelection = rememberCompactPostSelection()
     
     // Load more when reaching end
     val shouldLoadMore by remember {
@@ -186,8 +189,10 @@ fun FeedScreen(
                         items = uiState.posts,
                         key = { it.id }
                     ) { post ->
-                        PostCard(
+                        PostListItem(
                             post = post,
+                            compact = compactFeedEnabled,
+                            compactSelection = compactSelection,
                             onClick = {
                                 readPostsRepository.markAsRead(post, effectiveNsfwHistoryMode)
                                 onPostClick(post.subreddit, post.id)

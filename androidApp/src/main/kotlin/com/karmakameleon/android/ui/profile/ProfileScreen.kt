@@ -340,6 +340,7 @@ fun ProfileScreen(
                         val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else com.karmakameleon.shared.domain.model.NsfwPreviewMode.DO_NOT_PREFETCH
                         val effectiveNsfwHistoryMode by remember { derivedStateOf { if (nsfwEnabled) nsfwHistoryMode else com.karmakameleon.shared.domain.model.NsfwHistoryMode.DONT_SAVE_ANY_NSFW } }
                         val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
+                        val compactFeedEnabled by settingsRepository.compactFeedEnabled.collectAsState()
                         val navigationHandler: NavigationHandler = koinInject()
 
                         val postsListState = rememberLazyListState()
@@ -467,6 +468,7 @@ fun ProfileScreen(
                                 nsfwHistoryMode = effectiveNsfwHistoryMode,
                                 nsfwPreviewMode = effectiveNsfwPreviewMode,
                                 spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                compactFeed = compactFeedEnabled,
                                 navigationHandler = navigationHandler,
                                 onSetSavedContentType = { viewModel.setSavedContentType(it) },
                                 onPostClick = onPostClick,
@@ -492,6 +494,7 @@ fun ProfileScreen(
                                 nsfwHistoryMode = effectiveNsfwHistoryMode,
                                 nsfwPreviewMode = effectiveNsfwPreviewMode,
                                 spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                compactFeed = compactFeedEnabled,
                                 navigationHandler = navigationHandler,
                                 onPostClick = onPostClick,
                                 onSubredditClick = onSubredditClick,
@@ -509,6 +512,7 @@ fun ProfileScreen(
                                 nsfwHistoryMode = effectiveNsfwHistoryMode,
                                 nsfwPreviewMode = effectiveNsfwPreviewMode,
                                 spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                compactFeed = compactFeedEnabled,
                                 navigationHandler = navigationHandler,
                                 onPostClick = onPostClick,
                                 onSubredditClick = onSubredditClick,
@@ -526,6 +530,7 @@ fun ProfileScreen(
                                 nsfwHistoryMode = effectiveNsfwHistoryMode,
                                 nsfwPreviewMode = effectiveNsfwPreviewMode,
                                 spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                compactFeed = compactFeedEnabled,
                                 navigationHandler = navigationHandler,
                                 onPostClick = onPostClick,
                                 onSubredditClick = onSubredditClick,
