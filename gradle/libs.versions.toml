@@ -19,6 +19,7 @@ media3 = "1.11.1"
 work = "2.12.0"
 android-youtube-player = "13.0.0"
 multiplatform-settings-test = "1.3.0"
+bouncycastle = "1.86"
 
 [libraries]
 # AndroidX
@@ -87,6 +88,11 @@ android-youtube-player = { module = "com.pierfrancescosoffritti.androidyoutubepl
 media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "media3" }
 media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
+
+# Build tooling
+bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-bcutil = { module = "org.bouncycastle:bcutil-jdk18on", version.ref = "bouncycastle" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

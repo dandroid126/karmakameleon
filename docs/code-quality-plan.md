@@ -28,7 +28,7 @@ The code in this repo is written by AI, and there's too much of it for a human t
   *Notes:* configured in `.github/dependabot.yml`, with a 7-day cooldown on new releases (security updates skip it). Dependabot alerts and security updates are on in the repo settings. Check whether the Gradle wrapper gets updates; if not, update it by hand.
 - [ ] **Dependency review action** on PRs, failing on known-vulnerable dependencies and on licenses that conflict with ours.
   *Value:* Dependabot fixes what's already in the repo; this stops new problems from coming in through a PR.
-  *Notes:* GitHub can't read Gradle dependencies itself, so `dependency-review.yml` builds the dependency graph with Gradle and submits it on every PR and push to main. Only GitHub's own code sees the write token. Allowed licenses are the ones compatible with GPL-3.0. Still to do: make it a required check.
+  *Notes:* GitHub can't read Gradle dependencies itself, so `dependency-review.yml` builds the dependency graph with Gradle and submits it on every PR and push to main. Only GitHub's own code sees the write token. Allowed licenses are the ones compatible with GPL-3.0. Its first run had no graph for `main` to compare with, so it checked every dependency and found 3 vulnerabilities (1 critical) in the Bouncy Castle version AGP brings in; the build now requires a fixed version. Still to do: make it a required check.
 - [x] **GitHub secret scanning with push protection** (repo setting; free for public repos).
   *Value:* Gitleaks reports a secret after it's been pushed. Push protection rejects the push.
   *Notes:* both are on. Scanning for generic (non-provider) patterns and checking whether found secrets are still valid are left off.

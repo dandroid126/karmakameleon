@@ -29,6 +29,9 @@ updates:
       coil:
         patterns:
           - "io.coil-kt*"
+      bouncycastle:
+        patterns:
+          - "org.bouncycastle*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
