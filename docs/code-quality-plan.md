@@ -1,0 +1,82 @@
+# Code quality plan
+
+The code in this repo is written by AI, and there's too much of it for a human to review line by line. The PR checks are the gatekeeper: a change merges only when every required check passes. This doc lists the checkers we plan to add, what each one is worth, and which are done.
+
+**How to use this doc:** implement items in any order within a phase, preferably one PR per item. Tick the box in the same PR that adds the checker, and note anything worth remembering (thresholds chosen, rules disabled and why) under the item.
+
+## Decisions
+
+- **All changes go through PRs.** Work happens on a branch and merges into `main` only after the required checks pass. The admin bypass for pushing directly to `main` stays, but only for emergencies.
+- **Baseline existing findings and gate only new code.** Detekt, Android Lint and the duplication checker would report hundreds of findings on the existing code. Each records them in a baseline file so new code is checked strictly, and the baselines are reduced over time. Baselines should only shrink; a PR that grows one needs a good reason.
+- **One local command.** All Gradle-based checks run from a single task (e.g. `./gradlew qualityGate`), listed in CLAUDE.md, so the agent can run the same checks before committing instead of waiting for CI to fail.
+
+## Phase 1: make the gate real
+
+- [ ] **Branch ruleset on `main`.** Require PRs and require the PR checks to pass before merging; keep the admin bypass for emergencies.
+  *Value:* without this, every other checker only reports and doesn't block anything.
+- [ ] **Clean up the workflows.**
+  - Add `permissions: contents: read` to `pr-checks.yml` (it has none, so it gets the default token permissions).
+  - Remove the `develop` branch target from `pr-checks.yml`; that branch doesn't exist.
+  - Delete `unit-tests.yml`; `debug-release.yml` already runs the same tests on every push to `main`.
+  - Combine the PR jobs where it saves setup time, ending in one quality gate task.
+
+  *Value:* less CI time, and a smaller token scope if a workflow step is compromised.
+- [ ] **Dependabot** for Gradle (the version catalog), GitHub Actions and the devcontainer, with related updates grouped (e.g. all AndroidX, all Ktor) to keep the PR count manageable.
+  *Value:* dependencies stay current without manual work, and the required checks validate each update PR automatically.
+- [ ] **Dependency review action** on PRs, failing on known-vulnerable dependencies and on licenses that conflict with ours.
+  *Value:* Dependabot fixes what's already in the repo; this stops new problems from coming in through a PR.
+- [ ] **GitHub secret scanning with push protection** (repo setting; free for public repos).
+  *Value:* Gitleaks reports a secret after it's been pushed. Push protection rejects the push.
+
+## Phase 2: static analysis on every PR
+
+- [ ] **Detekt** with the Compose rules plugin, plus a baseline.
+  *Value:* hard limits on function length, complexity and nesting; catches magic numbers, swallowed exceptions, unused private code and Compose mistakes (modifier order, unstable parameters, state hoisting). Models tend to write long functions that work but are hard to maintain.
+- [ ] **ktlint** (through Spotless or the ktlint Gradle plugin), with auto-fix available locally.
+  *Value:* one deterministic style for every model, so diffs show real changes instead of formatting churn.
+- [ ] **Duplication detection** (PMD CPD with Kotlin support, or jscpd), failing if duplication increases compared with `main`.
+  *Value:* models often copy a similar function instead of extracting it or reusing one. This is the main problem we want to stop. Lower the threshold over time.
+- [ ] **Android Lint** with `warningsAsErrors`, a baseline, and `checkDependencies` so it also covers `shared`.
+  *Value:* catches API calls above `minSdk 24`, manifest security issues, accessibility problems (missing content descriptions, small touch targets) and unused resources: Android-specific bugs the other tools don't know about.
+- [ ] **Kotlin compiler `allWarningsAsErrors`** in both modules.
+  *Value:* nearly free. Stops deprecated APIs, unused variables and unchecked casts from piling up as warnings nobody reads.
+
+## Phase 3: security and architecture
+
+- [ ] **CodeQL** (java-kotlin, `security-extended` queries) on PRs and on a weekly schedule.
+  *Value:* data-flow analysis that follows untrusted input (intents, deep links, network responses) to dangerous sinks: injection, unsafe WebView settings, logged secrets, weak crypto. Matters because the app handles Reddit OAuth tokens.
+- [ ] **zizmor and actionlint** for the workflow files, and pin every action to a commit SHA (Dependabot keeps the SHAs current).
+  *Value:* the workflows handle the signing key and a `contents: write` token, which makes them the most attractive target in the repo. These tools catch template injection, overly broad permissions and unpinned actions.
+- [ ] **Architecture tests with Konsist.** Start with:
+  - No hardcoded colors outside `Theme.kt` (the existing CLAUDE.md rule)
+  - No `android.*` imports in `shared/commonMain`
+  - UI code doesn't call the API client directly
+
+  *Value:* turns the written rules in CLAUDE.md into failing tests. Models forget or ignore written rules; they can't ignore a failing test. Add a test whenever a new rule goes into CLAUDE.md.
+- [ ] **Diff coverage gate with Kover** (replacing the unused JaCoCo setup), e.g. 80% of changed lines covered.
+  *Value:* models skip tests unless something forces them. Measuring only changed lines is fair while `androidApp` has no tests.
+
+## Phase 4: deeper checks
+
+- [ ] **Tests for `androidApp`:** Robolectric for UI logic, and screenshot tests (Roborazzi or Paparazzi).
+  *Value:* the 49 files in `androidApp` have no tests. Screenshot diffs show exactly what changed visually, without anyone having to look at every UI change in the app (the recent unreadable flair colors are the kind of bug this catches).
+- [ ] **Dependency Analysis Gradle Plugin.**
+  *Value:* finds unused dependencies, `implementation` vs `api` mistakes and transitive dependencies used without being declared. Models add libraries and rarely remove them.
+- [ ] **APK size check:** fail when the release APK grows more than N% compared with `main`.
+  *Value:* catches a large library added by accident, or R8 rules that stop shrinking.
+- [ ] **PR size check:** warn above about 500 changed lines.
+  *Value:* smaller PRs make each checker's findings easier to act on and keep an AI reviewer accurate.
+- [ ] **AI review bot** (Claude Code GitHub Action), advisory only, not a required check.
+  *Value:* static tools find patterns; a reviewing model can tell whether the code makes sense and spot logic bugs, poor abstractions and missed reuse. It isn't deterministic, so it doesn't block merges.
+- [ ] **mobsfscan** (optional; only if Lint and CodeQL leave gaps).
+  *Value:* mobile-specific security checks from OWASP MASVS: insecure storage, backup flags, certificate pinning.
+- [ ] **Mutation testing with Pitest** (stretch goal; run weekly or manually, not on every PR).
+  *Value:* finds tests that run code without asserting anything, a common way AI raises coverage without testing. Kotlin support is limited, so it's last.
+
+## Issues found while planning
+
+The checkers above would likely flag these too; fix them as separate PRs, or along with the checker that catches them.
+
+- [ ] `shared/build.gradle.kts` copies the `.env` values into tests in two separate `tasks.withType<Test>` blocks.
+- [ ] `shared/src/iosMain` exists, and `ktor-client-darwin` is declared for it, but there's no iOS target, so that code never compiles. Either add the target or remove the source set and the dependency.
+- [ ] `android:allowBackup="true"` in the manifest lets the stored OAuth tokens end up in device backups. Disable backup or exclude the token storage with backup rules.
