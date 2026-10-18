@@ -70,8 +70,7 @@ A modern, feature-rich Reddit client built with Kotlin Multiplatform (KMP) and J
 │   │   └── di/                       # Dependency injection setup
 │   ├── commonTest/                   # Shared unit tests
 │   ├── androidHostTest/              # Android integration tests
-│   ├── androidMain/                  # Android-specific implementations
-│   └── iosMain/                      # iOS-specific implementations (future)
+│   └── androidMain/                  # Android-specific implementations
 │
 ├── androidApp/                       # Android application
 │   └── src/main/

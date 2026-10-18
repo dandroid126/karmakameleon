@@ -897,7 +897,7 @@ open class RedditApi(
 
     private fun mapPost(dto: PostDto): Post {
         val subredditNsfwKnown = settingsRepository?.isSubredditNsfwCached(dto.subreddit) == true
-        val subredditIsNsfw = if (subredditNsfwKnown) settingsRepository!!.getSubredditNsfw(dto.subreddit) else false
+        val subredditIsNsfw = if (subredditNsfwKnown) settingsRepository.getSubredditNsfw(dto.subreddit) else false
         return Post(
             id = dto.id,
             name = dto.name,
