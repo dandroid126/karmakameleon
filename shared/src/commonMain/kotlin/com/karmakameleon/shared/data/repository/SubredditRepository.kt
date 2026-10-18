@@ -16,26 +16,27 @@ class SubredditRepository(
     private val _subscribedSubreddits = MutableStateFlow<List<Subreddit>>(emptyList())
     val subscribedSubreddits: StateFlow<List<Subreddit>> = _subscribedSubreddits.asStateFlow()
 
-    val sortedSubscribedSubreddits = combine(
-        _subscribedSubreddits,
-        settingsRepository.favoriteSubreddits
-    ) { subreddits, favorites ->
-        subreddits.sortedWith(
-            compareByDescending<Subreddit> { it.displayName.lowercase() in favorites }
-                .thenBy { it.displayName.lowercase() }
-        )
-    }
-    
-    private val _cachedSubreddits = MutableStateFlow<Map<String, Subreddit>>(emptyMap())
+    val sortedSubscribedSubreddits =
+        combine(
+            _subscribedSubreddits,
+            settingsRepository.favoriteSubreddits,
+        ) { subreddits, favorites ->
+            subreddits.sortedWith(
+                compareByDescending<Subreddit> { it.displayName.lowercase() in favorites }
+                    .thenBy { it.displayName.lowercase() },
+            )
+        }
+
+    private val cachedSubreddits = MutableStateFlow<Map<String, Subreddit>>(emptyMap())
 
     suspend fun getSubreddit(name: String): Result<Subreddit> {
         // Check cache first
-        _cachedSubreddits.value[name.lowercase()]?.let { return Result.success(it) }
-        
+        cachedSubreddits.value[name.lowercase()]?.let { return Result.success(it) }
+
         return try {
             val subreddit = redditApi.getSubreddit(name)
             if (subreddit != null) {
-                _cachedSubreddits.update { it + (name.lowercase() to subreddit) }
+                cachedSubreddits.update { it + (name.lowercase() to subreddit) }
                 Result.success(subreddit)
             } else {
                 Result.failure(Exception("Subreddit not found"))
@@ -45,43 +46,43 @@ class SubredditRepository(
         }
     }
 
-    suspend fun loadSubscribedSubreddits(): Result<List<Subreddit>> {
-        return try {
+    suspend fun loadSubscribedSubreddits(): Result<List<Subreddit>> =
+        try {
             val allSubreddits = mutableListOf<Subreddit>()
             var after: String? = null
-            
+
             do {
                 val listing = redditApi.getSubscribedSubreddits(after, 100)
                 allSubreddits.addAll(listing.items)
                 after = listing.after
             } while (after != null)
-            
+
             val sorted = allSubreddits.sortedBy { it.displayName.lowercase() }
             _subscribedSubreddits.value = sorted
-            
+
             // Cache all subscribed subreddits
-            _cachedSubreddits.update { cache ->
+            cachedSubreddits.update { cache ->
                 cache + sorted.associateBy { it.displayName.lowercase() }
             }
-            
+
             Result.success(sorted)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun subscribe(subreddit: Subreddit): Result<Subreddit> {
-        return try {
-            val success = if (subreddit.isSubscribed) {
-                redditApi.unsubscribe(subreddit.displayName)
-            } else {
-                redditApi.subscribe(subreddit.displayName)
-            }
-            
+    suspend fun subscribe(subreddit: Subreddit): Result<Subreddit> =
+        try {
+            val success =
+                if (subreddit.isSubscribed) {
+                    redditApi.unsubscribe(subreddit.displayName)
+                } else {
+                    redditApi.subscribe(subreddit.displayName)
+                }
+
             if (success) {
                 val updated = subreddit.copy(isSubscribed = !subreddit.isSubscribed)
-                _cachedSubreddits.update { it + (subreddit.displayName.lowercase() to updated) }
-                
+                cachedSubreddits.update { it + (subreddit.displayName.lowercase() to updated) }
+
                 // Update subscribed list
                 if (updated.isSubscribed) {
                     _subscribedSubreddits.update { list ->
@@ -92,7 +93,7 @@ class SubredditRepository(
                         list.filter { it.id != subreddit.id }
                     }
                 }
-                
+
                 Result.success(updated)
             } else {
                 Result.failure(Exception("Subscribe/unsubscribe failed"))
@@ -100,25 +101,25 @@ class SubredditRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun searchSubreddits(query: String, includeOver18: Boolean = true): Result<List<Subreddit>> {
-        return try {
+    suspend fun searchSubreddits(
+        query: String,
+        includeOver18: Boolean = true,
+    ): Result<List<Subreddit>> =
+        try {
             val subreddits = redditApi.searchSubreddits(query, includeOver18 = includeOver18)
             Result.success(subreddits)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun getPopularSubreddits(after: String? = null): Result<Listing<Subreddit>> {
-        return try {
+    suspend fun getPopularSubreddits(after: String? = null): Result<Listing<Subreddit>> =
+        try {
             val listing = redditApi.getPopularSubreddits(after)
             Result.success(listing)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    fun getCachedSubreddit(name: String): Subreddit? = _cachedSubreddits.value[name.lowercase()]
+    fun getCachedSubreddit(name: String): Subreddit? = cachedSubreddits.value[name.lowercase()]
 }

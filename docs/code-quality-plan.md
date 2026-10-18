@@ -38,8 +38,9 @@ The code in this repo is written by AI, and there's too much of it for a human t
 
 - [ ] **Detekt** with the Compose rules plugin, plus a baseline.
   *Value:* hard limits on function length, complexity and nesting; catches magic numbers, swallowed exceptions, unused private code and Compose mistakes (modifier order, unstable parameters, state hoisting). Models tend to write long functions that work but are hard to maintain.
-- [ ] **ktlint** (through Spotless or the ktlint Gradle plugin), with auto-fix available locally.
+- [x] **ktlint** (through Spotless or the ktlint Gradle plugin), with auto-fix available locally.
   *Value:* one deterministic style for every model, so diffs show real changes instead of formatting churn.
+  *Notes:* Spotless runs ktlint with the official Kotlin style, configured in `.editorconfig` (140-character lines, PascalCase allowed for `@Composable` functions); `qualityGate` runs `spotlessCheck`, and `./gradlew spotlessApply` fixes what it can. The one-time reformat (#14) is listed in `.git-blame-ignore-revs`, so blame skips it; run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once for local `git blame` to do the same. Spotless doesn't write any formatting to a file that still has an error ktlint can't fix, so #14 skipped 13 files; they were fixed by hand and formatted in the next PR. ktlint moved one end-of-line comment onto the wrong code during the reformat, so check comments after a ktlint upgrade reformats code. ktlint doesn't flag long comments.
 - [ ] **Duplication detection** (PMD CPD with Kotlin support, or jscpd), failing if duplication increases compared with `main`.
   *Value:* models often copy a similar function instead of extracting it or reusing one. This is the main problem we want to stop. Lower the threshold over time.
 - [x] **Android Lint** with `warningsAsErrors`, a baseline, and `checkDependencies` so it also covers `shared`.
@@ -94,3 +95,4 @@ The checkers above would likely flag these too; fix them as separate PRs, or alo
   *Notes:* the tokens were in the same SharedPreferences file as everything else, so they moved to their own file, `auth_tokens`, which the backup rules exclude from cloud backup and device transfer, along with the login WebView's data (`app_webview/`). A token saved the old way moves over on the next start, so nobody gets logged out. Settings, the client ID, read posts and drafts are still backed up.
 - [ ] Gradle warns that the build uses deprecated features that won't work in Gradle 10. Run a build with `--warning-mode all` to find them, and fix them before Gradle 10.
 - [ ] Android plans to deprecate the manifest's `usesCleartextTraffic`. Move the setting into a network security configuration, which can also set certificate transparency and Encrypted Client Hello explicitly.
+- [ ] `UserRepositoryTest.loadCurrentUser_setsIsLoggedIn` is flaky: `UserRepository` starts collecting the login state on `Dispatchers.Default` when it's created, and that first update can land after the test sets `isLoggedIn`, overwriting it. Pass the coroutine scope in through the constructor so tests can control it; the scope is never cancelled today either.

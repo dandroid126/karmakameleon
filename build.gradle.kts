@@ -48,5 +48,5 @@ subprojects {
 tasks.register("qualityGate") {
     group = "verification"
     description = "Runs all static checks."
-    dependsOn(":androidApp:lintDebug")
+    dependsOn(":androidApp:lintDebug", "spotlessCheck")
 }

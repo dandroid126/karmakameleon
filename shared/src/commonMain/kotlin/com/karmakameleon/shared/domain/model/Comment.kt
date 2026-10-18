@@ -34,12 +34,13 @@ data class Comment(
     val subreddit: String,
     val permalink: String,
 ) {
-    val voteState: VoteState get() = when (likes) {
-        true -> VoteState.UPVOTED
-        false -> VoteState.DOWNVOTED
-        null -> VoteState.NONE
-    }
-    
+    val voteState: VoteState get() =
+        when (likes) {
+            true -> VoteState.UPVOTED
+            false -> VoteState.DOWNVOTED
+            null -> VoteState.NONE
+        }
+
     val createdInstant: Instant get() = Instant.fromEpochSeconds(createdUtc)
     val isEdited: Boolean get() = edited != null
 }
@@ -51,21 +52,25 @@ data class MoreComments(
     val parentId: String,
     val count: Int,
     val depth: Int,
-    val children: List<String> // List of comment IDs
+    // List of comment IDs
+    val children: List<String>,
 )
 
 @Serializable
 data class FlairRichtext(
     val type: String, // "text" or "emoji"
     val text: String? = null,
-    val url: String? = null
+    val url: String? = null,
 )
 
-enum class CommentSort(val value: String, val displayName: String) {
+enum class CommentSort(
+    val value: String,
+    val displayName: String,
+) {
     CONFIDENCE("confidence", "Best"),
     TOP("top", "Top"),
     NEW("new", "New"),
     CONTROVERSIAL("controversial", "Controversial"),
     OLD("old", "Old"),
-    QA("qa", "Q&A")
+    QA("qa", "Q&A"),
 }

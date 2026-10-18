@@ -58,7 +58,7 @@ fun MarkdownText(
     onTextClick: (() -> Unit)? = null,
     renderInlineImages: Boolean = true,
     onImageClick: (String) -> Unit = {},
-    navigationHandler: NavigationHandler = koinInject()
+    navigationHandler: NavigationHandler = koinInject(),
 ) {
     val handleLinkClick: (String) -> Unit = { url -> navigationHandler.handleLink(url) }
     val blocks = remember(markdown) { parseMarkdown(markdown) }
@@ -72,7 +72,7 @@ fun MarkdownText(
                 onTextClick = onTextClick,
                 renderInlineImages = renderInlineImages,
                 onImageClick = onImageClick,
-                density = density
+                density = density,
             )
         }
     }
@@ -86,24 +86,26 @@ private fun RenderBlock(
     onTextClick: (() -> Unit)?,
     renderInlineImages: Boolean,
     onImageClick: (String) -> Unit,
-    density: androidx.compose.ui.unit.Density
+    density: androidx.compose.ui.unit.Density,
 ) {
     when (block) {
         is MarkdownBlock.Heading -> {
-            val headingStyle = when (block.level) {
-                1 -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-                2 -> MaterialTheme.typography.headlineSmall
-                3 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                4 -> MaterialTheme.typography.titleLarge
-                5 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                else -> MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.Underline)
-            }
-            val padding = when (block.level) {
-                1 -> Modifier.padding(top = 8.dp, bottom = 8.dp)
-                2 -> Modifier.padding(top = 6.dp, bottom = 6.dp)
-                3, 4 -> Modifier.padding(top = 4.dp, bottom = 4.dp)
-                else -> Modifier.padding(top = 2.dp, bottom = 2.dp)
-            }
+            val headingStyle =
+                when (block.level) {
+                    1 -> MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+                    2 -> MaterialTheme.typography.headlineSmall
+                    3 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    4 -> MaterialTheme.typography.titleLarge
+                    5 -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    else -> MaterialTheme.typography.titleSmall.copy(textDecoration = TextDecoration.Underline)
+                }
+            val padding =
+                when (block.level) {
+                    1 -> Modifier.padding(top = 8.dp, bottom = 8.dp)
+                    2 -> Modifier.padding(top = 6.dp, bottom = 6.dp)
+                    3, 4 -> Modifier.padding(top = 4.dp, bottom = 4.dp)
+                    else -> Modifier.padding(top = 2.dp, bottom = 2.dp)
+                }
             RenderInlineList(
                 inlines = block.children,
                 style = headingStyle,
@@ -111,9 +113,10 @@ private fun RenderBlock(
                 onLinkClick = onLinkClick,
                 onTextClick = onTextClick,
                 renderInlineImages = renderInlineImages,
-                onImageClick = onImageClick
+                onImageClick = onImageClick,
             )
         }
+
         is MarkdownBlock.Paragraph -> {
             RenderInlineList(
                 inlines = block.children,
@@ -122,9 +125,10 @@ private fun RenderBlock(
                 onLinkClick = onLinkClick,
                 onTextClick = onTextClick,
                 renderInlineImages = renderInlineImages,
-                onImageClick = onImageClick
+                onImageClick = onImageClick,
             )
         }
+
         is MarkdownBlock.BulletListItem -> {
             RenderInlineList(
                 inlines = block.children,
@@ -133,9 +137,10 @@ private fun RenderBlock(
                 onLinkClick = onLinkClick,
                 onTextClick = onTextClick,
                 renderInlineImages = renderInlineImages,
-                onImageClick = onImageClick
+                onImageClick = onImageClick,
             )
         }
+
         is MarkdownBlock.OrderedListItem -> {
             RenderInlineList(
                 inlines = block.children,
@@ -144,25 +149,29 @@ private fun RenderBlock(
                 onLinkClick = onLinkClick,
                 onTextClick = onTextClick,
                 renderInlineImages = renderInlineImages,
-                onImageClick = onImageClick
+                onImageClick = onImageClick,
             )
         }
+
         is MarkdownBlock.BlockQuote -> {
             Row(
-                modifier = Modifier
-                    .padding(start = 12.dp, top = 4.dp, bottom = 4.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
-                    )
-                    .height(IntrinsicSize.Min)
-                    .padding(8.dp)
+                modifier =
+                    Modifier
+                        .padding(start = 12.dp, top = 4.dp, bottom = 4.dp)
+                        .background(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            shape =
+                                androidx.compose.foundation.shape
+                                    .RoundedCornerShape(4.dp),
+                        ).height(IntrinsicSize.Min)
+                        .padding(8.dp),
             ) {
                 Box(
-                    modifier = Modifier
-                        .width(4.dp)
-                        .fillMaxHeight()
-                        .background(MaterialTheme.colorScheme.outline)
+                    modifier =
+                        Modifier
+                            .width(4.dp)
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.outline),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
@@ -174,36 +183,41 @@ private fun RenderBlock(
                             onTextClick = onTextClick,
                             renderInlineImages = renderInlineImages,
                             onImageClick = onImageClick,
-                            density = density
+                            density = density,
                         )
                     }
                 }
             }
         }
+
         is MarkdownBlock.CodeBlock -> {
             Text(
                 text = block.text,
                 style = style.copy(fontFamily = FontFamily.Monospace),
-                modifier = Modifier
-                    .padding(top = 2.dp, bottom = 2.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(8.dp)
+                modifier =
+                    Modifier
+                        .padding(top = 2.dp, bottom = 2.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(8.dp),
             )
         }
+
         is MarkdownBlock.Table -> {
             RenderTable(
                 table = block,
                 style = style,
                 onLinkClick = onLinkClick,
-                onTextClick = onTextClick
+                onTextClick = onTextClick,
             )
         }
+
         MarkdownBlock.HorizontalRule -> {
             HorizontalDivider(
                 modifier = Modifier.padding(vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outline
+                color = MaterialTheme.colorScheme.outline,
             )
         }
+
         MarkdownBlock.BlankLine -> {
             val spacerHeight = with(density) { style.fontSize.toPx().toDp() }
             Spacer(modifier = Modifier.height(spacerHeight))
@@ -212,8 +226,13 @@ private fun RenderBlock(
 }
 
 private sealed class InlineSegment {
-    data class TextRun(val inlines: List<MarkdownInline>) : InlineSegment()
-    data class ImageItem(val url: String) : InlineSegment()
+    data class TextRun(
+        val inlines: List<MarkdownInline>,
+    ) : InlineSegment()
+
+    data class ImageItem(
+        val url: String,
+    ) : InlineSegment()
 }
 
 private fun splitInlinesIntoSegments(inlines: List<MarkdownInline>): List<InlineSegment> {
@@ -244,7 +263,7 @@ private fun RenderInlineList(
     onLinkClick: (String) -> Unit = {},
     onTextClick: (() -> Unit)? = null,
     renderInlineImages: Boolean = true,
-    onImageClick: (String) -> Unit = {}
+    onImageClick: (String) -> Unit = {},
 ) {
     val hasSpoilers = inlines.any { containsSpoiler(it) }
     val hasImages = renderInlineImages && inlines.any { it is MarkdownInline.Image }
@@ -252,11 +271,12 @@ private fun RenderInlineList(
     if (!hasSpoilers && !hasImages) {
         val linkColor = MaterialTheme.colorScheme.primary
         val superscriptSize = MaterialTheme.typography.bodySmall.fontSize
-        val annotated = buildAnnotatedString {
-            for (inline in inlines) {
-                appendInline(inline, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+        val annotated =
+            buildAnnotatedString {
+                for (inline in inlines) {
+                    appendInline(inline, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+                }
             }
-        }
         ClickableMarkdownText(text = annotated, style = style, modifier = modifier, onTextClick = onTextClick)
         return
     }
@@ -277,9 +297,10 @@ private fun RenderInlineList(
                         onLinkClick = onLinkClick,
                         onTextClick = onTextClick,
                         renderInlineImages = renderInlineImages,
-                        onImageClick = onImageClick
+                        onImageClick = onImageClick,
                     )
                 }
+
                 is InlineSegment.ImageItem -> {
                     InlineImage(url = segment.url, modifier = Modifier.padding(vertical = 4.dp), onImageClick = onImageClick)
                 }
@@ -297,16 +318,17 @@ private fun RenderInlineSegment(
     onLinkClick: (String) -> Unit,
     onTextClick: (() -> Unit)?,
     renderInlineImages: Boolean,
-    onImageClick: (String) -> Unit
+    onImageClick: (String) -> Unit,
 ) {
     val hasSpoilers = inlines.any { containsSpoiler(it) }
 
     if (!hasSpoilers) {
-        val annotated = buildAnnotatedString {
-            for (inline in inlines) {
-                appendInline(inline, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+        val annotated =
+            buildAnnotatedString {
+                for (inline in inlines) {
+                    appendInline(inline, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+                }
             }
-        }
         ClickableMarkdownText(text = annotated, style = style, onTextClick = onTextClick)
         return
     }
@@ -322,13 +344,15 @@ private fun RenderInlineSegment(
                         superscriptSize = superscriptSize,
                         onLinkClick = onLinkClick,
                         renderInlineImages = renderInlineImages,
-                        onImageClick = onImageClick
+                        onImageClick = onImageClick,
                     )
                 }
+
                 else -> {
-                    val annotated = buildAnnotatedString {
-                        appendInline(inline, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
-                    }
+                    val annotated =
+                        buildAnnotatedString {
+                            appendInline(inline, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+                        }
                     ClickableMarkdownText(text = annotated, style = style, onTextClick = onTextClick)
                 }
             }
@@ -336,8 +360,8 @@ private fun RenderInlineSegment(
     }
 }
 
-private fun containsSpoiler(inline: MarkdownInline): Boolean {
-    return when (inline) {
+private fun containsSpoiler(inline: MarkdownInline): Boolean =
+    when (inline) {
         is MarkdownInline.Spoiler -> true
         is MarkdownInline.Bold -> inline.children.any { containsSpoiler(it) }
         is MarkdownInline.Italic -> inline.children.any { containsSpoiler(it) }
@@ -347,7 +371,6 @@ private fun containsSpoiler(inline: MarkdownInline): Boolean {
         is MarkdownInline.Link -> inline.text.any { containsSpoiler(it) }
         else -> false
     }
-}
 
 @Composable
 private fun SpoilerComponent(
@@ -357,28 +380,30 @@ private fun SpoilerComponent(
     superscriptSize: androidx.compose.ui.unit.TextUnit,
     onLinkClick: (String) -> Unit,
     renderInlineImages: Boolean,
-    onImageClick: (String) -> Unit
+    onImageClick: (String) -> Unit,
 ) {
     var isRevealed by remember { mutableStateOf(false) }
     val spoilerColor = MaterialTheme.colorScheme.onSurfaceVariant
     val textColor = if (isRevealed) MaterialTheme.colorScheme.onSurface else spoilerColor
 
-    val annotated = buildAnnotatedString {
-        for (child in children) {
-            appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+    val annotated =
+        buildAnnotatedString {
+            for (child in children) {
+                appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+            }
         }
-    }
 
     Box(
-        modifier = Modifier
-            .background(if (isRevealed) Color.Transparent else spoilerColor)
-            .clickable { isRevealed = !isRevealed }
-            .padding(horizontal = 2.dp)
+        modifier =
+            Modifier
+                .background(if (isRevealed) Color.Transparent else spoilerColor)
+                .clickable { isRevealed = !isRevealed }
+                .padding(horizontal = 2.dp),
     ) {
         Text(
             text = annotated,
             style = style.copy(color = textColor),
-            modifier = Modifier.padding(2.dp)
+            modifier = Modifier.padding(2.dp),
         )
     }
 }
@@ -388,17 +413,18 @@ private fun ClickableMarkdownText(
     text: AnnotatedString,
     style: TextStyle,
     modifier: Modifier = Modifier,
-    onTextClick: (() -> Unit)? = null
+    onTextClick: (() -> Unit)? = null,
 ) {
-    val mergedStyle = if (style.color == Color.Unspecified) {
-        style.copy(color = MaterialTheme.colorScheme.onSurface)
-    } else {
-        style
-    }
+    val mergedStyle =
+        if (style.color == Color.Unspecified) {
+            style.copy(color = MaterialTheme.colorScheme.onSurface)
+        } else {
+            style
+        }
     Text(
         text = text,
         style = mergedStyle,
-        modifier = if (onTextClick != null) modifier.clickable(onClick = onTextClick) else modifier
+        modifier = if (onTextClick != null) modifier.clickable(onClick = onTextClick) else modifier,
     )
 }
 
@@ -408,44 +434,77 @@ private fun AnnotatedString.Builder.appendInline(
     superscriptSize: androidx.compose.ui.unit.TextUnit,
     onLinkClick: (String) -> Unit,
     renderInlineImages: Boolean,
-    onImageClick: (String) -> Unit
+    onImageClick: (String) -> Unit,
 ) {
     when (inline) {
-        is MarkdownInline.Text -> append(inline.text)
-        is MarkdownInline.Bold -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
-        }
-        is MarkdownInline.Italic -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
-            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
-        }
-        is MarkdownInline.BoldItalic -> withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
-            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
-        }
-        is MarkdownInline.Strikethrough -> withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
-            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
-        }
-        is MarkdownInline.Code -> withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+        is MarkdownInline.Text -> {
             append(inline.text)
         }
-        is MarkdownInline.Superscript -> withStyle(SpanStyle(fontSize = superscriptSize)) {
-            for (child in inline.children) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+
+        is MarkdownInline.Bold -> {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                for (child in inline.children) {
+                    appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+                }
+            }
         }
+
+        is MarkdownInline.Italic -> {
+            withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                for (child in inline.children) {
+                    appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+                }
+            }
+        }
+
+        is MarkdownInline.BoldItalic -> {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic)) {
+                for (child in inline.children) {
+                    appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+                }
+            }
+        }
+
+        is MarkdownInline.Strikethrough -> {
+            withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) {
+                for (child in inline.children) {
+                    appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+                }
+            }
+        }
+
+        is MarkdownInline.Code -> {
+            withStyle(SpanStyle(fontFamily = FontFamily.Monospace)) {
+                append(inline.text)
+            }
+        }
+
+        is MarkdownInline.Superscript -> {
+            withStyle(SpanStyle(fontSize = superscriptSize)) {
+                for (child in inline.children) {
+                    appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
+                }
+            }
+        }
+
         is MarkdownInline.Spoiler -> {
         }
+
         is MarkdownInline.Link -> {
             val url = inline.url
             pushLink(
                 LinkAnnotation.Clickable(
                     tag = url,
                     styles = TextLinkStyles(style = SpanStyle(color = linkColor)),
-                    linkInteractionListener = { onLinkClick(url) }
-                )
+                    linkInteractionListener = { onLinkClick(url) },
+                ),
             )
             withStyle(SpanStyle(color = linkColor)) {
                 for (child in inline.text) appendInline(child, linkColor, superscriptSize, onLinkClick, renderInlineImages, onImageClick)
             }
             pop()
         }
+
         is MarkdownInline.Image -> {
             if (!renderInlineImages) {
                 val isGif = inline.url.contains("giphy") || inline.url.endsWith(".gif")
@@ -455,8 +514,8 @@ private fun AnnotatedString.Builder.appendInline(
                     LinkAnnotation.Clickable(
                         tag = url,
                         styles = TextLinkStyles(style = SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)),
-                        linkInteractionListener = { onImageClick(url) }
-                    )
+                        linkInteractionListener = { onImageClick(url) },
+                    ),
                 )
                 append(label)
                 pop()
@@ -470,7 +529,7 @@ private fun RenderTable(
     table: MarkdownBlock.Table,
     style: TextStyle,
     onLinkClick: (String) -> Unit = {},
-    onTextClick: (() -> Unit)? = null
+    onTextClick: (() -> Unit)? = null,
 ) {
     if (table.header.isEmpty()) return
 
@@ -482,44 +541,53 @@ private fun RenderTable(
     val superscriptSize = MaterialTheme.typography.bodySmall.fontSize
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .border(borderWidth, borderColor)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+                .border(borderWidth, borderColor),
     ) {
         allRows.forEachIndexed { rowIndex, row ->
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Max)
-                    .border(borderWidth, borderColor)
-                    .background(
-                        if (rowIndex == 0) MaterialTheme.colorScheme.surfaceVariant
-                        else Color.Transparent
-                    )
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Max)
+                        .border(borderWidth, borderColor)
+                        .background(
+                            if (rowIndex == 0) {
+                                MaterialTheme.colorScheme.surfaceVariant
+                            } else {
+                                Color.Transparent
+                            },
+                        ),
             ) {
                 repeat(columnCount) { colIndex ->
                     val cellContent = if (colIndex < row.size) row[colIndex] else ""
-                    val cellInlines = com.karmakameleon.shared.util.markdown.parseInlineMarkdown(cellContent)
+                    val cellInlines =
+                        com.karmakameleon.shared.util.markdown
+                            .parseInlineMarkdown(cellContent)
                     Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .border(borderWidth, borderColor)
-                            .padding(8.dp),
-                        contentAlignment = Alignment.TopStart
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .border(borderWidth, borderColor)
+                                .padding(8.dp),
+                        contentAlignment = Alignment.TopStart,
                     ) {
                         val cellStyle = if (rowIndex == 0) style.copy(fontWeight = FontWeight.Bold) else style
-                        val annotated = buildAnnotatedString {
-                            for (inline in cellInlines) {
-                                appendInline(inline, linkColor, superscriptSize, onLinkClick, true, {})
+                        val annotated =
+                            buildAnnotatedString {
+                                for (inline in cellInlines) {
+                                    appendInline(inline, linkColor, superscriptSize, onLinkClick, true, {})
+                                }
                             }
-                        }
                         ClickableMarkdownText(
                             text = annotated,
                             style = cellStyle,
                             modifier = Modifier.wrapContentHeight(),
-                            onTextClick = onTextClick
+                            onTextClick = onTextClick,
                         )
                     }
                 }
@@ -534,26 +602,33 @@ private val aspectRatioCache = mutableMapOf<String, Float>()
 private fun InlineImage(
     url: String,
     modifier: Modifier = Modifier,
-    onImageClick: (String) -> Unit = {}
+    onImageClick: (String) -> Unit = {},
 ) {
     var aspectRatio by remember(url) { mutableStateOf(aspectRatioCache[url]) }
     var showMenu by remember { mutableStateOf(false) }
     val menuItems = imageMenuItems(url)
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .then(
-                if (aspectRatio != null) Modifier.aspectRatio(aspectRatio!!)
-                else Modifier
-            )
-            .clipToBounds()
-            .combinedClickable(
-                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
-                indication = null,
-                onClick = { onImageClick(url) },
-                onLongClick = { showMenu = true }
-            )
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .then(
+                    if (aspectRatio != null) {
+                        Modifier.aspectRatio(aspectRatio!!)
+                    } else {
+                        Modifier
+                    },
+                ).clipToBounds()
+                .combinedClickable(
+                    interactionSource =
+                        remember {
+                            androidx.compose.foundation.interaction
+                                .MutableInteractionSource()
+                        },
+                    indication = null,
+                    onClick = { onImageClick(url) },
+                    onLongClick = { showMenu = true },
+                ),
     ) {
         AsyncImage(
             model = url,
@@ -568,13 +643,13 @@ private fun InlineImage(
                     aspectRatioCache[url] = ratio
                     aspectRatio = ratio
                 }
-            }
+            },
         )
         Box(modifier = Modifier.align(Alignment.BottomEnd)) {
             MediaLongPressMenu(
                 items = menuItems,
                 expanded = showMenu,
-                onDismiss = { showMenu = false }
+                onDismiss = { showMenu = false },
             )
         }
     }
