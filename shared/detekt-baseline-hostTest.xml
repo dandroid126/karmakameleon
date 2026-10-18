@@ -1,0 +1,12 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>TooGenericExceptionThrown:FakeRedditApi.kt:FakeRedditApi$throw Exception("No result configured")</ID>
+    <ID>TooManyFunctions:RedditApiIntegrationTest.kt:RedditApiIntegrationTest</ID>
+    <ID>UnusedParameter:SubredditViewModelTest.kt:SubredditViewModelTest$post: Post</ID>
+    <ID>UnusedPrivateFunction:SubredditViewModelTest.kt:SubredditViewModelTest$private fun emitPostUpdate</ID>
+    <ID>UnusedVariable:FeedViewModelTest.kt:FeedViewModelTest$val initialCount = viewModel.uiState.value.posts.size</ID>
+    <ID>UnusedVariable:PostRepositoryTest.kt:PostRepositoryTest$api</ID>
+  </CurrentIssues>
+</SmellBaseline>

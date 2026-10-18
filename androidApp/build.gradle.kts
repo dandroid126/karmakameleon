@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -110,6 +111,8 @@ dependencies {
     implementation(libs.media3.ui)
 
     implementation(libs.android.youtube.player)
+
+    detektPlugins(libs.compose.rules.detekt)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
