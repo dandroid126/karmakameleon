@@ -44,8 +44,9 @@ The code in this repo is written by AI, and there's too much of it for a human t
   *Value:* models often copy a similar function instead of extracting it or reusing one. This is the main problem we want to stop. Lower the threshold over time.
 - [ ] **Android Lint** with `warningsAsErrors`, a baseline, and `checkDependencies` so it also covers `shared`.
   *Value:* catches API calls above `minSdk 24`, manifest security issues, accessibility problems (missing content descriptions, small touch targets) and unused resources: Android-specific bugs the other tools don't know about.
-- [ ] **Kotlin compiler `allWarningsAsErrors`** in both modules.
+- [x] **Kotlin compiler `allWarningsAsErrors`** in both modules.
   *Value:* nearly free. Stops deprecated APIs, unused variables and unchecked casts from piling up as warnings nobody reads.
+  *Notes:* on for every compilation in `shared` and `androidApp`, tests included. The only warning was an unnecessary `!!`. Kotlin 2's compiler doesn't report unused variables (the IDE does), so Detekt has to catch those. Warnings Gradle reports about the build scripts themselves aren't covered; the only one, a deprecated `androidLibrary` block, was renamed to `android`.
 
 ## Phase 3: security and architecture
 
@@ -85,5 +86,6 @@ The code in this repo is written by AI, and there's too much of it for a human t
 The checkers above would likely flag these too; fix them as separate PRs, or along with the checker that catches them.
 
 - [ ] `shared/build.gradle.kts` copies the `.env` values into tests in two separate `tasks.withType<Test>` blocks.
-- [ ] `shared/src/iosMain` exists, and `ktor-client-darwin` is declared for it, but there's no iOS target, so that code never compiles. Either add the target or remove the source set and the dependency.
+- [x] `shared/src/iosMain` exists, and `ktor-client-darwin` is declared for it, but there's no iOS target, so that code never compiles. Either add the target or remove the source set and the dependency.
+  *Notes:* removed, along with the dependency. It's in git history for when an iOS target is added.
 - [ ] `android:allowBackup="true"` in the manifest lets the stored OAuth tokens end up in device backups. Disable backup or exclude the token storage with backup rules.

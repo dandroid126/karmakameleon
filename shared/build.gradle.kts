@@ -25,7 +25,11 @@ tasks.withType<Test> {
 }
 
 kotlin {
-    androidLibrary {
+    compilerOptions {
+        allWarningsAsErrors = true
+    }
+
+    android {
         namespace = "com.karmakameleon.shared"
         compileSdk = 37
         minSdk = 24
@@ -60,10 +64,6 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
-        }
-        
-        iosMain.dependencies {
-            implementation(libs.ktor.client.darwin)
         }
     }
 }

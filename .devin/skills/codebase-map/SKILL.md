@@ -40,11 +40,10 @@ iOS targets exist in the build but have no UI yet.
 
 ```
 shared/            # KMP: all business logic, API, repositories, ViewModels, domain models, markdown parser
-  commonMain       # code shared across platforms (Android + future iOS)
+  commonMain       # code shared across platforms (only Android for now)
   commonTest       # unit tests (Ktor MockEngine, MapSettings) - 75+ tests
   androidMain      # Android actuals: HttpClientFactory.android.kt, PlatformModule.android.kt
   androidHostTest  # JVM integration tests hitting the real Reddit API
-  iosMain          # iOS actuals: HttpClientFactory.ios.kt, PlatformModule.ios.kt
 
 androidApp/        # Android-only Compose UI, navigation, notifications, auth activity
 ```
