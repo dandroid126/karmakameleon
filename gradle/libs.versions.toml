@@ -19,6 +19,11 @@ media3 = "1.11.1"
 work = "2.12.0"
 android-youtube-player = "13.0.0"
 multiplatform-settings-test = "1.3.0"
+bouncycastle = "1.86"
+jose4j = "0.9.7"
+jdom2 = "2.0.6.1"
+commons-lang3 = "3.21.0"
+httpclient = "4.5.14"
 
 [libraries]
 # AndroidX
@@ -87,6 +92,20 @@ android-youtube-player = { module = "com.pierfrancescosoffritti.androidyoutubepl
 media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
 media3-exoplayer-hls = { module = "androidx.media3:media3-exoplayer-hls", version.ref = "media3" }
 media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
+
+# Build tooling
+bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-bcutil = { module = "org.bouncycastle:bcutil-jdk18on", version.ref = "bouncycastle" }
+jose4j = { module = "org.bitbucket.b_c:jose4j", version.ref = "jose4j" }
+jdom2 = { module = "org.jdom:jdom2", version.ref = "jdom2" }
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
+httpclient = { module = "org.apache.httpcomponents:httpclient", version.ref = "httpclient" }
+
+[bundles]
+# Fixed versions of libraries that the build tooling (mostly AGP) brings in with known vulnerabilities.
+# They're required as constraints in build.gradle.kts, so they only raise a version and never add a library.
+security-fixes = ["bouncycastle-bcprov", "bouncycastle-bcpkix", "bouncycastle-bcutil", "jose4j", "jdom2", "commons-lang3", "httpclient"]
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

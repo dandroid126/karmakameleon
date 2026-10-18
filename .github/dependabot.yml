@@ -1,0 +1,60 @@
+version: 2
+
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Wait a week before taking a new release, so a broken or compromised one has time to be
+    # caught and pulled. Security updates don't wait.
+    cooldown:
+      default-days: 7
+    # Libraries that are released together go in one PR, since they often have to be updated together.
+    groups:
+      kotlin:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "org.jetbrains.compose*"
+          - "org.jetbrains.androidx*"
+      androidx:
+        patterns:
+          - "androidx.*"
+          - "com.android.*"
+      ktor:
+        patterns:
+          - "io.ktor*"
+      koin:
+        patterns:
+          - "io.insert-koin*"
+      coil:
+        patterns:
+          - "io.coil-kt*"
+      # Fixed versions required for the build tooling (the security-fixes bundle in the version catalog).
+      security-fixes:
+        patterns:
+          - "org.bouncycastle*"
+          - "org.bitbucket.b_c:jose4j"
+          - "org.jdom:jdom2"
+          - "org.apache.commons:commons-lang3"
+          - "org.apache.httpcomponents:httpclient"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+
+  - package-ecosystem: "docker"
+    directory: "/.devcontainer"
+    schedule:
+      interval: "monthly"
