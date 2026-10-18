@@ -7,6 +7,8 @@ import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,6 +16,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class UserRepositoryTest {
     private fun createRepo(
         api: FakeRedditApi = FakeRedditApi(),
@@ -53,6 +56,20 @@ class UserRepositoryTest {
             api.meResult = account
 
             repo.loadCurrentUser()
+            assertTrue(repo.isLoggedIn.value)
+        }
+
+    @Test
+    fun loadCurrentUser_isNotOverwrittenByTheFirstLoginStateUpdate() =
+        runTest {
+            val api = FakeRedditApi().apply { meResult = createTestAccount(name = "testuser") }
+            // The login state collector only runs when this test lets it, so anything it hasn't applied yet comes
+            // after loadCurrentUser().
+            val repo = UserRepository(api, FakeAuthManager(), backgroundScope)
+
+            repo.loadCurrentUser()
+            runCurrent()
+
             assertTrue(repo.isLoggedIn.value)
         }
 
