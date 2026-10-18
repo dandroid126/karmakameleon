@@ -66,6 +66,7 @@ import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.VoteState
 import com.karmakameleon.shared.util.flairNeedsDarkText
 import com.karmakameleon.shared.util.parseFlairColor
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 private val POST_CARD_MAX_CONTENT_HEIGHT = 400.dp
@@ -80,11 +81,11 @@ fun PostCard(
     onDownvote: () -> Unit,
     onSave: () -> Unit,
     onHide: () -> Unit,
-    onBlockSubreddit: () -> Unit = {},
     isLoggedIn: Boolean,
+    modifier: Modifier = Modifier,
+    onBlockSubreddit: () -> Unit = {},
     onLinkClick: (String) -> Unit = {},
     onCrosspostClick: () -> Unit = {},
-    modifier: Modifier = Modifier,
     isRead: Boolean = false,
     nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH,
     spoilerPreviewsEnabled: Boolean = false
@@ -645,8 +646,8 @@ fun formatTimeAgo(timestampSeconds: Long): String {
 
 fun formatNumber(num: Int): String {
     return when {
-        num >= 1_000_000 -> String.format("%.1fM", num / 1_000_000.0)
-        num >= 1_000 -> String.format("%.1fK", num / 1_000.0)
+        num >= 1_000_000 -> String.format(Locale.getDefault(), "%.1fM", num / 1_000_000.0)
+        num >= 1_000 -> String.format(Locale.getDefault(), "%.1fK", num / 1_000.0)
         else -> num.toString()
     }
 }

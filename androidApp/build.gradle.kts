@@ -62,6 +62,15 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    lint {
+        warningsAsErrors = true
+        // Issues that need design or behavior changes; fix them and remove them from here.
+        baseline = file("lint-baseline.xml")
+        // These fail whenever something newer is released, so the same code could pass one day and fail the
+        // next. Dependabot keeps the dependencies current.
+        disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion", "OldTargetApi")
+    }
 }
 
 kotlin {

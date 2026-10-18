@@ -8,7 +8,7 @@ The code in this repo is written by AI, and there's too much of it for a human t
 
 - **All changes go through PRs.** Work happens on a branch and merges into `main` only after the required checks pass. The admin bypass for pushing directly to `main` stays, but only for emergencies.
 - **Baseline existing findings and gate only new code.** Detekt, Android Lint and the duplication checker would report hundreds of findings on the existing code. Each records them in a baseline file so new code is checked strictly, and the baselines are reduced over time. Baselines should only shrink; a PR that grows one needs a good reason.
-- **One local command.** All Gradle-based checks run from a single task (e.g. `./gradlew qualityGate`), listed in CLAUDE.md, so the agent can run the same checks before committing instead of waiting for CI to fail.
+- **One local command.** All static checks run from a single task, `./gradlew qualityGate`, listed in CLAUDE.md, so the agent can run the same checks before committing instead of waiting for CI to fail.
 
 ## Phase 1: make the gate real
 
@@ -42,8 +42,9 @@ The code in this repo is written by AI, and there's too much of it for a human t
   *Value:* one deterministic style for every model, so diffs show real changes instead of formatting churn.
 - [ ] **Duplication detection** (PMD CPD with Kotlin support, or jscpd), failing if duplication increases compared with `main`.
   *Value:* models often copy a similar function instead of extracting it or reusing one. This is the main problem we want to stop. Lower the threshold over time.
-- [ ] **Android Lint** with `warningsAsErrors`, a baseline, and `checkDependencies` so it also covers `shared`.
+- [x] **Android Lint** with `warningsAsErrors`, a baseline, and `checkDependencies` so it also covers `shared`.
   *Value:* catches API calls above `minSdk 24`, manifest security issues, accessibility problems (missing content descriptions, small touch targets) and unused resources: Android-specific bugs the other tools don't know about.
+  *Notes:* runs as `:androidApp:lintDebug` through `qualityGate`, which CI runs as the Quality Gate check. It only covers `androidApp`: the KMP library plugin `shared` uses has no lint for its main code, and `checkDependencies` doesn't reach it either (tested with a deliberate issue). `shared` is mostly plain Kotlin, so Detekt covers it instead. Of the 21 starting issues, 16 were fixed or suppressed with a reason (JavaScript in the two WebViews, the launcher icon's long vector paths), and the baseline holds the 3 that need design or behavior work: the launcher icon's missing monochrome layer and the reply bar's use of `Configuration.screenHeightDp`. The checks that fail when something new is released are off, so results don't change from one day to the next: `NewerVersionAvailable`, `GradleDependency`, `AndroidGradlePluginVersion` and `OldTargetApi`. Dependabot covers the dependencies, but nothing covers `targetSdk` (36, one behind `compileSdk` 37), so update it by hand after each Android release.
 - [x] **Kotlin compiler `allWarningsAsErrors`** in both modules.
   *Value:* nearly free. Stops deprecated APIs, unused variables and unchecked casts from piling up as warnings nobody reads.
   *Notes:* on for every compilation in `shared` and `androidApp`, tests included. The only warning was an unnecessary `!!`. Kotlin 2's compiler doesn't report unused variables (the IDE does), so Detekt has to catch those. Warnings Gradle reports about the build scripts themselves aren't covered; the only one, a deprecated `androidLibrary` block, was renamed to `android`.

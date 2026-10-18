@@ -1,5 +1,6 @@
 package com.karmakameleon.android.ui.profile
 
+import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
@@ -28,6 +29,8 @@ import androidx.compose.ui.viewinterop.AndroidView
  * Shows Reddit's authorization page. Login happens in-app so that any redirect URI works: [onRedirect]
  * is asked about every page before it loads, and returns true for the redirect back to the app.
  */
+// Reddit's login page needs JavaScript.
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun RedditLoginWebView(
     authUrl: String,

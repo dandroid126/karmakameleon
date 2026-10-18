@@ -154,7 +154,7 @@ fun PostDetailScreen(
     var showDiscardDraftOption by remember { mutableStateOf(false) }
     var isBodyExpanded by rememberSaveable { mutableStateOf(true) }
     var imageViewerUrls by remember { mutableStateOf<List<String>>(emptyList()) }
-    var imageViewerInitialPage by remember { mutableStateOf(0) }
+    var imageViewerInitialPage by remember { mutableIntStateOf(0) }
     var selectionVersion by remember { mutableIntStateOf(0) }
     val touchedSelectable = remember { mutableStateOf(false) }
     val selectionMayBeActive = remember { mutableStateOf(false) }
