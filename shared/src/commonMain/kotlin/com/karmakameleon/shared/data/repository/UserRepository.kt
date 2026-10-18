@@ -10,6 +10,7 @@ import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +20,7 @@ import kotlinx.coroutines.launch
 class UserRepository(
     private val redditApi: RedditApi,
     private val authManager: AuthManager,
+    scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
 ) {
     private val _currentAccount = MutableStateFlow<Account?>(null)
     val currentAccount: StateFlow<Account?> = _currentAccount.asStateFlow()
@@ -28,7 +30,9 @@ class UserRepository(
 
     init {
         _isLoggedIn.value = authManager.isLoggedIn()
-        CoroutineScope(Dispatchers.Default).launch {
+        // Undispatched, so the current login state is applied before init returns. Otherwise that first update could
+        // land after loadCurrentUser() and overwrite what it set.
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
             authManager.isLoggedInFlow.collect { isLoggedIn ->
                 _isLoggedIn.value = isLoggedIn
             }
