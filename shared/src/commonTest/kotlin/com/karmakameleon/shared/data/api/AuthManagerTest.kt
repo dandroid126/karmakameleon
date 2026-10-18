@@ -3,9 +3,15 @@ package com.karmakameleon.shared.data.api
 import com.russhwolf.settings.MapSettings
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondOk
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.forms.FormDataContent
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.Parameters
+import io.ktor.http.headersOf
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,9 +20,25 @@ import kotlin.test.assertTrue
 
 class AuthManagerTest {
 
-    private fun createAuthManager(settings: MapSettings = MapSettings()): AuthManager {
+    private fun createAuthManager(
+        settings: MapSettings = MapSettings(),
+        tokenSettings: MapSettings = MapSettings(),
+    ): AuthManager {
         val client = HttpClient(MockEngine { respondOk() })
-        return AuthManager(client, settings)
+        return AuthManager(client, settings, tokenSettings)
+    }
+
+    // Answers the token request with a real token, as Reddit does after a successful login.
+    private fun createLoggingInAuthManager(settings: MapSettings, tokenSettings: MapSettings): AuthManager {
+        val client = HttpClient(MockEngine {
+            respond(
+                content = TOKEN_RESPONSE,
+                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+            )
+        }) {
+            install(ContentNegotiation) { json() }
+        }
+        return AuthManager(client, settings, tokenSettings).apply { setClientId("my_client") }
     }
 
     @Test
@@ -162,7 +184,7 @@ class AuthManagerTest {
             sentForm = (request.body as FormDataContent).formData
             respondOk()
         })
-        val authManager = AuthManager(client, MapSettings())
+        val authManager = AuthManager(client, MapSettings(), MapSettings())
         authManager.setClientId("my_client")
         authManager.setRedirectUri("myclient://callback")
 
@@ -171,5 +193,63 @@ class AuthManagerTest {
         assertEquals("authorization_code", sentForm?.get("grant_type"))
         assertEquals("the_code", sentForm?.get("code"))
         assertEquals("myclient://callback", sentForm?.get("redirect_uri"))
+    }
+
+    @Test
+    fun exchangeCodeForToken_savesTokenOnlyInTokenSettings() = runTest {
+        val settings = MapSettings()
+        val tokenSettings = MapSettings()
+        val authManager = createLoggingInAuthManager(settings, tokenSettings)
+
+        assertTrue(authManager.exchangeCodeForToken("the_code"))
+
+        assertTrue(authManager.isLoggedIn())
+        assertTrue(tokenSettings.hasKey(TOKEN_KEY))
+        assertFalse(settings.hasKey(TOKEN_KEY))
+    }
+
+    @Test
+    fun clearToken_removesTokenFromTokenSettings() = runTest {
+        val tokenSettings = MapSettings()
+        val authManager = createLoggingInAuthManager(MapSettings(), tokenSettings)
+        authManager.exchangeCodeForToken("the_code")
+
+        authManager.clearToken()
+
+        assertFalse(tokenSettings.hasKey(TOKEN_KEY))
+    }
+
+    @Test
+    fun tokenSavedWithOtherSettings_movesToTokenSettings() {
+        val settings = MapSettings()
+        val tokenSettings = MapSettings()
+        settings.putString(TOKEN_KEY, SAVED_TOKEN)
+
+        val authManager = createAuthManager(settings, tokenSettings)
+
+        assertTrue(authManager.isLoggedIn())
+        assertEquals(SAVED_TOKEN, tokenSettings.getStringOrNull(TOKEN_KEY))
+        assertFalse(settings.hasKey(TOKEN_KEY))
+    }
+
+    @Test
+    fun tokenSavedWithOtherSettings_doesNotReplaceTokenInTokenSettings() {
+        val settings = MapSettings()
+        val tokenSettings = MapSettings()
+        settings.putString(TOKEN_KEY, SAVED_TOKEN.replace("saved_refresh", "old_refresh"))
+        tokenSettings.putString(TOKEN_KEY, SAVED_TOKEN)
+
+        createAuthManager(settings, tokenSettings)
+
+        assertEquals(SAVED_TOKEN, tokenSettings.getStringOrNull(TOKEN_KEY))
+        assertFalse(settings.hasKey(TOKEN_KEY))
+    }
+
+    private companion object {
+        const val TOKEN_KEY = "token_info"
+        const val TOKEN_RESPONSE =
+            """{"access_token":"access","token_type":"bearer","expires_in":3600,"refresh_token":"refresh","scope":"read"}"""
+        const val SAVED_TOKEN =
+            """{"accessToken":"access","refreshToken":"saved_refresh","expiresAt":4102444800,"scope":"read"}"""
     }
 }

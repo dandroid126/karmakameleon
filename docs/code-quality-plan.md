@@ -86,7 +86,9 @@ The code in this repo is written by AI, and there's too much of it for a human t
 
 The checkers above would likely flag these too; fix them as separate PRs, or along with the checker that catches them.
 
-- [ ] `shared/build.gradle.kts` copies the `.env` values into tests in two separate `tasks.withType<Test>` blocks.
+- [x] `shared/build.gradle.kts` copies the `.env` values into tests in two separate `tasks.withType<Test>` blocks.
+  *Notes:* the second block now only configures JaCoCo.
 - [x] `shared/src/iosMain` exists, and `ktor-client-darwin` is declared for it, but there's no iOS target, so that code never compiles. Either add the target or remove the source set and the dependency.
   *Notes:* removed, along with the dependency. It's in git history for when an iOS target is added.
-- [ ] `android:allowBackup="true"` in the manifest lets the stored OAuth tokens end up in device backups. Disable backup or exclude the token storage with backup rules.
+- [x] `android:allowBackup="true"` in the manifest lets the stored OAuth tokens end up in device backups. Disable backup or exclude the token storage with backup rules.
+  *Notes:* the tokens were in the same SharedPreferences file as everything else, so they moved to their own file, `auth_tokens`, which the backup rules exclude from cloud backup and device transfer, along with the login WebView's data (`app_webview/`). A token saved the old way moves over on the next start, so nobody gets logged out. Settings, the client ID, read posts and drafts are still backed up.

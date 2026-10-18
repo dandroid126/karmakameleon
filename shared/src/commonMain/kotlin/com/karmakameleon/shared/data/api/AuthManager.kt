@@ -28,6 +28,8 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 open class AuthManager(
     private val httpClient: HttpClient,
     private val settings: Settings,
+    // Kept out of device backups and transfers, so the tokens never leave the device.
+    private val tokenSettings: Settings,
 ) {
     companion object {
         private const val KEY_TOKEN_INFO = "token_info"
@@ -50,18 +52,28 @@ open class AuthManager(
     val isLoggedInFlow: StateFlow<Boolean> = _isLoggedInFlow.asStateFlow()
 
     init {
+        moveTokenToTokenSettings()
         loadCachedToken()
         _isLoggedInFlow.value = isLoggedIn()
     }
 
+    // The token used to be saved with the other settings, which are backed up.
+    private fun moveTokenToTokenSettings() {
+        val tokenJson: String = settings[KEY_TOKEN_INFO] ?: return
+        if (!tokenSettings.hasKey(KEY_TOKEN_INFO)) {
+            tokenSettings[KEY_TOKEN_INFO] = tokenJson
+        }
+        settings.remove(KEY_TOKEN_INFO)
+    }
+
     private fun loadCachedToken() {
-        val tokenJson: String? = settings[KEY_TOKEN_INFO]
+        val tokenJson: String? = tokenSettings[KEY_TOKEN_INFO]
         if (tokenJson != null) {
             try {
                 cachedToken = json.decodeFromString(tokenJson)
             } catch (e: Exception) {
                 Napier.e("Failed to load cached token", e)
-                settings.remove(KEY_TOKEN_INFO)
+                tokenSettings.remove(KEY_TOKEN_INFO)
             }
         }
     }
@@ -210,13 +222,13 @@ open class AuthManager(
             scope = response.scope
         )
         cachedToken = tokenInfo
-        settings[KEY_TOKEN_INFO] = json.encodeToString(tokenInfo)
+        tokenSettings[KEY_TOKEN_INFO] = json.encodeToString(tokenInfo)
         _isLoggedInFlow.value = isLoggedIn()
     }
 
     open fun clearToken() {
         cachedToken = null
-        settings.remove(KEY_TOKEN_INFO)
+        tokenSettings.remove(KEY_TOKEN_INFO)
         _isLoggedInFlow.value = false
     }
 

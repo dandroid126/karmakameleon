@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backup rules for Android 11 and older; data_extraction_rules.xml covers newer versions. Keep the two in sync. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="auth_tokens.xml" />
+    <exclude domain="root" path="app_webview/" />
+</full-backup-content>

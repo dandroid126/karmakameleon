@@ -114,13 +114,8 @@ tasks.register("jacocoTestReport", org.gradle.testing.jacoco.tasks.JacocoReport:
     )
 }
 
-// Configure test environment variables and JaCoCo for all test tasks
+// Configure JaCoCo for all test tasks
 tasks.withType<Test> {
-    envVars.forEach { (key, value) ->
-        systemProperty(key, value)
-    }
-    
-    // Configure JaCoCo for test tasks
     extensions.configure(org.gradle.testing.jacoco.plugins.JacocoTaskExtension::class) {
         isIncludeNoLocationClasses = true
         excludes = listOf("jdk.internal.*")
