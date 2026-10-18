@@ -59,7 +59,7 @@ class RedditApiIntegrationTest {
         }
 
         val settings = MapSettings()
-        val authManager = AuthManager(httpClient, settings)
+        val authManager = AuthManager(httpClient, settings, MapSettings())
         authManager.setClientId(clientId)
 
         return RedditApi(httpClient, authManager)

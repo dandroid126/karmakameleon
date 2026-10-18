@@ -11,7 +11,8 @@ class FakeAuthManager(
     private val settings: MapSettings = MapSettings()
 ) : AuthManager(
     httpClient = HttpClient(MockEngine { respond("", HttpStatusCode.OK) }),
-    settings = settings
+    settings = settings,
+    tokenSettings = MapSettings(),
 ) {
     var fakeAccessToken: String? = "fake_token"
     var fakeIsLoggedIn: Boolean = false

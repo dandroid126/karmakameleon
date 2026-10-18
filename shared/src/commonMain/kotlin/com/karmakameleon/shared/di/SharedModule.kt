@@ -14,12 +14,16 @@ import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.russhwolf.settings.Settings
 import org.koin.core.module.Module
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
+
+// The settings that hold the login tokens, which each platform keeps out of backups.
+val TOKEN_SETTINGS = named("tokenSettings")
 
 val sharedModule = module {
     single { createHttpClientWithConfig() }
     single { Settings() }
-    single { AuthManager(get(), get()) }
+    single { AuthManager(get(), get(), get(TOKEN_SETTINGS)) }
     single { SettingsRepository(get()) }
     single { RedditApi(get(), get(), get()) }
     
