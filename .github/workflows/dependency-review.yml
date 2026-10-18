@@ -28,6 +28,9 @@ jobs:
       - name: Generate dependency graph
         id: graph
         uses: gradle/actions/dependency-submission@v5
+        env:
+          # Only what goes into the APKs is "runtime"; build tooling and tests are "development".
+          DEPENDENCY_GRAPH_RUNTIME_INCLUDE_CONFIGURATIONS: '^(debug|release)RuntimeClasspath$'
         with:
           dependency-graph: generate-and-upload
 
@@ -83,12 +86,23 @@ jobs:
             exit 1
           fi
 
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@v4
+      # The build tooling runs in CI next to the signing key, so its vulnerabilities count too.
+      - name: Review vulnerabilities
+        uses: actions/dependency-review-action@v5
         with:
           # GitHub processes a submitted graph in the background, so wait for it to show up.
           retry-on-snapshot-warnings: true
           retry-on-snapshot-warnings-timeout: 300
+          fail-on-scopes: runtime, development, unknown
+          license-check: false
+
+      # Only what ships in the app has to be compatible with its license, so build tooling and tests
+      # can use any license.
+      - name: Review licenses
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-scopes: runtime
+          vulnerability-check: false
           # Licenses compatible with the app's GPL-3.0 license.
           allow-licenses: >-
             0BSD, Apache-2.0, BSD-2-Clause, BSD-3-Clause, BSL-1.0, CC0-1.0, ISC, MIT, MPL-2.0,
