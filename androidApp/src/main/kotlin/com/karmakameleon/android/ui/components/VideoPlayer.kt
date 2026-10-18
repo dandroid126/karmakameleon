@@ -60,6 +60,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.karmakameleon.android.ui.theme.mediaColors
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -155,6 +158,25 @@ fun VideoPlayer(
             exoPlayer.stop()
             exoPlayer.release()
         }
+    }
+
+    // Pause when the app leaves the screen, so the audio doesn't keep playing in the background, and pick up again on
+    // return if it was playing.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        var wasPlaying = false
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> {
+                    wasPlaying = exoPlayer.playWhenReady
+                    exoPlayer.pause()
+                }
+                Lifecycle.Event.ON_START -> if (wasPlaying) exoPlayer.play()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     // Update position periodically while playing
