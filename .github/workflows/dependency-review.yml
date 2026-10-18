@@ -27,7 +27,7 @@ jobs:
 
       - name: Generate dependency graph
         id: graph
-        uses: gradle/actions/dependency-submission@v5
+        uses: gradle/actions/dependency-submission@v6
         env:
           # Only what goes into the APKs is "runtime"; build tooling and tests are "development".
           DEPENDENCY_GRAPH_RUNTIME_INCLUDE_CONFIGURATIONS: '^(debug|release)RuntimeClasspath$'
