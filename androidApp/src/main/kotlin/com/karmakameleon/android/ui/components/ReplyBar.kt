@@ -34,8 +34,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.doAfterTextChanged
@@ -55,7 +55,8 @@ fun ReplyBar(
 ) {
     // Cap the text field at half the space left above the keyboard so the whole bar stays visible.
     val imeHeight = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp() }
-    val maxHeight = (LocalConfiguration.current.screenHeightDp.dp - imeHeight) / 2
+    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val maxHeight = (windowHeight - imeHeight) / 2
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
