@@ -17,6 +17,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.spotless)
+    alias(libs.plugins.detekt) apply false
 }
 
 // Formats Kotlin with ktlint, using the rules in .editorconfig. Run spotlessApply to fix what it reports.
@@ -35,6 +36,14 @@ spotless {
 }
 
 subprojects {
+    plugins.withId("dev.detekt") {
+        extensions.configure<dev.detekt.gradle.extensions.DetektExtension> {
+            buildUponDefaultConfig = true
+            config.setFrom(rootProject.file("config/detekt/detekt.yml"))
+            baseline = file("detekt-baseline.xml")
+        }
+    }
+
     val constraintHandler = dependencies.constraints
     // AGP runs lint with its own copy of the tooling, which brings in the same old libraries.
     configurations.matching { it.name == "androidLintTool" }.configureEach {
@@ -48,5 +57,12 @@ subprojects {
 tasks.register("qualityGate") {
     group = "verification"
     description = "Runs all static checks."
-    dependsOn(":androidApp:lintDebug", "spotlessCheck")
+    dependsOn(
+        ":androidApp:lintDebug",
+        "spotlessCheck",
+        // Detekt with type resolution. The app's debug and release variants have the same code, so one is enough.
+        ":androidApp:detektDebug",
+        ":shared:detektMainAndroid",
+        ":shared:detektHostTestAndroid",
+    )
 }

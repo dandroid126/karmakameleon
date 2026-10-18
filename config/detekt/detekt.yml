@@ -1,0 +1,22 @@
+# Changes to Detekt's default rules; everything not listed here uses the default.
+# Findings in code that existed when Detekt was added are in each module's detekt-baseline.xml. New code is held to
+# every rule, so fix a finding instead of adding it to the baseline.
+
+style:
+  MaxLineLength:
+    # Same as ktlint (.editorconfig).
+    maxLineLength: 140
+  MagicNumber:
+    # Compose UI is full of literal sizes and colors.
+    ignoreAnnotated: ['Composable']
+
+naming:
+  FunctionNaming:
+    # Compose functions are named like classes, and test names use underscores.
+    ignoreAnnotated: ['Composable', 'Test']
+
+complexity:
+  LongParameterList:
+    # Composables take many optional parameters by design.
+    ignoreAnnotated: ['Composable']
+    ignoreDefaultParameters: true
