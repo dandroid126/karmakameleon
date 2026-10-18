@@ -1,11 +1,8 @@
 buildscript {
     dependencies {
         constraints {
-            // AGP brings in an older Bouncy Castle with known vulnerabilities, so require a fixed one.
-            // Its modules have to be on the same version.
-            classpath(libs.bouncycastle.bcprov)
-            classpath(libs.bouncycastle.bcpkix)
-            classpath(libs.bouncycastle.bcutil)
+            // AGP brings in older versions of some libraries with known vulnerabilities, so require fixed ones.
+            libs.bundles.security.fixes.get().forEach { classpath("${it.module}:${it.version}") }
         }
     }
 }
@@ -21,11 +18,10 @@ plugins {
 
 subprojects {
     val constraintHandler = dependencies.constraints
-    // AGP runs lint with its own copy of the tooling, which brings in the same old Bouncy Castle.
+    // AGP runs lint with its own copy of the tooling, which brings in the same old libraries.
     configurations.matching { it.name == "androidLintTool" }.configureEach {
-        listOf(libs.bouncycastle.bcprov, libs.bouncycastle.bcpkix, libs.bouncycastle.bcutil).forEach {
-            val library = it.get()
-            dependencyConstraints.add(constraintHandler.create("${library.module}:${library.version}"))
+        libs.bundles.security.fixes.get().forEach {
+            dependencyConstraints.add(constraintHandler.create("${it.module}:${it.version}"))
         }
     }
 }

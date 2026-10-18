@@ -29,9 +29,14 @@ updates:
       coil:
         patterns:
           - "io.coil-kt*"
-      bouncycastle:
+      # Fixed versions required for the build tooling (the security-fixes bundle in the version catalog).
+      security-fixes:
         patterns:
           - "org.bouncycastle*"
+          - "org.bitbucket.b_c:jose4j"
+          - "org.jdom:jdom2"
+          - "org.apache.commons:commons-lang3"
+          - "org.apache.httpcomponents:httpclient"
 
   - package-ecosystem: "github-actions"
     directory: "/"
