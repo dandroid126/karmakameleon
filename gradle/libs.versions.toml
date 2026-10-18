@@ -24,6 +24,7 @@ spotless = "8.9.0"
 ktlint = "1.8.0"
 detekt = "2.0.0-alpha.6"
 compose-rules = "0.6.8"
+pmd = "7.28.0"
 jose4j = "0.9.7"
 jdom2 = "2.0.6.1"
 commons-lang3 = "3.21.0"
@@ -107,6 +108,10 @@ httpclient = { module = "org.apache.httpcomponents:httpclient", version.ref = "h
 
 # Static analysis
 compose-rules-detekt = { module = "io.nlopez.compose.rules:detekt", version.ref = "compose-rules" }
+
+# Duplication detection (PMD's copy-paste detector)
+pmd-cli = { module = "net.sourceforge.pmd:pmd-cli", version.ref = "pmd" }
+pmd-kotlin = { module = "net.sourceforge.pmd:pmd-kotlin", version.ref = "pmd" }
 
 [bundles]
 # Fixed versions of libraries that the build tooling (mostly AGP) brings in with known vulnerabilities.
