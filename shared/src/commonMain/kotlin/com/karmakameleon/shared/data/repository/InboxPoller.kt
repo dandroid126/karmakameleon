@@ -17,8 +17,8 @@ import kotlinx.coroutines.launch
 class InboxPoller(
     private val messageRepository: MessageRepository,
     private val authManager: AuthManager,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
 ) {
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var pollingJob: Job? = null
 
     private val _newMessages = MutableSharedFlow<List<Message>>(replay = 0)

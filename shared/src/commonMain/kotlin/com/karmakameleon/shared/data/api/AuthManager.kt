@@ -2,6 +2,7 @@ package com.karmakameleon.shared.data.api
 
 import com.karmakameleon.shared.data.api.dto.AccessTokenResponse
 import com.karmakameleon.shared.data.api.dto.TokenInfo
+import com.karmakameleon.shared.util.runSuspendCatching
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import com.russhwolf.settings.set
@@ -73,7 +74,7 @@ open class AuthManager(
         if (tokenJson != null) {
             try {
                 cachedToken = json.decodeFromString(tokenJson)
-            } catch (e: Exception) {
+            } catch (e: IllegalArgumentException) {
                 Napier.e("Failed to load cached token", e)
                 tokenSettings.remove(KEY_TOKEN_INFO)
             }
@@ -110,7 +111,7 @@ open class AuthManager(
     }
 
     open suspend fun exchangeCodeForToken(code: String): Boolean =
-        try {
+        runSuspendCatching {
             val response =
                 httpClient.post("$AUTH_URL/access_token") {
                     header(HttpHeaders.Authorization, "Basic ${encodeCredentials()}")
@@ -133,7 +134,7 @@ open class AuthManager(
                 Napier.e("Failed to exchange code: ${response.status}")
                 false
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Napier.e("Failed to exchange code for token", e)
             false
         }
@@ -162,7 +163,7 @@ open class AuthManager(
     }
 
     private suspend fun refreshToken(refreshToken: String): Boolean =
-        try {
+        runSuspendCatching {
             val response =
                 httpClient.post("$AUTH_URL/access_token") {
                     header(HttpHeaders.Authorization, "Basic ${encodeCredentials()}")
@@ -184,7 +185,7 @@ open class AuthManager(
                 Napier.e("Failed to refresh token: ${response.status}")
                 false
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Napier.e("Failed to refresh token", e)
             false
         }
@@ -194,7 +195,7 @@ open class AuthManager(
             Napier.w("No client ID configured, cannot fetch anonymous token")
             return null
         }
-        return try {
+        return runSuspendCatching {
             val deviceId = getOrCreateDeviceId()
             val response =
                 httpClient.post("$AUTH_URL/access_token") {
@@ -224,7 +225,7 @@ open class AuthManager(
                 Napier.e("Failed to get anonymous token: ${response.status}")
                 null
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Napier.e("Failed to get anonymous token", e)
             null
         }

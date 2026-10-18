@@ -15,9 +15,6 @@
     <ID>CyclomaticComplexMethod:InlineParser.kt:private fun parseInlineRecursive: List&lt;MarkdownInline&gt;</ID>
     <ID>CyclomaticComplexMethod:LinkParser.kt:fun parseRedditLink: RedditLink</ID>
     <ID>ForbiddenComment:RedditApi.kt:RedditApi$// TODO: Parse nested replies</ID>
-    <ID>InjectDispatcher:InboxPoller.kt:InboxPoller$IO</ID>
-    <ID>InjectDispatcher:RedditApi.kt:RedditApi$IO</ID>
-    <ID>InjectDispatcher:UserRepository.kt:UserRepository$Default</ID>
     <ID>LargeClass:CommentViewModel.kt:CommentViewModel : ViewModel</ID>
     <ID>LargeClass:ProfileViewModel.kt:ProfileViewModel : ViewModel</ID>
     <ID>LargeClass:RedditApi.kt:RedditApi</ID>
@@ -89,15 +86,6 @@
     <ID>ReturnCount:PostRepository.kt:PostRepository$private fun preserveCachedPreviewData: Post</ID>
     <ID>ReturnCount:ProfileViewModel.kt:ProfileViewModel$fun handleLoginRedirect: Boolean</ID>
     <ID>ReturnCount:RedditApi.kt:RedditApi$private fun parseReplies: List&lt;CommentOrMore&gt;</ID>
-    <ID>SwallowedException:RedditApi.kt:RedditApi$e: Exception</ID>
-    <ID>ThrowsCount:RedditApi.kt:RedditApi$open suspend fun submitComment: Comment?</ID>
-    <ID>TooGenericExceptionCaught:AuthManager.kt:AuthManager$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:CommentRepository.kt:CommentRepository$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:MessageRepository.kt:MessageRepository$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:PostRepository.kt:PostRepository$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:RedditApi.kt:RedditApi$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:SubredditRepository.kt:SubredditRepository$e: Exception</ID>
-    <ID>TooGenericExceptionCaught:UserRepository.kt:UserRepository$e: Exception</ID>
     <ID>TooManyFunctions:AuthManager.kt:AuthManager</ID>
     <ID>TooManyFunctions:CommentViewModel.kt:CommentViewModel : ViewModel</ID>
     <ID>TooManyFunctions:FeedViewModel.kt:FeedViewModel : ViewModel</ID>
@@ -112,7 +100,6 @@
     <ID>UnsafeCallOnNullableType:CommentViewModel.kt:CommentViewModel$commentByName[it]!!</ID>
     <ID>UnusedPrivateProperty:FeedViewModel.kt:FeedViewModel$private val subredditRepository: SubredditRepository</ID>
     <ID>UnusedPrivateProperty:SubredditRepository.kt:SubredditRepository$private val settingsRepository: SettingsRepository</ID>
-    <ID>UseCheckOrError:RedditApi.kt:RedditApi$throw IllegalStateException("No Reddit Client ID configured. Please enter your Client ID in the Profile tab.")</ID>
     <ID>UseOrEmpty:AuthManager.kt:AuthManager$settings.get&lt;String&gt;(KEY_CLIENT_ID) ?: ""</ID>
     <ID>UseOrEmpty:CommentViewModel.kt:CommentViewModel$childNames?.map { commentByName[it]!! } ?: emptyList()</ID>
     <ID>UseOrEmpty:PostDetailViewModel.kt:PostDetailViewModel$commentViewModel.findCommentByName(parentId)?.body ?: ""</ID>

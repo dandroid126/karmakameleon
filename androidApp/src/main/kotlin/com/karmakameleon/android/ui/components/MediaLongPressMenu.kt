@@ -25,6 +25,9 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
+import com.karmakameleon.shared.util.runSuspendCatching
+import io.github.aakira.napier.Napier
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -141,12 +144,28 @@ fun LongPressMenuBox(
     }
 }
 
+private fun imageFilenameAndMimeType(url: String): Pair<String, String> {
+    val filename =
+        url.substringAfterLast("/").substringBefore("?").let {
+            if (it.contains(".")) it else "$it.jpg"
+        }
+    val mimeType =
+        when {
+            filename.endsWith(".gif") -> "image/gif"
+            filename.endsWith(".png") -> "image/png"
+            filename.endsWith(".webp") -> "image/webp"
+            else -> "image/jpeg"
+        }
+    return filename to mimeType
+}
+
 internal suspend fun copyImageToClipboard(
     context: android.content.Context,
     url: String,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    withContext(Dispatchers.IO) {
-        try {
+    withContext(ioDispatcher) {
+        runSuspendCatching {
             val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
             try {
                 connection.connectTimeout = 15000
@@ -154,17 +173,7 @@ internal suspend fun copyImageToClipboard(
                 connection.instanceFollowRedirects = true
                 connection.connect()
                 val bytes = connection.inputStream.use { it.readBytes() }
-                val filename =
-                    url.substringAfterLast("/").substringBefore("?").let {
-                        if (it.contains(".")) it else "$it.jpg"
-                    }
-                val mimeType =
-                    when {
-                        filename.endsWith(".gif") -> "image/gif"
-                        filename.endsWith(".png") -> "image/png"
-                        filename.endsWith(".webp") -> "image/webp"
-                        else -> "image/jpeg"
-                    }
+                val (filename, mimeType) = imageFilenameAndMimeType(url)
                 val cacheDir = File(context.cacheDir, "shared_images")
                 if (!cacheDir.exists()) cacheDir.mkdirs()
                 val file = File(cacheDir, filename)
@@ -190,7 +199,8 @@ internal suspend fun copyImageToClipboard(
             } finally {
                 connection.disconnect()
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
+            Napier.e("Failed to copy image", e)
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Failed to copy image", Toast.LENGTH_SHORT).show()
             }
@@ -201,20 +211,11 @@ internal suspend fun copyImageToClipboard(
 internal suspend fun saveImageToGallery(
     context: android.content.Context,
     url: String,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    withContext(Dispatchers.IO) {
-        try {
-            val filename =
-                url.substringAfterLast("/").substringBefore("?").let {
-                    if (it.contains(".")) it else "$it.jpg"
-                }
-            val mimeType =
-                when {
-                    filename.endsWith(".gif") -> "image/gif"
-                    filename.endsWith(".png") -> "image/png"
-                    filename.endsWith(".webp") -> "image/webp"
-                    else -> "image/jpeg"
-                }
+    withContext(ioDispatcher) {
+        runSuspendCatching {
+            val (filename, mimeType) = imageFilenameAndMimeType(url)
 
             val uri =
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -256,7 +257,8 @@ internal suspend fun saveImageToGallery(
                     connection.disconnect()
                 }
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
+            Napier.e("Failed to save image", e)
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Failed to save image", Toast.LENGTH_SHORT).show()
             }
@@ -267,9 +269,10 @@ internal suspend fun saveImageToGallery(
 internal suspend fun saveVideoToGallery(
     context: android.content.Context,
     url: String,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    withContext(Dispatchers.IO) {
-        try {
+    withContext(ioDispatcher) {
+        runSuspendCatching {
             val filename =
                 url.substringAfterLast("/").substringBefore("?").let {
                     if (it.contains(".")) it else "$it.mp4"
@@ -321,7 +324,8 @@ internal suspend fun saveVideoToGallery(
                     connection.disconnect()
                 }
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
+            Napier.e("Failed to save video", e)
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Failed to save video", Toast.LENGTH_SHORT).show()
             }

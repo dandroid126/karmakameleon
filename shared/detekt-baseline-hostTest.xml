@@ -2,7 +2,6 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>TooGenericExceptionThrown:FakeRedditApi.kt:FakeRedditApi$throw Exception("No result configured")</ID>
     <ID>TooManyFunctions:RedditApiIntegrationTest.kt:RedditApiIntegrationTest</ID>
     <ID>UnusedParameter:SubredditViewModelTest.kt:SubredditViewModelTest$post: Post</ID>
     <ID>UnusedPrivateFunction:SubredditViewModelTest.kt:SubredditViewModelTest$private fun emitPostUpdate</ID>

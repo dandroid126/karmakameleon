@@ -3,6 +3,7 @@ package com.karmakameleon.shared.data.repository
 import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Subreddit
+import com.karmakameleon.shared.util.runSuspendCatching
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,21 +34,15 @@ class SubredditRepository(
         // Check cache first
         cachedSubreddits.value[name.lowercase()]?.let { return Result.success(it) }
 
-        return try {
-            val subreddit = redditApi.getSubreddit(name)
-            if (subreddit != null) {
-                cachedSubreddits.update { it + (name.lowercase() to subreddit) }
-                Result.success(subreddit)
-            } else {
-                Result.failure(Exception("Subreddit not found"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        return runSuspendCatching {
+            val subreddit = redditApi.getSubreddit(name) ?: error("Subreddit not found")
+            cachedSubreddits.update { it + (name.lowercase() to subreddit) }
+            subreddit
         }
     }
 
     suspend fun loadSubscribedSubreddits(): Result<List<Subreddit>> =
-        try {
+        runSuspendCatching {
             val allSubreddits = mutableListOf<Subreddit>()
             var after: String? = null
 
@@ -65,61 +60,43 @@ class SubredditRepository(
                 cache + sorted.associateBy { it.displayName.lowercase() }
             }
 
-            Result.success(sorted)
-        } catch (e: Exception) {
-            Result.failure(e)
+            sorted
         }
 
     suspend fun subscribe(subreddit: Subreddit): Result<Subreddit> =
-        try {
+        runSuspendCatching {
             val success =
                 if (subreddit.isSubscribed) {
                     redditApi.unsubscribe(subreddit.displayName)
                 } else {
                     redditApi.subscribe(subreddit.displayName)
                 }
+            check(success) { "Subscribe/unsubscribe failed" }
 
-            if (success) {
-                val updated = subreddit.copy(isSubscribed = !subreddit.isSubscribed)
-                cachedSubreddits.update { it + (subreddit.displayName.lowercase() to updated) }
+            val updated = subreddit.copy(isSubscribed = !subreddit.isSubscribed)
+            cachedSubreddits.update { it + (subreddit.displayName.lowercase() to updated) }
 
-                // Update subscribed list
-                if (updated.isSubscribed) {
-                    _subscribedSubreddits.update { list ->
-                        (list + updated).sortedBy { it.displayName.lowercase() }
-                    }
-                } else {
-                    _subscribedSubreddits.update { list ->
-                        list.filter { it.id != subreddit.id }
-                    }
+            // Update subscribed list
+            if (updated.isSubscribed) {
+                _subscribedSubreddits.update { list ->
+                    (list + updated).sortedBy { it.displayName.lowercase() }
                 }
-
-                Result.success(updated)
             } else {
-                Result.failure(Exception("Subscribe/unsubscribe failed"))
+                _subscribedSubreddits.update { list ->
+                    list.filter { it.id != subreddit.id }
+                }
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+
+            updated
         }
 
     suspend fun searchSubreddits(
         query: String,
         includeOver18: Boolean = true,
-    ): Result<List<Subreddit>> =
-        try {
-            val subreddits = redditApi.searchSubreddits(query, includeOver18 = includeOver18)
-            Result.success(subreddits)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    ): Result<List<Subreddit>> = runSuspendCatching { redditApi.searchSubreddits(query, includeOver18 = includeOver18) }
 
     suspend fun getPopularSubreddits(after: String? = null): Result<Listing<Subreddit>> =
-        try {
-            val listing = redditApi.getPopularSubreddits(after)
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        runSuspendCatching { redditApi.getPopularSubreddits(after) }
 
     fun getCachedSubreddit(name: String): Subreddit? = cachedSubreddits.value[name.lowercase()]
 }
