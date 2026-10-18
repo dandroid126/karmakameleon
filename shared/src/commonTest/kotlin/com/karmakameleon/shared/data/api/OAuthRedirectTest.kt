@@ -6,7 +6,6 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class OAuthRedirectTest {
-
     @Test
     fun parse_customScheme_returnsCodeAndState() {
         val redirect = OAuthRedirect.parse("karmakameleon://oauth?state=abc&code=xyz", "karmakameleon://oauth")
@@ -34,16 +33,21 @@ class OAuthRedirectTest {
 
     @Test
     fun parse_httpsRedirectWithPath() {
-        val redirect = OAuthRedirect.parse(
-            "https://example.com/reddit/callback?state=s&code=c",
-            "https://example.com/reddit/callback"
-        )
+        val redirect =
+            OAuthRedirect.parse(
+                "https://example.com/reddit/callback?state=s&code=c",
+                "https://example.com/reddit/callback",
+            )
         assertEquals("c", redirect?.code)
     }
 
     @Test
     fun parse_loopbackWithPort() {
-        val redirect = OAuthRedirect.parse("http://127.0.0.1:65010/authorize_callback?state=s&code=c", "http://127.0.0.1:65010/authorize_callback")
+        val redirect =
+            OAuthRedirect.parse(
+                "http://127.0.0.1:65010/authorize_callback?state=s&code=c",
+                "http://127.0.0.1:65010/authorize_callback",
+            )
         assertEquals("c", redirect?.code)
     }
 
@@ -63,8 +67,8 @@ class OAuthRedirectTest {
         assertNull(
             OAuthRedirect.parse(
                 "https://www.reddit.com/api/v1/authorize.compact?client_id=id&redirect_uri=karmakameleon%3A%2F%2Foauth",
-                "karmakameleon://oauth"
-            )
+                "karmakameleon://oauth",
+            ),
         )
     }
 

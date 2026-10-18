@@ -63,30 +63,33 @@ data class ProfileUiState(
     val clientId: String = "",
     val redirectUri: String = AuthManager.DEFAULT_REDIRECT_URI,
     val isSigningIn: Boolean = false,
-    val savedContentType: SavedContentType = SavedContentType.POSTS
+    val savedContentType: SavedContentType = SavedContentType.POSTS,
 )
 
-enum class ProfileTab(val displayName: String) {
+enum class ProfileTab(
+    val displayName: String,
+) {
     POSTS("Posts"),
     COMMENTS("Comments"),
     SAVED("Saved"),
     UPVOTED("Upvoted"),
     DOWNVOTED("Downvoted"),
-    ABOUT("About")
+    ABOUT("About"),
 }
 
-enum class SavedContentType(val displayName: String) {
+enum class SavedContentType(
+    val displayName: String,
+) {
     POSTS("Posts"),
-    COMMENTS("Comments")
+    COMMENTS("Comments"),
 }
 
 class ProfileViewModel(
     private val userRepository: UserRepository,
     private val postRepository: PostRepository,
     commentRepository: CommentRepository,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
 ) : ViewModel() {
-
     val commentViewModel = CommentViewModel(commentRepository)
 
     private val _uiState = MutableStateFlow(initialState())
@@ -94,10 +97,11 @@ class ProfileViewModel(
 
     private var pendingLoginState: String? = null
 
-    private fun initialState() = ProfileUiState(
-        clientId = authManager.getClientId(),
-        redirectUri = authManager.getRedirectUri()
-    )
+    private fun initialState() =
+        ProfileUiState(
+            clientId = authManager.getClientId(),
+            redirectUri = authManager.getRedirectUri(),
+        )
 
     fun clearAllData() {
         _uiState.value = initialState()
@@ -124,7 +128,7 @@ class ProfileViewModel(
                     isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
                     isOwnProfile = true,
-                    isLoggedIn = true
+                    isLoggedIn = true,
                 )
             }
             val result = userRepository.loadCurrentUser()
@@ -134,7 +138,7 @@ class ProfileViewModel(
                         it.copy(
                             account = account,
                             isLoading = false,
-                            isRefreshing = false
+                            isRefreshing = false,
                         )
                     }
                     loadUserPosts(account.name)
@@ -144,21 +148,24 @@ class ProfileViewModel(
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
-                            errorMessage = error.message
+                            errorMessage = error.message,
                         )
                     }
-                }
+                },
             )
         }
     }
 
-    fun loadUserProfile(username: String, forceRefresh: Boolean = false) {
+    fun loadUserProfile(
+        username: String,
+        forceRefresh: Boolean = false,
+    ) {
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
-                    isOwnProfile = false
+                    isOwnProfile = false,
                 )
             }
             val result = userRepository.getUser(username)
@@ -168,7 +175,7 @@ class ProfileViewModel(
                         it.copy(
                             user = user,
                             isLoading = false,
-                            isRefreshing = false
+                            isRefreshing = false,
                         )
                     }
                     loadUserPosts(username)
@@ -178,31 +185,33 @@ class ProfileViewModel(
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
-                            errorMessage = error.message
+                            errorMessage = error.message,
                         )
                     }
-                }
+                },
             )
         }
     }
 
-    private fun getUsername(): String? {
-        return if (_uiState.value.isOwnProfile) _uiState.value.account?.name
-        else _uiState.value.user?.name
-    }
+    private fun getUsername(): String? =
+        if (_uiState.value.isOwnProfile) {
+            _uiState.value.account?.name
+        } else {
+            _uiState.value.user?.name
+        }
 
     private fun loadUserPosts(
         username: String,
         sort: PostSort = _uiState.value.postsSort,
         timeFilter: TimeFilter = _uiState.value.postsTimeFilter,
-        forceRefresh: Boolean = false
+        forceRefresh: Boolean = false,
     ) {
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoadingContent = true,
                     posts = if (forceRefresh) emptyList() else it.posts,
-                    hasMorePosts = true
+                    hasMorePosts = true,
                 )
             }
             val result = userRepository.getUserPosts(username, sort, timeFilter)
@@ -213,13 +222,13 @@ class ProfileViewModel(
                             posts = listing.items,
                             postsAfter = listing.after,
                             hasMorePosts = listing.hasMore,
-                            isLoadingContent = false
+                            isLoadingContent = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
-                }
+                },
             )
         }
     }
@@ -230,7 +239,13 @@ class ProfileViewModel(
         val username = getUsername() ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMorePosts = true) }
-            val result = userRepository.getUserPosts(username, currentState.postsSort, currentState.postsTimeFilter, currentState.postsAfter)
+            val result =
+                userRepository.getUserPosts(
+                    username,
+                    currentState.postsSort,
+                    currentState.postsTimeFilter,
+                    currentState.postsAfter,
+                )
             result.fold(
                 onSuccess = { listing ->
                     _uiState.update {
@@ -238,13 +253,13 @@ class ProfileViewModel(
                             posts = it.posts + listing.items,
                             postsAfter = listing.after,
                             hasMorePosts = listing.hasMore,
-                            isLoadingMorePosts = false
+                            isLoadingMorePosts = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMorePosts = false) }
-                }
+                },
             )
         }
     }
@@ -253,14 +268,14 @@ class ProfileViewModel(
         username: String,
         sort: PostSort = _uiState.value.commentsSort,
         timeFilter: TimeFilter = _uiState.value.commentsTimeFilter,
-        forceRefresh: Boolean = false
+        forceRefresh: Boolean = false,
     ) {
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoadingContent = true,
                     comments = if (forceRefresh) emptyList() else it.comments,
-                    hasMoreComments = true
+                    hasMoreComments = true,
                 )
             }
             val result = userRepository.getUserComments(username, sort, timeFilter)
@@ -271,13 +286,13 @@ class ProfileViewModel(
                             comments = listing.items,
                             commentsAfter = listing.after,
                             hasMoreComments = listing.hasMore,
-                            isLoadingContent = false
+                            isLoadingContent = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
-                }
+                },
             )
         }
     }
@@ -288,7 +303,13 @@ class ProfileViewModel(
         val username = getUsername() ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMoreComments = true) }
-            val result = userRepository.getUserComments(username, currentState.commentsSort, currentState.commentsTimeFilter, currentState.commentsAfter)
+            val result =
+                userRepository.getUserComments(
+                    username,
+                    currentState.commentsSort,
+                    currentState.commentsTimeFilter,
+                    currentState.commentsAfter,
+                )
             result.fold(
                 onSuccess = { listing ->
                     _uiState.update {
@@ -296,13 +317,13 @@ class ProfileViewModel(
                             comments = it.comments + listing.items,
                             commentsAfter = listing.after,
                             hasMoreComments = listing.hasMore,
-                            isLoadingMoreComments = false
+                            isLoadingMoreComments = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMoreComments = false) }
-                }
+                },
             )
         }
     }
@@ -313,7 +334,7 @@ class ProfileViewModel(
                 it.copy(
                     isLoadingContent = true,
                     savedPosts = if (forceRefresh) emptyList() else it.savedPosts,
-                    hasMoreSavedPosts = true
+                    hasMoreSavedPosts = true,
                 )
             }
             val result = userRepository.getSavedPosts()
@@ -324,13 +345,13 @@ class ProfileViewModel(
                             savedPosts = listing.items,
                             savedPostsAfter = listing.after,
                             hasMoreSavedPosts = listing.hasMore,
-                            isLoadingContent = false
+                            isLoadingContent = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
-                }
+                },
             )
         }
     }
@@ -348,13 +369,13 @@ class ProfileViewModel(
                             savedPosts = it.savedPosts + listing.items,
                             savedPostsAfter = listing.after,
                             hasMoreSavedPosts = listing.hasMore,
-                            isLoadingMoreSavedPosts = false
+                            isLoadingMoreSavedPosts = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMoreSavedPosts = false) }
-                }
+                },
             )
         }
     }
@@ -365,7 +386,7 @@ class ProfileViewModel(
                 it.copy(
                     isLoadingContent = true,
                     savedComments = if (forceRefresh) emptyList() else it.savedComments,
-                    hasMoreSavedComments = true
+                    hasMoreSavedComments = true,
                 )
             }
             val result = userRepository.getSavedComments()
@@ -376,13 +397,13 @@ class ProfileViewModel(
                             savedComments = listing.items,
                             savedCommentsAfter = listing.after,
                             hasMoreSavedComments = listing.hasMore,
-                            isLoadingContent = false
+                            isLoadingContent = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
-                }
+                },
             )
         }
     }
@@ -400,13 +421,13 @@ class ProfileViewModel(
                             savedComments = it.savedComments + listing.items,
                             savedCommentsAfter = listing.after,
                             hasMoreSavedComments = listing.hasMore,
-                            isLoadingMoreSavedComments = false
+                            isLoadingMoreSavedComments = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMoreSavedComments = false) }
-                }
+                },
             )
         }
     }
@@ -417,7 +438,7 @@ class ProfileViewModel(
                 it.copy(
                     isLoadingContent = true,
                     upvotedPosts = if (forceRefresh) emptyList() else it.upvotedPosts,
-                    hasMoreUpvoted = true
+                    hasMoreUpvoted = true,
                 )
             }
             val result = userRepository.getUpvotedPosts()
@@ -428,13 +449,13 @@ class ProfileViewModel(
                             upvotedPosts = listing.items,
                             upvotedAfter = listing.after,
                             hasMoreUpvoted = listing.hasMore,
-                            isLoadingContent = false
+                            isLoadingContent = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
-                }
+                },
             )
         }
     }
@@ -452,13 +473,13 @@ class ProfileViewModel(
                             upvotedPosts = it.upvotedPosts + listing.items,
                             upvotedAfter = listing.after,
                             hasMoreUpvoted = listing.hasMore,
-                            isLoadingMoreUpvoted = false
+                            isLoadingMoreUpvoted = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMoreUpvoted = false) }
-                }
+                },
             )
         }
     }
@@ -469,7 +490,7 @@ class ProfileViewModel(
                 it.copy(
                     isLoadingContent = true,
                     downvotedPosts = if (forceRefresh) emptyList() else it.downvotedPosts,
-                    hasMoreDownvoted = true
+                    hasMoreDownvoted = true,
                 )
             }
             val result = userRepository.getDownvotedPosts()
@@ -480,13 +501,13 @@ class ProfileViewModel(
                             downvotedPosts = listing.items,
                             downvotedAfter = listing.after,
                             hasMoreDownvoted = listing.hasMore,
-                            isLoadingContent = false
+                            isLoadingContent = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingContent = false) }
-                }
+                },
             )
         }
     }
@@ -504,13 +525,13 @@ class ProfileViewModel(
                             downvotedPosts = it.downvotedPosts + listing.items,
                             downvotedAfter = listing.after,
                             hasMoreDownvoted = listing.hasMore,
-                            isLoadingMoreDownvoted = false
+                            isLoadingMoreDownvoted = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMoreDownvoted = false) }
-                }
+                },
             )
         }
     }
@@ -519,14 +540,27 @@ class ProfileViewModel(
         _uiState.update { it.copy(selectedTab = tab) }
         val username = getUsername() ?: return
         when (tab) {
-            ProfileTab.POSTS -> if (_uiState.value.posts.isEmpty()) loadUserPosts(username)
-            ProfileTab.COMMENTS -> if (_uiState.value.comments.isEmpty()) loadUserComments(username)
+            ProfileTab.POSTS -> {
+                if (_uiState.value.posts.isEmpty()) loadUserPosts(username)
+            }
+
+            ProfileTab.COMMENTS -> {
+                if (_uiState.value.comments.isEmpty()) loadUserComments(username)
+            }
+
             ProfileTab.SAVED -> {
                 if (_uiState.value.savedPosts.isEmpty()) loadSavedPosts()
                 if (_uiState.value.savedComments.isEmpty()) loadSavedComments()
             }
-            ProfileTab.UPVOTED -> if (_uiState.value.upvotedPosts.isEmpty()) loadUpvotedPosts()
-            ProfileTab.DOWNVOTED -> if (_uiState.value.downvotedPosts.isEmpty()) loadDownvotedPosts()
+
+            ProfileTab.UPVOTED -> {
+                if (_uiState.value.upvotedPosts.isEmpty()) loadUpvotedPosts()
+            }
+
+            ProfileTab.DOWNVOTED -> {
+                if (_uiState.value.downvotedPosts.isEmpty()) loadDownvotedPosts()
+            }
+
             ProfileTab.ABOUT -> { /* No loading needed */ }
         }
     }
@@ -562,15 +596,30 @@ class ProfileViewModel(
     fun refresh() {
         val username = getUsername() ?: return
         when (_uiState.value.selectedTab) {
-            ProfileTab.POSTS -> loadUserPosts(username, forceRefresh = true)
-            ProfileTab.COMMENTS -> loadUserComments(username, forceRefresh = true)
+            ProfileTab.POSTS -> {
+                loadUserPosts(username, forceRefresh = true)
+            }
+
+            ProfileTab.COMMENTS -> {
+                loadUserComments(username, forceRefresh = true)
+            }
+
             ProfileTab.SAVED -> {
                 loadSavedPosts(forceRefresh = true)
                 loadSavedComments(forceRefresh = true)
             }
-            ProfileTab.UPVOTED -> loadUpvotedPosts(forceRefresh = true)
-            ProfileTab.DOWNVOTED -> loadDownvotedPosts(forceRefresh = true)
-            ProfileTab.ABOUT -> if (_uiState.value.isOwnProfile) loadOwnProfile(forceRefresh = true) else loadUserProfile(username, forceRefresh = true)
+
+            ProfileTab.UPVOTED -> {
+                loadUpvotedPosts(forceRefresh = true)
+            }
+
+            ProfileTab.DOWNVOTED -> {
+                loadDownvotedPosts(forceRefresh = true)
+            }
+
+            ProfileTab.ABOUT -> {
+                if (_uiState.value.isOwnProfile) loadOwnProfile(forceRefresh = true) else loadUserProfile(username, forceRefresh = true)
+            }
         }
     }
 
@@ -599,10 +648,22 @@ class ProfileViewModel(
 
         val code = redirect.code
         when {
-            redirect.state != expectedState -> showLoginError("Sign in failed. Please try again.")
-            redirect.error == "access_denied" -> Unit // The user declined on Reddit's page.
-            redirect.error != null -> showLoginError("Sign in failed: ${redirect.error}")
-            code == null -> showLoginError("Sign in failed. Please try again.")
+            redirect.state != expectedState -> {
+                showLoginError("Sign in failed. Please try again.")
+            }
+
+            redirect.error == "access_denied" -> {
+                // The user declined on Reddit's page.
+            }
+
+            redirect.error != null -> {
+                showLoginError("Sign in failed: ${redirect.error}")
+            }
+
+            code == null -> {
+                showLoginError("Sign in failed. Please try again.")
+            }
+
             else -> {
                 _uiState.update { it.copy(isSigningIn = true) }
                 viewModelScope.launch {
@@ -624,7 +685,10 @@ class ProfileViewModel(
         clearAllData()
     }
 
-    fun vote(post: Post, direction: Int) {
+    fun vote(
+        post: Post,
+        direction: Int,
+    ) {
         viewModelScope.launch {
             val result = postRepository.vote(post, direction)
             result.onSuccess { updatedPost ->
@@ -633,7 +697,7 @@ class ProfileViewModel(
                         posts = state.posts.map { if (it.id == post.id) updatedPost else it },
                         savedPosts = state.savedPosts.map { if (it.id == post.id) updatedPost else it },
                         upvotedPosts = state.upvotedPosts.map { if (it.id == post.id) updatedPost else it },
-                        downvotedPosts = state.downvotedPosts.map { if (it.id == post.id) updatedPost else it }
+                        downvotedPosts = state.downvotedPosts.map { if (it.id == post.id) updatedPost else it },
                     )
                 }
             }
@@ -647,13 +711,14 @@ class ProfileViewModel(
                 _uiState.update { state ->
                     state.copy(
                         posts = state.posts.map { if (it.id == post.id) updatedPost else it },
-                        savedPosts = if (updatedPost.isSaved) {
-                            state.savedPosts.map { if (it.id == post.id) updatedPost else it }
-                        } else {
-                            state.savedPosts.filter { it.id != post.id }
-                        },
+                        savedPosts =
+                            if (updatedPost.isSaved) {
+                                state.savedPosts.map { if (it.id == post.id) updatedPost else it }
+                            } else {
+                                state.savedPosts.filter { it.id != post.id }
+                            },
                         upvotedPosts = state.upvotedPosts.map { if (it.id == post.id) updatedPost else it },
-                        downvotedPosts = state.downvotedPosts.map { if (it.id == post.id) updatedPost else it }
+                        downvotedPosts = state.downvotedPosts.map { if (it.id == post.id) updatedPost else it },
                     )
                 }
             }
@@ -664,11 +729,12 @@ class ProfileViewModel(
         _uiState.update { state ->
             state.copy(
                 comments = state.comments.map { if (it.id == updatedComment.id) updatedComment else it },
-                savedComments = if (updatedComment.isSaved) {
-                    state.savedComments.map { if (it.id == updatedComment.id) updatedComment else it }
-                } else {
-                    state.savedComments.filter { it.id != updatedComment.id }
-                }
+                savedComments =
+                    if (updatedComment.isSaved) {
+                        state.savedComments.map { if (it.id == updatedComment.id) updatedComment else it }
+                    } else {
+                        state.savedComments.filter { it.id != updatedComment.id }
+                    },
             )
         }
     }
@@ -688,7 +754,7 @@ class ProfileViewModel(
             findComment = { findCommentById(it) },
             onSuccess = { updatedComment ->
                 updateComment(updatedComment)
-            }
+            },
         )
     }
 
@@ -698,16 +764,15 @@ class ProfileViewModel(
             _uiState.update { state ->
                 state.copy(
                     comments = state.comments.filter { it.id != commentId },
-                    savedComments = state.savedComments.filter { it.id != commentId }
+                    savedComments = state.savedComments.filter { it.id != commentId },
                 )
             }
         }
     }
 
-    fun findCommentById(commentId: String): Comment? {
-        return _uiState.value.comments.find { it.id == commentId }
+    fun findCommentById(commentId: String): Comment? =
+        _uiState.value.comments.find { it.id == commentId }
             ?: _uiState.value.savedComments.find { it.id == commentId }
-    }
 
     private fun generateState(): String {
         val chars = "abcdefghijklmnopqrstuvwxyz0123456789"

@@ -31,7 +31,6 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProfileViewModelTest {
-
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var fakeAuthManager: FakeAuthManager
@@ -150,523 +149,577 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun handleLoginRedirect_withCode_exchangesCodeAndClosesLogin() = runTest {
-        val state = startLogin()
+    fun handleLoginRedirect_withCode_exchangesCodeAndClosesLogin() =
+        runTest {
+            val state = startLogin()
 
-        assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code#_"))
-        advanceUntilIdle()
+            assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code#_"))
+            advanceUntilIdle()
 
-        assertEquals(listOf("the_code"), fakeAuthManager.exchangedCodes)
-        assertNull(viewModel.uiState.value.authUrl)
-        assertFalse(viewModel.uiState.value.isSigningIn)
-        assertNull(viewModel.uiState.value.errorMessage)
-    }
-
-    @Test
-    fun handleLoginRedirect_wrongState_doesNotExchangeCode() = runTest {
-        startLogin()
-
-        assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=forged&code=the_code"))
-        advanceUntilIdle()
-
-        assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
-        assertNull(viewModel.uiState.value.authUrl)
-        assertNotNull(viewModel.uiState.value.errorMessage)
-    }
+            assertEquals(listOf("the_code"), fakeAuthManager.exchangedCodes)
+            assertNull(viewModel.uiState.value.authUrl)
+            assertFalse(viewModel.uiState.value.isSigningIn)
+            assertNull(viewModel.uiState.value.errorMessage)
+        }
 
     @Test
-    fun handleLoginRedirect_duplicate_onlyExchangesOnce() = runTest {
-        val state = startLogin()
-        val redirect = "myclient://callback?state=$state&code=the_code"
+    fun handleLoginRedirect_wrongState_doesNotExchangeCode() =
+        runTest {
+            startLogin()
 
-        assertTrue(viewModel.handleLoginRedirect(redirect))
-        assertTrue(viewModel.handleLoginRedirect(redirect))
-        advanceUntilIdle()
+            assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=forged&code=the_code"))
+            advanceUntilIdle()
 
-        assertEquals(listOf("the_code"), fakeAuthManager.exchangedCodes)
-    }
-
-    @Test
-    fun handleLoginRedirect_accessDenied_closesLoginWithoutError() = runTest {
-        val state = startLogin()
-
-        assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&error=access_denied"))
-        advanceUntilIdle()
-
-        assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
-        assertNull(viewModel.uiState.value.authUrl)
-        assertNull(viewModel.uiState.value.errorMessage)
-    }
+            assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
+            assertNull(viewModel.uiState.value.authUrl)
+            assertNotNull(viewModel.uiState.value.errorMessage)
+        }
 
     @Test
-    fun handleLoginRedirect_otherError_showsError() = runTest {
-        val state = startLogin()
+    fun handleLoginRedirect_duplicate_onlyExchangesOnce() =
+        runTest {
+            val state = startLogin()
+            val redirect = "myclient://callback?state=$state&code=the_code"
 
-        assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&error=invalid_request"))
-        advanceUntilIdle()
+            assertTrue(viewModel.handleLoginRedirect(redirect))
+            assertTrue(viewModel.handleLoginRedirect(redirect))
+            advanceUntilIdle()
 
-        assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
-        assertEquals("Sign in failed: invalid_request", viewModel.uiState.value.errorMessage)
-    }
-
-    @Test
-    fun handleLoginRedirect_exchangeFails_showsError() = runTest {
-        fakeAuthManager.exchangeSucceeds = false
-        val state = startLogin()
-
-        viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code")
-        advanceUntilIdle()
-
-        assertFalse(viewModel.uiState.value.isSigningIn)
-        assertNotNull(viewModel.uiState.value.errorMessage)
-    }
+            assertEquals(listOf("the_code"), fakeAuthManager.exchangedCodes)
+        }
 
     @Test
-    fun cancelLogin_closesLoginAndIgnoresLaterRedirect() = runTest {
-        val state = startLogin()
+    fun handleLoginRedirect_accessDenied_closesLoginWithoutError() =
+        runTest {
+            val state = startLogin()
 
-        viewModel.cancelLogin()
-        viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code")
-        advanceUntilIdle()
+            assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&error=access_denied"))
+            advanceUntilIdle()
 
-        assertNull(viewModel.uiState.value.authUrl)
-        assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
-    }
+            assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
+            assertNull(viewModel.uiState.value.authUrl)
+            assertNull(viewModel.uiState.value.errorMessage)
+        }
+
+    @Test
+    fun handleLoginRedirect_otherError_showsError() =
+        runTest {
+            val state = startLogin()
+
+            assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&error=invalid_request"))
+            advanceUntilIdle()
+
+            assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
+            assertEquals("Sign in failed: invalid_request", viewModel.uiState.value.errorMessage)
+        }
+
+    @Test
+    fun handleLoginRedirect_exchangeFails_showsError() =
+        runTest {
+            fakeAuthManager.exchangeSucceeds = false
+            val state = startLogin()
+
+            viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code")
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isSigningIn)
+            assertNotNull(viewModel.uiState.value.errorMessage)
+        }
+
+    @Test
+    fun cancelLogin_closesLoginAndIgnoresLaterRedirect() =
+        runTest {
+            val state = startLogin()
+
+            viewModel.cancelLogin()
+            viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code")
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.authUrl)
+            assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
+        }
 
     // ==================== Tab Selection ====================
 
     @Test
-    fun setSelectedTab_changeSelectedTab() = runTest {
-        viewModel.setSelectedTab(ProfileTab.COMMENTS)
-        advanceUntilIdle()
-        assertEquals(ProfileTab.COMMENTS, viewModel.uiState.value.selectedTab)
-    }
+    fun setSelectedTab_changeSelectedTab() =
+        runTest {
+            viewModel.setSelectedTab(ProfileTab.COMMENTS)
+            advanceUntilIdle()
+            assertEquals(ProfileTab.COMMENTS, viewModel.uiState.value.selectedTab)
+        }
 
     @Test
-    fun setSelectedTab_posts_loadsUserPosts() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        viewModel.setSelectedTab(ProfileTab.POSTS)
-        advanceUntilIdle()
-        
-        assertEquals(ProfileTab.POSTS, viewModel.uiState.value.selectedTab)
-    }
+    fun setSelectedTab_posts_loadsUserPosts() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            viewModel.setSelectedTab(ProfileTab.POSTS)
+            advanceUntilIdle()
+
+            assertEquals(ProfileTab.POSTS, viewModel.uiState.value.selectedTab)
+        }
 
     @Test
-    fun setSelectedTab_comments_loadsUserComments() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        viewModel.setSelectedTab(ProfileTab.COMMENTS)
-        advanceUntilIdle()
-        
-        assertEquals(ProfileTab.COMMENTS, viewModel.uiState.value.selectedTab)
-    }
+    fun setSelectedTab_comments_loadsUserComments() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            viewModel.setSelectedTab(ProfileTab.COMMENTS)
+            advanceUntilIdle()
+
+            assertEquals(ProfileTab.COMMENTS, viewModel.uiState.value.selectedTab)
+        }
 
     @Test
-    fun setSelectedTab_saved_loadsSavedContent() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        viewModel.setSelectedTab(ProfileTab.SAVED)
-        advanceUntilIdle()
-        
-        assertEquals(ProfileTab.SAVED, viewModel.uiState.value.selectedTab)
-    }
+    fun setSelectedTab_saved_loadsSavedContent() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            viewModel.setSelectedTab(ProfileTab.SAVED)
+            advanceUntilIdle()
+
+            assertEquals(ProfileTab.SAVED, viewModel.uiState.value.selectedTab)
+        }
 
     @Test
-    fun setSelectedTab_upvoted_loadsUpvotedContent() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        viewModel.setSelectedTab(ProfileTab.UPVOTED)
-        advanceUntilIdle()
-        
-        assertEquals(ProfileTab.UPVOTED, viewModel.uiState.value.selectedTab)
-    }
+    fun setSelectedTab_upvoted_loadsUpvotedContent() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            viewModel.setSelectedTab(ProfileTab.UPVOTED)
+            advanceUntilIdle()
+
+            assertEquals(ProfileTab.UPVOTED, viewModel.uiState.value.selectedTab)
+        }
 
     @Test
-    fun setSelectedTab_downvoted_loadsDownvotedContent() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
-        advanceUntilIdle()
-        
-        assertEquals(ProfileTab.DOWNVOTED, viewModel.uiState.value.selectedTab)
-    }
+    fun setSelectedTab_downvoted_loadsDownvotedContent() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
+            advanceUntilIdle()
+
+            assertEquals(ProfileTab.DOWNVOTED, viewModel.uiState.value.selectedTab)
+        }
 
     // ==================== Loading Own Profile ====================
 
     @Test
-    fun loadOwnProfile_setsLoadingState() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        assertFalse(viewModel.uiState.value.isLoading)
-    }
+    fun loadOwnProfile_setsLoadingState() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
 
     @Test
-    fun loadOwnProfile_forceRefresh_setsRefreshingState() = runTest {
-        viewModel.loadOwnProfile(forceRefresh = true)
-        advanceUntilIdle()
-        
-        assertFalse(viewModel.uiState.value.isRefreshing)
-    }
+    fun loadOwnProfile_forceRefresh_setsRefreshingState() =
+        runTest {
+            viewModel.loadOwnProfile(forceRefresh = true)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isRefreshing)
+        }
 
     // ==================== Loading User Profile ====================
 
     @Test
-    fun loadUserProfile_setsLoadingState() = runTest {
-        viewModel.loadUserProfile("testuser")
-        advanceUntilIdle()
-        
-        assertFalse(viewModel.uiState.value.isLoading)
-    }
+    fun loadUserProfile_setsLoadingState() =
+        runTest {
+            viewModel.loadUserProfile("testuser")
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
 
     @Test
-    fun loadUserProfile_forceRefresh_setsRefreshingState() = runTest {
-        viewModel.loadUserProfile("testuser", forceRefresh = true)
-        advanceUntilIdle()
-        
-        assertFalse(viewModel.uiState.value.isRefreshing)
-    }
+    fun loadUserProfile_forceRefresh_setsRefreshingState() =
+        runTest {
+            viewModel.loadUserProfile("testuser", forceRefresh = true)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isRefreshing)
+        }
 
     // ==================== Refresh ====================
 
     @Test
-    fun refresh_reloadsCurrentTab() = runTest {
-        viewModel.refresh()
-        advanceUntilIdle()
-        
-        // Verify refresh completes without error
-        assertNull(viewModel.uiState.value.errorMessage)
-    }
+    fun refresh_reloadsCurrentTab() =
+        runTest {
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            // Verify refresh completes without error
+            assertNull(viewModel.uiState.value.errorMessage)
+        }
 
     // ==================== Sorting ====================
 
     @Test
-    fun setPostsSort_changesPostsSort() = runTest {
-        viewModel.setPostsSort(PostSort.HOT)
-        advanceUntilIdle()
-        assertEquals(PostSort.HOT, viewModel.uiState.value.postsSort)
-    }
+    fun setPostsSort_changesPostsSort() =
+        runTest {
+            viewModel.setPostsSort(PostSort.HOT)
+            advanceUntilIdle()
+            assertEquals(PostSort.HOT, viewModel.uiState.value.postsSort)
+        }
 
     @Test
-    fun setPostsSort_reloadsPosts() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        viewModel.setPostsSort(PostSort.TOP)
-        advanceUntilIdle()
-        
-        assertEquals(PostSort.TOP, viewModel.uiState.value.postsSort)
-    }
+    fun setPostsSort_reloadsPosts() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            viewModel.setPostsSort(PostSort.TOP)
+            advanceUntilIdle()
+
+            assertEquals(PostSort.TOP, viewModel.uiState.value.postsSort)
+        }
 
     @Test
-    fun setCommentsSort_changesCommentsSort() = runTest {
-        viewModel.setCommentsSort(PostSort.HOT)
-        advanceUntilIdle()
-        assertEquals(PostSort.HOT, viewModel.uiState.value.commentsSort)
-    }
+    fun setCommentsSort_changesCommentsSort() =
+        runTest {
+            viewModel.setCommentsSort(PostSort.HOT)
+            advanceUntilIdle()
+            assertEquals(PostSort.HOT, viewModel.uiState.value.commentsSort)
+        }
 
     @Test
-    fun setCommentsSort_reloadsComments() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        viewModel.setCommentsSort(PostSort.TOP)
-        advanceUntilIdle()
-        
-        assertEquals(PostSort.TOP, viewModel.uiState.value.commentsSort)
-    }
+    fun setCommentsSort_reloadsComments() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            viewModel.setCommentsSort(PostSort.TOP)
+            advanceUntilIdle()
+
+            assertEquals(PostSort.TOP, viewModel.uiState.value.commentsSort)
+        }
 
     // ==================== Time Filter ====================
 
     @Test
-    fun setPostsTimeFilter_changesPostsTimeFilter() = runTest {
-        viewModel.setPostsTimeFilter(TimeFilter.WEEK)
-        advanceUntilIdle()
-        assertEquals(TimeFilter.WEEK, viewModel.uiState.value.postsTimeFilter)
-    }
+    fun setPostsTimeFilter_changesPostsTimeFilter() =
+        runTest {
+            viewModel.setPostsTimeFilter(TimeFilter.WEEK)
+            advanceUntilIdle()
+            assertEquals(TimeFilter.WEEK, viewModel.uiState.value.postsTimeFilter)
+        }
 
     @Test
-    fun setCommentsTimeFilter_changesCommentsTimeFilter() = runTest {
-        viewModel.setCommentsTimeFilter(TimeFilter.MONTH)
-        advanceUntilIdle()
-        assertEquals(TimeFilter.MONTH, viewModel.uiState.value.commentsTimeFilter)
-    }
+    fun setCommentsTimeFilter_changesCommentsTimeFilter() =
+        runTest {
+            viewModel.setCommentsTimeFilter(TimeFilter.MONTH)
+            advanceUntilIdle()
+            assertEquals(TimeFilter.MONTH, viewModel.uiState.value.commentsTimeFilter)
+        }
 
     // ==================== Voting ====================
 
     @Test
-    fun vote_upvote_updatesPost() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        val post = viewModel.uiState.value.posts.firstOrNull() ?: return@runTest
-        viewModel.vote(post, 1)
-        advanceUntilIdle()
-        
-        assertTrue(viewModel.uiState.value.posts.any { it.id == post.id })
-    }
+    fun vote_upvote_updatesPost() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            val post =
+                viewModel.uiState.value.posts
+                    .firstOrNull() ?: return@runTest
+            viewModel.vote(post, 1)
+            advanceUntilIdle()
+
+            assertTrue(
+                viewModel.uiState.value.posts
+                    .any { it.id == post.id },
+            )
+        }
 
     @Test
-    fun save_savesPost() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        val post = viewModel.uiState.value.posts.firstOrNull() ?: return@runTest
-        viewModel.save(post)
-        advanceUntilIdle()
-        
-        assertTrue(viewModel.uiState.value.posts.any { it.id == post.id })
-    }
+    fun save_savesPost() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            val post =
+                viewModel.uiState.value.posts
+                    .firstOrNull() ?: return@runTest
+            viewModel.save(post)
+            advanceUntilIdle()
+
+            assertTrue(
+                viewModel.uiState.value.posts
+                    .any { it.id == post.id },
+            )
+        }
 
     // ==================== Load More: Posts ====================
 
     @Test
-    fun loadMoreUserPosts_appendsToExistingPosts() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        val initialCount = viewModel.uiState.value.posts.size
+    fun loadMoreUserPosts_appendsToExistingPosts() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            val initialCount = viewModel.uiState.value.posts.size
 
-        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p2")))
-        viewModel.loadMoreUserPosts()
-        advanceUntilIdle()
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p2")))
+            viewModel.loadMoreUserPosts()
+            advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.posts.size > initialCount)
-        assertFalse(viewModel.uiState.value.isLoadingMorePosts)
-    }
-
-    @Test
-    fun loadMoreUserPosts_preventsLoadWhenNoMore() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = null)
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-
-        viewModel.loadMoreUserPosts()
-        advanceUntilIdle()
-
-        assertFalse(viewModel.uiState.value.isLoadingMorePosts)
-        assertEquals(1, viewModel.uiState.value.posts.size)
-    }
+            assertTrue(viewModel.uiState.value.posts.size > initialCount)
+            assertFalse(viewModel.uiState.value.isLoadingMorePosts)
+        }
 
     @Test
-    fun loadMoreUserPosts_updatesAfterToken() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
+    fun loadMoreUserPosts_preventsLoadWhenNoMore() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = null)
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
 
-        fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p2")), after = "token2")
-        viewModel.loadMoreUserPosts()
-        advanceUntilIdle()
+            viewModel.loadMoreUserPosts()
+            advanceUntilIdle()
 
-        assertEquals("token2", viewModel.uiState.value.postsAfter)
-        assertTrue(viewModel.uiState.value.hasMorePosts)
-    }
+            assertFalse(viewModel.uiState.value.isLoadingMorePosts)
+            assertEquals(1, viewModel.uiState.value.posts.size)
+        }
+
+    @Test
+    fun loadMoreUserPosts_updatesAfterToken() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p2")), after = "token2")
+            viewModel.loadMoreUserPosts()
+            advanceUntilIdle()
+
+            assertEquals("token2", viewModel.uiState.value.postsAfter)
+            assertTrue(viewModel.uiState.value.hasMorePosts)
+        }
 
     // ==================== Load More: Comments ====================
 
     @Test
-    fun loadMoreUserComments_appendsToExistingComments() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1")), after = "token1")
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.COMMENTS)
-        advanceUntilIdle()
-        val initialCount = viewModel.uiState.value.comments.size
+    fun loadMoreUserComments_appendsToExistingComments() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.COMMENTS)
+            advanceUntilIdle()
+            val initialCount = viewModel.uiState.value.comments.size
 
-        fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c2")))
-        viewModel.loadMoreUserComments()
-        advanceUntilIdle()
+            fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c2")))
+            viewModel.loadMoreUserComments()
+            advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.comments.size > initialCount)
-        assertFalse(viewModel.uiState.value.isLoadingMoreComments)
-    }
+            assertTrue(viewModel.uiState.value.comments.size > initialCount)
+            assertFalse(viewModel.uiState.value.isLoadingMoreComments)
+        }
 
     @Test
-    fun loadMoreUserComments_preventsLoadWhenNoMore() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1")), after = null)
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.COMMENTS)
-        advanceUntilIdle()
+    fun loadMoreUserComments_preventsLoadWhenNoMore() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1")), after = null)
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.COMMENTS)
+            advanceUntilIdle()
 
-        viewModel.loadMoreUserComments()
-        advanceUntilIdle()
+            viewModel.loadMoreUserComments()
+            advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isLoadingMoreComments)
-        assertEquals(1, viewModel.uiState.value.comments.size)
-    }
+            assertFalse(viewModel.uiState.value.isLoadingMoreComments)
+            assertEquals(1, viewModel.uiState.value.comments.size)
+        }
 
     // ==================== Load More: Saved Posts ====================
 
     @Test
-    fun loadMoreSavedPosts_appendsToExistingSavedPosts() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")), after = "token1")
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.SAVED)
-        advanceUntilIdle()
-        val initialCount = viewModel.uiState.value.savedPosts.size
+    fun loadMoreSavedPosts_appendsToExistingSavedPosts() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.SAVED)
+            advanceUntilIdle()
+            val initialCount = viewModel.uiState.value.savedPosts.size
 
-        fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s2")))
-        viewModel.loadMoreSavedPosts()
-        advanceUntilIdle()
+            fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s2")))
+            viewModel.loadMoreSavedPosts()
+            advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.savedPosts.size > initialCount)
-        assertFalse(viewModel.uiState.value.isLoadingMoreSavedPosts)
-    }
+            assertTrue(viewModel.uiState.value.savedPosts.size > initialCount)
+            assertFalse(viewModel.uiState.value.isLoadingMoreSavedPosts)
+        }
 
     @Test
-    fun loadMoreSavedPosts_preventsLoadWhenNoMore() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")), after = null)
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.SAVED)
-        advanceUntilIdle()
+    fun loadMoreSavedPosts_preventsLoadWhenNoMore() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")), after = null)
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.SAVED)
+            advanceUntilIdle()
 
-        viewModel.loadMoreSavedPosts()
-        advanceUntilIdle()
+            viewModel.loadMoreSavedPosts()
+            advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isLoadingMoreSavedPosts)
-        assertEquals(1, viewModel.uiState.value.savedPosts.size)
-    }
+            assertFalse(viewModel.uiState.value.isLoadingMoreSavedPosts)
+            assertEquals(1, viewModel.uiState.value.savedPosts.size)
+        }
 
     // ==================== Load More: Saved Comments ====================
 
     @Test
-    fun loadMoreSavedComments_appendsToExistingSavedComments() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")), after = "token1")
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.SAVED)
-        advanceUntilIdle()
-        val initialCount = viewModel.uiState.value.savedComments.size
+    fun loadMoreSavedComments_appendsToExistingSavedComments() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.SAVED)
+            advanceUntilIdle()
+            val initialCount = viewModel.uiState.value.savedComments.size
 
-        fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc2")))
-        viewModel.loadMoreSavedComments()
-        advanceUntilIdle()
+            fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc2")))
+            viewModel.loadMoreSavedComments()
+            advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.savedComments.size > initialCount)
-        assertFalse(viewModel.uiState.value.isLoadingMoreSavedComments)
-    }
+            assertTrue(viewModel.uiState.value.savedComments.size > initialCount)
+            assertFalse(viewModel.uiState.value.isLoadingMoreSavedComments)
+        }
 
     @Test
-    fun loadMoreSavedComments_preventsLoadWhenNoMore() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")), after = null)
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.SAVED)
-        advanceUntilIdle()
+    fun loadMoreSavedComments_preventsLoadWhenNoMore() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")), after = null)
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.SAVED)
+            advanceUntilIdle()
 
-        viewModel.loadMoreSavedComments()
-        advanceUntilIdle()
+            viewModel.loadMoreSavedComments()
+            advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isLoadingMoreSavedComments)
-        assertEquals(1, viewModel.uiState.value.savedComments.size)
-    }
+            assertFalse(viewModel.uiState.value.isLoadingMoreSavedComments)
+            assertEquals(1, viewModel.uiState.value.savedComments.size)
+        }
 
     // ==================== Load More: Upvoted ====================
 
     @Test
-    fun loadMoreUpvotedPosts_appendsToExistingUpvotedPosts() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")), after = "token1")
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.UPVOTED)
-        advanceUntilIdle()
-        val initialCount = viewModel.uiState.value.upvotedPosts.size
+    fun loadMoreUpvotedPosts_appendsToExistingUpvotedPosts() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.UPVOTED)
+            advanceUntilIdle()
+            val initialCount = viewModel.uiState.value.upvotedPosts.size
 
-        fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u2")))
-        viewModel.loadMoreUpvotedPosts()
-        advanceUntilIdle()
+            fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u2")))
+            viewModel.loadMoreUpvotedPosts()
+            advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.upvotedPosts.size > initialCount)
-        assertFalse(viewModel.uiState.value.isLoadingMoreUpvoted)
-    }
+            assertTrue(viewModel.uiState.value.upvotedPosts.size > initialCount)
+            assertFalse(viewModel.uiState.value.isLoadingMoreUpvoted)
+        }
 
     @Test
-    fun loadMoreUpvotedPosts_preventsLoadWhenNoMore() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")), after = null)
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.UPVOTED)
-        advanceUntilIdle()
+    fun loadMoreUpvotedPosts_preventsLoadWhenNoMore() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")), after = null)
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.UPVOTED)
+            advanceUntilIdle()
 
-        viewModel.loadMoreUpvotedPosts()
-        advanceUntilIdle()
+            viewModel.loadMoreUpvotedPosts()
+            advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isLoadingMoreUpvoted)
-        assertEquals(1, viewModel.uiState.value.upvotedPosts.size)
-    }
+            assertFalse(viewModel.uiState.value.isLoadingMoreUpvoted)
+            assertEquals(1, viewModel.uiState.value.upvotedPosts.size)
+        }
 
     // ==================== Load More: Downvoted ====================
 
     @Test
-    fun loadMoreDownvotedPosts_appendsToExistingDownvotedPosts() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")), after = "token1")
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
-        advanceUntilIdle()
-        val initialCount = viewModel.uiState.value.downvotedPosts.size
+    fun loadMoreDownvotedPosts_appendsToExistingDownvotedPosts() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
+            advanceUntilIdle()
+            val initialCount = viewModel.uiState.value.downvotedPosts.size
 
-        fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d2")))
-        viewModel.loadMoreDownvotedPosts()
-        advanceUntilIdle()
+            fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d2")))
+            viewModel.loadMoreDownvotedPosts()
+            advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.downvotedPosts.size > initialCount)
-        assertFalse(viewModel.uiState.value.isLoadingMoreDownvoted)
-    }
+            assertTrue(viewModel.uiState.value.downvotedPosts.size > initialCount)
+            assertFalse(viewModel.uiState.value.isLoadingMoreDownvoted)
+        }
 
     @Test
-    fun loadMoreDownvotedPosts_preventsLoadWhenNoMore() = runTest {
-        fakeApi.meResult = createTestAccount(name = "testuser")
-        fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")), after = null)
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
-        advanceUntilIdle()
+    fun loadMoreDownvotedPosts_preventsLoadWhenNoMore() =
+        runTest {
+            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")), after = null)
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
+            advanceUntilIdle()
 
-        viewModel.loadMoreDownvotedPosts()
-        advanceUntilIdle()
+            viewModel.loadMoreDownvotedPosts()
+            advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isLoadingMoreDownvoted)
-        assertEquals(1, viewModel.uiState.value.downvotedPosts.size)
-    }
+            assertFalse(viewModel.uiState.value.isLoadingMoreDownvoted)
+            assertEquals(1, viewModel.uiState.value.downvotedPosts.size)
+        }
 
     // ==================== Error Handling ====================
 
     @Test
-    fun clearErrorMessage_clearsErrorMessage() = runTest {
-        viewModel.clearErrorMessage()
-        assertNull(viewModel.uiState.value.errorMessage)
-    }
+    fun clearErrorMessage_clearsErrorMessage() =
+        runTest {
+            viewModel.clearErrorMessage()
+            assertNull(viewModel.uiState.value.errorMessage)
+        }
 
     @Test
-    fun clearAllData_resetsState() = runTest {
-        viewModel.loadOwnProfile()
-        advanceUntilIdle()
-        
-        viewModel.clearAllData()
-        
-        assertTrue(viewModel.uiState.value.posts.isEmpty())
-        assertNull(viewModel.uiState.value.account)
-    }
+    fun clearAllData_resetsState() =
+        runTest {
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            viewModel.clearAllData()
+
+            assertTrue(
+                viewModel.uiState.value.posts
+                    .isEmpty(),
+            )
+            assertNull(viewModel.uiState.value.account)
+        }
 }

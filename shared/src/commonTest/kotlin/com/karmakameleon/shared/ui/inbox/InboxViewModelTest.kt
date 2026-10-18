@@ -23,7 +23,6 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class InboxViewModelTest {
-
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var messageRepo: MessageRepository
@@ -52,154 +51,189 @@ class InboxViewModelTest {
     @Test
     fun init_setsDefaultState() {
         assertEquals(InboxFilter.ALL, viewModel.uiState.value.currentFilter)
-        assertTrue(viewModel.uiState.value.messages.isEmpty())
+        assertTrue(
+            viewModel.uiState.value.messages
+                .isEmpty(),
+        )
     }
 
     // ==================== Loading Messages ====================
 
     @Test
-    fun loadMessages_setsLoadingState() = runTest {
-        viewModel.loadMessages()
-        advanceUntilIdle()
-        
-        assertFalse(viewModel.uiState.value.isLoading)
-    }
+    fun loadMessages_setsLoadingState() =
+        runTest {
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
 
     @Test
-    fun loadMessages_forceRefresh_setsRefreshingState() = runTest {
-        viewModel.loadMessages(forceRefresh = true)
-        advanceUntilIdle()
-        
-        assertFalse(viewModel.uiState.value.isRefreshing)
-    }
+    fun loadMessages_forceRefresh_setsRefreshingState() =
+        runTest {
+            viewModel.loadMessages(forceRefresh = true)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isRefreshing)
+        }
 
     @Test
-    fun loadMessages_clearsErrorOnNewLoad() = runTest {
-        viewModel.loadMessages()
-        advanceUntilIdle()
-        
-        assertNull(viewModel.uiState.value.error)
-    }
+    fun loadMessages_clearsErrorOnNewLoad() =
+        runTest {
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.error)
+        }
 
     // ==================== Filtering ====================
 
     @Test
-    fun setFilter_changesCurrentFilter() = runTest {
-        viewModel.setFilter(InboxFilter.UNREAD)
-        advanceUntilIdle()
-        assertEquals(InboxFilter.UNREAD, viewModel.uiState.value.currentFilter)
-    }
+    fun setFilter_changesCurrentFilter() =
+        runTest {
+            viewModel.setFilter(InboxFilter.UNREAD)
+            advanceUntilIdle()
+            assertEquals(InboxFilter.UNREAD, viewModel.uiState.value.currentFilter)
+        }
 
     @Test
-    fun setFilter_preventsDuplicateFilter() = runTest {
-        viewModel.setFilter(InboxFilter.ALL)
-        advanceUntilIdle()
-        
-        viewModel.setFilter(InboxFilter.ALL)
-        advanceUntilIdle()
-        
-        assertEquals(InboxFilter.ALL, viewModel.uiState.value.currentFilter)
-    }
+    fun setFilter_preventsDuplicateFilter() =
+        runTest {
+            viewModel.setFilter(InboxFilter.ALL)
+            advanceUntilIdle()
+
+            viewModel.setFilter(InboxFilter.ALL)
+            advanceUntilIdle()
+
+            assertEquals(InboxFilter.ALL, viewModel.uiState.value.currentFilter)
+        }
 
     // ==================== Selection ====================
 
     @Test
-    fun selectMessage_togglesSelectedMessageId() = runTest {
-        viewModel.loadMessages()
-        advanceUntilIdle()
-        
-        val message = viewModel.uiState.value.messages.firstOrNull() ?: return@runTest
-        viewModel.selectMessage(message.id)
-        
-        assertEquals(message.id, viewModel.uiState.value.selectedMessageId)
-    }
+    fun selectMessage_togglesSelectedMessageId() =
+        runTest {
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            val message =
+                viewModel.uiState.value.messages
+                    .firstOrNull() ?: return@runTest
+            viewModel.selectMessage(message.id)
+
+            assertEquals(message.id, viewModel.uiState.value.selectedMessageId)
+        }
 
     @Test
-    fun selectMessage_togglesOff() = runTest {
-        viewModel.loadMessages()
-        advanceUntilIdle()
-        
-        val message = viewModel.uiState.value.messages.firstOrNull() ?: return@runTest
-        viewModel.selectMessage(message.id)
-        viewModel.selectMessage(message.id)
-        
-        assertNull(viewModel.uiState.value.selectedMessageId)
-    }
+    fun selectMessage_togglesOff() =
+        runTest {
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            val message =
+                viewModel.uiState.value.messages
+                    .firstOrNull() ?: return@runTest
+            viewModel.selectMessage(message.id)
+            viewModel.selectMessage(message.id)
+
+            assertNull(viewModel.uiState.value.selectedMessageId)
+        }
 
     // ==================== Reply ====================
 
     @Test
-    fun startReply_setsReplyingToMessage() = runTest {
-        viewModel.loadMessages()
-        advanceUntilIdle()
-        
-        val message = viewModel.uiState.value.messages.firstOrNull() ?: return@runTest
-        viewModel.startReply(message)
-        
-        assertEquals(message, viewModel.uiState.value.replyingToMessage)
-    }
+    fun startReply_setsReplyingToMessage() =
+        runTest {
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            val message =
+                viewModel.uiState.value.messages
+                    .firstOrNull() ?: return@runTest
+            viewModel.startReply(message)
+
+            assertEquals(message, viewModel.uiState.value.replyingToMessage)
+        }
 
     @Test
-    fun cancelReply_clearsReply() = runTest {
-        viewModel.loadMessages()
-        advanceUntilIdle()
-        
-        val message = viewModel.uiState.value.messages.firstOrNull() ?: return@runTest
-        viewModel.startReply(message)
-        viewModel.cancelReply()
-        
-        assertNull(viewModel.uiState.value.replyingToMessage)
-    }
+    fun cancelReply_clearsReply() =
+        runTest {
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            val message =
+                viewModel.uiState.value.messages
+                    .firstOrNull() ?: return@runTest
+            viewModel.startReply(message)
+            viewModel.cancelReply()
+
+            assertNull(viewModel.uiState.value.replyingToMessage)
+        }
 
     @Test
-    fun setReplyText_updatesReplyText() = runTest {
-        viewModel.setReplyText("Test reply")
-        assertEquals("Test reply", viewModel.uiState.value.replyText)
-    }
+    fun setReplyText_updatesReplyText() =
+        runTest {
+            viewModel.setReplyText("Test reply")
+            assertEquals("Test reply", viewModel.uiState.value.replyText)
+        }
 
     @Test
-    fun setReplyText_emptyString() = runTest {
-        viewModel.setReplyText("Test")
-        viewModel.setReplyText("")
-        assertEquals("", viewModel.uiState.value.replyText)
-    }
+    fun setReplyText_emptyString() =
+        runTest {
+            viewModel.setReplyText("Test")
+            viewModel.setReplyText("")
+            assertEquals("", viewModel.uiState.value.replyText)
+        }
 
     // ==================== Mark As Read ====================
 
     @Test
-    fun markAsRead_updatesMessage() = runTest {
-        viewModel.loadMessages()
-        advanceUntilIdle()
-        
-        val message = viewModel.uiState.value.messages.firstOrNull() ?: return@runTest
-        viewModel.markAsRead(message)
-        advanceUntilIdle()
-        
-        assertTrue(viewModel.uiState.value.messages.any { it.id == message.id })
-    }
+    fun markAsRead_updatesMessage() =
+        runTest {
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            val message =
+                viewModel.uiState.value.messages
+                    .firstOrNull() ?: return@runTest
+            viewModel.markAsRead(message)
+            advanceUntilIdle()
+
+            assertTrue(
+                viewModel.uiState.value.messages
+                    .any { it.id == message.id },
+            )
+        }
 
     @Test
-    fun markAllAsRead_updatesAllMessages() = runTest {
-        viewModel.loadMessages()
-        advanceUntilIdle()
-        
-        viewModel.markAllAsRead()
-        advanceUntilIdle()
-        
-        assertNull(viewModel.uiState.value.error)
-    }
+    fun markAllAsRead_updatesAllMessages() =
+        runTest {
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            viewModel.markAllAsRead()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.error)
+        }
 
     // ==================== Voting ====================
 
     @Test
-    fun voteOnMessage_updatesMessage() = runTest {
-        viewModel.loadMessages()
-        advanceUntilIdle()
-        
-        val message = viewModel.uiState.value.messages.firstOrNull() ?: return@runTest
-        viewModel.voteOnMessage(message, 1)
-        advanceUntilIdle()
-        
-        assertTrue(viewModel.uiState.value.messages.any { it.id == message.id })
-    }
+    fun voteOnMessage_updatesMessage() =
+        runTest {
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            val message =
+                viewModel.uiState.value.messages
+                    .firstOrNull() ?: return@runTest
+            viewModel.voteOnMessage(message, 1)
+            advanceUntilIdle()
+
+            assertTrue(
+                viewModel.uiState.value.messages
+                    .any { it.id == message.id },
+            )
+        }
 }

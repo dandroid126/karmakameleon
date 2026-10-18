@@ -38,27 +38,28 @@ fun SortBottomSheet(
     currentTimeFilter: TimeFilter,
     onSortSelected: (PostSort) -> Unit,
     onTimeFilterSelected: (TimeFilter) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
     var showTimeFilter by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState
+        sheetState = sheetState,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp),
         ) {
             if (!showTimeFilter) {
                 Text(
                     text = "Sort by",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-                
+
                 SortOption(
                     icon = Icons.Default.Whatshot,
                     text = "Hot",
@@ -66,7 +67,7 @@ fun SortBottomSheet(
                     onClick = {
                         onSortSelected(PostSort.HOT)
                         onDismiss()
-                    }
+                    },
                 )
                 SortOption(
                     icon = Icons.Default.NewReleases,
@@ -75,7 +76,7 @@ fun SortBottomSheet(
                     onClick = {
                         onSortSelected(PostSort.NEW)
                         onDismiss()
-                    }
+                    },
                 )
                 SortOption(
                     icon = Icons.AutoMirrored.Default.TrendingUp,
@@ -85,7 +86,7 @@ fun SortBottomSheet(
                     onClick = {
                         onSortSelected(PostSort.TOP)
                         showTimeFilter = true
-                    }
+                    },
                 )
                 SortOption(
                     icon = Icons.Default.ArrowUpward,
@@ -94,7 +95,7 @@ fun SortBottomSheet(
                     onClick = {
                         onSortSelected(PostSort.RISING)
                         onDismiss()
-                    }
+                    },
                 )
                 SortOption(
                     icon = Icons.Default.Forum,
@@ -104,22 +105,22 @@ fun SortBottomSheet(
                     onClick = {
                         onSortSelected(PostSort.CONTROVERSIAL)
                         showTimeFilter = true
-                    }
+                    },
                 )
             } else {
                 Text(
                     text = "Time Filter",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
-                
+
                 TimeFilterOption(
                     text = "Now",
                     selected = currentTimeFilter == TimeFilter.HOUR,
                     onClick = {
                         onTimeFilterSelected(TimeFilter.HOUR)
                         onDismiss()
-                    }
+                    },
                 )
                 TimeFilterOption(
                     text = "Today",
@@ -127,7 +128,7 @@ fun SortBottomSheet(
                     onClick = {
                         onTimeFilterSelected(TimeFilter.DAY)
                         onDismiss()
-                    }
+                    },
                 )
                 TimeFilterOption(
                     text = "This Week",
@@ -135,7 +136,7 @@ fun SortBottomSheet(
                     onClick = {
                         onTimeFilterSelected(TimeFilter.WEEK)
                         onDismiss()
-                    }
+                    },
                 )
                 TimeFilterOption(
                     text = "This Month",
@@ -143,7 +144,7 @@ fun SortBottomSheet(
                     onClick = {
                         onTimeFilterSelected(TimeFilter.MONTH)
                         onDismiss()
-                    }
+                    },
                 )
                 TimeFilterOption(
                     text = "This Year",
@@ -151,7 +152,7 @@ fun SortBottomSheet(
                     onClick = {
                         onTimeFilterSelected(TimeFilter.YEAR)
                         onDismiss()
-                    }
+                    },
                 )
                 TimeFilterOption(
                     text = "All Time",
@@ -159,7 +160,7 @@ fun SortBottomSheet(
                     onClick = {
                         onTimeFilterSelected(TimeFilter.ALL)
                         onDismiss()
-                    }
+                    },
                 )
             }
         }
@@ -172,7 +173,7 @@ private fun SortOption(
     text: String,
     selected: Boolean,
     showArrow: Boolean = false,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(text) },
@@ -180,20 +181,32 @@ private fun SortOption(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (selected) MaterialTheme.colorScheme.primary 
-                       else MaterialTheme.colorScheme.onSurface
+                tint =
+                    if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
             )
         },
-        trailingContent = if (showArrow) {
-            { Icon(Icons.Default.ChevronRight, contentDescription = null) }
-        } else if (selected) {
-            { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-        } else null,
+        trailingContent =
+            if (showArrow) {
+                { Icon(Icons.Default.ChevronRight, contentDescription = null) }
+            } else if (selected) {
+                { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+            } else {
+                null
+            },
         modifier = Modifier.clickable(onClick = onClick),
-        colors = ListItemDefaults.colors(
-            headlineColor = if (selected) MaterialTheme.colorScheme.primary 
-                           else MaterialTheme.colorScheme.onSurface
-        )
+        colors =
+            ListItemDefaults.colors(
+                headlineColor =
+                    if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+            ),
     )
 }
 
@@ -201,17 +214,25 @@ private fun SortOption(
 private fun TimeFilterOption(
     text: String,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     ListItem(
         headlineContent = { Text(text) },
-        trailingContent = if (selected) {
-            { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-        } else null,
+        trailingContent =
+            if (selected) {
+                { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
+            } else {
+                null
+            },
         modifier = Modifier.clickable(onClick = onClick),
-        colors = ListItemDefaults.colors(
-            headlineColor = if (selected) MaterialTheme.colorScheme.primary 
-                           else MaterialTheme.colorScheme.onSurface
-        )
+        colors =
+            ListItemDefaults.colors(
+                headlineColor =
+                    if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+            ),
     )
 }

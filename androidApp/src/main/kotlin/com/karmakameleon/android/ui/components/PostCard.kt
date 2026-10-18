@@ -66,8 +66,8 @@ import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.VoteState
 import com.karmakameleon.shared.util.flairNeedsDarkText
 import com.karmakameleon.shared.util.parseFlairColor
-import java.util.Locale
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 private val POST_CARD_MAX_CONTENT_HEIGHT = 400.dp
 
@@ -88,7 +88,7 @@ fun PostCard(
     onCrosspostClick: () -> Unit = {},
     isRead: Boolean = false,
     nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH,
-    spoilerPreviewsEnabled: Boolean = false
+    spoilerPreviewsEnabled: Boolean = false,
 ) {
     var showMenu by remember { mutableStateOf(false) }
     val clipboard = LocalClipboard.current
@@ -97,52 +97,53 @@ fun PostCard(
     val voteColors = voteColors()
     val postFlairColors = postFlairColors()
     val readStateColors = readStateColors()
-    
+
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             // Header
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 Text(
                     text = "r/${post.subreddit}",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(onClick = onSubredditClick)
+                    modifier = Modifier.clickable(onClick = onSubredditClick),
                 )
                 Text(
                     text = " • ",
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = "u/${post.author}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable(onClick = onUserClick)
+                    modifier = Modifier.clickable(onClick = onUserClick),
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = formatTimeAgo(post.createdUtc),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Flairs
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 if (post.isNsfw) {
                     FlairChip(text = "NSFW", color = postFlairColors.nsfwColor)
@@ -157,11 +158,11 @@ fun PostCard(
                     SubredditFlairChip(text = flair, backgroundColor = post.linkFlairBackgroundColor)
                 }
             }
-            
+
             if (post.isNsfw || post.isSpoiler || post.isStickied || post.linkFlairText != null) {
                 Spacer(modifier = Modifier.height(4.dp))
             }
-            
+
             // Title
             Text(
                 text = post.title,
@@ -169,68 +170,85 @@ fun PostCard(
                 fontWeight = if (isRead) FontWeight.Normal else FontWeight.Bold,
                 color = if (isRead) readStateColors.readTitleColor else MaterialTheme.colorScheme.onSurface,
                 maxLines = 3,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
-            
+
             // Content preview with max height and fade
             if (post.isSpoiler && !spoilerPreviewsEnabled) {
                 Spacer(modifier = Modifier.height(8.dp))
                 SpoilerBlackBox(
-                    modifier = Modifier.clickable { onClick() }
+                    modifier = Modifier.clickable { onClick() },
                 )
             } else {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = POST_CARD_MAX_CONTENT_HEIGHT)
-                        .clipToBounds()
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = POST_CARD_MAX_CONTENT_HEIGHT)
+                            .clipToBounds(),
                 ) {
                     Column {
                         // Thumbnail/Preview (for both videos and images)
                         val previewImage = post.preview?.images?.firstOrNull()
-                        val galleryUrl = post.galleryData?.items?.firstOrNull()?.url
-                        val highResUrl = previewImage?.source?.url
-                            ?: galleryUrl
-                            ?: post.thumbnail?.takeIf { it.startsWith("http") }
-                            ?: post.url.takeIf { post.isImagePost }
-                        val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
-                            ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                        val galleryUrl =
+                            post.galleryData
+                                ?.items
+                                ?.firstOrNull()
+                                ?.url
+                        val highResUrl =
+                            previewImage?.source?.url
+                                ?: galleryUrl
+                                ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                                ?: post.url.takeIf { post.isImagePost }
+                        val lowResUrl =
+                            previewImage?.resolutions?.firstOrNull()?.url
+                                ?: post.thumbnail?.takeIf { it.startsWith("http") }
 
                         if (highResUrl != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             if (post.isNsfw) {
                                 when (nsfwPreviewMode) {
-                                    NsfwPreviewMode.DO_NOT_PREFETCH -> NsfwBlackBox()
-                                    NsfwPreviewMode.PREFETCH_AND_BLUR -> NsfwBlurredImage(
-                                        lowResUrl = lowResUrl,
-                                        highResUrl = highResUrl
-                                    )
-                                    NsfwPreviewMode.SHOW_PREVIEWS -> Box {
-                                        ProgressiveAsyncImage(
+                                    NsfwPreviewMode.DO_NOT_PREFETCH -> {
+                                        NsfwBlackBox()
+                                    }
+
+                                    NsfwPreviewMode.PREFETCH_AND_BLUR -> {
+                                        NsfwBlurredImage(
                                             lowResUrl = lowResUrl,
                                             highResUrl = highResUrl,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .heightIn(max = 300.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
-                                            contentScale = ContentScale.Crop
                                         )
-                                        val galleryCount = post.galleryData?.items?.size ?: 0
-                                        if (galleryCount > 1) {
-                                            Surface(
-                                                color = mediaColors().overlayBadgeColor,
-                                                shape = RoundedCornerShape(12.dp),
-                                                modifier = Modifier
-                                                    .align(Alignment.TopEnd)
-                                                    .padding(8.dp)
-                                            ) {
-                                                Text(
-                                                    text = "1/$galleryCount",
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = mediaColors().onOverlayColor,
-                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                                )
+                                    }
+
+                                    NsfwPreviewMode.SHOW_PREVIEWS -> {
+                                        Box {
+                                            ProgressiveAsyncImage(
+                                                lowResUrl = lowResUrl,
+                                                highResUrl = highResUrl,
+                                                contentDescription = null,
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .heightIn(max = 300.dp)
+                                                        .clip(RoundedCornerShape(8.dp)),
+                                                contentScale = ContentScale.Crop,
+                                            )
+                                            val galleryCount = post.galleryData?.items?.size ?: 0
+                                            if (galleryCount > 1) {
+                                                Surface(
+                                                    color = mediaColors().overlayBadgeColor,
+                                                    shape = RoundedCornerShape(12.dp),
+                                                    modifier =
+                                                        Modifier
+                                                            .align(Alignment.TopEnd)
+                                                            .padding(8.dp),
+                                                ) {
+                                                    Text(
+                                                        text = "1/$galleryCount",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = mediaColors().onOverlayColor,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                    )
+                                                }
                                             }
                                         }
                                     }
@@ -241,10 +259,11 @@ fun PostCard(
                                         lowResUrl = lowResUrl,
                                         highResUrl = highResUrl,
                                         contentDescription = null,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .heightIn(max = 300.dp)
-                                            .clip(RoundedCornerShape(8.dp)),
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(max = 300.dp)
+                                                .clip(RoundedCornerShape(8.dp)),
                                         // Commenting this out for now, but this is where we would add the clickability of the image to follow the link.
                                         // I can't decide if I like it or not.
                                         // Maybe this will be configurable in the settings.
@@ -252,22 +271,23 @@ fun PostCard(
 //                                        if (post.isLinkPost) Modifier.clickable { onLinkClick(post.url) }
 //                                        else Modifier
 //                                    ),
-                                        contentScale = ContentScale.Crop
+                                        contentScale = ContentScale.Crop,
                                     )
                                     val galleryCount = post.galleryData?.items?.size ?: 0
                                     if (galleryCount > 1) {
                                         Surface(
                                             color = mediaColors().overlayBadgeColor,
                                             shape = RoundedCornerShape(12.dp),
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(8.dp)
+                                            modifier =
+                                                Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .padding(8.dp),
                                         ) {
                                             Text(
                                                 text = "1/$galleryCount",
                                                 style = MaterialTheme.typography.labelSmall,
                                                 color = mediaColors().onOverlayColor,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                             )
                                         }
                                     }
@@ -285,7 +305,7 @@ fun PostCard(
                                         style = MaterialTheme.typography.bodyMedium,
                                         maxLines = 6,
                                         overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
                                 }
                             }
@@ -297,20 +317,20 @@ fun PostCard(
                             Text(
                                 text = post.domain,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary
+                                color = MaterialTheme.colorScheme.secondary,
                             )
                         }
                     }
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             // Actions
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
             ) {
                 val votingDisabled = post.isVotingDisabled
                 val commentingDisabled = post.isCommentingDisabled
@@ -318,29 +338,37 @@ fun PostCard(
                 // Vote buttons
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant,
-                            RoundedCornerShape(20.dp)
-                        )
-                        .padding(horizontal = 4.dp)
+                    modifier =
+                        Modifier
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(20.dp),
+                            ).padding(horizontal = 4.dp),
                 ) {
                     IconButton(
-                        onClick = if (votingDisabled) {
-                            { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
-                        } else onUpvote,
+                        onClick =
+                            if (votingDisabled) {
+                                { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
+                            } else {
+                                onUpvote
+                            },
                         enabled = isLoggedIn,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
-                            imageVector = if (post.voteState == VoteState.UPVOTED)
-                                Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
+                            imageVector =
+                                if (post.voteState == VoteState.UPVOTED) {
+                                    Icons.Filled.KeyboardArrowUp
+                                } else {
+                                    Icons.Outlined.KeyboardArrowUp
+                                },
                             contentDescription = "Upvote",
-                            tint = when {
-                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            }
+                            tint =
+                                when {
+                                    votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                    post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                         )
                     }
 
@@ -348,30 +376,39 @@ fun PostCard(
                         text = formatNumber(post.score),
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = when {
-                            votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
-                            post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
-                            else -> MaterialTheme.colorScheme.onSurface
-                        }
+                        color =
+                            when {
+                                votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
+                                post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
+                                else -> MaterialTheme.colorScheme.onSurface
+                            },
                     )
 
                     IconButton(
-                        onClick = if (votingDisabled) {
-                            { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
-                        } else onDownvote,
+                        onClick =
+                            if (votingDisabled) {
+                                { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
+                            } else {
+                                onDownvote
+                            },
                         enabled = isLoggedIn,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
-                            imageVector = if (post.voteState == VoteState.DOWNVOTED)
-                                Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
+                            imageVector =
+                                if (post.voteState == VoteState.DOWNVOTED) {
+                                    Icons.Filled.KeyboardArrowDown
+                                } else {
+                                    Icons.Outlined.KeyboardArrowDown
+                                },
                             contentDescription = "Downvote",
-                            tint = when {
-                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            }
+                            tint =
+                                when {
+                                    votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                    post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                         )
                     }
                 }
@@ -379,48 +416,58 @@ fun PostCard(
                 // Comments
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant,
-                            RoundedCornerShape(20.dp)
-                        )
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                        .then(
-                            if (commentingDisabled) Modifier.clickable {
-                                Toast.makeText(context, post.commentingDisabledReason, Toast.LENGTH_SHORT).show()
-                            } else Modifier
-                        )
+                    modifier =
+                        Modifier
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant,
+                                RoundedCornerShape(20.dp),
+                            ).padding(horizontal = 12.dp, vertical = 6.dp)
+                            .then(
+                                if (commentingDisabled) {
+                                    Modifier.clickable {
+                                        Toast.makeText(context, post.commentingDisabledReason, Toast.LENGTH_SHORT).show()
+                                    }
+                                } else {
+                                    Modifier
+                                },
+                            ),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.ChatBubbleOutline,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
-                        tint = if (commentingDisabled)
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint =
+                            if (commentingDisabled) {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = formatNumber(post.numComments),
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (commentingDisabled)
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                        else MaterialTheme.colorScheme.onSurfaceVariant
+                        color =
+                            if (commentingDisabled) {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                 }
-                
+
                 Spacer(modifier = Modifier.weight(1f))
-                
+
                 // Open link
                 if (post.isLinkPost) {
                     IconButton(
                         onClick = { onLinkClick(post.url) },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
                             contentDescription = "Open link",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -429,12 +476,12 @@ fun PostCard(
                 if (post.isCrosspost) {
                     IconButton(
                         onClick = onCrosspostClick,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.CallMerge,
                             contentDescription = "View original post",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -443,33 +490,37 @@ fun PostCard(
                 if (isLoggedIn) {
                     IconButton(
                         onClick = onSave,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                             contentDescription = if (post.isSaved) "Unsave" else "Save",
-                            tint = if (post.isSaved) MaterialTheme.colorScheme.primary 
-                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint =
+                                if (post.isSaved) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                         )
                     }
                 }
-                
+
                 // More options
                 Box {
                     IconButton(
                         onClick = { showMenu = true },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(32.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "More options",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                    
+
                     DropdownMenu(
                         expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
+                        onDismissRequest = { showMenu = false },
                     ) {
                         if (isLoggedIn) {
                             DropdownMenuItem(
@@ -481,9 +532,9 @@ fun PostCard(
                                 leadingIcon = {
                                     Icon(
                                         Icons.Default.VisibilityOff,
-                                        contentDescription = null
+                                        contentDescription = null,
                                     )
-                                }
+                                },
                             )
                         }
                         DropdownMenuItem(
@@ -495,7 +546,7 @@ fun PostCard(
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Link, contentDescription = null)
-                            }
+                            },
                         )
                         post.contentLink?.let { contentLink ->
                             DropdownMenuItem(
@@ -506,7 +557,7 @@ fun PostCard(
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Link, contentDescription = null)
-                                }
+                                },
                             )
                         }
                         DropdownMenuItem(
@@ -518,7 +569,7 @@ fun PostCard(
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Block, contentDescription = null)
-                            }
+                            },
                         )
                     }
                 }
@@ -531,12 +582,12 @@ fun PostCard(
 fun FlairChip(
     text: String,
     color: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Surface(
         color = color.copy(alpha = 0.2f),
         shape = RoundedCornerShape(4.dp),
-        modifier = modifier
+        modifier = modifier,
     ) {
         Text(
             text = text,
@@ -544,7 +595,7 @@ fun FlairChip(
             color = color,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }
@@ -558,13 +609,13 @@ fun FlairChip(
 fun SubredditFlairChip(
     text: String,
     backgroundColor: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val (containerColor, contentColor) = subredditFlairColors(backgroundColor)
     Surface(
         color = containerColor,
         shape = RoundedCornerShape(4.dp),
-        modifier = modifier
+        modifier = modifier,
     ) {
         Text(
             text = text,
@@ -572,15 +623,16 @@ fun SubredditFlairChip(
             color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
 }
 
 @Composable
 private fun subredditFlairColors(backgroundColor: String?): Pair<Color, Color> {
-    val argb = parseFlairColor(backgroundColor)
-        ?: return MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
+    val argb =
+        parseFlairColor(backgroundColor)
+            ?: return MaterialTheme.colorScheme.secondaryContainer to MaterialTheme.colorScheme.onSecondaryContainer
     val flairColors = postFlairColors()
     return Color(argb) to if (flairNeedsDarkText(argb)) flairColors.flairDarkTextColor else flairColors.flairLightTextColor
 }
@@ -589,17 +641,17 @@ private fun subredditFlairColors(backgroundColor: String?): Pair<Color, Color> {
 fun RichFlairChip(
     richtext: List<com.karmakameleon.shared.domain.model.FlairRichtext>,
     backgroundColor: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val (containerColor, contentColor) = subredditFlairColors(backgroundColor)
     Surface(
         color = containerColor,
         shape = RoundedCornerShape(4.dp),
-        modifier = modifier.clipToBounds()
+        modifier = modifier.clipToBounds(),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         ) {
             richtext.forEach { part ->
                 when (part.type) {
@@ -610,16 +662,17 @@ fun RichFlairChip(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = contentColor,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
+
                     "emoji" -> {
                         part.url?.let { url ->
                             coil3.compose.AsyncImage(
                                 model = url,
                                 contentDescription = part.text,
-                                modifier = Modifier.size(16.dp)
+                                modifier = Modifier.size(16.dp),
                             )
                         }
                     }
@@ -632,7 +685,7 @@ fun RichFlairChip(
 fun formatTimeAgo(timestampSeconds: Long): String {
     val now = System.currentTimeMillis() / 1000
     val diff = now - timestampSeconds
-    
+
     return when {
         diff < 60 -> "now"
         diff < 3600 -> "${diff / 60}m"
@@ -644,10 +697,9 @@ fun formatTimeAgo(timestampSeconds: Long): String {
     }
 }
 
-fun formatNumber(num: Int): String {
-    return when {
+fun formatNumber(num: Int): String =
+    when {
         num >= 1_000_000 -> String.format(Locale.getDefault(), "%.1fM", num / 1_000_000.0)
         num >= 1_000 -> String.format(Locale.getDefault(), "%.1fK", num / 1_000.0)
         else -> num.toString()
     }
-}

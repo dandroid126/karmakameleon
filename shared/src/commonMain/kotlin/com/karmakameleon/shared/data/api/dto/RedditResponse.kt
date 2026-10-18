@@ -7,7 +7,7 @@ import kotlinx.serialization.json.JsonElement
 @Serializable
 data class RedditResponse<T>(
     val kind: String,
-    val data: T
+    val data: T,
 )
 
 @Serializable
@@ -16,13 +16,13 @@ data class ListingData(
     val before: String? = null,
     val dist: Int? = null,
     val modhash: String? = null,
-    val children: List<ThingData> = emptyList()
+    val children: List<ThingData> = emptyList(),
 )
 
 @Serializable
 data class ThingData(
     val kind: String,
-    val data: JsonElement
+    val data: JsonElement,
 )
 
 @Serializable
@@ -76,36 +76,36 @@ data class PostDto(
 data class PreviewDto(
     val images: List<PreviewImageDto> = emptyList(),
     val enabled: Boolean = false,
-    @SerialName("reddit_video_preview") val redditVideoPreview: RedditVideoDto? = null
+    @SerialName("reddit_video_preview") val redditVideoPreview: RedditVideoDto? = null,
 )
 
 @Serializable
 data class PreviewImageDto(
     val source: ImageSourceDto,
     val resolutions: List<ImageSourceDto> = emptyList(),
-    val variants: PreviewVariantsDto? = null
+    val variants: PreviewVariantsDto? = null,
 )
 
 @Serializable
 data class PreviewVariantsDto(
-    val mp4: PreviewVariantDto? = null
+    val mp4: PreviewVariantDto? = null,
 )
 
 @Serializable
 data class PreviewVariantDto(
-    val source: ImageSourceDto? = null
+    val source: ImageSourceDto? = null,
 )
 
 @Serializable
 data class ImageSourceDto(
     val url: String,
     val width: Int,
-    val height: Int
+    val height: Int,
 )
 
 @Serializable
 data class MediaDto(
-    @SerialName("reddit_video") val redditVideo: RedditVideoDto? = null
+    @SerialName("reddit_video") val redditVideo: RedditVideoDto? = null,
 )
 
 @Serializable
@@ -114,19 +114,19 @@ data class RedditVideoDto(
     val height: Int,
     val width: Int,
     val duration: Int = 0,
-    @SerialName("is_gif") val isGif: Boolean = false
+    @SerialName("is_gif") val isGif: Boolean = false,
 )
 
 @Serializable
 data class GalleryDataDto(
-    val items: List<GalleryItemDto> = emptyList()
+    val items: List<GalleryItemDto> = emptyList(),
 )
 
 @Serializable
 data class GalleryItemDto(
     @SerialName("media_id") val mediaId: String,
     val id: Long,
-    val caption: String? = null
+    val caption: String? = null,
 )
 
 @Serializable
@@ -135,7 +135,7 @@ data class MediaMetadataDto(
     val e: String? = null,
     val m: String? = null,
     val s: MediaMetadataSourceDto? = null,
-    val p: List<MediaMetadataSourceDto>? = null
+    val p: List<MediaMetadataSourceDto>? = null,
 )
 
 @Serializable
@@ -144,5 +144,5 @@ data class MediaMetadataSourceDto(
     val x: Int = 0,
     val u: String? = null,
     val mp4: String? = null,
-    val gif: String? = null
+    val gif: String? = null,
 )

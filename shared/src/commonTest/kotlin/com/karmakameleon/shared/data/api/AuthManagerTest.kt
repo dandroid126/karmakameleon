@@ -19,7 +19,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class AuthManagerTest {
-
     private fun createAuthManager(
         settings: MapSettings = MapSettings(),
         tokenSettings: MapSettings = MapSettings(),
@@ -29,15 +28,21 @@ class AuthManagerTest {
     }
 
     // Answers the token request with a real token, as Reddit does after a successful login.
-    private fun createLoggingInAuthManager(settings: MapSettings, tokenSettings: MapSettings): AuthManager {
-        val client = HttpClient(MockEngine {
-            respond(
-                content = TOKEN_RESPONSE,
-                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
-            )
-        }) {
-            install(ContentNegotiation) { json() }
-        }
+    private fun createLoggingInAuthManager(
+        settings: MapSettings,
+        tokenSettings: MapSettings,
+    ): AuthManager {
+        val client =
+            HttpClient(
+                MockEngine {
+                    respond(
+                        content = TOKEN_RESPONSE,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                },
+            ) {
+                install(ContentNegotiation) { json() }
+            }
         return AuthManager(client, settings, tokenSettings).apply { setClientId("my_client") }
     }
 
@@ -178,46 +183,52 @@ class AuthManagerTest {
     }
 
     @Test
-    fun exchangeCodeForToken_sendsSavedRedirectUri() = runTest {
-        var sentForm: Parameters? = null
-        val client = HttpClient(MockEngine { request ->
-            sentForm = (request.body as FormDataContent).formData
-            respondOk()
-        })
-        val authManager = AuthManager(client, MapSettings(), MapSettings())
-        authManager.setClientId("my_client")
-        authManager.setRedirectUri("myclient://callback")
+    fun exchangeCodeForToken_sendsSavedRedirectUri() =
+        runTest {
+            var sentForm: Parameters? = null
+            val client =
+                HttpClient(
+                    MockEngine { request ->
+                        sentForm = (request.body as FormDataContent).formData
+                        respondOk()
+                    },
+                )
+            val authManager = AuthManager(client, MapSettings(), MapSettings())
+            authManager.setClientId("my_client")
+            authManager.setRedirectUri("myclient://callback")
 
-        authManager.exchangeCodeForToken("the_code")
+            authManager.exchangeCodeForToken("the_code")
 
-        assertEquals("authorization_code", sentForm?.get("grant_type"))
-        assertEquals("the_code", sentForm?.get("code"))
-        assertEquals("myclient://callback", sentForm?.get("redirect_uri"))
-    }
-
-    @Test
-    fun exchangeCodeForToken_savesTokenOnlyInTokenSettings() = runTest {
-        val settings = MapSettings()
-        val tokenSettings = MapSettings()
-        val authManager = createLoggingInAuthManager(settings, tokenSettings)
-
-        assertTrue(authManager.exchangeCodeForToken("the_code"))
-
-        assertTrue(authManager.isLoggedIn())
-        assertTrue(tokenSettings.hasKey(TOKEN_KEY))
-        assertFalse(settings.hasKey(TOKEN_KEY))
-    }
+            assertEquals("authorization_code", sentForm?.get("grant_type"))
+            assertEquals("the_code", sentForm?.get("code"))
+            assertEquals("myclient://callback", sentForm?.get("redirect_uri"))
+        }
 
     @Test
-    fun clearToken_removesTokenFromTokenSettings() = runTest {
-        val tokenSettings = MapSettings()
-        val authManager = createLoggingInAuthManager(MapSettings(), tokenSettings)
-        authManager.exchangeCodeForToken("the_code")
+    fun exchangeCodeForToken_savesTokenOnlyInTokenSettings() =
+        runTest {
+            val settings = MapSettings()
+            val tokenSettings = MapSettings()
+            val authManager = createLoggingInAuthManager(settings, tokenSettings)
 
-        authManager.clearToken()
+            assertTrue(authManager.exchangeCodeForToken("the_code"))
 
-        assertFalse(tokenSettings.hasKey(TOKEN_KEY))
-    }
+            assertTrue(authManager.isLoggedIn())
+            assertTrue(tokenSettings.hasKey(TOKEN_KEY))
+            assertFalse(settings.hasKey(TOKEN_KEY))
+        }
+
+    @Test
+    fun clearToken_removesTokenFromTokenSettings() =
+        runTest {
+            val tokenSettings = MapSettings()
+            val authManager = createLoggingInAuthManager(MapSettings(), tokenSettings)
+            authManager.exchangeCodeForToken("the_code")
+
+            authManager.clearToken()
+
+            assertFalse(tokenSettings.hasKey(TOKEN_KEY))
+        }
 
     @Test
     fun tokenSavedWithOtherSettings_movesToTokenSettings() {

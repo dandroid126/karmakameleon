@@ -2,6 +2,7 @@ package com.karmakameleon.shared
 
 import com.karmakameleon.shared.domain.model.Account
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.FlairRichtext
 import com.karmakameleon.shared.domain.model.GalleryData
 import com.karmakameleon.shared.domain.model.Listing
@@ -9,7 +10,6 @@ import com.karmakameleon.shared.domain.model.Media
 import com.karmakameleon.shared.domain.model.Message
 import com.karmakameleon.shared.domain.model.MessageType
 import com.karmakameleon.shared.domain.model.MoreComments
-import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.Preview
 import com.karmakameleon.shared.domain.model.Subreddit

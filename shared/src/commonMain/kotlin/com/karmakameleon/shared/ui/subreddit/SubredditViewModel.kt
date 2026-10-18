@@ -29,7 +29,7 @@ data class SubredditUiState(
     val currentTimeFilter: TimeFilter = TimeFilter.DAY,
     val after: String? = null,
     val hasMore: Boolean = true,
-    val isLoggedIn: Boolean = false
+    val isLoggedIn: Boolean = false,
 )
 
 class SubredditViewModel(
@@ -37,9 +37,8 @@ class SubredditViewModel(
     private val subredditRepository: SubredditRepository,
     private val postRepository: PostRepository,
     private val userRepository: UserRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(SubredditUiState())
     val uiState: StateFlow<SubredditUiState> = _uiState.asStateFlow()
 
@@ -55,15 +54,15 @@ class SubredditViewModel(
                     val exists = state.posts.any { it.id == updatedPost.id }
                     if (!exists) return@update state
                     state.copy(
-                        posts = if (updatedPost.isHidden) {
-                            state.posts.filter { it.id != updatedPost.id }
-                        } else {
-                            state.posts.map { if (it.id == updatedPost.id) updatedPost else it }
-                        }
+                        posts =
+                            if (updatedPost.isHidden) {
+                                state.posts.filter { it.id != updatedPost.id }
+                            } else {
+                                state.posts.map { if (it.id == updatedPost.id) updatedPost else it }
+                            },
                     )
                 }
-            }
-            .launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
         loadSubreddit()
         loadPosts()
     }
@@ -81,35 +80,42 @@ class SubredditViewModel(
         if (_uiState.value.isLoading && !forceRefresh) return
 
         viewModelScope.launch {
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
-                    isLoading = !forceRefresh, 
+                    isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
-                    error = null
+                    error = null,
                 )
             }
 
-            val result = postRepository.getPosts(
-                subreddit = subredditName,
-                sort = _uiState.value.currentSort,
-                time = if (_uiState.value.currentSort == PostSort.TOP ||
-                    _uiState.value.currentSort == PostSort.CONTROVERSIAL)
-                    _uiState.value.currentTimeFilter else null
-            )
+            val result =
+                postRepository.getPosts(
+                    subreddit = subredditName,
+                    sort = _uiState.value.currentSort,
+                    time =
+                        if (_uiState.value.currentSort == PostSort.TOP ||
+                            _uiState.value.currentSort == PostSort.CONTROVERSIAL
+                        ) {
+                            _uiState.value.currentTimeFilter
+                        } else {
+                            null
+                        },
+                )
 
             result.fold(
                 onSuccess = { listing ->
                     val nsfwEnabled = settingsRepository.nsfwEnabled.value
-                    val filteredItems = listing.items.filter { post ->
-                        nsfwEnabled || !post.isNsfw
-                    }
+                    val filteredItems =
+                        listing.items.filter { post ->
+                            nsfwEnabled || !post.isNsfw
+                        }
                     _uiState.update {
                         it.copy(
                             posts = filteredItems,
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoading = false,
-                            isRefreshing = false
+                            isRefreshing = false,
                         )
                     }
                     enrichPosts(filteredItems)
@@ -117,12 +123,12 @@ class SubredditViewModel(
                 onFailure = { error ->
                     _uiState.update {
                         it.copy(
-                            isLoading = false, 
+                            isLoading = false,
                             isRefreshing = false,
-                            error = error.message
+                            error = error.message,
                         )
                     }
-                }
+                },
             )
         }
     }
@@ -134,34 +140,41 @@ class SubredditViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
 
-            val result = postRepository.getPosts(
-                subreddit = subredditName,
-                sort = currentState.currentSort,
-                time = if (currentState.currentSort == PostSort.TOP ||
-                    currentState.currentSort == PostSort.CONTROVERSIAL)
-                    currentState.currentTimeFilter else null,
-                after = currentState.after
-            )
+            val result =
+                postRepository.getPosts(
+                    subreddit = subredditName,
+                    sort = currentState.currentSort,
+                    time =
+                        if (currentState.currentSort == PostSort.TOP ||
+                            currentState.currentSort == PostSort.CONTROVERSIAL
+                        ) {
+                            currentState.currentTimeFilter
+                        } else {
+                            null
+                        },
+                    after = currentState.after,
+                )
 
             result.fold(
                 onSuccess = { listing ->
                     val nsfwEnabled = settingsRepository.nsfwEnabled.value
-                    val filteredItems = listing.items.filter { post ->
-                        nsfwEnabled || !post.isNsfw
-                    }
+                    val filteredItems =
+                        listing.items.filter { post ->
+                            nsfwEnabled || !post.isNsfw
+                        }
                     _uiState.update {
                         it.copy(
                             posts = it.posts + filteredItems,
                             after = listing.after,
                             hasMore = listing.hasMore,
-                            isLoadingMore = false
+                            isLoadingMore = false,
                         )
                     }
                     enrichPosts(filteredItems)
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMore = false) }
-                }
+                },
             )
         }
     }
@@ -198,7 +211,10 @@ class SubredditViewModel(
         }
     }
 
-    fun vote(post: Post, direction: Int) {
+    fun vote(
+        post: Post,
+        direction: Int,
+    ) {
         viewModelScope.launch {
             val result = postRepository.vote(post, direction)
             result.onSuccess { updatedPost ->

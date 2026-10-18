@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 class InboxPoller(
     private val messageRepository: MessageRepository,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
 ) {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var pollingJob: Job? = null
@@ -29,12 +29,13 @@ class InboxPoller(
 
     fun start(intervalSeconds: Long = FOREGROUND_INTERVAL_SECONDS) {
         pollingJob?.cancel()
-        pollingJob = scope.launch {
-            while (isActive) {
-                poll()
-                delay(intervalSeconds * 1_000L)
+        pollingJob =
+            scope.launch {
+                while (isActive) {
+                    poll()
+                    delay(intervalSeconds * 1_000L)
+                }
             }
-        }
     }
 
     fun stop() {
@@ -44,8 +45,11 @@ class InboxPoller(
 
     private suspend fun poll() {
         if (!authManager.isLoggedIn()) return
-        val messages = messageRepository.getInbox(InboxFilter.UNREAD)
-            .getOrNull()?.items ?: return
+        val messages =
+            messageRepository
+                .getInbox(InboxFilter.UNREAD)
+                .getOrNull()
+                ?.items ?: return
         val currentIds = messages.map { it.id }.toSet()
         if (!initialized) {
             knownIds = currentIds

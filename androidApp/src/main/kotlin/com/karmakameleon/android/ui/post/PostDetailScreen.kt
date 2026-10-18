@@ -82,8 +82,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.data.PendingQuote
 import com.karmakameleon.android.navigation.NavigationHandler
-import com.karmakameleon.android.ui.theme.postFlairColors
-import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.android.ui.components.CommentItem
 import com.karmakameleon.android.ui.components.FlairChip
 import com.karmakameleon.android.ui.components.FullScreenImageViewer
@@ -100,6 +98,8 @@ import com.karmakameleon.android.ui.components.formatTimeAgo
 import com.karmakameleon.android.ui.components.gifMenuItems
 import com.karmakameleon.android.ui.components.imageMenuItems
 import com.karmakameleon.android.ui.components.videoMenuItems
+import com.karmakameleon.android.ui.theme.postFlairColors
+import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.MoreComments
@@ -125,7 +125,7 @@ fun PostDetailScreen(
     currentRoute: String? = null,
     onBackClick: () -> Unit,
     onGoToCommentNav: (commentId: String) -> Unit = {},
-    viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId, commentId, commentContext) }
+    viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId, commentId, commentContext) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val commentState by viewModel.commentViewModel.uiState.collectAsState()
@@ -197,18 +197,20 @@ fun PostDetailScreen(
         }
     }
 
-    val flattenedComments = remember(commentState.comments, commentState.hiddenCommentIds) {
-        viewModel.commentViewModel.getFlattenedComments()
-    }
+    val flattenedComments =
+        remember(commentState.comments, commentState.hiddenCommentIds) {
+            viewModel.commentViewModel.getFlattenedComments()
+        }
 
     fun scrollToComment(targetCommentId: String) {
         coroutineScope.launch {
             val currentSelectedId = commentState.selectedCommentId
             var currentOffset = 0
             if (currentSelectedId != null) {
-                val currentItemInfo = listState.layoutInfo.visibleItemsInfo.find {
-                    it.key == currentSelectedId
-                }
+                val currentItemInfo =
+                    listState.layoutInfo.visibleItemsInfo.find {
+                        it.key == currentSelectedId
+                    }
                 if (currentItemInfo != null) {
                     currentOffset = currentItemInfo.offset
                 }
@@ -220,9 +222,10 @@ fun PostDetailScreen(
             // (control bars appear/disappear, changing item heights)
             snapshotFlow { listState.layoutInfo }.drop(1).first()
 
-            val newTargetInfo = listState.layoutInfo.visibleItemsInfo.find {
-                it.key == targetCommentId
-            }
+            val newTargetInfo =
+                listState.layoutInfo.visibleItemsInfo.find {
+                    it.key == targetCommentId
+                }
 
             if (newTargetInfo != null) {
                 val scrollAmount = newTargetInfo.offset - currentOffset
@@ -231,9 +234,10 @@ fun PostDetailScreen(
                 }
             } else {
                 val updatedFlat = viewModel.commentViewModel.getFlattenedComments()
-                val targetIndex = updatedFlat.indexOfFirst {
-                    it is FlatCommentItem.CommentEntry && it.comment.id == targetCommentId
-                }
+                val targetIndex =
+                    updatedFlat.indexOfFirst {
+                        it is FlatCommentItem.CommentEntry && it.comment.id == targetCommentId
+                    }
                 if (targetIndex >= 0) {
                     val lazyIndex = targetIndex + 2 // +2 for PostHeader and Divider
                     listState.scrollToItem(lazyIndex, 0)
@@ -291,7 +295,7 @@ fun PostDetailScreen(
                     onQuote = viewModel::insertQuote,
                     hasDraft = hasDraft,
                     showDraftControls = true,
-                    placeholder = "Edit comment..."
+                    placeholder = "Edit comment...",
                 )
             } else if (uiState.isLoggedIn && commentState.replyingTo != null) {
                 val draft = commentState.savedDraftText
@@ -325,238 +329,243 @@ fun PostDetailScreen(
                     },
                     onQuote = viewModel::insertQuote,
                     hasDraft = hasDraft,
-                    showDraftControls = true
+                    showDraftControls = true,
                 )
             }
-        }
+        },
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.loadPostWithComments(forceRefresh = true) },
             state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
         ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (event.changes.any { it.pressed && !it.previousPressed }) {
-                                touchedSelectable.value = false
-                            }
-                        }
-                    }
-                }
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Main)
-                            if (event.changes.any { it.pressed && !it.previousPressed }) {
-                                if (touchedSelectable.value) {
-                                    selectionMayBeActive.value = true
-                                } else if (selectionMayBeActive.value) {
-                                    selectionVersion++
-                                    selectionMayBeActive.value = false
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    if (event.changes.any { it.pressed && !it.previousPressed }) {
+                                        touchedSelectable.value = false
+                                    }
                                 }
                             }
-                        }
-                    }
-                }
-        ) {
-            if (uiState.isLoading && uiState.post == null) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else if (uiState.error != null && uiState.post == null) {
-                Column(
-                    modifier = Modifier.align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(uiState.error ?: "Unknown error")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { viewModel.loadPostWithComments() }) {
-                        Text("Retry")
-                    }
-                }
-            } else {
-                uiState.post?.let { post ->
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        item {
-                            PostHeader(
-                                post = post,
-                                isBodyExpanded = isBodyExpanded,
-                                onToggleBodyExpanded = { isBodyExpanded = !isBodyExpanded },
-                                onUpvote = { viewModel.votePost(if (post.likes == true) 0 else 1) },
-                                onDownvote = { viewModel.votePost(if (post.likes == false) 0 else -1) },
-                                onSave = { viewModel.savePost() },
-                                onSortClick = { showCommentSortSheet = true },
-                                onReply = { viewModel.commentViewModel.setReplyingTo(post.name) },
-                                isLoggedIn = uiState.isLoggedIn,
-                                selectionVersion = selectionVersion,
-                                onTouchStart = {
-                                    touchedSelectable.value = true
-                                    viewModel.commentViewModel.setLastTouchedComment(null)
-                                },
-                                onImageClick = { urls, page ->
-                                    imageViewerUrls = urls
-                                    imageViewerInitialPage = page
-                                },
-                                renderInlineImages = inlineImagesEnabled,
-                                onInlineImageClick = { url ->
-                                    imageViewerUrls = listOf(url)
-                                    imageViewerInitialPage = 0
-                                },
-                                nsfwEnabled = nsfwEnabled
-                            )
-                        }
-
-                        item {
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        }
-
-                        if (uiState.focusedCommentId != null) {
-                            item {
-                                TextButton(
-                                    onClick = { viewModel.viewAllComments() },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp)
-                                ) {
-                                    Text("View all comments")
-                                }
-                            }
-                        }
-
-                        if (uiState.isLoading && commentState.comments.isEmpty()) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(32.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-                        }
-
-                        items(
-                            items = flattenedComments,
-                            key = { item ->
-                                when (item) {
-                                    is FlatCommentItem.CommentEntry -> item.comment.id
-                                    is FlatCommentItem.MoreEntry -> "more_${item.more.id}"
-                                }
-                            }
-                        ) { item ->
-                            when (item) {
-                                is FlatCommentItem.CommentEntry -> {
-                                    val comment = item.comment
-                                    val isSelected = commentState.selectedCommentId == comment.id
-                                    val isHidden = commentState.hiddenCommentIds.contains(comment.id)
-                                    val isSingleThread = uiState.focusedCommentId != null
-                                    CommentItem(
-                                        comment = comment,
-                                        isSelected = isSelected,
-                                        isHidden = isHidden,
-                                        onSelect = { viewModel.commentViewModel.selectComment(comment.id) },
-                                        onDone = { viewModel.commentViewModel.selectComment(null) },
-                                        onHide = { viewModel.commentViewModel.hideComment(comment.id) },
-                                        onPrev = {
-                                            viewModel.commentViewModel.findPrevRootCommentId(comment.id)?.let { scrollToComment(it) }
-                                        },
-                                        onNext = {
-                                            viewModel.commentViewModel.findNextRootCommentId(comment.id)?.let { scrollToComment(it) }
-                                        },
-                                        onRoot = {
-                                            if (isSingleThread) {
-                                                val rootId = viewModel.commentViewModel.findRootCommentId(comment.id)
-                                                if (rootId != null && rootId != comment.id) {
-                                                    scrollToComment(rootId)
-                                                } else if (comment.parentId.startsWith("t1_")) {
-                                                    // Root is not in current view, navigate to it
-                                                    viewModel.navigateToParentRoot(comment.id)
-                                                }
-                                            } else {
-                                                viewModel.commentViewModel.findRootCommentId(comment.id)?.let { rootId ->
-                                                    if (rootId != comment.id) scrollToComment(rootId)
-                                                }
-                                            }
-                                        },
-                                        onParent = {
-                                            if (isSingleThread) {
-                                                val parentId = viewModel.commentViewModel.findParentCommentId(comment.id)
-                                                if (parentId != null) {
-                                                    scrollToComment(parentId)
-                                                } else if (comment.parentId.startsWith("t1_")) {
-                                                    // Parent is not in current view, navigate to it
-                                                    val parentCommentId = comment.parentId.removePrefix("t1_")
-                                                    viewModel.navigateToComment(parentCommentId)
-                                                }
-                                            } else {
-                                                viewModel.commentViewModel.findParentCommentId(comment.id)?.let { scrollToComment(it) }
-                                            }
-                                        },
-                                        onCommentUpdated = { updatedComment ->
-                                            viewModel.commentViewModel.updateComment(updatedComment)
-                                        },
-                                        onShare = {
-                                            val link = "https://www.reddit.com${comment.permalink}"
-                                            coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) }
-                                        },
-                                        onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
-                                        onEdit = { viewModel.commentViewModel.startEditComment(comment) },
-                                        onDelete = { deleteConfirmCommentId = comment.id },
-                                        onSave = {
-                                            viewModel.commentViewModel.saveComment(comment)
-                                            Toast.makeText(
-                                                context,
-                                                if (comment.isSaved) "Unsaved comment" else "Saved comment",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        },
-                                        isLoggedIn = uiState.isLoggedIn,
-                                        loggedInUsername = uiState.loggedInUsername,
-                                        selectionVersion = selectionVersion,
-                                        onTouchStart = {
-                                            touchedSelectable.value = true
-                                            viewModel.commentViewModel.setLastTouchedComment(comment.name)
-                                        },
-                                        renderInlineImages = inlineImagesEnabled,
-                                        onInlineImageClick = { url ->
-                                            imageViewerUrls = listOf(url)
-                                            imageViewerInitialPage = 0
-                                        },
-                                        isSingleThreadMode = isSingleThread,
-                                        onGoToCommentNav = { targetCommentId ->
-                                            onGoToCommentNav(targetCommentId)
+                        }.pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Main)
+                                    if (event.changes.any { it.pressed && !it.previousPressed }) {
+                                        if (touchedSelectable.value) {
+                                            selectionMayBeActive.value = true
+                                        } else if (selectionMayBeActive.value) {
+                                            selectionVersion++
+                                            selectionMayBeActive.value = false
                                         }
-                                    )
-                                }
-                                is FlatCommentItem.MoreEntry -> {
-                                    MoreCommentsButton(
-                                        more = item.more,
-                                        onClick = { viewModel.loadMoreComments(item.more) },
-                                        isLoading = commentState.loadingMoreId == item.more.id
-                                    )
+                                    }
                                 }
                             }
+                        },
+            ) {
+                if (uiState.isLoading && uiState.post == null) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else if (uiState.error != null && uiState.post == null) {
+                    Column(
+                        modifier = Modifier.align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(uiState.error ?: "Unknown error")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { viewModel.loadPostWithComments() }) {
+                            Text("Retry")
                         }
+                    }
+                } else {
+                    uiState.post?.let { post ->
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            item {
+                                PostHeader(
+                                    post = post,
+                                    isBodyExpanded = isBodyExpanded,
+                                    onToggleBodyExpanded = { isBodyExpanded = !isBodyExpanded },
+                                    onUpvote = { viewModel.votePost(if (post.likes == true) 0 else 1) },
+                                    onDownvote = { viewModel.votePost(if (post.likes == false) 0 else -1) },
+                                    onSave = { viewModel.savePost() },
+                                    onSortClick = { showCommentSortSheet = true },
+                                    onReply = { viewModel.commentViewModel.setReplyingTo(post.name) },
+                                    isLoggedIn = uiState.isLoggedIn,
+                                    selectionVersion = selectionVersion,
+                                    onTouchStart = {
+                                        touchedSelectable.value = true
+                                        viewModel.commentViewModel.setLastTouchedComment(null)
+                                    },
+                                    onImageClick = { urls, page ->
+                                        imageViewerUrls = urls
+                                        imageViewerInitialPage = page
+                                    },
+                                    renderInlineImages = inlineImagesEnabled,
+                                    onInlineImageClick = { url ->
+                                        imageViewerUrls = listOf(url)
+                                        imageViewerInitialPage = 0
+                                    },
+                                    nsfwEnabled = nsfwEnabled,
+                                )
+                            }
 
-                        item {
-                            Spacer(modifier = Modifier.height(80.dp))
+                            item {
+                                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            }
+
+                            if (uiState.focusedCommentId != null) {
+                                item {
+                                    TextButton(
+                                        onClick = { viewModel.viewAllComments() },
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp),
+                                    ) {
+                                        Text("View all comments")
+                                    }
+                                }
+                            }
+
+                            if (uiState.isLoading && commentState.comments.isEmpty()) {
+                                item {
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .padding(32.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
+                            }
+
+                            items(
+                                items = flattenedComments,
+                                key = { item ->
+                                    when (item) {
+                                        is FlatCommentItem.CommentEntry -> item.comment.id
+                                        is FlatCommentItem.MoreEntry -> "more_${item.more.id}"
+                                    }
+                                },
+                            ) { item ->
+                                when (item) {
+                                    is FlatCommentItem.CommentEntry -> {
+                                        val comment = item.comment
+                                        val isSelected = commentState.selectedCommentId == comment.id
+                                        val isHidden = commentState.hiddenCommentIds.contains(comment.id)
+                                        val isSingleThread = uiState.focusedCommentId != null
+                                        CommentItem(
+                                            comment = comment,
+                                            isSelected = isSelected,
+                                            isHidden = isHidden,
+                                            onSelect = { viewModel.commentViewModel.selectComment(comment.id) },
+                                            onDone = { viewModel.commentViewModel.selectComment(null) },
+                                            onHide = { viewModel.commentViewModel.hideComment(comment.id) },
+                                            onPrev = {
+                                                viewModel.commentViewModel.findPrevRootCommentId(comment.id)?.let { scrollToComment(it) }
+                                            },
+                                            onNext = {
+                                                viewModel.commentViewModel.findNextRootCommentId(comment.id)?.let { scrollToComment(it) }
+                                            },
+                                            onRoot = {
+                                                if (isSingleThread) {
+                                                    val rootId = viewModel.commentViewModel.findRootCommentId(comment.id)
+                                                    if (rootId != null && rootId != comment.id) {
+                                                        scrollToComment(rootId)
+                                                    } else if (comment.parentId.startsWith("t1_")) {
+                                                        // Root is not in current view, navigate to it
+                                                        viewModel.navigateToParentRoot(comment.id)
+                                                    }
+                                                } else {
+                                                    viewModel.commentViewModel.findRootCommentId(comment.id)?.let { rootId ->
+                                                        if (rootId != comment.id) scrollToComment(rootId)
+                                                    }
+                                                }
+                                            },
+                                            onParent = {
+                                                if (isSingleThread) {
+                                                    val parentId = viewModel.commentViewModel.findParentCommentId(comment.id)
+                                                    if (parentId != null) {
+                                                        scrollToComment(parentId)
+                                                    } else if (comment.parentId.startsWith("t1_")) {
+                                                        // Parent is not in current view, navigate to it
+                                                        val parentCommentId = comment.parentId.removePrefix("t1_")
+                                                        viewModel.navigateToComment(parentCommentId)
+                                                    }
+                                                } else {
+                                                    viewModel.commentViewModel.findParentCommentId(comment.id)?.let { scrollToComment(it) }
+                                                }
+                                            },
+                                            onCommentUpdated = { updatedComment ->
+                                                viewModel.commentViewModel.updateComment(updatedComment)
+                                            },
+                                            onShare = {
+                                                val link = "https://www.reddit.com${comment.permalink}"
+                                                coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) }
+                                            },
+                                            onReply = { viewModel.commentViewModel.setReplyingTo(comment.name) },
+                                            onEdit = { viewModel.commentViewModel.startEditComment(comment) },
+                                            onDelete = { deleteConfirmCommentId = comment.id },
+                                            onSave = {
+                                                viewModel.commentViewModel.saveComment(comment)
+                                                Toast
+                                                    .makeText(
+                                                        context,
+                                                        if (comment.isSaved) "Unsaved comment" else "Saved comment",
+                                                        Toast.LENGTH_SHORT,
+                                                    ).show()
+                                            },
+                                            isLoggedIn = uiState.isLoggedIn,
+                                            loggedInUsername = uiState.loggedInUsername,
+                                            selectionVersion = selectionVersion,
+                                            onTouchStart = {
+                                                touchedSelectable.value = true
+                                                viewModel.commentViewModel.setLastTouchedComment(comment.name)
+                                            },
+                                            renderInlineImages = inlineImagesEnabled,
+                                            onInlineImageClick = { url ->
+                                                imageViewerUrls = listOf(url)
+                                                imageViewerInitialPage = 0
+                                            },
+                                            isSingleThreadMode = isSingleThread,
+                                            onGoToCommentNav = { targetCommentId ->
+                                                onGoToCommentNav(targetCommentId)
+                                            },
+                                        )
+                                    }
+
+                                    is FlatCommentItem.MoreEntry -> {
+                                        MoreCommentsButton(
+                                            more = item.more,
+                                            onClick = { viewModel.loadMoreComments(item.more) },
+                                            isLoading = commentState.loadingMoreId == item.more.id,
+                                        )
+                                    }
+                                }
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(80.dp))
+                            }
                         }
                     }
                 }
             }
-        }
         }
     }
 
@@ -564,7 +573,7 @@ fun PostDetailScreen(
         FullScreenImageViewer(
             imageUrls = imageViewerUrls,
             initialPage = imageViewerInitialPage,
-            onDismiss = { imageViewerUrls = emptyList() }
+            onDismiss = { imageViewerUrls = emptyList() },
         )
     }
 
@@ -580,7 +589,7 @@ fun PostDetailScreen(
                 viewModel.setCommentSort(sort)
                 showCommentSortSheet = false
             },
-            onDismiss = { showCommentSortSheet = false }
+            onDismiss = { showCommentSortSheet = false },
         )
     }
 
@@ -601,7 +610,7 @@ fun PostDetailScreen(
                 TextButton(onClick = { deleteConfirmCommentId = null }) {
                     Text("Cancel")
                 }
-            }
+            },
         )
     }
 
@@ -626,7 +635,7 @@ fun PostDetailScreen(
                 }) {
                     Text("Cancel")
                 }
-            }
+            },
         )
     }
 
@@ -671,7 +680,7 @@ fun PostDetailScreen(
                 }) {
                     Text("Cancel")
                 }
-            }
+            },
         )
     }
 }
@@ -684,34 +693,36 @@ private fun CommentSortBottomSheet(
     useSuggestedSort: Boolean,
     onUseSuggestedSortChanged: (Boolean) -> Unit,
     onSortSelected: (CommentSort) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState
+        sheetState = sheetState,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp),
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onUseSuggestedSortChanged(!useSuggestedSort) }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onUseSuggestedSortChanged(!useSuggestedSort) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
                     text = "Use suggested sort",
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
                 Switch(
                     checked = useSuggestedSort,
-                    onCheckedChange = onUseSuggestedSortChanged
+                    onCheckedChange = onUseSuggestedSortChanged,
                 )
             }
 
@@ -720,7 +731,7 @@ private fun CommentSortBottomSheet(
             Text(
                 text = "Sort comments by",
                 style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
 
             CommentSort.entries.forEach { sort ->
@@ -733,19 +744,22 @@ private fun CommentSortBottomSheet(
                                 append(sort.displayName)
                                 if (isSuggested) append(" (suggested)")
                             },
-                            color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         )
                     },
-                    trailingContent = if (isActive) {
-                        {
-                            Icon(
-                                Icons.Filled.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    } else null,
-                    modifier = Modifier.clickable { onSortSelected(sort) }
+                    trailingContent =
+                        if (isActive) {
+                            {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                    modifier = Modifier.clickable { onSortSelected(sort) },
                 )
             }
         }
@@ -771,12 +785,13 @@ private fun PostHeader(
     renderInlineImages: Boolean = true,
     onInlineImageClick: (String) -> Unit = {},
     nsfwEnabled: Boolean = false,
-    navigationHandler: NavigationHandler = koinInject()
+    navigationHandler: NavigationHandler = koinInject(),
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -784,20 +799,20 @@ private fun PostHeader(
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { navigationHandler.onSubredditClick(post.subreddit) }
+                modifier = Modifier.clickable { navigationHandler.onSubredditClick(post.subreddit) },
             )
             Text(" • ", color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(
                 text = "u/${post.author}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.clickable { navigationHandler.onUserClick(post.author) }
+                modifier = Modifier.clickable { navigationHandler.onUserClick(post.author) },
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = formatTimeAgo(post.createdUtc),
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
@@ -811,19 +826,22 @@ private fun PostHeader(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Box(modifier = Modifier.pointerInput(Unit) {
-            awaitPointerEventScope {
-                while (true) {
-                    awaitPointerEvent(PointerEventPass.Initial)
-                    onTouchStart()
-                }
-            }
-        }) {
+        Box(
+            modifier =
+                Modifier.pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial)
+                            onTouchStart()
+                        }
+                    }
+                },
+        ) {
             key(selectionVersion) {
                 SelectionContainer {
                     Text(
                         text = post.title,
-                        style = MaterialTheme.typography.titleLarge
+                        style = MaterialTheme.typography.titleLarge,
                     )
                 }
             }
@@ -831,13 +849,13 @@ private fun PostHeader(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
+            horizontalArrangement = Arrangement.End,
         ) {
             IconButton(onClick = onToggleBodyExpanded) {
                 Icon(
                     imageVector = if (isBodyExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isBodyExpanded) "Collapse post body" else "Expand post body",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
@@ -845,186 +863,212 @@ private fun PostHeader(
         AnimatedVisibility(
             visible = isBodyExpanded,
             enter = expandVertically(),
-            exit = shrinkVertically()
+            exit = shrinkVertically(),
         ) {
-        Column {
-        val galleryItems = post.galleryData?.items?.filter { it.url != null } ?: emptyList()
-        if (galleryItems.size > 1 && (!post.isNsfw || nsfwEnabled)) {
-            Spacer(modifier = Modifier.height(12.dp))
-            val pagerState = rememberPagerState(pageCount = { galleryItems.size })
-            val galleryUrls = remember(galleryItems) { galleryItems.mapNotNull { it.url } }
             Column {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
-                        .clip(RoundedCornerShape(8.dp))
-                ) { page ->
-                    val item = galleryItems[page]
-                    if (item.isVideo && item.url != null) {
-                        VideoPlayer(
-                            videoUrl = item.url!!,
-                            isGif = true,
-                            modifier = Modifier.fillMaxSize(),
-                            menuItems = gifMenuItems(item.url!!, gifImageUrl = item.gifUrl)
-                        )
-                    } else {
-                        LongPressMenuBox(
-                            menuItems = imageMenuItems(item.url ?: ""),
-                            modifier = Modifier.fillMaxSize(),
-                            onClick = {
-                                val imageItems = galleryItems.filter { !it.isVideo }
-                                val imageUrls = imageItems.mapNotNull { it.url }
-                                val imageIndex = imageItems.indexOf(item).coerceAtLeast(0)
-                                onImageClick(imageUrls, imageIndex)
-                            }
-                        ) {
-                            AsyncImage(
-                                model = item.url,
-                                contentDescription = item.caption,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Fit
-                            )
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    repeat(galleryItems.size) { index ->
-                        Box(
-                            modifier = Modifier
-                                .padding(horizontal = 3.dp)
-                                .size(if (index == pagerState.currentPage) 8.dp else 6.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(
-                                    if (index == pagerState.currentPage)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                                )
-                        )
-                    }
-                }
-            }
-        } else {
-            val redditVideo = post.media?.redditVideo
-                ?: post.preview?.redditVideoPreview
-            if (redditVideo != null && (!post.isNsfw || nsfwEnabled)) {
-                Spacer(modifier = Modifier.height(12.dp))
-                VideoPlayer(
-                    videoUrl = redditVideo.fallbackUrl,
-                    isGif = redditVideo.isGif,
-                    modifier = Modifier.fillMaxWidth(),
-                    menuItems = if (redditVideo.isGif) gifMenuItems(redditVideo.fallbackUrl, gifImageUrl = post.url) else videoMenuItems(redditVideo.fallbackUrl)
-                )
-            } else {
-                val youTubeVideoId = extractYouTubeVideoId(post.url)
-                if (youTubeVideoId != null && (!post.isNsfw || nsfwEnabled)) {
+                val galleryItems = post.galleryData?.items?.filter { it.url != null } ?: emptyList()
+                if (galleryItems.size > 1 && (!post.isNsfw || nsfwEnabled)) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    YouTubePlayer(
-                        videoId = youTubeVideoId,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                } else {
-                    val mp4Url = post.preview?.images?.firstOrNull()?.mp4Url
-                    if (mp4Url != null && (!post.isNsfw || nsfwEnabled)) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        VideoPlayer(
-                            videoUrl = mp4Url,
-                            isGif = true,
-                            modifier = Modifier.fillMaxWidth(),
-                            menuItems = gifMenuItems(mp4Url, gifImageUrl = post.url)
-                        )
-                    } else {
-                        val previewImage = post.preview?.images?.firstOrNull()
-                        val galleryUrl = galleryItems.firstOrNull()?.url
-                        val highResUrl = previewImage?.source?.url
-                            ?: galleryUrl
-                            ?: post.thumbnail?.takeIf { it.startsWith("http") }
-                            ?: post.url.takeIf { post.isImagePost }
-                        val lowResUrl = previewImage?.resolutions?.firstOrNull()?.url
-                            ?: post.thumbnail?.takeIf { it.startsWith("http") }
-                        if (highResUrl != null && (!post.isNsfw || nsfwEnabled)) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            LongPressMenuBox(
-                                menuItems = imageMenuItems(highResUrl),
-                                modifier = Modifier
+                    val pagerState = rememberPagerState(pageCount = { galleryItems.size })
+                    val galleryUrls = remember(galleryItems) { galleryItems.mapNotNull { it.url } }
+                    Column {
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier =
+                                Modifier
                                     .fillMaxWidth()
                                     .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
                                     .clip(RoundedCornerShape(8.dp)),
-                                onClick = {
-                                    if (post.isLinkPost) navigationHandler.handleLink(post.url)
-                                    else onImageClick(listOf(highResUrl), 0)
-                                }
-                            ) {
-                                ProgressiveAsyncImage(
-                                    lowResUrl = lowResUrl,
-                                    highResUrl = highResUrl,
-                                    contentDescription = null,
+                        ) { page ->
+                            val item = galleryItems[page]
+                            if (item.isVideo && item.url != null) {
+                                VideoPlayer(
+                                    videoUrl = item.url!!,
+                                    isGif = true,
                                     modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Fit
+                                    menuItems = gifMenuItems(item.url!!, gifImageUrl = item.gifUrl),
+                                )
+                            } else {
+                                LongPressMenuBox(
+                                    menuItems = imageMenuItems(item.url ?: ""),
+                                    modifier = Modifier.fillMaxSize(),
+                                    onClick = {
+                                        val imageItems = galleryItems.filter { !it.isVideo }
+                                        val imageUrls = imageItems.mapNotNull { it.url }
+                                        val imageIndex = imageItems.indexOf(item).coerceAtLeast(0)
+                                        onImageClick(imageUrls, imageIndex)
+                                    },
+                                ) {
+                                    AsyncImage(
+                                        model = item.url,
+                                        contentDescription = item.caption,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Fit,
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            repeat(galleryItems.size) { index ->
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .padding(horizontal = 3.dp)
+                                            .size(if (index == pagerState.currentPage) 8.dp else 6.dp)
+                                            .clip(RoundedCornerShape(50))
+                                            .background(
+                                                if (index == pagerState.currentPage) {
+                                                    MaterialTheme.colorScheme.primary
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                                },
+                                            ),
                                 )
                             }
                         }
                     }
-                }
-            }
-        }
-
-        post.selfText?.let { text ->
-            if (text.isNotBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Box(modifier = Modifier.pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            awaitPointerEvent(PointerEventPass.Initial)
-                            onTouchStart()
-                        }
-                    }
-                }) {
-                    key(selectionVersion) {
-                        SelectionContainer {
-                            MarkdownText(
-                                markdown = text,
-                                style = MaterialTheme.typography.bodyMedium,
-                                renderInlineImages = renderInlineImages,
-                                onImageClick = onInlineImageClick
+                } else {
+                    val redditVideo =
+                        post.media?.redditVideo
+                            ?: post.preview?.redditVideoPreview
+                    if (redditVideo != null && (!post.isNsfw || nsfwEnabled)) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        VideoPlayer(
+                            videoUrl = redditVideo.fallbackUrl,
+                            isGif = redditVideo.isGif,
+                            modifier = Modifier.fillMaxWidth(),
+                            menuItems =
+                                if (redditVideo.isGif) {
+                                    gifMenuItems(
+                                        redditVideo.fallbackUrl,
+                                        gifImageUrl = post.url,
+                                    )
+                                } else {
+                                    videoMenuItems(redditVideo.fallbackUrl)
+                                },
+                        )
+                    } else {
+                        val youTubeVideoId = extractYouTubeVideoId(post.url)
+                        if (youTubeVideoId != null && (!post.isNsfw || nsfwEnabled)) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            YouTubePlayer(
+                                videoId = youTubeVideoId,
+                                modifier = Modifier.fillMaxWidth(),
                             )
+                        } else {
+                            val mp4Url =
+                                post.preview
+                                    ?.images
+                                    ?.firstOrNull()
+                                    ?.mp4Url
+                            if (mp4Url != null && (!post.isNsfw || nsfwEnabled)) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                VideoPlayer(
+                                    videoUrl = mp4Url,
+                                    isGif = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    menuItems = gifMenuItems(mp4Url, gifImageUrl = post.url),
+                                )
+                            } else {
+                                val previewImage = post.preview?.images?.firstOrNull()
+                                val galleryUrl = galleryItems.firstOrNull()?.url
+                                val highResUrl =
+                                    previewImage?.source?.url
+                                        ?: galleryUrl
+                                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                                        ?: post.url.takeIf { post.isImagePost }
+                                val lowResUrl =
+                                    previewImage?.resolutions?.firstOrNull()?.url
+                                        ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                                if (highResUrl != null && (!post.isNsfw || nsfwEnabled)) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    LongPressMenuBox(
+                                        menuItems = imageMenuItems(highResUrl),
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .height(POST_DETAIL_IMAGE_MAX_HEIGHT)
+                                                .clip(RoundedCornerShape(8.dp)),
+                                        onClick = {
+                                            if (post.isLinkPost) {
+                                                navigationHandler.handleLink(post.url)
+                                            } else {
+                                                onImageClick(listOf(highResUrl), 0)
+                                            }
+                                        },
+                                    ) {
+                                        ProgressiveAsyncImage(
+                                            lowResUrl = lowResUrl,
+                                            highResUrl = highResUrl,
+                                            contentDescription = null,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Fit,
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        if (post.isLinkPost) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = post.domain,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable { navigationHandler.handleLink(post.url) }
-            )
-        }
-        if (post.isCrosspost && post.crosspostParentSubreddit != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "View original post at r/${post.crosspostParentSubreddit}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.clickable {
-                    post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                post.selfText?.let { text ->
+                    if (text.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Box(
+                            modifier =
+                                Modifier.pointerInput(Unit) {
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            awaitPointerEvent(PointerEventPass.Initial)
+                                            onTouchStart()
+                                        }
+                                    }
+                                },
+                        ) {
+                            key(selectionVersion) {
+                                SelectionContainer {
+                                    MarkdownText(
+                                        markdown = text,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        renderInlineImages = renderInlineImages,
+                                        onImageClick = onInlineImageClick,
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
-            )
-        }
-        } // end Column inside AnimatedVisibility
+
+                if (post.isLinkPost) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = post.domain,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.clickable { navigationHandler.handleLink(post.url) },
+                    )
+                }
+                if (post.isCrosspost && post.crosspostParentSubreddit != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "View original post at r/${post.crosspostParentSubreddit}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier =
+                            Modifier.clickable {
+                                post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                            },
+                    )
+                }
+            } // end Column inside AnimatedVisibility
         } // end AnimatedVisibility
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -1035,29 +1079,34 @@ private fun PostHeader(
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
-                    .padding(horizontal = 4.dp)
+                modifier =
+                    Modifier
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
+                        .padding(horizontal = 4.dp),
             ) {
                 IconButton(
-                    onClick = if (votingDisabled) {
-                        { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
-                    } else onUpvote,
+                    onClick =
+                        if (votingDisabled) {
+                            { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
+                        } else {
+                            onUpvote
+                        },
                     enabled = isLoggedIn,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp),
                 ) {
                     Icon(
                         if (post.voteState == VoteState.UPVOTED) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
                         contentDescription = "Upvote",
-                        tint = when {
-                            votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            post.voteState == VoteState.UPVOTED -> voteColors().upvoteColor
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        tint =
+                            when {
+                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                post.voteState == VoteState.UPVOTED -> voteColors().upvoteColor
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                 }
 
@@ -1065,29 +1114,34 @@ private fun PostHeader(
                     text = formatNumber(post.score),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    color = when {
-                        votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        post.voteState == VoteState.UPVOTED -> voteColors().upvoteColor
-                        post.voteState == VoteState.DOWNVOTED -> voteColors().downvoteColor
-                        else -> MaterialTheme.colorScheme.onSurface
-                    }
+                    color =
+                        when {
+                            votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            post.voteState == VoteState.UPVOTED -> voteColors().upvoteColor
+                            post.voteState == VoteState.DOWNVOTED -> voteColors().downvoteColor
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
                 )
 
                 IconButton(
-                    onClick = if (votingDisabled) {
-                        { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
-                    } else onDownvote,
+                    onClick =
+                        if (votingDisabled) {
+                            { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
+                        } else {
+                            onDownvote
+                        },
                     enabled = isLoggedIn,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp),
                 ) {
                     Icon(
                         if (post.voteState == VoteState.DOWNVOTED) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
                         contentDescription = "Downvote",
-                        tint = when {
-                            votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            post.voteState == VoteState.DOWNVOTED -> voteColors().downvoteColor
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        tint =
+                            when {
+                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                post.voteState == VoteState.DOWNVOTED -> voteColors().downvoteColor
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                 }
             }
@@ -1095,35 +1149,44 @@ private fun PostHeader(
             Text(
                 text = "${formatNumber(post.numComments)} comments",
                 style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Spacer(modifier = Modifier.weight(1f))
 
             IconButton(onClick = onSortClick) {
-                Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort comments", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(
+                    Icons.AutoMirrored.Default.Sort,
+                    contentDescription = "Sort comments",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             if (isLoggedIn) {
                 IconButton(onClick = onSave) {
                     Icon(
                         if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                         contentDescription = "Save",
-                        tint = if (post.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (post.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 IconButton(
-                    onClick = if (commentingDisabled) {
-                        { Toast.makeText(context, post.commentingDisabledReason, Toast.LENGTH_SHORT).show() }
-                    } else onReply,
-                    enabled = true
+                    onClick =
+                        if (commentingDisabled) {
+                            { Toast.makeText(context, post.commentingDisabledReason, Toast.LENGTH_SHORT).show() }
+                        } else {
+                            onReply
+                        },
+                    enabled = true,
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.Reply, 
+                        Icons.AutoMirrored.Filled.Reply,
                         contentDescription = "Reply",
-                        tint = if (commentingDisabled)
-                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                        tint =
+                            if (commentingDisabled) {
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                 }
             }
@@ -1136,15 +1199,16 @@ private fun MoreCommentsButton(
     more: MoreComments,
     onClick: () -> Unit,
     isLoading: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = (more.depth * 12).dp)
-            .clickable(enabled = !isLoading, onClick = onClick)
-            .padding(vertical = 10.dp, horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(start = (more.depth * 12).dp)
+                .clickable(enabled = !isLoading, onClick = onClick)
+                .padding(vertical = 10.dp, horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isLoading) {
             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
@@ -1153,8 +1217,7 @@ private fun MoreCommentsButton(
         Text(
             text = "Load ${more.count} more ${if (more.count == 1) "reply" else "replies"}",
             color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelLarge
+            style = MaterialTheme.typography.labelLarge,
         )
     }
 }
-

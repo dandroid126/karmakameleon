@@ -10,7 +10,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SettingsRepositoryTest {
-
     private fun createRepo(settings: MapSettings = MapSettings()) = SettingsRepository(settings)
 
     // ==================== Inline Images ====================
@@ -427,9 +426,9 @@ class SettingsRepositoryTest {
         repo.setSubredditNsfw("sub1", true)
         repo.setSubredditNsfw("sub2", false)
         repo.setSubredditNsfw("sub3", true)
-        
+
         repo.clearSubredditNsfwCache()
-        
+
         assertTrue(repo.subredditNsfwCache.value.isEmpty())
     }
 
@@ -452,7 +451,7 @@ class SettingsRepositoryTest {
         repo.setSubredditNsfw("sub2", false)
         repo.setSubredditNsfw("sub3", true)
         repo.setSubredditNsfw("sub4", false)
-        
+
         assertEquals(4, repo.subredditNsfwCache.value.size)
         assertTrue(repo.getSubredditNsfw("sub1"))
         assertFalse(repo.getSubredditNsfw("sub2"))

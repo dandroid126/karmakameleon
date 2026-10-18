@@ -15,212 +15,228 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class UserRepositoryTest {
-
     private fun createRepo(
         api: FakeRedditApi = FakeRedditApi(),
-        authManager: FakeAuthManager = FakeAuthManager()
-    ): Triple<UserRepository, FakeRedditApi, FakeAuthManager> {
-        return Triple(UserRepository(api, authManager), api, authManager)
-    }
+        authManager: FakeAuthManager = FakeAuthManager(),
+    ): Triple<UserRepository, FakeRedditApi, FakeAuthManager> = Triple(UserRepository(api, authManager), api, authManager)
 
     // ==================== loadCurrentUser ====================
 
     @Test
-    fun loadCurrentUser_returnsSuccess() = runTest {
-        val (repo, api, _) = createRepo()
-        val account = createTestAccount(name = "testuser")
-        api.meResult = account
+    fun loadCurrentUser_returnsSuccess() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            val account = createTestAccount(name = "testuser")
+            api.meResult = account
 
-        val result = repo.loadCurrentUser()
-        assertTrue(result.isSuccess)
-        assertEquals("testuser", result.getOrThrow().name)
-    }
-
-    @Test
-    fun loadCurrentUser_updatesCurrentAccount() = runTest {
-        val (repo, api, _) = createRepo()
-        val account = createTestAccount(name = "testuser")
-        api.meResult = account
-
-        repo.loadCurrentUser()
-        assertEquals("testuser", repo.currentAccount.value?.name)
-    }
+            val result = repo.loadCurrentUser()
+            assertTrue(result.isSuccess)
+            assertEquals("testuser", result.getOrThrow().name)
+        }
 
     @Test
-    fun loadCurrentUser_setsIsLoggedIn() = runTest {
-        val (repo, api, _) = createRepo()
-        val account = createTestAccount(name = "testuser")
-        api.meResult = account
+    fun loadCurrentUser_updatesCurrentAccount() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            val account = createTestAccount(name = "testuser")
+            api.meResult = account
 
-        repo.loadCurrentUser()
-        assertTrue(repo.isLoggedIn.value)
-    }
-
-    @Test
-    fun loadCurrentUser_returnsFailureWhenNull() = runTest {
-        val (repo, api, _) = createRepo()
-        api.meResult = null
-
-        val result = repo.loadCurrentUser()
-        assertTrue(result.isFailure)
-    }
+            repo.loadCurrentUser()
+            assertEquals("testuser", repo.currentAccount.value?.name)
+        }
 
     @Test
-    fun loadCurrentUser_returnsFailureOnException() = runTest {
-        val (repo, api, _) = createRepo()
-        api.shouldThrow = Exception("Network error")
+    fun loadCurrentUser_setsIsLoggedIn() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            val account = createTestAccount(name = "testuser")
+            api.meResult = account
 
-        val result = repo.loadCurrentUser()
-        assertTrue(result.isFailure)
-    }
+            repo.loadCurrentUser()
+            assertTrue(repo.isLoggedIn.value)
+        }
+
+    @Test
+    fun loadCurrentUser_returnsFailureWhenNull() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.meResult = null
+
+            val result = repo.loadCurrentUser()
+            assertTrue(result.isFailure)
+        }
+
+    @Test
+    fun loadCurrentUser_returnsFailureOnException() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.shouldThrow = Exception("Network error")
+
+            val result = repo.loadCurrentUser()
+            assertTrue(result.isFailure)
+        }
 
     // ==================== getUser ====================
 
     @Test
-    fun getUser_returnsSuccess() = runTest {
-        val (repo, api, _) = createRepo()
-        val user = createTestUser(name = "otheruser")
-        api.userResult = user
+    fun getUser_returnsSuccess() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            val user = createTestUser(name = "otheruser")
+            api.userResult = user
 
-        val result = repo.getUser("otheruser")
-        assertTrue(result.isSuccess)
-        assertEquals("otheruser", result.getOrThrow().name)
-    }
-
-    @Test
-    fun getUser_returnsFailureWhenNull() = runTest {
-        val (repo, api, _) = createRepo()
-        api.userResult = null
-
-        val result = repo.getUser("nonexistent")
-        assertTrue(result.isFailure)
-    }
+            val result = repo.getUser("otheruser")
+            assertTrue(result.isSuccess)
+            assertEquals("otheruser", result.getOrThrow().name)
+        }
 
     @Test
-    fun getUser_returnsFailureOnException() = runTest {
-        val (repo, api, _) = createRepo()
-        api.shouldThrow = Exception("Network error")
+    fun getUser_returnsFailureWhenNull() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.userResult = null
 
-        val result = repo.getUser("user")
-        assertTrue(result.isFailure)
-    }
+            val result = repo.getUser("nonexistent")
+            assertTrue(result.isFailure)
+        }
+
+    @Test
+    fun getUser_returnsFailureOnException() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.shouldThrow = Exception("Network error")
+
+            val result = repo.getUser("user")
+            assertTrue(result.isFailure)
+        }
 
     // ==================== getUserPosts ====================
 
     @Test
-    fun getUserPosts_returnsSuccess() = runTest {
-        val (repo, api, _) = createRepo()
-        val posts = listOf(createTestPost(id = "p1"), createTestPost(id = "p2"))
-        api.userPostsResult = createTestListing(items = posts)
+    fun getUserPosts_returnsSuccess() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            val posts = listOf(createTestPost(id = "p1"), createTestPost(id = "p2"))
+            api.userPostsResult = createTestListing(items = posts)
 
-        val result = repo.getUserPosts("testuser")
-        assertTrue(result.isSuccess)
-        assertEquals(2, result.getOrThrow().items.size)
-    }
+            val result = repo.getUserPosts("testuser")
+            assertTrue(result.isSuccess)
+            assertEquals(2, result.getOrThrow().items.size)
+        }
 
     @Test
-    fun getUserPosts_returnsFailureOnException() = runTest {
-        val (repo, api, _) = createRepo()
-        api.shouldThrow = Exception("Network error")
+    fun getUserPosts_returnsFailureOnException() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.shouldThrow = Exception("Network error")
 
-        val result = repo.getUserPosts("testuser")
-        assertTrue(result.isFailure)
-    }
+            val result = repo.getUserPosts("testuser")
+            assertTrue(result.isFailure)
+        }
 
     // ==================== getUserComments ====================
 
     @Test
-    fun getUserComments_returnsSuccess() = runTest {
-        val (repo, api, _) = createRepo()
-        val comments = listOf(createTestComment(id = "c1"))
-        api.userCommentsResult = createTestListing(items = comments)
+    fun getUserComments_returnsSuccess() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            val comments = listOf(createTestComment(id = "c1"))
+            api.userCommentsResult = createTestListing(items = comments)
 
-        val result = repo.getUserComments("testuser")
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrThrow().items.size)
-    }
+            val result = repo.getUserComments("testuser")
+            assertTrue(result.isSuccess)
+            assertEquals(1, result.getOrThrow().items.size)
+        }
 
     // ==================== getSavedPosts ====================
 
     @Test
-    fun getSavedPosts_returnsFailureWhenNotLoggedIn() = runTest {
-        val (repo, _, _) = createRepo()
-        val result = repo.getSavedPosts()
-        assertTrue(result.isFailure)
-    }
+    fun getSavedPosts_returnsFailureWhenNotLoggedIn() =
+        runTest {
+            val (repo, _, _) = createRepo()
+            val result = repo.getSavedPosts()
+            assertTrue(result.isFailure)
+        }
 
     @Test
-    fun getSavedPosts_returnsSuccessWhenLoggedIn() = runTest {
-        val (repo, api, _) = createRepo()
-        api.meResult = createTestAccount(name = "testuser")
-        repo.loadCurrentUser()
-        api.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")))
+    fun getSavedPosts_returnsSuccessWhenLoggedIn() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.meResult = createTestAccount(name = "testuser")
+            repo.loadCurrentUser()
+            api.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")))
 
-        val result = repo.getSavedPosts()
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrThrow().items.size)
-    }
+            val result = repo.getSavedPosts()
+            assertTrue(result.isSuccess)
+            assertEquals(1, result.getOrThrow().items.size)
+        }
 
     // ==================== getSavedComments ====================
 
     @Test
-    fun getSavedComments_returnsFailureWhenNotLoggedIn() = runTest {
-        val (repo, _, _) = createRepo()
-        val result = repo.getSavedComments()
-        assertTrue(result.isFailure)
-    }
+    fun getSavedComments_returnsFailureWhenNotLoggedIn() =
+        runTest {
+            val (repo, _, _) = createRepo()
+            val result = repo.getSavedComments()
+            assertTrue(result.isFailure)
+        }
 
     @Test
-    fun getSavedComments_returnsSuccessWhenLoggedIn() = runTest {
-        val (repo, api, _) = createRepo()
-        api.meResult = createTestAccount(name = "testuser")
-        repo.loadCurrentUser()
-        api.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")))
+    fun getSavedComments_returnsSuccessWhenLoggedIn() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.meResult = createTestAccount(name = "testuser")
+            repo.loadCurrentUser()
+            api.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")))
 
-        val result = repo.getSavedComments()
-        assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrThrow().items.size)
-    }
+            val result = repo.getSavedComments()
+            assertTrue(result.isSuccess)
+            assertEquals(1, result.getOrThrow().items.size)
+        }
 
     // ==================== getUpvotedPosts ====================
 
     @Test
-    fun getUpvotedPosts_returnsFailureWhenNotLoggedIn() = runTest {
-        val (repo, _, _) = createRepo()
-        val result = repo.getUpvotedPosts()
-        assertTrue(result.isFailure)
-    }
+    fun getUpvotedPosts_returnsFailureWhenNotLoggedIn() =
+        runTest {
+            val (repo, _, _) = createRepo()
+            val result = repo.getUpvotedPosts()
+            assertTrue(result.isFailure)
+        }
 
     @Test
-    fun getUpvotedPosts_returnsSuccessWhenLoggedIn() = runTest {
-        val (repo, api, _) = createRepo()
-        api.meResult = createTestAccount(name = "testuser")
-        repo.loadCurrentUser()
-        api.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")))
+    fun getUpvotedPosts_returnsSuccessWhenLoggedIn() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.meResult = createTestAccount(name = "testuser")
+            repo.loadCurrentUser()
+            api.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")))
 
-        val result = repo.getUpvotedPosts()
-        assertTrue(result.isSuccess)
-    }
+            val result = repo.getUpvotedPosts()
+            assertTrue(result.isSuccess)
+        }
 
     // ==================== getDownvotedPosts ====================
 
     @Test
-    fun getDownvotedPosts_returnsFailureWhenNotLoggedIn() = runTest {
-        val (repo, _, _) = createRepo()
-        val result = repo.getDownvotedPosts()
-        assertTrue(result.isFailure)
-    }
+    fun getDownvotedPosts_returnsFailureWhenNotLoggedIn() =
+        runTest {
+            val (repo, _, _) = createRepo()
+            val result = repo.getDownvotedPosts()
+            assertTrue(result.isFailure)
+        }
 
     @Test
-    fun getDownvotedPosts_returnsSuccessWhenLoggedIn() = runTest {
-        val (repo, api, _) = createRepo()
-        api.meResult = createTestAccount(name = "testuser")
-        repo.loadCurrentUser()
-        api.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")))
+    fun getDownvotedPosts_returnsSuccessWhenLoggedIn() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.meResult = createTestAccount(name = "testuser")
+            repo.loadCurrentUser()
+            api.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")))
 
-        val result = repo.getDownvotedPosts()
-        assertTrue(result.isSuccess)
-    }
+            val result = repo.getDownvotedPosts()
+            assertTrue(result.isSuccess)
+        }
 
     // ==================== Auth ====================
 
@@ -233,25 +249,27 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun handleAuthCallback_setsLoggedIn() = runTest {
-        val (repo, api, _) = createRepo()
-        api.meResult = createTestAccount(name = "testuser")
+    fun handleAuthCallback_setsLoggedIn() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.meResult = createTestAccount(name = "testuser")
 
-        val success = repo.handleAuthCallback("auth_code")
-        assertTrue(success)
-        assertTrue(repo.isLoggedIn.value)
-    }
+            val success = repo.handleAuthCallback("auth_code")
+            assertTrue(success)
+            assertTrue(repo.isLoggedIn.value)
+        }
 
     @Test
-    fun logout_clearsState() = runTest {
-        val (repo, api, _) = createRepo()
-        api.meResult = createTestAccount(name = "testuser")
-        repo.loadCurrentUser()
+    fun logout_clearsState() =
+        runTest {
+            val (repo, api, _) = createRepo()
+            api.meResult = createTestAccount(name = "testuser")
+            repo.loadCurrentUser()
 
-        repo.logout()
-        assertFalse(repo.isLoggedIn.value)
-        assertNull(repo.currentAccount.value)
-    }
+            repo.logout()
+            assertFalse(repo.isLoggedIn.value)
+            assertNull(repo.currentAccount.value)
+        }
 
     @Test
     fun isLoggedInSync_delegatesToAuthManager() {

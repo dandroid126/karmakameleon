@@ -67,18 +67,18 @@ data class TrophyDto(
 @Serializable
 data class TrophyListResponse(
     val kind: String,
-    val data: TrophyListData
+    val data: TrophyListData,
 )
 
 @Serializable
 data class TrophyListData(
-    val trophies: List<TrophyWrapper> = emptyList()
+    val trophies: List<TrophyWrapper> = emptyList(),
 )
 
 @Serializable
 data class TrophyWrapper(
     val kind: String,
-    val data: TrophyDto
+    val data: TrophyDto,
 )
 
 @Serializable
@@ -91,5 +91,5 @@ data class KarmaBreakdownDto(
 @Serializable
 data class KarmaListResponse(
     val kind: String,
-    val data: List<KarmaBreakdownDto>
+    val data: List<KarmaBreakdownDto>,
 )

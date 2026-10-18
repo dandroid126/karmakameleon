@@ -60,7 +60,7 @@ kotlin {
             implementation(libs.ktor.client.mock)
             implementation(libs.multiplatform.settings.test)
         }
-        
+
         androidMain.dependencies {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
@@ -76,24 +76,24 @@ jacoco {
 // Configure JaCoCo for Android tests
 tasks.register("jacocoTestReport", org.gradle.testing.jacoco.tasks.JacocoReport::class) {
     dependsOn("testAndroidHostTest")
-    
+
     group = "Reporting"
     description = "Generate Jacoco coverage reports for Android tests"
-    
+
     reports {
         xml.required.set(true)
         html.required.set(true)
         csv.required.set(false)
     }
-    
+
     // Source files for coverage
     sourceDirectories.setFrom(
         files(
             "$projectDir/src/commonMain/kotlin",
-            "$projectDir/src/androidMain/kotlin"
-        )
+            "$projectDir/src/androidMain/kotlin",
+        ),
     )
-    
+
     // Class files for coverage
     classDirectories.setFrom(
         files(
@@ -102,15 +102,15 @@ tasks.register("jacocoTestReport", org.gradle.testing.jacoco.tasks.JacocoReport:
                 exclude("**/R$*.class")
                 exclude("**/BuildConfig.*")
                 exclude("**/Manifest*.*")
-            }
-        )
+            },
+        ),
     )
-    
+
     // Execution data from test runs
     executionData.setFrom(
         files(
-            layout.buildDirectory.file("jacoco/testAndroidHostTest.exec").get()
-        )
+            layout.buildDirectory.file("jacoco/testAndroidHostTest.exec").get(),
+        ),
     )
 }
 

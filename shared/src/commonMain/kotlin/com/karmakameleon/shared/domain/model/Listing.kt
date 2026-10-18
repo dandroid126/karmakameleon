@@ -7,7 +7,7 @@ data class Listing<T>(
     val items: List<T>,
     val after: String?,
     val before: String?,
-    val dist: Int?
+    val dist: Int?,
 ) {
     val hasMore: Boolean get() = after != null
 }
@@ -16,19 +16,23 @@ data class Listing<T>(
 data class SearchResult(
     val posts: Listing<Post>,
     val subreddits: List<Subreddit>,
-    val users: List<User>
+    val users: List<User>,
 )
 
-enum class SearchSort(val value: String) {
+enum class SearchSort(
+    val value: String,
+) {
     RELEVANCE("relevance"),
     HOT("hot"),
     TOP("top"),
     NEW("new"),
-    COMMENTS("comments")
+    COMMENTS("comments"),
 }
 
-enum class SearchType(val value: String) {
+enum class SearchType(
+    val value: String,
+) {
     POST("link"),
     SUBREDDIT("sr"),
-    USER("user")
+    USER("user"),
 }

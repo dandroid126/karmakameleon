@@ -80,11 +80,12 @@ open class RedditApi(
 ) {
     private val apiScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        coerceInputValues = true
-    }
+    private val json =
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            coerceInputValues = true
+        }
 
     companion object {
         const val BASE_URL = "https://oauth.reddit.com"
@@ -92,11 +93,10 @@ open class RedditApi(
         const val AUTH_URL = "https://www.reddit.com/api/v1"
     }
 
-    private suspend fun authenticatedRequest(
-        block: HttpRequestBuilder.() -> Unit
-    ): HttpResponse {
-        val token = authManager.getAccessToken()
-            ?: throw IllegalStateException("No Reddit Client ID configured. Please enter your Client ID in the Profile tab.")
+    private suspend fun authenticatedRequest(block: HttpRequestBuilder.() -> Unit): HttpResponse {
+        val token =
+            authManager.getAccessToken()
+                ?: throw IllegalStateException("No Reddit Client ID configured. Please enter your Client ID in the Profile tab.")
         return httpClient.request {
             block()
             header(HttpHeaders.Authorization, "Bearer $token")
@@ -111,50 +111,61 @@ open class RedditApi(
         sort: PostSort = PostSort.HOT,
         time: TimeFilter? = null,
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Post> {
         val path = if (subreddit != null) "/r/$subreddit/${sort.value}" else "/${sort.value}"
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL$path")
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-            time?.let { parameter("t", it.value) }
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL$path")
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
+                time?.let { parameter("t", it.value) }
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parsePostListing(redditResponse.data)
     }
 
-    open suspend fun fetchPostsByIds(fullnames: List<String>): List<Post> {
-        return try {
-            val response = authenticatedRequest {
-                method = HttpMethod.Get
-                url("$BASE_URL/api/info")
-                parameter("id", fullnames.joinToString(","))
-                parameter("raw_json", 1)
-            }
+    open suspend fun fetchPostsByIds(fullnames: List<String>): List<Post> =
+        try {
+            val response =
+                authenticatedRequest {
+                    method = HttpMethod.Get
+                    url("$BASE_URL/api/info")
+                    parameter("id", fullnames.joinToString(","))
+                    parameter("raw_json", 1)
+                }
             val body = response.bodyAsText()
             val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
             parsePostListing(redditResponse.data).items
         } catch (_: Exception) {
             emptyList()
         }
-    }
 
-    open suspend fun getPost(subreddit: String, postId: String): Post? {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/r/$subreddit/comments/$postId")
-            parameter("limit", 1)
-            parameter("raw_json", 1)
-        }
-        
+    open suspend fun getPost(
+        subreddit: String,
+        postId: String,
+    ): Post? {
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/r/$subreddit/comments/$postId")
+                parameter("limit", 1)
+                parameter("raw_json", 1)
+            }
+
         val body = response.bodyAsText()
         val listings = json.decodeFromString<List<RedditResponse<ListingData>>>(body)
-        val postData = listings.firstOrNull()?.data?.children?.firstOrNull()?.data ?: return null
+        val postData =
+            listings
+                .firstOrNull()
+                ?.data
+                ?.children
+                ?.firstOrNull()
+                ?.data ?: return null
         return parsePost(postData)
     }
 
@@ -164,69 +175,91 @@ open class RedditApi(
         sort: CommentSort? = CommentSort.CONFIDENCE,
         limit: Int = 200,
         commentId: String? = null,
-        context: Int? = null
+        context: Int? = null,
     ): Pair<Post, List<CommentOrMore>> {
         val commentPath = if (commentId != null) "/comment/$commentId" else ""
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/r/$subreddit/comments/$postId$commentPath")
-            if (sort != null) parameter("sort", sort.value)
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            if (commentId != null) {
-                parameter("context", context ?: 0)
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/r/$subreddit/comments/$postId$commentPath")
+                if (sort != null) parameter("sort", sort.value)
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                if (commentId != null) {
+                    parameter("context", context ?: 0)
+                }
             }
-        }
-        
+
         val body = response.bodyAsText()
         val listings = json.decodeFromString<List<RedditResponse<ListingData>>>(body)
-        
-        val post = parsePost(listings[0].data.children.first().data)
+
+        val post =
+            parsePost(
+                listings[0]
+                    .data.children
+                    .first()
+                    .data,
+            )
         val comments = parseComments(listings.getOrNull(1)?.data?.children ?: emptyList())
-        
+
         return post to comments
     }
 
     open suspend fun getMoreComments(
         linkId: String,
         children: List<String>,
-        sort: CommentSort = CommentSort.CONFIDENCE
+        sort: CommentSort = CommentSort.CONFIDENCE,
     ): List<CommentOrMore> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/api/morechildren")
-            parameter("api_type", "json")
-            parameter("link_id", linkId)
-            parameter("children", children.joinToString(","))
-            parameter("sort", sort.value)
-            parameter("raw_json", 1)
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/api/morechildren")
+                parameter("api_type", "json")
+                parameter("link_id", linkId)
+                parameter("children", children.joinToString(","))
+                parameter("sort", sort.value)
+                parameter("raw_json", 1)
+            }
+
         val body = response.bodyAsText()
         val moreResponse = json.decodeFromString<MoreChildrenResponse>(body)
         return moreResponse.json.data?.things?.mapNotNull { thing ->
             when (thing.kind) {
-                "t1" -> CommentOrMore.CommentItem(parseComment(thing.data, 0))
+                "t1" -> {
+                    CommentOrMore.CommentItem(parseComment(thing.data, 0))
+                }
+
                 "more" -> {
                     val more = json.decodeFromJsonElement<MoreCommentsDto>(thing.data)
                     CommentOrMore.More(parseMoreComments(more))
                 }
-                else -> null
+
+                else -> {
+                    null
+                }
             }
         } ?: emptyList()
     }
 
     // ==================== Voting ====================
 
-    open suspend fun vote(thingId: String, direction: Int): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/vote")
-            setBody(FormDataContent(Parameters.build {
-                append("id", thingId)
-                append("dir", direction.toString())
-            }))
-        }
+    open suspend fun vote(
+        thingId: String,
+        direction: Int,
+    ): Boolean {
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/vote")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("id", thingId)
+                            append("dir", direction.toString())
+                        },
+                    ),
+                )
+            }
         val body = response.bodyAsText()
         if (!response.status.isSuccess()) {
             parseApiErrors(body)?.let { throw it }
@@ -238,25 +271,35 @@ open class RedditApi(
     // ==================== Save ====================
 
     open suspend fun save(thingId: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/save")
-            setBody(FormDataContent(Parameters.build {
-                append("id", thingId)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/save")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("id", thingId)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
     open suspend fun unsave(thingId: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/unsave")
-            setBody(FormDataContent(Parameters.build {
-                append("id", thingId)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/unsave")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("id", thingId)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
@@ -264,25 +307,35 @@ open class RedditApi(
     // ==================== Hide ====================
 
     open suspend fun hide(thingId: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/hide")
-            setBody(FormDataContent(Parameters.build {
-                append("id", thingId)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/hide")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("id", thingId)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
     open suspend fun unhide(thingId: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/unhide")
-            setBody(FormDataContent(Parameters.build {
-                append("id", thingId)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/unhide")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("id", thingId)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
@@ -290,12 +343,13 @@ open class RedditApi(
     // ==================== Subreddits ====================
 
     open suspend fun getSubreddit(name: String): Subreddit? {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/r/$name/about")
-            parameter("raw_json", 1)
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/r/$name/about")
+                parameter("raw_json", 1)
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<SubredditDto>>(body)
         return mapSubreddit(redditResponse.data)
@@ -303,57 +357,73 @@ open class RedditApi(
 
     open suspend fun getSubscribedSubreddits(
         after: String? = null,
-        limit: Int = 100
+        limit: Int = 100,
     ): Listing<Subreddit> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/subreddits/mine/subscriber")
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/subreddits/mine/subscriber")
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parseSubredditListing(redditResponse.data)
     }
 
     open suspend fun subscribe(subredditName: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/subscribe")
-            setBody(FormDataContent(Parameters.build {
-                append("action", "sub")
-                append("sr_name", subredditName)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/subscribe")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("action", "sub")
+                            append("sr_name", subredditName)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
     open suspend fun unsubscribe(subredditName: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/subscribe")
-            setBody(FormDataContent(Parameters.build {
-                append("action", "unsub")
-                append("sr_name", subredditName)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/subscribe")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("action", "unsub")
+                            append("sr_name", subredditName)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
-    open suspend fun searchSubreddits(query: String, limit: Int = 10, includeOver18: Boolean = true): List<Subreddit> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/subreddits/search")
-            parameter("q", query)
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            parameter("include_over_18", includeOver18)
-        }
-        
+    open suspend fun searchSubreddits(
+        query: String,
+        limit: Int = 10,
+        includeOver18: Boolean = true,
+    ): List<Subreddit> {
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/subreddits/search")
+                parameter("q", query)
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                parameter("include_over_18", includeOver18)
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         val subreddits = parseSubredditListing(redditResponse.data).items
@@ -362,16 +432,17 @@ open class RedditApi(
 
     open suspend fun getPopularSubreddits(
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Subreddit> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/subreddits/popular")
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/subreddits/popular")
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parseSubredditListing(redditResponse.data)
@@ -380,26 +451,28 @@ open class RedditApi(
     // ==================== User ====================
 
     open suspend fun getMe(): Account? {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/api/v1/me")
-            parameter("raw_json", 1)
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/api/v1/me")
+                parameter("raw_json", 1)
+            }
+
         val body = response.bodyAsText() // Always consume body to release connection
         if (!response.status.isSuccess()) return null
-        
+
         val accountDto = json.decodeFromString<AccountDto>(body)
         return mapAccount(accountDto)
     }
 
     open suspend fun getUser(username: String): User? {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/user/$username/about")
-            parameter("raw_json", 1)
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/user/$username/about")
+                parameter("raw_json", 1)
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<UserDto>>(body)
         return mapUser(redditResponse.data)
@@ -410,20 +483,21 @@ open class RedditApi(
         sort: PostSort = PostSort.NEW,
         timeFilter: TimeFilter? = null,
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Post> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/user/$username/submitted")
-            parameter("sort", sort.value)
-            if (sort == PostSort.TOP || sort == PostSort.CONTROVERSIAL) {
-                parameter("t", (timeFilter ?: TimeFilter.ALL).value)
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/user/$username/submitted")
+                parameter("sort", sort.value)
+                if (sort == PostSort.TOP || sort == PostSort.CONTROVERSIAL) {
+                    parameter("t", (timeFilter ?: TimeFilter.ALL).value)
+                }
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
             }
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-        }
-        
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parsePostListing(redditResponse.data)
@@ -434,20 +508,21 @@ open class RedditApi(
         sort: PostSort = PostSort.NEW,
         timeFilter: TimeFilter? = null,
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Comment> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/user/$username/comments")
-            parameter("sort", sort.value)
-            if (sort == PostSort.TOP || sort == PostSort.CONTROVERSIAL) {
-                parameter("t", (timeFilter ?: TimeFilter.ALL).value)
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/user/$username/comments")
+                parameter("sort", sort.value)
+                if (sort == PostSort.TOP || sort == PostSort.CONTROVERSIAL) {
+                    parameter("t", (timeFilter ?: TimeFilter.ALL).value)
+                }
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
             }
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-        }
-        
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parseCommentListing(redditResponse.data)
@@ -456,17 +531,18 @@ open class RedditApi(
     open suspend fun getSavedPosts(
         username: String,
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Post> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/user/$username/saved")
-            parameter("type", "links")
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/user/$username/saved")
+                parameter("type", "links")
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parsePostListing(redditResponse.data)
@@ -475,17 +551,18 @@ open class RedditApi(
     open suspend fun getSavedComments(
         username: String,
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Comment> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/user/$username/saved")
-            parameter("type", "comments")
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/user/$username/saved")
+                parameter("type", "comments")
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parseCommentListing(redditResponse.data)
@@ -494,16 +571,17 @@ open class RedditApi(
     open suspend fun getUpvotedPosts(
         username: String,
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Post> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/user/$username/upvoted")
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/user/$username/upvoted")
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parsePostListing(redditResponse.data)
@@ -512,16 +590,17 @@ open class RedditApi(
     open suspend fun getDownvotedPosts(
         username: String,
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Post> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/user/$username/downvoted")
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/user/$username/downvoted")
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parsePostListing(redditResponse.data)
@@ -535,22 +614,23 @@ open class RedditApi(
         sort: SearchSort = SearchSort.RELEVANCE,
         time: TimeFilter = TimeFilter.ALL,
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Post> {
         val path = if (subreddit != null) "/r/$subreddit/search" else "/search"
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL$path")
-            parameter("q", query)
-            parameter("sort", sort.value)
-            parameter("t", time.value)
-            parameter("type", "link")
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            parameter("restrict_sr", subreddit != null)
-            after?.let { parameter("after", it) }
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL$path")
+                parameter("q", query)
+                parameter("sort", sort.value)
+                parameter("t", time.value)
+                parameter("type", "link")
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                parameter("restrict_sr", subreddit != null)
+                after?.let { parameter("after", it) }
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parsePostListing(redditResponse.data)
@@ -558,17 +638,25 @@ open class RedditApi(
 
     // ==================== Comments ====================
 
-    open suspend fun submitComment(parentId: String, text: String): Comment? {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/comment")
-            setBody(FormDataContent(Parameters.build {
-                append("api_type", "json")
-                append("thing_id", parentId)
-                append("text", text)
-            }))
-        }
-        
+    open suspend fun submitComment(
+        parentId: String,
+        text: String,
+    ): Comment? {
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/comment")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("api_type", "json")
+                            append("thing_id", parentId)
+                            append("text", text)
+                        },
+                    ),
+                )
+            }
+
         val body = response.bodyAsText() // Always consume body to release connection
         if (!response.status.isSuccess()) {
             parseApiErrors(body)?.let { throw it }
@@ -585,7 +673,12 @@ open class RedditApi(
                 throw RedditApiException(errorCode, errorMessage)
             }
             val data = jsonResponse["json"]?.jsonObject?.get("data")?.jsonObject
-            val things = data?.get("things")?.jsonArray?.firstOrNull()?.jsonObject
+            val things =
+                data
+                    ?.get("things")
+                    ?.jsonArray
+                    ?.firstOrNull()
+                    ?.jsonObject
             things?.get("data")?.let { parseComment(it, 0) }
         } catch (e: RedditApiException) {
             throw e
@@ -595,28 +688,41 @@ open class RedditApi(
         }
     }
 
-    open suspend fun editComment(thingId: String, text: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/editusertext")
-            setBody(FormDataContent(Parameters.build {
-                append("api_type", "json")
-                append("thing_id", thingId)
-                append("text", text)
-            }))
-        }
+    open suspend fun editComment(
+        thingId: String,
+        text: String,
+    ): Boolean {
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/editusertext")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("api_type", "json")
+                            append("thing_id", thingId)
+                            append("text", text)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
     open suspend fun deleteComment(thingId: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/del")
-            setBody(FormDataContent(Parameters.build {
-                append("id", thingId)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/del")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("id", thingId)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
@@ -626,77 +732,103 @@ open class RedditApi(
     open suspend fun getInbox(
         filter: InboxFilter = InboxFilter.ALL,
         after: String? = null,
-        limit: Int = 25
+        limit: Int = 25,
     ): Listing<Message> {
-        val response = authenticatedRequest {
-            method = HttpMethod.Get
-            url("$BASE_URL/message/${filter.value}")
-            parameter("limit", limit)
-            parameter("raw_json", 1)
-            after?.let { parameter("after", it) }
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Get
+                url("$BASE_URL/message/${filter.value}")
+                parameter("limit", limit)
+                parameter("raw_json", 1)
+                after?.let { parameter("after", it) }
+            }
+
         val body = response.bodyAsText()
         val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
         return parseMessageListing(redditResponse.data)
     }
 
-    open suspend fun sendMessage(to: String, subject: String, body: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/compose")
-            setBody(FormDataContent(Parameters.build {
-                append("api_type", "json")
-                append("to", to)
-                append("subject", subject)
-                append("text", body)
-            }))
-        }
+    open suspend fun sendMessage(
+        to: String,
+        subject: String,
+        body: String,
+    ): Boolean {
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/compose")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("api_type", "json")
+                            append("to", to)
+                            append("subject", subject)
+                            append("text", body)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
     open suspend fun markMessageRead(thingId: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/read_message")
-            setBody(FormDataContent(Parameters.build {
-                append("id", thingId)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/read_message")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("id", thingId)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
     open suspend fun markMessageUnread(thingId: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/unread_message")
-            setBody(FormDataContent(Parameters.build {
-                append("id", thingId)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/unread_message")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("id", thingId)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
     open suspend fun blockUser(username: String): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/block_user")
-            setBody(FormDataContent(Parameters.build {
-                append("name", username)
-            }))
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/block_user")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("name", username)
+                        },
+                    ),
+                )
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
 
     open suspend fun markAllMessagesRead(): Boolean {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/read_all_messages")
-        }
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/read_all_messages")
+            }
         response.bodyAsText() // Consume body to release connection
         return response.status.isSuccess()
     }
@@ -712,28 +844,33 @@ open class RedditApi(
         nsfw: Boolean = false,
         spoiler: Boolean = false,
         flairId: String? = null,
-        flairText: String? = null
+        flairText: String? = null,
     ): String? {
-        val response = authenticatedRequest {
-            method = HttpMethod.Post
-            url("$BASE_URL/api/submit")
-            setBody(FormDataContent(Parameters.build {
-                append("api_type", "json")
-                append("sr", subreddit)
-                append("title", title)
-                append("kind", kind)
-                text?.let { append("text", it) }
-                url?.let { append("url", it) }
-                append("nsfw", nsfw.toString())
-                append("spoiler", spoiler.toString())
-                flairId?.let { append("flair_id", it) }
-                flairText?.let { append("flair_text", it) }
-            }))
-        }
-        
+        val response =
+            authenticatedRequest {
+                method = HttpMethod.Post
+                url("$BASE_URL/api/submit")
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("api_type", "json")
+                            append("sr", subreddit)
+                            append("title", title)
+                            append("kind", kind)
+                            text?.let { append("text", it) }
+                            url?.let { append("url", it) }
+                            append("nsfw", nsfw.toString())
+                            append("spoiler", spoiler.toString())
+                            flairId?.let { append("flair_id", it) }
+                            flairText?.let { append("flair_text", it) }
+                        },
+                    ),
+                )
+            }
+
         val body = response.bodyAsText() // Always consume body to release connection
         if (!response.status.isSuccess()) return null
-        
+
         return try {
             val jsonResponse = json.parseToJsonElement(body).jsonObject
             val data = jsonResponse["json"]?.jsonObject?.get("data")?.jsonObject
@@ -746,28 +883,31 @@ open class RedditApi(
 
     // ==================== Parsing Helpers ====================
 
-    private fun parseApiErrors(body: String): RedditApiException? {
-        return try {
+    private fun parseApiErrors(body: String): RedditApiException? =
+        try {
             val jsonResponse = json.parseToJsonElement(body).jsonObject
-            val errors = jsonResponse["json"]?.jsonObject?.get("errors")?.jsonArray
-                ?: jsonResponse["errors"]?.jsonArray
+            val errors =
+                jsonResponse["json"]?.jsonObject?.get("errors")?.jsonArray
+                    ?: jsonResponse["errors"]?.jsonArray
             if (!errors.isNullOrEmpty()) {
                 val firstError = errors.firstOrNull()?.jsonArray
                 val errorCode = firstError?.getOrNull(0)?.jsonPrimitive?.content ?: "UNKNOWN"
                 val errorMessage = firstError?.getOrNull(1)?.jsonPrimitive?.content ?: "Unknown error"
                 RedditApiException(errorCode, errorMessage)
-            } else null
+            } else {
+                null
+            }
         } catch (_: Exception) {
             null
         }
-    }
 
     private fun parsePostListing(data: ListingData): Listing<Post> {
-        val uncachedSubreddits = data.children
-            .filter { it.kind == "t3" }
-            .mapNotNull { runCatching { json.decodeFromJsonElement<PostDto>(it.data).subreddit }.getOrNull() }
-            .distinct()
-            .filter { settingsRepository?.isSubredditNsfwCached(it) != true }
+        val uncachedSubreddits =
+            data.children
+                .filter { it.kind == "t3" }
+                .mapNotNull { runCatching { json.decodeFromJsonElement<PostDto>(it.data).subreddit }.getOrNull() }
+                .distinct()
+                .filter { settingsRepository?.isSubredditNsfwCached(it) != true }
 
         if (uncachedSubreddits.isNotEmpty()) {
             apiScope.launch {
@@ -775,56 +915,64 @@ open class RedditApi(
             }
         }
 
-        val posts = data.children.mapNotNull { thing ->
-            if (thing.kind == "t3") parsePost(thing.data) else null
-        }
+        val posts =
+            data.children.mapNotNull { thing ->
+                if (thing.kind == "t3") parsePost(thing.data) else null
+            }
         return Listing(
             items = posts,
             after = data.after,
             before = data.before,
-            dist = data.dist
+            dist = data.dist,
         )
     }
 
     private fun parseSubredditListing(data: ListingData): Listing<Subreddit> {
-        val subreddits = data.children.mapNotNull { thing ->
-            if (thing.kind == "t5") {
-                val dto = json.decodeFromJsonElement<SubredditDto>(thing.data)
-                mapSubreddit(dto)
-            } else null
-        }
+        val subreddits =
+            data.children.mapNotNull { thing ->
+                if (thing.kind == "t5") {
+                    val dto = json.decodeFromJsonElement<SubredditDto>(thing.data)
+                    mapSubreddit(dto)
+                } else {
+                    null
+                }
+            }
         return Listing(
             items = subreddits,
             after = data.after,
             before = data.before,
-            dist = data.dist
+            dist = data.dist,
         )
     }
 
     private fun parseCommentListing(data: ListingData): Listing<Comment> {
-        val comments = data.children.mapNotNull { thing ->
-            if (thing.kind == "t1") parseComment(thing.data, 0) else null
-        }
+        val comments =
+            data.children.mapNotNull { thing ->
+                if (thing.kind == "t1") parseComment(thing.data, 0) else null
+            }
         return Listing(
             items = comments,
             after = data.after,
             before = data.before,
-            dist = data.dist
+            dist = data.dist,
         )
     }
 
     private fun parseMessageListing(data: ListingData): Listing<Message> {
-        val messages = data.children.mapNotNull { thing ->
-            if (thing.kind == "t4" || thing.kind == "t1") {
-                val dto = json.decodeFromJsonElement<MessageDto>(thing.data)
-                mapMessage(dto)
-            } else null
-        }
+        val messages =
+            data.children.mapNotNull { thing ->
+                if (thing.kind == "t4" || thing.kind == "t1") {
+                    val dto = json.decodeFromJsonElement<MessageDto>(thing.data)
+                    mapMessage(dto)
+                } else {
+                    null
+                }
+            }
         return Listing(
             items = messages,
             after = data.after,
             before = data.before,
-            dist = data.dist
+            dist = data.dist,
         )
     }
 
@@ -836,12 +984,13 @@ open class RedditApi(
     private suspend fun fetchSubredditsBatch(subredditNames: List<String>) {
         subredditNames.chunked(100).forEach { batch ->
             try {
-                val response = authenticatedRequest {
-                    method = HttpMethod.Get
-                    url("$BASE_URL/api/info.json")
-                    parameter("sr_name", batch.joinToString(","))
-                    parameter("raw_json", 1)
-                }
+                val response =
+                    authenticatedRequest {
+                        method = HttpMethod.Get
+                        url("$BASE_URL/api/info.json")
+                        parameter("sr_name", batch.joinToString(","))
+                        parameter("raw_json", 1)
+                    }
                 val body = response.bodyAsText()
                 val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
                 parseSubredditListing(redditResponse.data).items.forEach { subreddit ->
@@ -864,34 +1013,41 @@ open class RedditApi(
         }
     }
 
-    private fun parseComment(data: JsonElement, depth: Int): Comment {
+    private fun parseComment(
+        data: JsonElement,
+        depth: Int,
+    ): Comment {
         val dto = json.decodeFromJsonElement<CommentDto>(data)
         return mapComment(dto, depth)
     }
 
-    private fun parseComments(children: List<ThingData>): List<CommentOrMore> {
-        return children.mapNotNull { thing ->
+    private fun parseComments(children: List<ThingData>): List<CommentOrMore> =
+        children.mapNotNull { thing ->
             when (thing.kind) {
-                "t1" -> CommentOrMore.CommentItem(parseComment(thing.data, 0))
+                "t1" -> {
+                    CommentOrMore.CommentItem(parseComment(thing.data, 0))
+                }
+
                 "more" -> {
                     val more = json.decodeFromJsonElement<MoreCommentsDto>(thing.data)
                     CommentOrMore.More(parseMoreComments(more))
                 }
-                else -> null
+
+                else -> {
+                    null
+                }
             }
         }
-    }
 
-    private fun parseMoreComments(dto: MoreCommentsDto): MoreComments {
-        return MoreComments(
+    private fun parseMoreComments(dto: MoreCommentsDto): MoreComments =
+        MoreComments(
             id = dto.id,
             name = dto.name,
             parentId = dto.parentId,
             count = dto.count,
             depth = dto.depth,
-            children = dto.children
+            children = dto.children,
         )
-    }
 
     // ==================== Mappers ====================
 
@@ -936,93 +1092,111 @@ open class RedditApi(
             authorFlairText = dto.authorFlairText,
             distinguished = dto.distinguished,
             media = (dto.media ?: dto.crosspostParentList?.firstOrNull()?.media)?.let { mapMedia(it) },
-            galleryData = (dto.galleryData ?: dto.crosspostParentList?.firstOrNull()?.galleryData)?.let {
-                mapGallery(it, dto.mediaMetadata ?: dto.crosspostParentList?.firstOrNull()?.mediaMetadata)
-            },
+            galleryData =
+                (dto.galleryData ?: dto.crosspostParentList?.firstOrNull()?.galleryData)?.let {
+                    mapGallery(it, dto.mediaMetadata ?: dto.crosspostParentList?.firstOrNull()?.mediaMetadata)
+                },
             crosspostParent = dto.crosspostParent,
             isCrosspost = dto.crosspostParent != null,
             crosspostParentSubreddit = dto.crosspostParentList?.firstOrNull()?.subreddit,
             crosspostParentPermalink = dto.crosspostParentList?.firstOrNull()?.permalink,
-            suggestedSort = dto.suggestedSort?.let { sortValue ->
-                CommentSort.entries.firstOrNull { it.value == sortValue }
-            },
+            suggestedSort =
+                dto.suggestedSort?.let { sortValue ->
+                    CommentSort.entries.firstOrNull { it.value == sortValue }
+                },
         )
     }
 
-    private fun mapPreview(dto: PreviewDto): Preview {
-        return Preview(
-            images = dto.images.map { img ->
-                PreviewImage(
-                    source = ImageSource(
-                        url = decodeHtml(img.source.url),
-                        width = img.source.width,
-                        height = img.source.height
-                    ),
-                    resolutions = img.resolutions.map { res ->
-                        ImageSource(
-                            url = decodeHtml(res.url),
-                            width = res.width,
-                            height = res.height
-                        )
-                    },
-                    mp4Url = img.variants?.mp4?.source?.url?.let { decodeHtml(it) }
-                )
-            },
-            enabled = dto.enabled,
-            redditVideoPreview = dto.redditVideoPreview?.let {
-                RedditVideo(
-                    fallbackUrl = it.fallbackUrl,
-                    height = it.height,
-                    width = it.width,
-                    duration = it.duration,
-                    isGif = it.isGif
-                )
-            }
-        )
-    }
-
-    private fun mapMedia(dto: MediaDto): Media {
-        return Media(
-            redditVideo = dto.redditVideo?.let {
-                RedditVideo(
-                    fallbackUrl = it.fallbackUrl,
-                    height = it.height,
-                    width = it.width,
-                    duration = it.duration,
-                    isGif = it.isGif
-                )
-            }
-        )
-    }
-
-    private fun mapGallery(dto: GalleryDataDto, metadata: Map<String, MediaMetadataDto>?): GalleryData {
-        return GalleryData(
-            items = dto.items.mapNotNull { item ->
-                val meta = metadata?.get(item.mediaId)
-                val isAnimated = meta?.e == "AnimatedImage"
-                val mp4Url = meta?.s?.mp4?.let { decodeHtml(it) }
-                val gifUrl = meta?.s?.gif?.let { decodeHtml(it) }
-                val imageUrl = meta?.s?.u?.let { decodeHtml(it) }
-                val url = if (isAnimated) mp4Url ?: imageUrl else imageUrl
-                if (url != null || metadata == null) {
-                    GalleryItem(
-                        mediaId = item.mediaId,
-                        id = item.id,
-                        caption = item.caption,
-                        url = url,
-                        isVideo = isAnimated && mp4Url != null,
-                        gifUrl = gifUrl
+    private fun mapPreview(dto: PreviewDto): Preview =
+        Preview(
+            images =
+                dto.images.map { img ->
+                    PreviewImage(
+                        source =
+                            ImageSource(
+                                url = decodeHtml(img.source.url),
+                                width = img.source.width,
+                                height = img.source.height,
+                            ),
+                        resolutions =
+                            img.resolutions.map { res ->
+                                ImageSource(
+                                    url = decodeHtml(res.url),
+                                    width = res.width,
+                                    height = res.height,
+                                )
+                            },
+                        mp4Url =
+                            img.variants
+                                ?.mp4
+                                ?.source
+                                ?.url
+                                ?.let { decodeHtml(it) },
                     )
-                } else null
-            }
+                },
+            enabled = dto.enabled,
+            redditVideoPreview =
+                dto.redditVideoPreview?.let {
+                    RedditVideo(
+                        fallbackUrl = it.fallbackUrl,
+                        height = it.height,
+                        width = it.width,
+                        duration = it.duration,
+                        isGif = it.isGif,
+                    )
+                },
         )
-    }
 
-    private fun mapComment(dto: CommentDto, depth: Int): Comment {
+    private fun mapMedia(dto: MediaDto): Media =
+        Media(
+            redditVideo =
+                dto.redditVideo?.let {
+                    RedditVideo(
+                        fallbackUrl = it.fallbackUrl,
+                        height = it.height,
+                        width = it.width,
+                        duration = it.duration,
+                        isGif = it.isGif,
+                    )
+                },
+        )
+
+    private fun mapGallery(
+        dto: GalleryDataDto,
+        metadata: Map<String, MediaMetadataDto>?,
+    ): GalleryData =
+        GalleryData(
+            items =
+                dto.items.mapNotNull { item ->
+                    val meta = metadata?.get(item.mediaId)
+                    val isAnimated = meta?.e == "AnimatedImage"
+                    val mp4Url = meta?.s?.mp4?.let { decodeHtml(it) }
+                    val gifUrl = meta?.s?.gif?.let { decodeHtml(it) }
+                    val imageUrl = meta?.s?.u?.let { decodeHtml(it) }
+                    val url = if (isAnimated) mp4Url ?: imageUrl else imageUrl
+                    if (url != null || metadata == null) {
+                        GalleryItem(
+                            mediaId = item.mediaId,
+                            id = item.id,
+                            caption = item.caption,
+                            url = url,
+                            isVideo = isAnimated && mp4Url != null,
+                            gifUrl = gifUrl,
+                        )
+                    } else {
+                        null
+                    }
+                },
+        )
+
+    private fun mapComment(
+        dto: CommentDto,
+        depth: Int,
+    ): Comment {
         val replies = parseReplies(dto.replies, depth + 1)
         val commentReplies = replies.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
         val moreReplies = replies.filterIsInstance<CommentOrMore.More>().firstOrNull()?.more
-        
+
         return Comment(
             id = dto.id,
             name = dto.name,
@@ -1047,26 +1221,33 @@ open class RedditApi(
             moreReplies = moreReplies,
             authorFlairText = dto.authorFlairText,
             authorFlairBackgroundColor = dto.authorFlairBackgroundColor,
-            authorFlairRichtext = dto.authorFlairRichtext?.map { rt ->
-                FlairRichtext(
-                    type = rt.e,
-                    text = rt.t,
-                    url = rt.u
-                )
-            } ?: emptyList(),
+            authorFlairRichtext =
+                dto.authorFlairRichtext?.map { rt ->
+                    FlairRichtext(
+                        type = rt.e,
+                        text = rt.t,
+                        url = rt.u,
+                    )
+                } ?: emptyList(),
             scoreHidden = dto.scoreHidden,
             edited = parseEdited(dto.edited),
             subreddit = dto.subreddit,
-            permalink = dto.permalink ?: ""
+            permalink = dto.permalink ?: "",
         )
     }
 
-    private fun parseReplies(replies: JsonElement?, depth: Int): List<CommentOrMore> {
+    private fun parseReplies(
+        replies: JsonElement?,
+        depth: Int,
+    ): List<CommentOrMore> {
         if (replies == null) return emptyList()
-        
+
         return try {
             when {
-                replies is JsonPrimitive && replies.isString && replies.content.isEmpty() -> emptyList()
+                replies is JsonPrimitive && replies.isString && replies.content.isEmpty() -> {
+                    emptyList()
+                }
+
                 replies is JsonObject -> {
                     val data = replies["data"]?.jsonObject
                     val children = data?.get("children")?.jsonArray ?: return emptyList()
@@ -1075,16 +1256,27 @@ open class RedditApi(
                         val kind = childObj["kind"]?.jsonPrimitive?.content
                         val childData = childObj["data"]
                         when (kind) {
-                            "t1" -> childData?.let { CommentOrMore.CommentItem(parseComment(it, depth)) }
-                            "more" -> childData?.let {
-                                val more = json.decodeFromJsonElement<MoreCommentsDto>(it)
-                                CommentOrMore.More(parseMoreComments(more))
+                            "t1" -> {
+                                childData?.let { CommentOrMore.CommentItem(parseComment(it, depth)) }
                             }
-                            else -> null
+
+                            "more" -> {
+                                childData?.let {
+                                    val more = json.decodeFromJsonElement<MoreCommentsDto>(it)
+                                    CommentOrMore.More(parseMoreComments(more))
+                                }
+                            }
+
+                            else -> {
+                                null
+                            }
                         }
                     }
                 }
-                else -> emptyList()
+
+                else -> {
+                    emptyList()
+                }
             }
         } catch (e: Exception) {
             Napier.e("Failed to parse replies", e)
@@ -1105,8 +1297,8 @@ open class RedditApi(
         }
     }
 
-    private fun mapSubreddit(dto: SubredditDto): Subreddit {
-        return Subreddit(
+    private fun mapSubreddit(dto: SubredditDto): Subreddit =
+        Subreddit(
             id = dto.id,
             name = dto.name,
             displayName = dto.displayName,
@@ -1122,8 +1314,9 @@ open class RedditApi(
             isNsfw = dto.over18,
             isSubscribed = dto.userIsSubscriber,
             isFavorite = dto.userHasFavorited,
-            iconUrl = dto.communityIcon?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) }
-                ?: dto.iconImg?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) },
+            iconUrl =
+                dto.communityIcon?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) }
+                    ?: dto.iconImg?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) },
             bannerUrl = dto.bannerImg?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) },
             communityIcon = dto.communityIcon?.let { decodeHtml(it) },
             primaryColor = dto.primaryColor,
@@ -1137,12 +1330,11 @@ open class RedditApi(
             userIsModerator = dto.userIsModerator,
             userIsBanned = dto.userIsBanned,
             userIsContributor = dto.userIsContributor,
-            userIsMuted = dto.userIsMuted
+            userIsMuted = dto.userIsMuted,
         )
-    }
 
-    private fun mapUser(dto: UserDto): User {
-        return User(
+    private fun mapUser(dto: UserDto): User =
+        User(
             id = dto.id,
             name = dto.name,
             created = dto.created.toLong(),
@@ -1158,24 +1350,22 @@ open class RedditApi(
             hasVerifiedEmail = dto.hasVerifiedEmail,
             isSuspended = dto.isSuspended,
             isEmployee = dto.isEmployee,
-            subreddit = dto.subreddit?.let { mapUserSubreddit(it) }
+            subreddit = dto.subreddit?.let { mapUserSubreddit(it) },
         )
-    }
 
-    private fun mapUserSubreddit(dto: UserSubredditDto): UserSubreddit {
-        return UserSubreddit(
+    private fun mapUserSubreddit(dto: UserSubredditDto): UserSubreddit =
+        UserSubreddit(
             displayName = dto.displayName,
             title = dto.title ?: "",
             publicDescription = dto.publicDescription,
             subscribers = dto.subscribers,
             iconUrl = dto.iconImg?.let { decodeHtml(it) },
             bannerUrl = dto.bannerImg?.let { decodeHtml(it) },
-            isNsfw = dto.over18
+            isNsfw = dto.over18,
         )
-    }
 
-    private fun mapAccount(dto: AccountDto): Account {
-        return Account(
+    private fun mapAccount(dto: AccountDto): Account =
+        Account(
             id = dto.id,
             name = dto.name,
             created = dto.created.toLong(),
@@ -1193,12 +1383,11 @@ open class RedditApi(
             over18 = dto.over18,
             prefNightMode = dto.prefNightMode,
             prefShowNsfw = dto.prefShowNsfw,
-            prefNoProfanity = dto.prefNoProfanity
+            prefNoProfanity = dto.prefNoProfanity,
         )
-    }
 
-    private fun mapMessage(dto: MessageDto): Message {
-        return Message(
+    private fun mapMessage(dto: MessageDto): Message =
+        Message(
             id = dto.id,
             name = dto.name,
             author = dto.author,
@@ -1217,34 +1406,53 @@ open class RedditApi(
             replies = emptyList(), // TODO: Parse nested replies
             linkTitle = dto.linkTitle?.let { decodeHtml(it) },
             likes = dto.likes,
-            type = when (dto.type) {
-                "comment_reply" -> MessageType.COMMENT_REPLY
-                "post_reply" -> MessageType.POST_REPLY
-                "username_mention" -> MessageType.USERNAME_MENTION
-                else -> when {
-                    dto.wasComment && dto.context?.contains("/comments/") == true -> MessageType.COMMENT_REPLY
-                    dto.wasComment -> MessageType.POST_REPLY
-                    dto.subreddit != null -> MessageType.MOD_MESSAGE
-                    else -> MessageType.PRIVATE_MESSAGE
-                }
-            }
-        )
-    }
+            type =
+                when (dto.type) {
+                    "comment_reply" -> {
+                        MessageType.COMMENT_REPLY
+                    }
 
-    open suspend fun resolveShareLink(subreddit: String, shareId: String): Pair<String, String>? {
+                    "post_reply" -> {
+                        MessageType.POST_REPLY
+                    }
+
+                    "username_mention" -> {
+                        MessageType.USERNAME_MENTION
+                    }
+
+                    else -> {
+                        when {
+                            dto.wasComment && dto.context?.contains("/comments/") == true -> MessageType.COMMENT_REPLY
+                            dto.wasComment -> MessageType.POST_REPLY
+                            dto.subreddit != null -> MessageType.MOD_MESSAGE
+                            else -> MessageType.PRIVATE_MESSAGE
+                        }
+                    }
+                },
+        )
+
+    open suspend fun resolveShareLink(
+        subreddit: String,
+        shareId: String,
+    ): Pair<String, String>? {
         return try {
-            val noRedirectClient = okhttp3.OkHttpClient.Builder()
-                .followRedirects(false)
-                .build()
-            val request = okhttp3.Request.Builder()
-                .url("$WWW_URL/r/$subreddit/s/$shareId")
-                .header("User-Agent", "KK/1.0.0 (Android)")
-                .build()
-            val locationUrl = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                noRedirectClient.newCall(request).execute().use { response ->
-                    response.header("Location")
-                }
-            } ?: return null
+            val noRedirectClient =
+                okhttp3.OkHttpClient
+                    .Builder()
+                    .followRedirects(false)
+                    .build()
+            val request =
+                okhttp3.Request
+                    .Builder()
+                    .url("$WWW_URL/r/$subreddit/s/$shareId")
+                    .header("User-Agent", "KK/1.0.0 (Android)")
+                    .build()
+            val locationUrl =
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    noRedirectClient.newCall(request).execute().use { response ->
+                        response.header("Location")
+                    }
+                } ?: return null
             when (val parsed = parseRedditLink(locationUrl)) {
                 is RedditLink.Post -> Pair(parsed.subreddit, parsed.postId)
                 else -> null
@@ -1285,18 +1493,22 @@ open class RedditApi(
         return sb.toString()
     }
 
-    private fun decodeHtml(text: String): String {
-        return text
+    private fun decodeHtml(text: String): String =
+        text
             .replace("&lt;", "<")
             .replace("&gt;", ">")
             .replace("&amp;", "&")
             .replace("&quot;", "\"")
             .replace("&#39;", "'")
             .replace("&nbsp;", " ")
-    }
 }
 
 sealed class CommentOrMore {
-    data class CommentItem(val comment: Comment) : CommentOrMore()
-    data class More(val more: MoreComments) : CommentOrMore()
+    data class CommentItem(
+        val comment: Comment,
+    ) : CommentOrMore()
+
+    data class More(
+        val more: MoreComments,
+    ) : CommentOrMore()
 }

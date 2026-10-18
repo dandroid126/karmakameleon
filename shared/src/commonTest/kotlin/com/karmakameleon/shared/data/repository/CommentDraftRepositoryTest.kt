@@ -6,7 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class CommentDraftRepositoryTest {
-
     private fun createRepo(settings: MapSettings = MapSettings()) = CommentDraftRepository(settings)
 
     @Test

@@ -67,27 +67,35 @@ fun MessageItem(
     onBlockUser: () -> Unit,
     onMarkUnread: () -> Unit,
     onReply: () -> Unit,
-    navigationHandler: NavigationHandler = koinInject()
+    navigationHandler: NavigationHandler = koinInject(),
 ) {
-    val isCommentType = message.type in listOf(
-        MessageType.COMMENT_REPLY, MessageType.POST_REPLY, MessageType.USERNAME_MENTION
-    )
-    val icon = when (message.type) {
-        MessageType.COMMENT_REPLY -> Icons.Default.ChatBubble
-        MessageType.POST_REPLY -> Icons.AutoMirrored.Default.Article
-        MessageType.USERNAME_MENTION -> Icons.Default.AlternateEmail
-        MessageType.PRIVATE_MESSAGE -> Icons.Default.Mail
-        MessageType.MOD_MESSAGE -> Icons.Default.Notifications
-    }
+    val isCommentType =
+        message.type in
+            listOf(
+                MessageType.COMMENT_REPLY,
+                MessageType.POST_REPLY,
+                MessageType.USERNAME_MENTION,
+            )
+    val icon =
+        when (message.type) {
+            MessageType.COMMENT_REPLY -> Icons.Default.ChatBubble
+            MessageType.POST_REPLY -> Icons.AutoMirrored.Default.Article
+            MessageType.USERNAME_MENTION -> Icons.Default.AlternateEmail
+            MessageType.PRIVATE_MESSAGE -> Icons.Default.Mail
+            MessageType.MOD_MESSAGE -> Icons.Default.Notifications
+        }
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(
-                if (isSelected) Modifier.background(messageColors().selectedBackground)
-                else Modifier
-            )
-            .clickable { onSelect() }
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .then(
+                    if (isSelected) {
+                        Modifier.background(messageColors().selectedBackground)
+                    } else {
+                        Modifier
+                    },
+                ).clickable { onSelect() },
     ) {
         ListItem(
             headlineContent = {
@@ -106,7 +114,7 @@ fun MessageItem(
                             text = "u/$author",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { navigationHandler.onUserClick(author) }
+                            modifier = Modifier.clickable { navigationHandler.onUserClick(author) },
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                     }
@@ -114,7 +122,7 @@ fun MessageItem(
                         text = message.body,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
                     )
                 }
             },
@@ -122,57 +130,58 @@ fun MessageItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (message.isNew) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (message.isNew) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
             trailingContent = {
                 Text(
                     text = formatTimeAgo(message.createdUtc),
                     style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
-            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         )
 
         if (isSelected && isCommentType) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End)
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
             ) {
                 IconButton(onClick = onContext, modifier = Modifier.size(36.dp)) {
                     Icon(
                         Icons.AutoMirrored.Filled.OpenInNew,
                         contentDescription = "Context",
                         modifier = Modifier.size(22.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 IconButton(
                     onClick = { onVote(if (message.likes == true) 0 else 1) },
                     enabled = isLoggedIn,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp),
                 ) {
                     Icon(
                         if (message.likes == true) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
                         contentDescription = "Upvote",
                         modifier = Modifier.size(24.dp),
-                        tint = if (message.likes == true) voteColors().upvoteColor else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (message.likes == true) voteColors().upvoteColor else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 IconButton(
                     onClick = { onVote(if (message.likes == false) 0 else -1) },
                     enabled = isLoggedIn,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp),
                 ) {
                     Icon(
                         if (message.likes == false) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
                         contentDescription = "Downvote",
                         modifier = Modifier.size(24.dp),
-                        tint = if (message.likes == false) voteColors().downvoteColor else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (message.likes == false) voteColors().downvoteColor else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 Box {
@@ -182,29 +191,41 @@ fun MessageItem(
                             Icons.Default.MoreVert,
                             contentDescription = "More",
                             modifier = Modifier.size(22.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                         DropdownMenuItem(
                             text = { Text("Full comments") },
-                            onClick = { showMenu = false; onFullComments() },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null) }
+                            onClick = {
+                                showMenu = false
+                                onFullComments()
+                            },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Article, contentDescription = null) },
                         )
                         DropdownMenuItem(
                             text = { Text("Report") },
-                            onClick = { showMenu = false; onReport() },
-                            leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) }
+                            onClick = {
+                                showMenu = false
+                                onReport()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Flag, contentDescription = null) },
                         )
                         DropdownMenuItem(
                             text = { Text("Block user") },
-                            onClick = { showMenu = false; onBlockUser() },
-                            leadingIcon = { Icon(Icons.Default.Block, contentDescription = null) }
+                            onClick = {
+                                showMenu = false
+                                onBlockUser()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Block, contentDescription = null) },
                         )
                         DropdownMenuItem(
                             text = { Text("Mark as unread") },
-                            onClick = { showMenu = false; onMarkUnread() },
-                            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) }
+                            onClick = {
+                                showMenu = false
+                                onMarkUnread()
+                            },
+                            leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
                         )
                     }
                 }
@@ -213,7 +234,7 @@ fun MessageItem(
                         Icon(
                             Icons.AutoMirrored.Filled.Reply,
                             contentDescription = "Reply",
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(22.dp),
                         )
                     }
                 }

@@ -51,27 +51,33 @@ fun ReplyBar(
     onLoadDraft: () -> Unit = {},
     onQuote: () -> Unit = {},
     hasDraft: Boolean = false,
-    showDraftControls: Boolean = false
+    showDraftControls: Boolean = false,
 ) {
     // Cap the text field at half the space left above the keyboard so the whole bar stays visible.
     val imeHeight = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp() }
-    val windowHeight = with(LocalDensity.current) { LocalWindowInfo.current.containerSize.height.toDp() }
+    val windowHeight =
+        with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.height
+                .toDp()
+        }
     val maxHeight = (windowHeight - imeHeight) / 2
 
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier
-            .fillMaxWidth()
-            .imePadding()
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .imePadding(),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onCancel) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
@@ -79,7 +85,7 @@ fun ReplyBar(
                 Row(
                     modifier = Modifier.weight(1f),
                     horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     TextButton(onClick = onQuote) {
                         Text("Quote", style = MaterialTheme.typography.labelSmall)
@@ -92,7 +98,7 @@ fun ReplyBar(
                         }
                         TextButton(
                             onClick = onSaveDraft,
-                            enabled = replyText.isNotBlank()
+                            enabled = replyText.isNotBlank(),
                         ) {
                             Text("Save Draft", style = MaterialTheme.typography.labelSmall)
                         }
@@ -100,7 +106,7 @@ fun ReplyBar(
                 }
                 IconButton(
                     onClick = onSubmit,
-                    enabled = replyText.isNotBlank()
+                    enabled = replyText.isNotBlank(),
                 ) {
                     Icon(Icons.AutoMirrored.Default.Send, contentDescription = "Send")
                 }
@@ -109,9 +115,10 @@ fun ReplyBar(
                 value = replyText,
                 onValueChange = onReplyTextChange,
                 placeholder = placeholder,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = maxHeight)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = maxHeight),
             )
         }
     }
@@ -124,7 +131,7 @@ private fun SpellCheckedTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
     val fontSize = MaterialTheme.typography.bodyLarge.fontSize
@@ -172,10 +179,11 @@ private fun SpellCheckedTextField(
                 editText.textSelectHandleRight?.setTint(primary)
             }
         },
-        modifier = modifier.border(
-            width = if (isFocused) 2.dp else 1.dp,
-            color = if (isFocused) colors.primary else colors.outline,
-            shape = OutlinedTextFieldDefaults.shape
-        )
+        modifier =
+            modifier.border(
+                width = if (isFocused) 2.dp else 1.dp,
+                color = if (isFocused) colors.primary else colors.outline,
+                shape = OutlinedTextFieldDefaults.shape,
+            ),
     )
 }

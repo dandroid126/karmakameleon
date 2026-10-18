@@ -9,8 +9,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class SettingsRepository(private val settings: Settings) {
-
+class SettingsRepository(
+    private val settings: Settings,
+) {
     private val _inlineImagesEnabled = MutableStateFlow(settings.getBoolean(KEY_INLINE_IMAGES, true))
     val inlineImagesEnabled: StateFlow<Boolean> = _inlineImagesEnabled.asStateFlow()
 
@@ -50,20 +51,19 @@ class SettingsRepository(private val settings: Settings) {
     private val _subredditNsfwCache = MutableStateFlow(loadSubredditNsfwCache())
     val subredditNsfwCache: StateFlow<Map<String, Boolean>> = _subredditNsfwCache.asStateFlow()
 
-    fun setSubredditNsfw(subredditName: String, isNsfw: Boolean) {
+    fun setSubredditNsfw(
+        subredditName: String,
+        isNsfw: Boolean,
+    ) {
         val updated = _subredditNsfwCache.value.toMutableMap()
         updated[subredditName.lowercase()] = isNsfw
         _subredditNsfwCache.value = updated
         saveSubredditNsfwCache(updated)
     }
 
-    fun getSubredditNsfw(subredditName: String): Boolean {
-        return _subredditNsfwCache.value[subredditName.lowercase()] ?: false
-    }
+    fun getSubredditNsfw(subredditName: String): Boolean = _subredditNsfwCache.value[subredditName.lowercase()] ?: false
 
-    fun isSubredditNsfwCached(subredditName: String): Boolean {
-        return _subredditNsfwCache.value.containsKey(subredditName.lowercase())
-    }
+    fun isSubredditNsfwCached(subredditName: String): Boolean = _subredditNsfwCache.value.containsKey(subredditName.lowercase())
 
     fun clearSubredditNsfwCache() {
         _subredditNsfwCache.value = emptyMap()
@@ -72,10 +72,13 @@ class SettingsRepository(private val settings: Settings) {
 
     private fun loadSubredditNsfwCache(): Map<String, Boolean> {
         val stored = settings.getStringOrNull(KEY_SUBREDDIT_NSFW_CACHE) ?: return emptyMap()
-        return stored.split(",").filter { it.isNotBlank() }.mapNotNull { raw ->
-            val parts = raw.split("|")
-            if (parts.size == 2) parts[0].lowercase() to (parts[1] == "1") else null
-        }.toMap()
+        return stored
+            .split(",")
+            .filter { it.isNotBlank() }
+            .mapNotNull { raw ->
+                val parts = raw.split("|")
+                if (parts.size == 2) parts[0].lowercase() to (parts[1] == "1") else null
+            }.toMap()
     }
 
     private fun saveSubredditNsfwCache(cache: Map<String, Boolean>) {
@@ -111,18 +114,17 @@ class SettingsRepository(private val settings: Settings) {
 
     fun toggleFavoriteSubreddit(subreddit: String) {
         val name = subreddit.lowercase()
-        val updated = if (name in _favoriteSubreddits.value) {
-            _favoriteSubreddits.value - name
-        } else {
-            _favoriteSubreddits.value + name
-        }
+        val updated =
+            if (name in _favoriteSubreddits.value) {
+                _favoriteSubreddits.value - name
+            } else {
+                _favoriteSubreddits.value + name
+            }
         _favoriteSubreddits.value = updated
         saveFavoriteSubreddits(updated)
     }
 
-    fun isFavoriteSubreddit(subreddit: String): Boolean {
-        return subreddit.lowercase() in _favoriteSubreddits.value
-    }
+    fun isFavoriteSubreddit(subreddit: String): Boolean = subreddit.lowercase() in _favoriteSubreddits.value
 
     private fun loadBlockedSubreddits(): Set<String> {
         val stored = settings.getStringOrNull(KEY_BLOCKED_SUBREDDITS) ?: return emptySet()

@@ -56,7 +56,7 @@ fun InboxScreen(
     initialFilter: InboxFilter? = null,
     currentRoute: String? = null,
     onBackClick: () -> Unit = {},
-    viewModel: InboxViewModel = koinViewModel()
+    viewModel: InboxViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showFilterMenu by remember { mutableStateOf(false) }
@@ -88,7 +88,6 @@ fun InboxScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-
                 },
                 actions = {
                     if (uiState.isLoggedIn) {
@@ -101,7 +100,7 @@ fun InboxScreen(
                             }
                             DropdownMenu(
                                 expanded = showFilterMenu,
-                                onDismissRequest = { showFilterMenu = false }
+                                onDismissRequest = { showFilterMenu = false },
                             ) {
                                 InboxFilter.entries.forEach { filter ->
                                     DropdownMenuItem(
@@ -110,15 +109,18 @@ fun InboxScreen(
                                             viewModel.setFilter(filter)
                                             showFilterMenu = false
                                         },
-                                        leadingIcon = if (uiState.currentFilter == filter) {
-                                            { Icon(Icons.Default.Check, contentDescription = null) }
-                                        } else null
+                                        leadingIcon =
+                                            if (uiState.currentFilter == filter) {
+                                                { Icon(Icons.Default.Check, contentDescription = null) }
+                                            } else {
+                                                null
+                                            },
                                     )
                                 }
                             }
                         }
                     }
-                }
+                },
             )
         },
         bottomBar = {
@@ -127,30 +129,31 @@ fun InboxScreen(
                     replyText = uiState.replyText,
                     onReplyTextChange = viewModel::setReplyText,
                     onSubmit = viewModel::submitReply,
-                    onCancel = viewModel::cancelReply
+                    onCancel = viewModel::cancelReply,
                 )
             }
-        }
+        },
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.loadMessages(forceRefresh = true) },
             state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
         ) {
             if (!uiState.isLoggedIn) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Default.Email,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Sign in to view your inbox")
@@ -161,13 +164,13 @@ fun InboxScreen(
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Default.Inbox,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("No messages")
@@ -189,7 +192,7 @@ fun InboxScreen(
                             onReport = {},
                             onBlockUser = { blockPendingMessage = message },
                             onMarkUnread = { viewModel.markAsUnread(message) },
-                            onReply = { viewModel.startReply(message) }
+                            onReply = { viewModel.startReply(message) },
                         )
                     }
                 }
@@ -214,7 +217,7 @@ fun InboxScreen(
                 TextButton(onClick = { blockPendingMessage = null }) {
                     Text("Cancel")
                 }
-            }
+            },
         )
     }
 }

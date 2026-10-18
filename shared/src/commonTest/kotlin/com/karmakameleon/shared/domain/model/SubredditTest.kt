@@ -6,7 +6,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SubredditTest {
-
     @Test
     fun isPublic_publicType() {
         val sub = createTestSubreddit(subredditType = "public")

@@ -68,7 +68,7 @@ fun SearchScreen(
     onUserClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
     viewModel: SearchViewModel = koinViewModel(),
-    navigationHandler: NavigationHandler = koinInject()
+    navigationHandler: NavigationHandler = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -103,15 +103,16 @@ fun SearchScreen(
             Column {
                 UniversalTopAppBar(
                     currentRoute = currentRoute,
-                    title = { Text("Search") }
+                    title = { Text("Search") },
                 )
-                
+
                 OutlinedTextField(
                     value = uiState.query,
                     onValueChange = viewModel::setQuery,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     placeholder = { Text("Search Reddit") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
@@ -121,48 +122,62 @@ fun SearchScreen(
                             }
                         }
                     },
-                    singleLine = true
+                    singleLine = true,
                 )
 
                 if (uiState.query.isNotEmpty() && uiState.detectedLink == null) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         FilterChip(
                             selected = false,
                             onClick = { showSortMenu = true },
-                            label = { Text(uiState.searchSort.name.lowercase().replaceFirstChar { it.uppercase() }) },
-                            trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) }
+                            label = {
+                                Text(
+                                    uiState.searchSort.name
+                                        .lowercase()
+                                        .replaceFirstChar { it.uppercase() },
+                                )
+                            },
+                            trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
                         )
                         FilterChip(
                             selected = false,
                             onClick = {},
-                            label = { Text(uiState.timeFilter.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                            label = {
+                                Text(
+                                    uiState.timeFilter.name
+                                        .lowercase()
+                                        .replaceFirstChar { it.uppercase() },
+                                )
+                            },
                         )
                     }
                 }
             }
-        }
+        },
     ) { padding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
         ) {
             if (uiState.query.isEmpty()) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Search for posts")
@@ -170,49 +185,67 @@ fun SearchScreen(
             } else if (uiState.detectedLink != null) {
                 val link = uiState.detectedLink
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                        .clickable {
-                            when (link) {
-                                is RedditLink.Post -> onPostClick(link.subreddit, link.postId)
-                                is RedditLink.Comment -> onCommentClick(link.subreddit, link.postId, link.commentId)
-                                is RedditLink.Subreddit -> onSubredditClick(link.name)
-                                is RedditLink.User -> onUserClick(link.name)
-                                is RedditLink.ShareLink -> navigationHandler.onShareLinkClick(link.subreddit, link.shareId)
-                                is RedditLink.External, null -> {}
-                            }
-                        }
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .clickable {
+                                when (link) {
+                                    is RedditLink.Post -> {
+                                        onPostClick(link.subreddit, link.postId)
+                                    }
+
+                                    is RedditLink.Comment -> {
+                                        onCommentClick(link.subreddit, link.postId, link.commentId)
+                                    }
+
+                                    is RedditLink.Subreddit -> {
+                                        onSubredditClick(link.name)
+                                    }
+
+                                    is RedditLink.User -> {
+                                        onUserClick(link.name)
+                                    }
+
+                                    is RedditLink.ShareLink -> {
+                                        navigationHandler.onShareLinkClick(link.subreddit, link.shareId)
+                                    }
+
+                                    is RedditLink.External, null -> {}
+                                }
+                            },
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = when (link) {
-                                    is RedditLink.Post -> "Open post in r/${link.subreddit}"
-                                    is RedditLink.Comment -> "Open comment in r/${link.subreddit}"
-                                    is RedditLink.Subreddit -> "Open r/${link.name}"
-                                    is RedditLink.User -> "Open u/${link.name}"
-                                    is RedditLink.ShareLink -> "Open post in r/${link.subreddit}"
-                                    is RedditLink.External, null -> ""
-                                },
-                                style = MaterialTheme.typography.bodyLarge
+                                text =
+                                    when (link) {
+                                        is RedditLink.Post -> "Open post in r/${link.subreddit}"
+                                        is RedditLink.Comment -> "Open comment in r/${link.subreddit}"
+                                        is RedditLink.Subreddit -> "Open r/${link.name}"
+                                        is RedditLink.User -> "Open u/${link.name}"
+                                        is RedditLink.ShareLink -> "Open post in r/${link.subreddit}"
+                                        is RedditLink.External, null -> ""
+                                    },
+                                style = MaterialTheme.typography.bodyLarge,
                             )
                             Text(
                                 text = uiState.query.trim(),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1
+                                maxLines = 1,
                             )
                         }
                     }
@@ -248,7 +281,7 @@ fun SearchScreen(
                                 },
                                 isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
                                 nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                spoilerPreviewsEnabled = spoilerPreviewsEnabled
+                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
                             )
                         }
 
@@ -256,7 +289,7 @@ fun SearchScreen(
                             item {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                                 }
@@ -274,25 +307,27 @@ fun SearchScreen(
                 Text(
                     "Sort by",
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(16.dp),
                 )
                 SearchSort.entries.forEach { sort ->
                     if (uiState.searchSort == sort) {
                         ListItem(
                             headlineContent = { Text(sort.name.lowercase().replaceFirstChar { it.uppercase() }) },
                             leadingContent = { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) },
-                            modifier = Modifier.clickable {
-                                viewModel.setSearchSort(sort)
-                                showSortMenu = false
-                            }
+                            modifier =
+                                Modifier.clickable {
+                                    viewModel.setSearchSort(sort)
+                                    showSortMenu = false
+                                },
                         )
                     } else {
                         ListItem(
                             headlineContent = { Text(sort.name.lowercase().replaceFirstChar { it.uppercase() }) },
-                            modifier = Modifier.clickable {
-                                viewModel.setSearchSort(sort)
-                                showSortMenu = false
-                            }
+                            modifier =
+                                Modifier.clickable {
+                                    viewModel.setSearchSort(sort)
+                                    showSortMenu = false
+                                },
                         )
                     }
                 }
@@ -300,4 +335,3 @@ fun SearchScreen(
         }
     }
 }
-

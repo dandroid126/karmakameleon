@@ -28,7 +28,7 @@ import com.karmakameleon.android.ui.theme.mediaColors
 @Composable
 fun FullScreenVideoScreen(
     videoUrl: String,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
 ) {
     BackHandler(onBack = onBackClick)
 
@@ -37,58 +37,60 @@ fun FullScreenVideoScreen(
     var offsetY by remember { mutableFloatStateOf(0f) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(mediaColors().mediaBackgroundColor)
-            .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    val newScale = (scale * zoom).coerceIn(1f, 5f)
-                    scale = newScale
-                    if (newScale > 1f) {
-                        offsetX += pan.x
-                        offsetY += pan.y
-                    } else {
-                        offsetX = 0f
-                        offsetY = 0f
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(mediaColors().mediaBackgroundColor)
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        val newScale = (scale * zoom).coerceIn(1f, 5f)
+                        scale = newScale
+                        if (newScale > 1f) {
+                            offsetX += pan.x
+                            offsetY += pan.y
+                        } else {
+                            offsetX = 0f
+                            offsetY = 0f
+                        }
                     }
-                }
-            }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onDoubleTap = {
-                        scale = 1f
-                        offsetX = 0f
-                        offsetY = 0f
-                    }
-                )
-            }
+                }.pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            scale = 1f
+                            offsetX = 0f
+                            offsetY = 0f
+                        },
+                    )
+                },
     ) {
         VideoPlayer(
             videoUrl = videoUrl,
             isGif = false,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center)
-                .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offsetX
-                    translationY = offsetY
-                },
-            menuItems = videoMenuItems(videoUrl)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offsetX
+                        translationY = offsetY
+                    },
+            menuItems = videoMenuItems(videoUrl),
         )
 
         IconButton(
             onClick = onBackClick,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp),
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
                 tint = mediaColors().onOverlayColor,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(28.dp),
             )
         }
     }

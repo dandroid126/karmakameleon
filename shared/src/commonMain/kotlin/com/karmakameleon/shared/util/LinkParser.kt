@@ -4,11 +4,16 @@ import io.ktor.http.Url
 
 private val imageExtensions = setOf("jpg", "jpeg", "png", "webp", "gif", "bmp", "avif", "heic", "heif", "ico")
 private val videoExtensions = setOf("mp4", "webm")
-private val youTubeHosts = setOf(
-    "youtube.com", "www.youtube.com", "m.youtube.com",
-    "youtu.be", "www.youtu.be",
-    "youtube-nocookie.com", "www.youtube-nocookie.com"
-)
+private val youTubeHosts =
+    setOf(
+        "youtube.com",
+        "www.youtube.com",
+        "m.youtube.com",
+        "youtu.be",
+        "www.youtu.be",
+        "youtube-nocookie.com",
+        "www.youtube-nocookie.com",
+    )
 
 fun isImageUrl(url: String): Boolean {
     val path = url.substringBefore("?").substringBefore("#")
@@ -44,28 +49,52 @@ fun extractYouTubeVideoId(url: String): String? {
 fun isYouTubeUrl(url: String): Boolean = extractYouTubeVideoId(url) != null
 
 sealed class RedditLink {
-    data class Subreddit(val name: String) : RedditLink()
-    data class User(val name: String) : RedditLink()
-    data class Post(val subreddit: String, val postId: String) : RedditLink()
-    data class Comment(val subreddit: String, val postId: String, val commentId: String, val context: Int? = null) : RedditLink()
-    data class ShareLink(val subreddit: String, val shareId: String) : RedditLink()
-    data class External(val url: String) : RedditLink()
+    data class Subreddit(
+        val name: String,
+    ) : RedditLink()
+
+    data class User(
+        val name: String,
+    ) : RedditLink()
+
+    data class Post(
+        val subreddit: String,
+        val postId: String,
+    ) : RedditLink()
+
+    data class Comment(
+        val subreddit: String,
+        val postId: String,
+        val commentId: String,
+        val context: Int? = null,
+    ) : RedditLink()
+
+    data class ShareLink(
+        val subreddit: String,
+        val shareId: String,
+    ) : RedditLink()
+
+    data class External(
+        val url: String,
+    ) : RedditLink()
 }
 
 private val redditHostRegex = Regex("^(www\\.|old\\.|new\\.|np\\.)?reddit\\.com$", RegexOption.IGNORE_CASE)
 
 fun parseRedditLink(url: String): RedditLink {
-    val normalizedUrl = if (url.startsWith("/r/") || url.startsWith("/u/") || url.startsWith("/user/")) {
-        "https://www.reddit.com$url"
-    } else {
-        url
-    }
+    val normalizedUrl =
+        if (url.startsWith("/r/") || url.startsWith("/u/") || url.startsWith("/user/")) {
+            "https://www.reddit.com$url"
+        } else {
+            url
+        }
 
-    val parsedUrl = try {
-        Url(normalizedUrl)
-    } catch (_: Exception) {
-        return RedditLink.External(url)
-    }
+    val parsedUrl =
+        try {
+            Url(normalizedUrl)
+        } catch (_: Exception) {
+            return RedditLink.External(url)
+        }
 
     val host = parsedUrl.host
     if (!redditHostRegex.matches(host)) {
@@ -76,33 +105,33 @@ fun parseRedditLink(url: String): RedditLink {
     val contextParam = parsedUrl.parameters["context"]?.toIntOrNull()
 
     return when {
-        pathSegments.size >= 6
-                && pathSegments[0] == "r"
-                && pathSegments[2] == "comments"
-                && pathSegments[5].isNotEmpty() -> {
+        pathSegments.size >= 6 &&
+            pathSegments[0] == "r" &&
+            pathSegments[2] == "comments" &&
+            pathSegments[5].isNotEmpty() -> {
             RedditLink.Comment(
                 subreddit = pathSegments[1],
                 postId = pathSegments[3],
                 commentId = pathSegments[5],
-                context = contextParam
+                context = contextParam,
             )
         }
 
-        pathSegments.size >= 4
-                && pathSegments[0] == "r"
-                && pathSegments[2] == "comments" -> {
+        pathSegments.size >= 4 &&
+            pathSegments[0] == "r" &&
+            pathSegments[2] == "comments" -> {
             RedditLink.Post(
                 subreddit = pathSegments[1],
-                postId = pathSegments[3]
+                postId = pathSegments[3],
             )
         }
 
-        pathSegments.size >= 4
-                && pathSegments[0] == "r"
-                && pathSegments[2] == "s" -> {
+        pathSegments.size >= 4 &&
+            pathSegments[0] == "r" &&
+            pathSegments[2] == "s" -> {
             RedditLink.ShareLink(
                 subreddit = pathSegments[1],
-                shareId = pathSegments[3]
+                shareId = pathSegments[3],
             )
         }
 
@@ -114,6 +143,8 @@ fun parseRedditLink(url: String): RedditLink {
             RedditLink.User(name = pathSegments[1])
         }
 
-        else -> RedditLink.External(url)
+        else -> {
+            RedditLink.External(url)
+        }
     }
 }

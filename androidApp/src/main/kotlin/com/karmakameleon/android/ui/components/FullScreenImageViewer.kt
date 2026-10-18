@@ -42,51 +42,53 @@ import com.karmakameleon.android.ui.theme.mediaColors
 fun FullScreenImageViewer(
     imageUrls: List<String>,
     initialPage: Int = 0,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     BackHandler(onBack = onDismiss)
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(mediaColors().mediaBackgroundColor)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(mediaColors().mediaBackgroundColor),
     ) {
         if (imageUrls.size == 1) {
             ZoomableImage(
                 url = imageUrls[0],
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             )
         } else {
-            val pagerState = rememberPagerState(
-                initialPage = initialPage,
-                pageCount = { imageUrls.size }
-            )
+            val pagerState =
+                rememberPagerState(
+                    initialPage = initialPage,
+                    pageCount = { imageUrls.size },
+                )
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             ) { page ->
                 ZoomableImage(
                     url = imageUrls[page],
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
 
             // Page indicator
             if (imageUrls.size > 1) {
                 Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 48.dp)
-                        .background(
-                            mediaColors().pageIndicatorBackgroundColor,
-                            RoundedCornerShape(16.dp)
-                        )
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 48.dp)
+                            .background(
+                                mediaColors().pageIndicatorBackgroundColor,
+                                RoundedCornerShape(16.dp),
+                            ).padding(horizontal = 12.dp, vertical = 6.dp),
                 ) {
                     Text(
                         text = "${pagerState.currentPage + 1} / ${imageUrls.size}",
                         color = mediaColors().onOverlayColor,
-                        style = MaterialTheme.typography.labelMedium
+                        style = MaterialTheme.typography.labelMedium,
                     )
                 }
             }
@@ -95,15 +97,16 @@ fun FullScreenImageViewer(
         // Close button
         IconButton(
             onClick = onDismiss,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp),
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
                 tint = mediaColors().onOverlayColor,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(28.dp),
             )
         }
     }
@@ -112,7 +115,7 @@ fun FullScreenImageViewer(
 @Composable
 private fun ZoomableImage(
     url: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     var scale by remember(url) { mutableFloatStateOf(1f) }
     var offset by remember(url) { mutableStateOf(Offset.Zero) }
@@ -120,82 +123,87 @@ private fun ZoomableImage(
     val menuItems = imageMenuItems(url)
 
     Box(
-        modifier = modifier
-            .pointerInput(url) {
-                awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
-                    do {
-                        val event = awaitPointerEvent()
-                        val pointerCount = event.changes.size
+        modifier =
+            modifier
+                .pointerInput(url) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        do {
+                            val event = awaitPointerEvent()
+                            val pointerCount = event.changes.size
 
-                        if (pointerCount >= 2) {
-                            val zoom = event.calculateZoom()
-                            val pan = event.calculatePan()
-                            val newScale = (scale * zoom).coerceIn(1f, 5f)
-                            val maxX = (size.width * (newScale - 1)) / 2f
-                            val maxY = (size.height * (newScale - 1)) / 2f
-                            offset = if (newScale > 1f) {
-                                Offset(
-                                    x = (offset.x + pan.x).coerceIn(-maxX, maxX),
-                                    y = (offset.y + pan.y).coerceIn(-maxY, maxY)
-                                )
-                            } else Offset.Zero
-                            scale = newScale
-                            event.changes.forEach { if (it.positionChanged()) it.consume() }
-                        } else if (scale > 1f) {
-                            val pan = event.calculatePan()
-                            val maxX = (size.width * (scale - 1)) / 2f
-                            val maxY = (size.height * (scale - 1)) / 2f
-                            offset = Offset(
-                                x = (offset.x + pan.x).coerceIn(-maxX, maxX),
-                                y = (offset.y + pan.y).coerceIn(-maxY, maxY)
-                            )
-                            event.changes.forEach { if (it.positionChanged()) it.consume() }
-                        }
-                    } while (event.changes.any { it.pressed })
-                }
-            }
-            .pointerInput(url) {
-                detectTapGestures(
-                    onDoubleTap = {
-                        if (scale > 1f) {
-                            scale = 1f
-                            offset = Offset.Zero
-                        } else {
-                            scale = 3f
-                        }
-                    },
-                    onLongPress = { showMenu = true }
-                )
-            },
-        contentAlignment = Alignment.Center
+                            if (pointerCount >= 2) {
+                                val zoom = event.calculateZoom()
+                                val pan = event.calculatePan()
+                                val newScale = (scale * zoom).coerceIn(1f, 5f)
+                                val maxX = (size.width * (newScale - 1)) / 2f
+                                val maxY = (size.height * (newScale - 1)) / 2f
+                                offset =
+                                    if (newScale > 1f) {
+                                        Offset(
+                                            x = (offset.x + pan.x).coerceIn(-maxX, maxX),
+                                            y = (offset.y + pan.y).coerceIn(-maxY, maxY),
+                                        )
+                                    } else {
+                                        Offset.Zero
+                                    }
+                                scale = newScale
+                                event.changes.forEach { if (it.positionChanged()) it.consume() }
+                            } else if (scale > 1f) {
+                                val pan = event.calculatePan()
+                                val maxX = (size.width * (scale - 1)) / 2f
+                                val maxY = (size.height * (scale - 1)) / 2f
+                                offset =
+                                    Offset(
+                                        x = (offset.x + pan.x).coerceIn(-maxX, maxX),
+                                        y = (offset.y + pan.y).coerceIn(-maxY, maxY),
+                                    )
+                                event.changes.forEach { if (it.positionChanged()) it.consume() }
+                            }
+                        } while (event.changes.any { it.pressed })
+                    }
+                }.pointerInput(url) {
+                    detectTapGestures(
+                        onDoubleTap = {
+                            if (scale > 1f) {
+                                scale = 1f
+                                offset = Offset.Zero
+                            } else {
+                                scale = 3f
+                            }
+                        },
+                        onLongPress = { showMenu = true },
+                    )
+                },
+        contentAlignment = Alignment.Center,
     ) {
         SubcomposeAsyncImage(
             model = url,
             contentDescription = null,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale,
-                    translationX = offset.x,
-                    translationY = offset.y
-                ),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y,
+                    ),
             contentScale = ContentScale.Fit,
             loading = {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
-            }
+            },
         )
         Box(modifier = Modifier.align(Alignment.BottomEnd)) {
             MediaLongPressMenu(
                 items = menuItems,
                 expanded = showMenu,
-                onDismiss = { showMenu = false }
+                onDismiss = { showMenu = false },
             )
         }
     }

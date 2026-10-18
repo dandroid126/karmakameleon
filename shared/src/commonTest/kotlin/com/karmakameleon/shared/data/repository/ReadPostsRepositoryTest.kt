@@ -8,7 +8,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ReadPostsRepositoryTest {
-
     private fun createRepo(settings: MapSettings = MapSettings()) = ReadPostsRepository(settings)
 
     @Test

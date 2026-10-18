@@ -20,34 +20,37 @@ import com.karmakameleon.android.ui.theme.mediaColors
 @Composable
 fun YouTubeVideoScreen(
     videoId: String,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
 ) {
     BackHandler(onBack = onBackClick)
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(mediaColors().mediaBackgroundColor)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(mediaColors().mediaBackgroundColor),
     ) {
         YouTubePlayer(
             videoId = videoId,
             autoPlay = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.Center)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center),
         )
 
         IconButton(
             onClick = onBackClick,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp),
         ) {
             Icon(
                 imageVector = Icons.Default.Close,
                 contentDescription = "Close",
                 tint = mediaColors().onOverlayColor,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(28.dp),
             )
         }
     }

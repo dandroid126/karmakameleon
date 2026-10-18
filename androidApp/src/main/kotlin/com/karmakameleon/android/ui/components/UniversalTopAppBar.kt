@@ -37,30 +37,45 @@ fun UniversalTopAppBar(
     val isLoggedIn by userRepository.isLoggedIn.collectAsState()
     var showOverflowMenu by remember { mutableStateOf(false) }
 
-    val baseItems = buildList {
-        if (!excludeProfile) {
-            when {
-                !isLoggedIn -> add(OverflowMenuItem(
-                    title = "Log In",
-                    onClick = { globalMenuManager.onNavigateToOwnProfile() }
-                ))
-                currentAccount != null -> add(OverflowMenuItem(
-                    title = "${currentAccount!!.name}'s Profile",
-                    onClick = { globalMenuManager.onNavigateToProfile(currentAccount!!.name) }
-                ))
-                else -> add(OverflowMenuItem(
-                    title = "Profile",
-                    onClick = { globalMenuManager.onNavigateToOwnProfile() }
-                ))
+    val baseItems =
+        buildList {
+            if (!excludeProfile) {
+                when {
+                    !isLoggedIn -> {
+                        add(
+                            OverflowMenuItem(
+                                title = "Log In",
+                                onClick = { globalMenuManager.onNavigateToOwnProfile() },
+                            ),
+                        )
+                    }
+
+                    currentAccount != null -> {
+                        add(
+                            OverflowMenuItem(
+                                title = "${currentAccount!!.name}'s Profile",
+                                onClick = { globalMenuManager.onNavigateToProfile(currentAccount!!.name) },
+                            ),
+                        )
+                    }
+
+                    else -> {
+                        add(
+                            OverflowMenuItem(
+                                title = "Profile",
+                                onClick = { globalMenuManager.onNavigateToOwnProfile() },
+                            ),
+                        )
+                    }
+                }
+            }
+            if (!excludeInbox && isLoggedIn) {
+                add(OverflowMenuItem(title = "Inbox", onClick = { globalMenuManager.onNavigateToInbox() }))
+            }
+            if (!excludeSettings) {
+                add(OverflowMenuItem(title = "Settings", onClick = { globalMenuManager.onNavigateToSettings() }))
             }
         }
-        if (!excludeInbox && isLoggedIn) {
-            add(OverflowMenuItem(title = "Inbox", onClick = { globalMenuManager.onNavigateToInbox() }))
-        }
-        if (!excludeSettings) {
-            add(OverflowMenuItem(title = "Settings", onClick = { globalMenuManager.onNavigateToSettings() }))
-        }
-    }
 
     val screenItems = globalMenuManager.getScreenItems()
 
@@ -74,33 +89,35 @@ fun UniversalTopAppBar(
             }
             DropdownMenu(
                 expanded = showOverflowMenu,
-                onDismissRequest = { showOverflowMenu = false }
+                onDismissRequest = { showOverflowMenu = false },
             ) {
                 screenItems.forEach { item ->
                     DropdownMenuItem(
                         text = { Text(item.title) },
-                        leadingIcon = item.icon?.let { icon ->
-                            { Icon(icon, contentDescription = null) }
-                        },
+                        leadingIcon =
+                            item.icon?.let { icon ->
+                                { Icon(icon, contentDescription = null) }
+                            },
                         onClick = {
                             showOverflowMenu = false
                             item.onClick()
-                        }
+                        },
                     )
                 }
                 baseItems.forEach { item ->
                     DropdownMenuItem(
                         text = { Text(item.title) },
-                        leadingIcon = item.icon?.let { icon ->
-                            { Icon(icon, contentDescription = null) }
-                        },
+                        leadingIcon =
+                            item.icon?.let { icon ->
+                                { Icon(icon, contentDescription = null) }
+                            },
                         onClick = {
                             showOverflowMenu = false
                             item.onClick()
-                        }
+                        },
                     )
                 }
             }
-        }
+        },
     )
 }

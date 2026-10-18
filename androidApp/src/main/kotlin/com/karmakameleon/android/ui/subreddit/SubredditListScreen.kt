@@ -53,12 +53,12 @@ import org.koin.compose.koinInject
 @Composable
 fun SubredditListScreen(
     currentRoute: String? = null,
-    onSubredditClick: (String) -> Unit
+    onSubredditClick: (String) -> Unit,
 ) {
     val subredditRepository: SubredditRepository = koinInject()
     val userRepository: UserRepository = koinInject()
     val settingsRepository: SettingsRepository = koinInject()
-    
+
     val subscribedSubreddits by subredditRepository.sortedSubscribedSubreddits.collectAsState(emptyList())
     val favoriteSubreddits by settingsRepository.favoriteSubreddits.collectAsState()
     val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
@@ -70,9 +70,10 @@ fun SubredditListScreen(
     var isSearching by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    val filteredSubscribedSubreddits = remember(subscribedSubreddits, nsfwEnabled) {
-        if (nsfwEnabled) subscribedSubreddits else subscribedSubreddits.filter { !it.isNsfw }
-    }
+    val filteredSubscribedSubreddits =
+        remember(subscribedSubreddits, nsfwEnabled) {
+            if (nsfwEnabled) subscribedSubreddits else subscribedSubreddits.filter { !it.isNsfw }
+        }
 
     LaunchedEffect(isLoggedIn) {
         if (isLoggedIn && subscribedSubreddits.isEmpty()) {
@@ -98,33 +99,36 @@ fun SubredditListScreen(
         topBar = {
             UniversalTopAppBar(
                 currentRoute = currentRoute,
-                title = { Text("Subreddits") }
+                title = { Text("Subreddits") },
             )
-        }
+        },
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
         ) {
             // Search bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 placeholder = { Text("Search subreddits") },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true
+                singleLine = true,
             )
 
             if (isLoading) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
                 }
@@ -134,7 +138,7 @@ fun SubredditListScreen(
                         Text(
                             text = "Search Results",
                             style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
                         )
                     }
                     items(searchResults) { subreddit ->
@@ -142,14 +146,14 @@ fun SubredditListScreen(
                             subreddit = subreddit,
                             isFavorite = subreddit.displayName.lowercase() in favoriteSubreddits,
                             onFavoriteClick = { settingsRepository.toggleFavoriteSubreddit(subreddit.displayName) },
-                            onClick = { onSubredditClick(subreddit.displayName) }
+                            onClick = { onSubredditClick(subreddit.displayName) },
                         )
                     }
                 }
             } else if (!isLoggedIn) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("Log in to see your subscriptions")
@@ -157,14 +161,14 @@ fun SubredditListScreen(
                         Text(
                             text = "Use search to find subreddits",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             } else if (filteredSubscribedSubreddits.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentAlignment = Alignment.Center,
                 ) {
                     Text("No subscriptions yet")
                 }
@@ -174,18 +178,18 @@ fun SubredditListScreen(
                         Text(
                             text = "Your Subscriptions",
                             style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
                         )
                     }
                     items(
                         items = filteredSubscribedSubreddits,
-                        key = { it.id }
+                        key = { it.id },
                     ) { subreddit ->
                         SubredditListItem(
                             subreddit = subreddit,
                             isFavorite = subreddit.displayName.lowercase() in favoriteSubreddits,
                             onFavoriteClick = { settingsRepository.toggleFavoriteSubreddit(subreddit.displayName) },
-                            onClick = { onSubredditClick(subreddit.displayName) }
+                            onClick = { onSubredditClick(subreddit.displayName) },
                         )
                     }
                 }
@@ -199,13 +203,13 @@ private fun SubredditListItem(
     subreddit: Subreddit,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     ListItem(
         headlineContent = {
             Text(
                 text = subreddit.displayNamePrefixed,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
             )
         },
         supportingContent = {
@@ -216,22 +220,23 @@ private fun SubredditListItem(
                 AsyncImage(
                     model = subreddit.iconUrl,
                     contentDescription = null,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop
+                    modifier =
+                        Modifier
+                            .size(40.dp)
+                            .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
                 )
             } else {
                 Surface(
                     modifier = Modifier.size(40.dp),
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primaryContainer
+                    color = MaterialTheme.colorScheme.primaryContainer,
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = subreddit.displayName.first().uppercase(),
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                     }
                 }
@@ -242,10 +247,10 @@ private fun SubredditListItem(
                 Icon(
                     imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                     contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },
-        modifier = Modifier.clickable(onClick = onClick)
+        modifier = Modifier.clickable(onClick = onClick),
     )
 }

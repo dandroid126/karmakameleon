@@ -44,11 +44,11 @@ data class SubredditRuleDto(
     @SerialName("description_html") val descriptionHtml: String? = null,
     val priority: Int = 0,
     @SerialName("violation_reason") val violationReason: String = "",
-    val kind: String = "all"
+    val kind: String = "all",
 )
 
 @Serializable
 data class SubredditRulesResponse(
     val rules: List<SubredditRuleDto> = emptyList(),
-    @SerialName("site_rules") val siteRules: List<String> = emptyList()
+    @SerialName("site_rules") val siteRules: List<String> = emptyList(),
 )

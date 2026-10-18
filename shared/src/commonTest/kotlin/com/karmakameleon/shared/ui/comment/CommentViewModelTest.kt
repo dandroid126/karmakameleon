@@ -22,7 +22,6 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CommentViewModelTest {
-
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var commentRepo: CommentRepository
@@ -57,9 +56,15 @@ class CommentViewModelTest {
         val comment = createTestComment(id = "c1")
         viewModel.setComments(listOf(CommentOrMore.CommentItem(comment)))
         viewModel.clearComments()
-        assertTrue(viewModel.uiState.value.comments.isEmpty())
+        assertTrue(
+            viewModel.uiState.value.comments
+                .isEmpty(),
+        )
         assertNull(viewModel.uiState.value.selectedCommentId)
-        assertTrue(viewModel.uiState.value.hiddenCommentIds.isEmpty())
+        assertTrue(
+            viewModel.uiState.value.hiddenCommentIds
+                .isEmpty(),
+        )
     }
 
     // ==================== Selection & Hiding ====================
@@ -80,16 +85,25 @@ class CommentViewModelTest {
     @Test
     fun selectComment_unhidesHiddenComment() {
         viewModel.hideComment("c1")
-        assertTrue(viewModel.uiState.value.hiddenCommentIds.contains("c1"))
+        assertTrue(
+            viewModel.uiState.value.hiddenCommentIds
+                .contains("c1"),
+        )
         viewModel.selectComment("c1")
-        assertFalse(viewModel.uiState.value.hiddenCommentIds.contains("c1"))
+        assertFalse(
+            viewModel.uiState.value.hiddenCommentIds
+                .contains("c1"),
+        )
         assertEquals("c1", viewModel.uiState.value.selectedCommentId)
     }
 
     @Test
     fun hideComment_addsToHiddenSet() {
         viewModel.hideComment("c1")
-        assertTrue(viewModel.uiState.value.hiddenCommentIds.contains("c1"))
+        assertTrue(
+            viewModel.uiState.value.hiddenCommentIds
+                .contains("c1"),
+        )
     }
 
     @Test
@@ -218,10 +232,12 @@ class CommentViewModelTest {
     fun findPrevRootCommentId_secondRoot() {
         val c1 = createTestComment(id = "c1", depth = 0)
         val c2 = createTestComment(id = "c2", depth = 0)
-        viewModel.setComments(listOf(
-            CommentOrMore.CommentItem(c1),
-            CommentOrMore.CommentItem(c2)
-        ))
+        viewModel.setComments(
+            listOf(
+                CommentOrMore.CommentItem(c1),
+                CommentOrMore.CommentItem(c2),
+            ),
+        )
         assertEquals("c1", viewModel.findPrevRootCommentId("c2"))
     }
 
@@ -236,10 +252,12 @@ class CommentViewModelTest {
     fun findNextRootCommentId_firstRoot() {
         val c1 = createTestComment(id = "c1", depth = 0)
         val c2 = createTestComment(id = "c2", depth = 0)
-        viewModel.setComments(listOf(
-            CommentOrMore.CommentItem(c1),
-            CommentOrMore.CommentItem(c2)
-        ))
+        viewModel.setComments(
+            listOf(
+                CommentOrMore.CommentItem(c1),
+                CommentOrMore.CommentItem(c2),
+            ),
+        )
         assertEquals("c2", viewModel.findNextRootCommentId("c1"))
     }
 
@@ -249,10 +267,11 @@ class CommentViewModelTest {
     fun buildCommentTree_flatListToTree() {
         val parent = createTestComment(id = "c1", name = "t1_c1", parentId = "t3_post", depth = 0)
         val child = createTestComment(id = "c2", name = "t1_c2", parentId = "t1_c1", depth = 1)
-        val items = listOf(
-            CommentOrMore.CommentItem(parent),
-            CommentOrMore.CommentItem(child)
-        )
+        val items =
+            listOf(
+                CommentOrMore.CommentItem(parent),
+                CommentOrMore.CommentItem(child),
+            )
         val tree = viewModel.buildCommentTree(items)
         assertEquals(1, tree.size)
         val rootComment = (tree[0] as CommentOrMore.CommentItem).comment
@@ -264,10 +283,11 @@ class CommentViewModelTest {
     fun buildCommentTree_withMoreComments() {
         val parent = createTestComment(id = "c1", name = "t1_c1", parentId = "t3_post", depth = 0)
         val more = createTestMoreComments(id = "more1", parentId = "t1_c1")
-        val items = listOf(
-            CommentOrMore.CommentItem(parent),
-            CommentOrMore.More(more)
-        )
+        val items =
+            listOf(
+                CommentOrMore.CommentItem(parent),
+                CommentOrMore.More(more),
+            )
         val tree = viewModel.buildCommentTree(items)
         assertEquals(1, tree.size)
         val rootComment = (tree[0] as CommentOrMore.CommentItem).comment
@@ -305,10 +325,12 @@ class CommentViewModelTest {
     fun removeComment_removesFromTree() {
         val c1 = createTestComment(id = "c1")
         val c2 = createTestComment(id = "c2")
-        viewModel.setComments(listOf(
-            CommentOrMore.CommentItem(c1),
-            CommentOrMore.CommentItem(c2)
-        ))
+        viewModel.setComments(
+            listOf(
+                CommentOrMore.CommentItem(c1),
+                CommentOrMore.CommentItem(c2),
+            ),
+        )
 
         viewModel.removeComment("c1")
         assertEquals(1, viewModel.uiState.value.comments.size)
@@ -456,15 +478,24 @@ class CommentViewModelTest {
     fun startReplyWithQuote_formatsQuotedText() {
         viewModel.startReplyWithQuote("t1_c1", "Line 1\nLine 2")
         assertEquals("t1_c1", viewModel.uiState.value.replyingTo)
-        assertTrue(viewModel.uiState.value.replyText.startsWith(">Line 1\n>Line 2"))
+        assertTrue(
+            viewModel.uiState.value.replyText
+                .startsWith(">Line 1\n>Line 2"),
+        )
     }
 
     @Test
     fun insertQuotedText_prependsToExistingText() {
         viewModel.setReplyText("existing text")
         viewModel.insertQuotedText("quoted line")
-        assertTrue(viewModel.uiState.value.replyText.startsWith(">quoted line"))
-        assertTrue(viewModel.uiState.value.replyText.contains("existing text"))
+        assertTrue(
+            viewModel.uiState.value.replyText
+                .startsWith(">quoted line"),
+        )
+        assertTrue(
+            viewModel.uiState.value.replyText
+                .contains("existing text"),
+        )
     }
 
     @Test
@@ -478,7 +509,10 @@ class CommentViewModelTest {
     fun insertQuote_formatsParentText() {
         viewModel.setReplyText("existing")
         viewModel.insertQuote("parent text")
-        assertTrue(viewModel.uiState.value.replyText.startsWith(">parent text"))
+        assertTrue(
+            viewModel.uiState.value.replyText
+                .startsWith(">parent text"),
+        )
     }
 
     @Test

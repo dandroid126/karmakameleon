@@ -11,18 +11,21 @@ class MessageRepository(
 ) {
     suspend fun getInbox(
         filter: InboxFilter = InboxFilter.ALL,
-        after: String? = null
-    ): Result<Listing<Message>> {
-        return try {
+        after: String? = null,
+    ): Result<Listing<Message>> =
+        try {
             val listing = redditApi.getInbox(filter, after)
             Result.success(listing)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun sendMessage(to: String, subject: String, body: String): Result<Unit> {
-        return try {
+    suspend fun sendMessage(
+        to: String,
+        subject: String,
+        body: String,
+    ): Result<Unit> =
+        try {
             val success = redditApi.sendMessage(to, subject, body)
             if (success) {
                 Result.success(Unit)
@@ -32,10 +35,9 @@ class MessageRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun markAsRead(message: Message): Result<Unit> {
-        return try {
+    suspend fun markAsRead(message: Message): Result<Unit> =
+        try {
             val success = redditApi.markMessageRead(message.name)
             if (success) {
                 Result.success(Unit)
@@ -45,10 +47,9 @@ class MessageRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun markAllAsRead(): Result<Unit> {
-        return try {
+    suspend fun markAllAsRead(): Result<Unit> =
+        try {
             val success = redditApi.markAllMessagesRead()
             if (success) {
                 Result.success(Unit)
@@ -58,10 +59,9 @@ class MessageRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun markAsUnread(message: Message): Result<Unit> {
-        return try {
+    suspend fun markAsUnread(message: Message): Result<Unit> =
+        try {
             val success = redditApi.markMessageUnread(message.name)
             if (success) {
                 Result.success(Unit)
@@ -71,10 +71,9 @@ class MessageRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun blockUser(username: String): Result<Unit> {
-        return try {
+    suspend fun blockUser(username: String): Result<Unit> =
+        try {
             val success = redditApi.blockUser(username)
             if (success) {
                 Result.success(Unit)
@@ -84,17 +83,20 @@ class MessageRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun voteOnMessage(message: Message, direction: Int): Result<Message> {
-        return try {
+    suspend fun voteOnMessage(
+        message: Message,
+        direction: Int,
+    ): Result<Message> =
+        try {
             val success = redditApi.vote(message.name, direction)
             if (success) {
-                val newLikes = when (direction) {
-                    1 -> true
-                    -1 -> false
-                    else -> null
-                }
+                val newLikes =
+                    when (direction) {
+                        1 -> true
+                        -1 -> false
+                        else -> null
+                    }
                 Result.success(message.copy(likes = newLikes))
             } else {
                 Result.failure(Exception("Vote failed"))
@@ -102,10 +104,12 @@ class MessageRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun replyToMessage(message: Message, text: String): Result<Comment> {
-        return try {
+    suspend fun replyToMessage(
+        message: Message,
+        text: String,
+    ): Result<Comment> =
+        try {
             val comment = redditApi.submitComment(message.name, text)
             if (comment != null) {
                 Result.success(comment)
@@ -115,5 +119,4 @@ class MessageRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 }

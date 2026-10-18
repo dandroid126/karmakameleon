@@ -26,36 +26,35 @@ import com.karmakameleon.android.ui.theme.mediaColors
 import com.karmakameleon.android.ui.theme.postFlairColors
 
 @Composable
-fun NsfwBlackBox(
-    modifier: Modifier = Modifier
-) {
+fun NsfwBlackBox(modifier: Modifier = Modifier) {
     val flairColors = postFlairColors()
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 120.dp, max = 300.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(mediaColors().hiddenPreviewColor),
-        contentAlignment = Alignment.Center
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .heightIn(min = 120.dp, max = 300.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(mediaColors().hiddenPreviewColor),
+        contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(
                 imageVector = Icons.Default.VisibilityOff,
                 contentDescription = null,
                 tint = flairColors.nsfwColor,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(32.dp),
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "NSFW",
                 style = MaterialTheme.typography.titleMedium,
-                color = flairColors.nsfwColor
+                color = flairColors.nsfwColor,
             )
             Text(
                 text = "Tap to view",
                 style = MaterialTheme.typography.bodySmall,
                 color = mediaColors().hiddenPreviewHintColor,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 4.dp),
             )
         }
     }
@@ -65,39 +64,41 @@ fun NsfwBlackBox(
 fun NsfwBlurredImage(
     lowResUrl: String?,
     highResUrl: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
         ProgressiveAsyncImage(
             lowResUrl = lowResUrl,
             highResUrl = highResUrl,
             contentDescription = null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(max = 300.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .blur(20.dp),
-            contentScale = ContentScale.Crop
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 300.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .blur(20.dp),
+            contentScale = ContentScale.Crop,
         )
         Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(8.dp))
-                .background(mediaColors().blurScrimColor),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(mediaColors().blurScrimColor),
+            contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     imageVector = Icons.Default.VisibilityOff,
                     contentDescription = null,
                     tint = mediaColors().onOverlayColor,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(24.dp),
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "NSFW",
                     style = MaterialTheme.typography.labelMedium,
-                    color = mediaColors().onOverlayColor
+                    color = mediaColors().onOverlayColor,
                 )
             }
         }

@@ -13,30 +13,31 @@ import kotlinx.serialization.json.Json
 
 expect fun createHttpClient(): HttpClient
 
-fun createHttpClientWithConfig(): HttpClient {
-    return createHttpClient().config {
+fun createHttpClientWithConfig(): HttpClient =
+    createHttpClient().config {
         install(ContentNegotiation) {
-            json(Json {
-                ignoreUnknownKeys = true
-                isLenient = true
-                coerceInputValues = true
-                encodeDefaults = true
-            })
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                    coerceInputValues = true
+                    encodeDefaults = true
+                },
+            )
         }
-        
+
         install(Logging) {
             logger = Logger.DEFAULT
             level = LogLevel.HEADERS
         }
-        
+
         install(HttpTimeout) {
             requestTimeoutMillis = 30_000
             connectTimeoutMillis = 15_000
             socketTimeoutMillis = 30_000
         }
-        
+
         defaultRequest {
             headers.append("User-Agent", "KK/1.0.0")
         }
     }
-}

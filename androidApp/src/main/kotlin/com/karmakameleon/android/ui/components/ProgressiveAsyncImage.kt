@@ -29,10 +29,11 @@ fun ProgressiveAsyncImage(
     val context = LocalContext.current
 
     // Skip progressive loading if full image is already in memory cache
-    val isHighResCached = remember(highResUrl) {
-        val cacheKey = MemoryCache.Key(highResUrl)
-        SingletonImageLoader.get(context).memoryCache?.get(cacheKey) != null
-    }
+    val isHighResCached =
+        remember(highResUrl) {
+            val cacheKey = MemoryCache.Key(highResUrl)
+            SingletonImageLoader.get(context).memoryCache?.get(cacheKey) != null
+        }
 
     if (lowResUrl == null || lowResUrl == highResUrl || isHighResCached) {
         AsyncImage(
@@ -51,7 +52,7 @@ fun ProgressiveAsyncImage(
         AnimatedVisibility(
             visible = !fullImageReady,
             exit = fadeOut(),
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         ) {
             AsyncImage(
                 model = lowResUrl,
@@ -63,10 +64,12 @@ fun ProgressiveAsyncImage(
 
         // Full-res layer — crossfades in on top of thumbnail
         AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(highResUrl)
-                .crossfade(300)
-                .build(),
+            model =
+                ImageRequest
+                    .Builder(context)
+                    .data(highResUrl)
+                    .crossfade(300)
+                    .build(),
             contentDescription = contentDescription,
             modifier = Modifier.fillMaxSize(),
             contentScale = contentScale,
