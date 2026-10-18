@@ -108,11 +108,11 @@ fun CompactPostCard(
     onDownvote: () -> Unit,
     onSave: () -> Unit,
     onHide: () -> Unit,
-    onBlockSubreddit: () -> Unit = {},
     isLoggedIn: Boolean,
+    modifier: Modifier = Modifier,
+    onBlockSubreddit: () -> Unit = {},
     onLinkClick: (String) -> Unit = {},
     onCrosspostClick: () -> Unit = {},
-    modifier: Modifier = Modifier,
     isRead: Boolean = false,
     nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH,
     spoilerPreviewsEnabled: Boolean = false

@@ -92,7 +92,7 @@ fun VideoPlayer(
     var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var isFullscreen by remember { mutableStateOf(false) }
     var inlineViewKey by remember { mutableIntStateOf(0) }
-    var videoAspectRatio by remember { mutableStateOf(16f / 9f) }
+    var videoAspectRatio by remember { mutableFloatStateOf(16f / 9f) }
     var showMenu by remember { mutableStateOf(false) }
     val hasRetriedWithoutAudio = remember { mutableStateOf(false) }
 

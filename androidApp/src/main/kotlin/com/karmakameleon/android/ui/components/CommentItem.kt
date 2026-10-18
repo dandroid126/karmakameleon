@@ -71,13 +71,14 @@ fun CommentItem(
     onNext: () -> Unit,
     onRoot: () -> Unit,
     onParent: () -> Unit,
-    onCommentUpdated: (Comment) -> Unit = {},
     onShare: () -> Unit,
     onReply: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onSave: () -> Unit = {},
     isLoggedIn: Boolean,
+    modifier: Modifier = Modifier,
+    onCommentUpdated: (Comment) -> Unit = {},
+    onSave: () -> Unit = {},
     loggedInUsername: String? = null,
     selectionVersion: Int = 0,
     onTouchStart: () -> Unit = {},
@@ -87,7 +88,6 @@ fun CommentItem(
     onGoToCommentNav: (commentId: String) -> Unit = {},
     showTopControls: Boolean = true,
     showSubreddit: Boolean = false,
-    modifier: Modifier = Modifier,
     postRepository: PostRepository = koinInject()
 ) {
     val scope = rememberCoroutineScope()

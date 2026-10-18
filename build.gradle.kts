@@ -25,3 +25,10 @@ subprojects {
         }
     }
 }
+
+// Every static check in one task, so they can all be run locally before committing. CI runs it too.
+tasks.register("qualityGate") {
+    group = "verification"
+    description = "Runs all static checks."
+    dependsOn(":androidApp:lintDebug")
+}

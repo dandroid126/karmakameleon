@@ -1,4 +1,7 @@
+<!-- Only used as the launcher icon foreground, which the launcher renders once and caches, so the long paths don't matter. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:ignore="VectorPath"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="2048"

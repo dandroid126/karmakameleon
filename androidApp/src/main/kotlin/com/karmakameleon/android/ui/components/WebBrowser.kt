@@ -1,8 +1,8 @@
 package com.karmakameleon.android.ui.components
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Intent
-import android.net.Uri
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
@@ -33,11 +33,14 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.net.toUri
 import com.karmakameleon.android.ui.menu.GlobalMenuManager
 import com.karmakameleon.android.ui.menu.OverflowMenuItem
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
+// Most of the pages people open from posts need JavaScript to work.
+@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun WebBrowserScreen(
     url: String,
@@ -64,7 +67,7 @@ fun WebBrowserScreen(
                 title = "Open in Browser",
                 icon = Icons.Default.OpenInBrowser,
                 onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
                 }
             )
         ))
