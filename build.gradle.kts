@@ -18,3 +18,14 @@ plugins {
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
 }
+
+subprojects {
+    val constraintHandler = dependencies.constraints
+    // AGP runs lint with its own copy of the tooling, which brings in the same old Bouncy Castle.
+    configurations.matching { it.name == "androidLintTool" }.configureEach {
+        listOf(libs.bouncycastle.bcprov, libs.bouncycastle.bcpkix, libs.bouncycastle.bcutil).forEach {
+            val library = it.get()
+            dependencyConstraints.add(constraintHandler.create("${library.module}:${library.version}"))
+        }
+    }
+}
