@@ -27,16 +27,16 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 /**
  * Shows Reddit's authorization page. Login happens in-app so that any redirect URI works: [onRedirect]
- * is asked about every page before it loads, and returns true for the redirect back to the app.
+ * is asked about every page before it loads, and returns true for the redirect back to the app. JavaScript is
+ * on because Reddit's login page needs it.
  */
-// Reddit's login page needs JavaScript.
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun RedditLoginWebView(
     authUrl: String,
     onRedirect: (url: String) -> Boolean,
     onCancel: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val currentOnRedirect by rememberUpdatedState(onRedirect)
     var isLoading by remember { mutableStateOf(true) }
@@ -51,31 +51,43 @@ fun RedditLoginWebView(
         AndroidView(
             factory = { context ->
                 WebView(context).apply {
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                            currentOnRedirect(request.url.toString())
+                    webViewClient =
+                        object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView,
+                                request: WebResourceRequest,
+                            ): Boolean = currentOnRedirect(request.url.toString())
 
-                        override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
-                            // Backstop for navigations that don't go through shouldOverrideUrlLoading.
-                            if (currentOnRedirect(url)) {
-                                view.stopLoading()
-                                return
+                            override fun onPageStarted(
+                                view: WebView,
+                                url: String,
+                                favicon: Bitmap?,
+                            ) {
+                                // Backstop for navigations that don't go through shouldOverrideUrlLoading.
+                                if (currentOnRedirect(url)) {
+                                    view.stopLoading()
+                                    return
+                                }
+                                isLoading = true
                             }
-                            isLoading = true
-                        }
 
-                        override fun onPageFinished(view: WebView, url: String) {
-                            isLoading = false
+                            override fun onPageFinished(
+                                view: WebView,
+                                url: String,
+                            ) {
+                                isLoading = false
+                            }
                         }
-                    }
                     settings.apply {
                         javaScriptEnabled = true
                         domStorageEnabled = true
                         // Reddit's login rejects the WebView user agent ("Something went wrong logging in"),
                         // so present the same Chrome version without the WebView markers.
-                        userAgentString = WebSettings.getDefaultUserAgent(context)
-                            .replace("; wv)", ")")
-                            .replace(" Version/4.0", "")
+                        userAgentString =
+                            WebSettings
+                                .getDefaultUserAgent(context)
+                                .replace("; wv)", ")")
+                                .replace(" Version/4.0", "")
                     }
                     loadUrl(authUrl)
                     webViewRef = this
@@ -85,14 +97,15 @@ fun RedditLoginWebView(
                 webView.stopLoading()
                 webView.destroy()
             },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
         )
 
         if (isLoading) {
             CircularProgressIndicator(
-                modifier = Modifier
-                    .size(48.dp)
-                    .align(Alignment.Center)
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .align(Alignment.Center),
             )
         }
     }

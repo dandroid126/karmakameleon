@@ -264,7 +264,8 @@ fun PostCard(
                                                 .fillMaxWidth()
                                                 .heightIn(max = 300.dp)
                                                 .clip(RoundedCornerShape(8.dp)),
-                                        // Commenting this out for now, but this is where we would add the clickability of the image to follow the link.
+                                        // Commenting this out for now, but this is where we would add the clickability of the image to
+                                        // follow the link.
                                         // I can't decide if I like it or not.
                                         // Maybe this will be configurable in the settings.
 //                                    .then(

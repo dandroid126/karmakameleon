@@ -73,8 +73,11 @@ import com.karmakameleon.android.ui.components.formatNumber
 import com.karmakameleon.android.ui.components.formatTimeAgo
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
+import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Account
+import com.karmakameleon.shared.domain.model.NsfwHistoryMode
+import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
@@ -95,7 +98,7 @@ fun ProfileScreen(
     onSubredditClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
-    userRepository: UserRepository = koinInject()
+    userRepository: UserRepository = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val commentState by viewModel.commentViewModel.uiState.collectAsState()
@@ -116,9 +119,11 @@ fun ProfileScreen(
             username == null -> {
                 // Not logged in - show login prompt
             }
+
             username == currentAccount?.name -> {
                 viewModel.loadOwnProfile()
             }
+
             else -> {
                 viewModel.loadUserProfile(username)
             }
@@ -138,13 +143,14 @@ fun ProfileScreen(
                 currentRoute = currentRoute,
                 excludeProfile = uiState.isOwnProfile,
                 title = {
-                    val titleText = if (uiState.authUrl != null) {
-                        "Sign in to Reddit"
-                    } else if (uiState.isOwnProfile) {
-                        uiState.account?.name ?: "Profile"
-                    } else {
-                        username.orEmpty()
-                    }
+                    val titleText =
+                        if (uiState.authUrl != null) {
+                            "Sign in to Reddit"
+                        } else if (uiState.isOwnProfile) {
+                            uiState.account?.name ?: "Profile"
+                        } else {
+                            username.orEmpty()
+                        }
                     Text(titleText)
                 },
                 navigationIcon = {
@@ -168,7 +174,7 @@ fun ProfileScreen(
                             Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
                         }
                     }
-                }
+                },
             )
         },
         bottomBar = {
@@ -178,17 +184,17 @@ fun ProfileScreen(
                     onReplyTextChange = viewModel.commentViewModel::setReplyText,
                     onSubmit = viewModel::submitEdit,
                     onCancel = viewModel.commentViewModel::cancelEdit,
-                    placeholder = "Edit comment..."
+                    placeholder = "Edit comment...",
                 )
             } else if (uiState.isLoggedIn && commentState.replyingTo != null) {
                 ReplyBar(
                     replyText = commentState.replyText,
                     onReplyTextChange = viewModel.commentViewModel::setReplyText,
                     onSubmit = viewModel::submitReply,
-                    onCancel = { viewModel.commentViewModel.setReplyingTo(null) }
+                    onCancel = { viewModel.commentViewModel.setReplyingTo(null) },
                 )
             }
-        }
+        },
     ) { padding ->
         val authUrl = uiState.authUrl
         if (username == null && authUrl != null) {
@@ -196,7 +202,7 @@ fun ProfileScreen(
                 authUrl = authUrl,
                 onRedirect = viewModel::handleLoginRedirect,
                 onCancel = viewModel::cancelLogin,
-                modifier = Modifier.padding(padding)
+                modifier = Modifier.padding(padding),
             )
             return@Scaffold
         }
@@ -205,9 +211,10 @@ fun ProfileScreen(
             isRefreshing = uiState.isRefreshing,
             onRefresh = viewModel::refresh,
             state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
         ) {
             if (username == null) {
                 LoginPrompt(
@@ -216,7 +223,7 @@ fun ProfileScreen(
                     redirectUri = uiState.redirectUri,
                     onRedirectUriChange = viewModel::setRedirectUri,
                     isSigningIn = uiState.isSigningIn,
-                    onLogin = viewModel::initiateLogin
+                    onLogin = viewModel::initiateLogin,
                 )
             } else if (uiState.isLoading && uiState.account == null && uiState.user == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -232,34 +239,35 @@ fun ProfileScreen(
                             name = displayName,
                             iconUrl = iconUrl,
                             karma = karma ?: 0,
-                            created = created ?: 0L
+                            created = created ?: 0L,
                         )
 
-                        val tabs = if (uiState.isOwnProfile) {
-                            listOf(
-                                ProfileTab.POSTS,
-                                ProfileTab.COMMENTS,
-                                ProfileTab.SAVED,
-                                ProfileTab.UPVOTED,
-                                ProfileTab.DOWNVOTED,
-                                ProfileTab.ABOUT
-                            )
-                        } else {
-                            listOf(ProfileTab.POSTS, ProfileTab.COMMENTS, ProfileTab.ABOUT)
-                        }
+                        val tabs =
+                            if (uiState.isOwnProfile) {
+                                listOf(
+                                    ProfileTab.POSTS,
+                                    ProfileTab.COMMENTS,
+                                    ProfileTab.SAVED,
+                                    ProfileTab.UPVOTED,
+                                    ProfileTab.DOWNVOTED,
+                                    ProfileTab.ABOUT,
+                                )
+                            } else {
+                                listOf(ProfileTab.POSTS, ProfileTab.COMMENTS, ProfileTab.ABOUT)
+                            }
 
                         val selectedTabIndex = tabs.indexOf(uiState.selectedTab).coerceAtLeast(0)
 
                         if (tabs.size <= 3) {
                             PrimaryTabRow(
                                 selectedTabIndex = selectedTabIndex,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 tabs.forEach { tab ->
                                     Tab(
                                         selected = uiState.selectedTab == tab,
                                         onClick = { viewModel.setSelectedTab(tab) },
-                                        text = { Text(tab.displayName) }
+                                        text = { Text(tab.displayName) },
                                     )
                                 }
                             }
@@ -267,78 +275,96 @@ fun ProfileScreen(
                             PrimaryScrollableTabRow(
                                 selectedTabIndex = selectedTabIndex,
                                 edgePadding = 8.dp,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
                                 tabs.forEach { tab ->
                                     Tab(
                                         selected = uiState.selectedTab == tab,
                                         onClick = { viewModel.setSelectedTab(tab) },
-                                        text = { Text(tab.displayName) }
+                                        text = { Text(tab.displayName) },
                                     )
                                 }
                             }
                         }
 
                         var showSortSheet by remember { mutableStateOf(false) }
-                        val showSortOption = uiState.selectedTab == ProfileTab.POSTS || 
-                                           uiState.selectedTab == ProfileTab.COMMENTS
+                        val showSortOption =
+                            uiState.selectedTab == ProfileTab.POSTS ||
+                                uiState.selectedTab == ProfileTab.COMMENTS
 
                         if (showSortOption) {
-                            val currentSort = when (uiState.selectedTab) {
-                                ProfileTab.POSTS -> uiState.postsSort
-                                ProfileTab.COMMENTS -> uiState.commentsSort
-                                else -> PostSort.NEW
-                            }
-                            val currentTimeFilter = when (uiState.selectedTab) {
-                                ProfileTab.POSTS -> uiState.postsTimeFilter
-                                ProfileTab.COMMENTS -> uiState.commentsTimeFilter
-                                else -> TimeFilter.ALL
-                            }
-                            
+                            val currentSort =
+                                when (uiState.selectedTab) {
+                                    ProfileTab.POSTS -> uiState.postsSort
+                                    ProfileTab.COMMENTS -> uiState.commentsSort
+                                    else -> PostSort.NEW
+                                }
+                            val currentTimeFilter =
+                                when (uiState.selectedTab) {
+                                    ProfileTab.POSTS -> uiState.postsTimeFilter
+                                    ProfileTab.COMMENTS -> uiState.commentsTimeFilter
+                                    else -> TimeFilter.ALL
+                                }
+
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.End
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.End,
                             ) {
                                 IconButton(onClick = { showSortSheet = true }) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.Sort,
-                                        contentDescription = "Sort"
+                                        contentDescription = "Sort",
                                     )
                                 }
                             }
-                            
+
                             if (showSortSheet) {
                                 SortBottomSheet(
                                     currentSort = currentSort,
                                     currentTimeFilter = currentTimeFilter,
                                     onSortSelected = { sort ->
                                         when (uiState.selectedTab) {
-                                            ProfileTab.POSTS -> viewModel.setPostsSort(sort)
-                                            ProfileTab.COMMENTS -> viewModel.setCommentsSort(sort)
+                                            ProfileTab.POSTS -> {
+                                                viewModel.setPostsSort(sort)
+                                            }
+
+                                            ProfileTab.COMMENTS -> {
+                                                viewModel.setCommentsSort(sort)
+                                            }
+
                                             else -> {}
                                         }
                                     },
                                     onTimeFilterSelected = { timeFilter ->
                                         when (uiState.selectedTab) {
-                                            ProfileTab.POSTS -> viewModel.setPostsTimeFilter(timeFilter)
-                                            ProfileTab.COMMENTS -> viewModel.setCommentsTimeFilter(timeFilter)
+                                            ProfileTab.POSTS -> {
+                                                viewModel.setPostsTimeFilter(timeFilter)
+                                            }
+
+                                            ProfileTab.COMMENTS -> {
+                                                viewModel.setCommentsTimeFilter(timeFilter)
+                                            }
+
                                             else -> {}
                                         }
                                     },
-                                    onDismiss = { showSortSheet = false }
+                                    onDismiss = { showSortSheet = false },
                                 )
                             }
                         }
 
                         val readPostsRepository: ReadPostsRepository = koinInject()
-                        val settingsRepository: com.karmakameleon.shared.data.repository.SettingsRepository = koinInject()
+                        val settingsRepository: SettingsRepository = koinInject()
                         val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
                         val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
                         val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
-                        val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else com.karmakameleon.shared.domain.model.NsfwPreviewMode.DO_NOT_PREFETCH
-                        val effectiveNsfwHistoryMode by remember { derivedStateOf { if (nsfwEnabled) nsfwHistoryMode else com.karmakameleon.shared.domain.model.NsfwHistoryMode.DONT_SAVE_ANY_NSFW } }
+                        val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else NsfwPreviewMode.DO_NOT_PREFETCH
+                        val effectiveNsfwHistoryMode by remember {
+                            derivedStateOf { if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW }
+                        }
                         val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
                         val compactFeedEnabled by settingsRepository.compactFeedEnabled.collectAsState()
                         val navigationHandler: NavigationHandler = koinInject()
@@ -393,37 +419,69 @@ fun ProfileScreen(
                         }
 
                         LaunchedEffect(shouldLoadMorePosts) {
-                            if (uiState.selectedTab == ProfileTab.POSTS && shouldLoadMorePosts && !uiState.isLoadingMorePosts && uiState.hasMorePosts) {
+                            if (
+                                uiState.selectedTab == ProfileTab.POSTS &&
+                                shouldLoadMorePosts &&
+                                !uiState.isLoadingMorePosts &&
+                                uiState.hasMorePosts
+                            ) {
                                 viewModel.loadMoreUserPosts()
                             }
                         }
 
                         LaunchedEffect(shouldLoadMoreComments) {
-                            if (uiState.selectedTab == ProfileTab.COMMENTS && shouldLoadMoreComments && !uiState.isLoadingMoreComments && uiState.hasMoreComments) {
+                            if (
+                                uiState.selectedTab == ProfileTab.COMMENTS &&
+                                shouldLoadMoreComments &&
+                                !uiState.isLoadingMoreComments &&
+                                uiState.hasMoreComments
+                            ) {
                                 viewModel.loadMoreUserComments()
                             }
                         }
 
                         LaunchedEffect(shouldLoadMoreSavedPosts) {
-                            if (uiState.selectedTab == ProfileTab.SAVED && uiState.savedContentType == SavedContentType.POSTS && shouldLoadMoreSavedPosts && !uiState.isLoadingMoreSavedPosts && uiState.hasMoreSavedPosts) {
+                            if (
+                                uiState.selectedTab == ProfileTab.SAVED &&
+                                uiState.savedContentType == SavedContentType.POSTS &&
+                                shouldLoadMoreSavedPosts &&
+                                !uiState.isLoadingMoreSavedPosts &&
+                                uiState.hasMoreSavedPosts
+                            ) {
                                 viewModel.loadMoreSavedPosts()
                             }
                         }
 
                         LaunchedEffect(shouldLoadMoreSavedComments) {
-                            if (uiState.selectedTab == ProfileTab.SAVED && uiState.savedContentType == SavedContentType.COMMENTS && shouldLoadMoreSavedComments && !uiState.isLoadingMoreSavedComments && uiState.hasMoreSavedComments) {
+                            if (
+                                uiState.selectedTab == ProfileTab.SAVED &&
+                                uiState.savedContentType == SavedContentType.COMMENTS &&
+                                shouldLoadMoreSavedComments &&
+                                !uiState.isLoadingMoreSavedComments &&
+                                uiState.hasMoreSavedComments
+                            ) {
                                 viewModel.loadMoreSavedComments()
                             }
                         }
 
                         LaunchedEffect(shouldLoadMoreUpvoted) {
-                            if (uiState.selectedTab == ProfileTab.UPVOTED && shouldLoadMoreUpvoted && !uiState.isLoadingMoreUpvoted && uiState.hasMoreUpvoted) {
+                            if (
+                                uiState.selectedTab == ProfileTab.UPVOTED &&
+                                shouldLoadMoreUpvoted &&
+                                !uiState.isLoadingMoreUpvoted &&
+                                uiState.hasMoreUpvoted
+                            ) {
                                 viewModel.loadMoreUpvotedPosts()
                             }
                         }
 
                         LaunchedEffect(shouldLoadMoreDownvoted) {
-                            if (uiState.selectedTab == ProfileTab.DOWNVOTED && shouldLoadMoreDownvoted && !uiState.isLoadingMoreDownvoted && uiState.hasMoreDownvoted) {
+                            if (
+                                uiState.selectedTab == ProfileTab.DOWNVOTED &&
+                                shouldLoadMoreDownvoted &&
+                                !uiState.isLoadingMoreDownvoted &&
+                                uiState.hasMoreDownvoted
+                            ) {
                                 viewModel.loadMoreDownvotedPosts()
                             }
                         }
@@ -436,108 +494,123 @@ fun ProfileScreen(
                                     AboutTabForUser(user = uiState.user)
                                 }
                             }
-                            ProfileTab.COMMENTS -> ProfileCommentsTab(
-                                comments = uiState.comments,
-                                isLoadingContent = uiState.isLoadingContent,
-                                isLoadingMore = uiState.isLoadingMoreComments,
-                                isLoggedIn = uiState.isLoggedIn,
-                                loggedInUsername = uiState.account?.name,
-                                listState = commentsListState,
-                                selectedCommentId = selectedCommentId,
-                                onSelectComment = { selectedCommentId = it },
-                                onCommentUpdated = { viewModel.updateComment(it) },
-                                onReply = { viewModel.commentViewModel.setReplyingTo(it) },
-                                onEdit = { viewModel.commentViewModel.startEditComment(it) },
-                                onDelete = { deleteConfirmCommentId = it },
-                                onSave = { viewModel.saveComment(it) },
-                                onCommentClick = onCommentClick,
-                            )
-                            ProfileTab.SAVED -> ProfileSavedTab(
-                                savedContentType = uiState.savedContentType,
-                                savedPosts = uiState.savedPosts,
-                                savedComments = uiState.savedComments,
-                                isLoadingContent = uiState.isLoadingContent,
-                                isLoadingMorePosts = uiState.isLoadingMoreSavedPosts,
-                                isLoadingMoreComments = uiState.isLoadingMoreSavedComments,
-                                isLoggedIn = uiState.isLoggedIn,
-                                loggedInUsername = uiState.account?.name,
-                                savedPostsListState = savedPostsListState,
-                                savedCommentsListState = savedCommentsListState,
-                                selectedCommentId = selectedCommentId,
-                                readPostsRepository = readPostsRepository,
-                                nsfwHistoryMode = effectiveNsfwHistoryMode,
-                                nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                                compactFeed = compactFeedEnabled,
-                                navigationHandler = navigationHandler,
-                                onSetSavedContentType = { viewModel.setSavedContentType(it) },
-                                onPostClick = onPostClick,
-                                onSubredditClick = onSubredditClick,
-                                onLinkClick = onLinkClick,
-                                onVote = { post, dir -> viewModel.vote(post, dir) },
-                                onSavePost = { viewModel.save(it) },
-                                onSelectComment = { selectedCommentId = it },
-                                onCommentUpdated = { viewModel.updateComment(it) },
-                                onReply = { viewModel.commentViewModel.setReplyingTo(it) },
-                                onEdit = { viewModel.commentViewModel.startEditComment(it) },
-                                onDelete = { deleteConfirmCommentId = it },
-                                onSaveComment = { viewModel.saveComment(it) },
-                                onCommentClick = onCommentClick,
-                            )
-                            ProfileTab.POSTS -> ProfilePostsTab(
-                                posts = uiState.posts,
-                                isLoadingContent = uiState.isLoadingContent,
-                                isLoadingMore = uiState.isLoadingMorePosts,
-                                isLoggedIn = uiState.isLoggedIn,
-                                listState = postsListState,
-                                readPostsRepository = readPostsRepository,
-                                nsfwHistoryMode = effectiveNsfwHistoryMode,
-                                nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                                compactFeed = compactFeedEnabled,
-                                navigationHandler = navigationHandler,
-                                onPostClick = onPostClick,
-                                onSubredditClick = onSubredditClick,
-                                onLinkClick = onLinkClick,
-                                onVote = { post, dir -> viewModel.vote(post, dir) },
-                                onSave = { viewModel.save(it) },
-                            )
-                            ProfileTab.UPVOTED -> ProfileUpvotedTab(
-                                posts = uiState.upvotedPosts,
-                                isLoadingContent = uiState.isLoadingContent,
-                                isLoadingMore = uiState.isLoadingMoreUpvoted,
-                                isLoggedIn = uiState.isLoggedIn,
-                                listState = upvotedListState,
-                                readPostsRepository = readPostsRepository,
-                                nsfwHistoryMode = effectiveNsfwHistoryMode,
-                                nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                                compactFeed = compactFeedEnabled,
-                                navigationHandler = navigationHandler,
-                                onPostClick = onPostClick,
-                                onSubredditClick = onSubredditClick,
-                                onLinkClick = onLinkClick,
-                                onVote = { post, dir -> viewModel.vote(post, dir) },
-                                onSave = { viewModel.save(it) },
-                            )
-                            ProfileTab.DOWNVOTED -> ProfileDownvotedTab(
-                                posts = uiState.downvotedPosts,
-                                isLoadingContent = uiState.isLoadingContent,
-                                isLoadingMore = uiState.isLoadingMoreDownvoted,
-                                isLoggedIn = uiState.isLoggedIn,
-                                listState = downvotedListState,
-                                readPostsRepository = readPostsRepository,
-                                nsfwHistoryMode = effectiveNsfwHistoryMode,
-                                nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                                compactFeed = compactFeedEnabled,
-                                navigationHandler = navigationHandler,
-                                onPostClick = onPostClick,
-                                onSubredditClick = onSubredditClick,
-                                onLinkClick = onLinkClick,
-                                onVote = { post, dir -> viewModel.vote(post, dir) },
-                                onSave = { viewModel.save(it) },
-                            )
+
+                            ProfileTab.COMMENTS -> {
+                                ProfileCommentsTab(
+                                    comments = uiState.comments,
+                                    isLoadingContent = uiState.isLoadingContent,
+                                    isLoadingMore = uiState.isLoadingMoreComments,
+                                    isLoggedIn = uiState.isLoggedIn,
+                                    loggedInUsername = uiState.account?.name,
+                                    listState = commentsListState,
+                                    selectedCommentId = selectedCommentId,
+                                    onSelectComment = { selectedCommentId = it },
+                                    onCommentUpdated = { viewModel.updateComment(it) },
+                                    onReply = { viewModel.commentViewModel.setReplyingTo(it) },
+                                    onEdit = { viewModel.commentViewModel.startEditComment(it) },
+                                    onDelete = { deleteConfirmCommentId = it },
+                                    onSave = { viewModel.saveComment(it) },
+                                    onCommentClick = onCommentClick,
+                                )
+                            }
+
+                            ProfileTab.SAVED -> {
+                                ProfileSavedTab(
+                                    savedContentType = uiState.savedContentType,
+                                    savedPosts = uiState.savedPosts,
+                                    savedComments = uiState.savedComments,
+                                    isLoadingContent = uiState.isLoadingContent,
+                                    isLoadingMorePosts = uiState.isLoadingMoreSavedPosts,
+                                    isLoadingMoreComments = uiState.isLoadingMoreSavedComments,
+                                    isLoggedIn = uiState.isLoggedIn,
+                                    loggedInUsername = uiState.account?.name,
+                                    savedPostsListState = savedPostsListState,
+                                    savedCommentsListState = savedCommentsListState,
+                                    selectedCommentId = selectedCommentId,
+                                    readPostsRepository = readPostsRepository,
+                                    nsfwHistoryMode = effectiveNsfwHistoryMode,
+                                    nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                    compactFeed = compactFeedEnabled,
+                                    navigationHandler = navigationHandler,
+                                    onSetSavedContentType = { viewModel.setSavedContentType(it) },
+                                    onPostClick = onPostClick,
+                                    onSubredditClick = onSubredditClick,
+                                    onLinkClick = onLinkClick,
+                                    onVote = { post, dir -> viewModel.vote(post, dir) },
+                                    onSavePost = { viewModel.save(it) },
+                                    onSelectComment = { selectedCommentId = it },
+                                    onCommentUpdated = { viewModel.updateComment(it) },
+                                    onReply = { viewModel.commentViewModel.setReplyingTo(it) },
+                                    onEdit = { viewModel.commentViewModel.startEditComment(it) },
+                                    onDelete = { deleteConfirmCommentId = it },
+                                    onSaveComment = { viewModel.saveComment(it) },
+                                    onCommentClick = onCommentClick,
+                                )
+                            }
+
+                            ProfileTab.POSTS -> {
+                                ProfilePostsTab(
+                                    posts = uiState.posts,
+                                    isLoadingContent = uiState.isLoadingContent,
+                                    isLoadingMore = uiState.isLoadingMorePosts,
+                                    isLoggedIn = uiState.isLoggedIn,
+                                    listState = postsListState,
+                                    readPostsRepository = readPostsRepository,
+                                    nsfwHistoryMode = effectiveNsfwHistoryMode,
+                                    nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                    compactFeed = compactFeedEnabled,
+                                    navigationHandler = navigationHandler,
+                                    onPostClick = onPostClick,
+                                    onSubredditClick = onSubredditClick,
+                                    onLinkClick = onLinkClick,
+                                    onVote = { post, dir -> viewModel.vote(post, dir) },
+                                    onSave = { viewModel.save(it) },
+                                )
+                            }
+
+                            ProfileTab.UPVOTED -> {
+                                ProfileUpvotedTab(
+                                    posts = uiState.upvotedPosts,
+                                    isLoadingContent = uiState.isLoadingContent,
+                                    isLoadingMore = uiState.isLoadingMoreUpvoted,
+                                    isLoggedIn = uiState.isLoggedIn,
+                                    listState = upvotedListState,
+                                    readPostsRepository = readPostsRepository,
+                                    nsfwHistoryMode = effectiveNsfwHistoryMode,
+                                    nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                    compactFeed = compactFeedEnabled,
+                                    navigationHandler = navigationHandler,
+                                    onPostClick = onPostClick,
+                                    onSubredditClick = onSubredditClick,
+                                    onLinkClick = onLinkClick,
+                                    onVote = { post, dir -> viewModel.vote(post, dir) },
+                                    onSave = { viewModel.save(it) },
+                                )
+                            }
+
+                            ProfileTab.DOWNVOTED -> {
+                                ProfileDownvotedTab(
+                                    posts = uiState.downvotedPosts,
+                                    isLoadingContent = uiState.isLoadingContent,
+                                    isLoadingMore = uiState.isLoadingMoreDownvoted,
+                                    isLoggedIn = uiState.isLoggedIn,
+                                    listState = downvotedListState,
+                                    readPostsRepository = readPostsRepository,
+                                    nsfwHistoryMode = effectiveNsfwHistoryMode,
+                                    nsfwPreviewMode = effectiveNsfwPreviewMode,
+                                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                                    compactFeed = compactFeedEnabled,
+                                    navigationHandler = navigationHandler,
+                                    onPostClick = onPostClick,
+                                    onSubredditClick = onSubredditClick,
+                                    onLinkClick = onLinkClick,
+                                    onVote = { post, dir -> viewModel.vote(post, dir) },
+                                    onSave = { viewModel.save(it) },
+                                )
+                            }
                         }
                     }
                 }
@@ -562,11 +635,10 @@ fun ProfileScreen(
                 TextButton(onClick = { deleteConfirmCommentId = null }) {
                     Text("Cancel")
                 }
-            }
+            },
         )
     }
 }
-
 
 @Composable
 private fun LoginPrompt(
@@ -575,21 +647,22 @@ private fun LoginPrompt(
     redirectUri: String,
     onRedirectUriChange: (String) -> Unit,
     isSigningIn: Boolean,
-    onLogin: () -> Unit
+    onLogin: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding()
-            .padding(32.dp),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .imePadding()
+                .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Center,
     ) {
         Icon(
             imageVector = Icons.Default.Person,
             contentDescription = null,
             modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.primary
+            tint = MaterialTheme.colorScheme.primary,
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text("Sign in to Reddit", style = MaterialTheme.typography.headlineSmall)
@@ -597,7 +670,7 @@ private fun LoginPrompt(
         Text(
             "Access your profile, saved posts, and more",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(24.dp))
         OutlinedTextField(
@@ -606,7 +679,7 @@ private fun LoginPrompt(
             label = { Text("Reddit Client ID") },
             placeholder = { Text("Enter your Reddit app client ID") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(0.9f)
+            modifier = Modifier.fillMaxWidth(0.9f),
         )
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
@@ -617,13 +690,13 @@ private fun LoginPrompt(
             supportingText = { Text("Must match the redirect URI of your app on Reddit") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-            modifier = Modifier.fillMaxWidth(0.9f)
+            modifier = Modifier.fillMaxWidth(0.9f),
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = onLogin,
             modifier = Modifier.fillMaxWidth(0.7f),
-            enabled = clientId.isNotBlank() && redirectUri.isNotBlank() && !isSigningIn
+            enabled = clientId.isNotBlank() && redirectUri.isNotBlank() && !isSigningIn,
         ) {
             if (isSigningIn) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -641,7 +714,7 @@ private fun UserHeader(
     name: String,
     iconUrl: String?,
     karma: Int,
-    created: Long
+    created: Long,
 ) {
     Card(modifier = Modifier.fillMaxWidth().padding(8.dp)) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -650,7 +723,7 @@ private fun UserHeader(
                     model = iconUrl,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp).clip(CircleShape),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Crop,
                 )
             } else {
                 Surface(modifier = Modifier.size(64.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
@@ -662,8 +735,16 @@ private fun UserHeader(
             Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text("u/$name", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Text("${formatNumber(karma)} karma", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("Joined ${formatTimeAgo(created)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "${formatNumber(karma)} karma",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    "Joined ${formatTimeAgo(created)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -672,7 +753,7 @@ private fun UserHeader(
 @Composable
 private fun AboutTab(account: Account?) {
     if (account == null) return
-    
+
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         item {
             Text("Karma Breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -718,7 +799,11 @@ private fun AboutTab(account: Account?) {
 }
 
 @Composable
-private fun KarmaRow(label: String, value: Int, bold: Boolean = false) {
+private fun KarmaRow(
+    label: String,
+    value: Int,
+    bold: Boolean = false,
+) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
         Text(formatNumber(value), fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
@@ -728,7 +813,7 @@ private fun KarmaRow(label: String, value: Int, bold: Boolean = false) {
 @Composable
 private fun AboutTabForUser(user: User?) {
     if (user == null) return
-    
+
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         item {
             Text("Karma Breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)

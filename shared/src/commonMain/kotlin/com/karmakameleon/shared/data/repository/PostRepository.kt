@@ -18,52 +18,55 @@ import kotlinx.coroutines.flow.update
 class PostRepository(
     private val redditApi: RedditApi,
 ) {
-    private val _cachedPosts = MutableStateFlow<Map<String, Post>>(emptyMap())
+    private val cachedPosts = MutableStateFlow<Map<String, Post>>(emptyMap())
     private val _postUpdates = MutableSharedFlow<Post>(extraBufferCapacity = 16)
     val postUpdates: SharedFlow<Post> = _postUpdates.asSharedFlow()
-    
+
     suspend fun getPosts(
         subreddit: String? = null,
         sort: PostSort = PostSort.HOT,
         time: TimeFilter? = null,
         after: String? = null,
-        limit: Int = 25
-    ): Result<Listing<Post>> {
-        return try {
+        limit: Int = 25,
+    ): Result<Listing<Post>> =
+        try {
             val listing = redditApi.getPosts(subreddit, sort, time, after, limit)
             // Cache posts
-            _cachedPosts.update { cache ->
+            cachedPosts.update { cache ->
                 cache + listing.items.associateBy { it.id }
             }
             Result.success(listing)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
     suspend fun enrichSparsePosts(posts: List<Post>): List<Post> {
-        val sparsePosts = posts.filter { post ->
-            post.preview == null && post.thumbnail == null && !post.isTextPost
-        }
+        val sparsePosts =
+            posts.filter { post ->
+                post.preview == null && post.thumbnail == null && !post.isTextPost
+            }
         if (sparsePosts.isEmpty()) return emptyList()
 
         val enriched = redditApi.fetchPostsByIds(sparsePosts.map { it.name })
         if (enriched.isNotEmpty()) {
-            _cachedPosts.update { cache ->
+            cachedPosts.update { cache ->
                 cache + enriched.associateBy { it.id }
             }
         }
         return enriched
     }
 
-    suspend fun getPost(subreddit: String, postId: String): Result<Post> {
+    suspend fun getPost(
+        subreddit: String,
+        postId: String,
+    ): Result<Post> {
         // Check cache first
-        _cachedPosts.value[postId]?.let { return Result.success(it) }
-        
+        cachedPosts.value[postId]?.let { return Result.success(it) }
+
         return try {
             val post = redditApi.getPost(subreddit, postId)
             if (post != null) {
-                _cachedPosts.update { it + (postId to post) }
+                cachedPosts.update { it + (postId to post) }
                 Result.success(post)
             } else {
                 Result.failure(Exception("Post not found"))
@@ -78,57 +81,60 @@ class PostRepository(
         postId: String,
         sort: CommentSort? = CommentSort.CONFIDENCE,
         commentId: String? = null,
-        context: Int? = null
-    ): Result<Pair<Post, List<CommentOrMore>>> {
-        return try {
+        context: Int? = null,
+    ): Result<Pair<Post, List<CommentOrMore>>> =
+        try {
             val result = redditApi.getPostWithComments(subreddit, postId, sort, commentId = commentId, context = context)
             val post = preserveCachedPreviewData(result.first)
-            _cachedPosts.update { it + (postId to post) }
+            cachedPosts.update { it + (postId to post) }
             Result.success(post to result.second)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
     private fun preserveCachedPreviewData(freshPost: Post): Post {
-        val cached = _cachedPosts.value[freshPost.id] ?: return freshPost
+        val cached = cachedPosts.value[freshPost.id] ?: return freshPost
         if (freshPost.preview != null && freshPost.thumbnail != null) return freshPost
         return freshPost.copy(
             preview = freshPost.preview ?: cached.preview,
             thumbnail = freshPost.thumbnail ?: cached.thumbnail,
             thumbnailWidth = freshPost.thumbnailWidth ?: cached.thumbnailWidth,
-            thumbnailHeight = freshPost.thumbnailHeight ?: cached.thumbnailHeight
+            thumbnailHeight = freshPost.thumbnailHeight ?: cached.thumbnailHeight,
         )
     }
 
     suspend fun getMoreComments(
         linkId: String,
         children: List<String>,
-        sort: CommentSort = CommentSort.CONFIDENCE
-    ): Result<List<CommentOrMore>> {
-        return try {
+        sort: CommentSort = CommentSort.CONFIDENCE,
+    ): Result<List<CommentOrMore>> =
+        try {
             val comments = redditApi.getMoreComments(linkId, children, sort)
             Result.success(comments)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun vote(post: Post, direction: Int): Result<Post> {
-        return try {
+    suspend fun vote(
+        post: Post,
+        direction: Int,
+    ): Result<Post> =
+        try {
             val success = redditApi.vote(post.name, direction)
             if (success) {
-                val newLikes = when (direction) {
-                    1 -> true
-                    -1 -> false
-                    else -> null
-                }
+                val newLikes =
+                    when (direction) {
+                        1 -> true
+                        -1 -> false
+                        else -> null
+                    }
                 val scoreDiff = direction - likesToVote(post.likes)
-                val updatedPost = post.copy(
-                    likes = newLikes,
-                    score = post.score + scoreDiff
-                )
-                _cachedPosts.update { it + (post.id to updatedPost) }
+                val updatedPost =
+                    post.copy(
+                        likes = newLikes,
+                        score = post.score + scoreDiff,
+                    )
+                cachedPosts.update { it + (post.id to updatedPost) }
                 _postUpdates.emit(updatedPost)
                 Result.success(updatedPost)
             } else {
@@ -137,22 +143,26 @@ class PostRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun voteComment(comment: Comment, direction: Int): Result<Comment> {
-        return try {
+    suspend fun voteComment(
+        comment: Comment,
+        direction: Int,
+    ): Result<Comment> =
+        try {
             val success = redditApi.vote(comment.name, direction)
             if (success) {
-                val newLikes = when (direction) {
-                    1 -> true
-                    -1 -> false
-                    else -> null
-                }
+                val newLikes =
+                    when (direction) {
+                        1 -> true
+                        -1 -> false
+                        else -> null
+                    }
                 val scoreDiff = direction - likesToVote(comment.likes)
-                val updatedComment = comment.copy(
-                    likes = newLikes,
-                    score = comment.score + scoreDiff
-                )
+                val updatedComment =
+                    comment.copy(
+                        likes = newLikes,
+                        score = comment.score + scoreDiff,
+                    )
                 Result.success(updatedComment)
             } else {
                 Result.failure(Exception("Vote failed"))
@@ -160,18 +170,18 @@ class PostRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun save(post: Post): Result<Post> {
-        return try {
-            val success = if (post.isSaved) {
-                redditApi.unsave(post.name)
-            } else {
-                redditApi.save(post.name)
-            }
+    suspend fun save(post: Post): Result<Post> =
+        try {
+            val success =
+                if (post.isSaved) {
+                    redditApi.unsave(post.name)
+                } else {
+                    redditApi.save(post.name)
+                }
             if (success) {
                 val updatedPost = post.copy(isSaved = !post.isSaved)
-                _cachedPosts.update { it + (post.id to updatedPost) }
+                cachedPosts.update { it + (post.id to updatedPost) }
                 _postUpdates.emit(updatedPost)
                 Result.success(updatedPost)
             } else {
@@ -180,18 +190,18 @@ class PostRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun hide(post: Post): Result<Post> {
-        return try {
-            val success = if (post.isHidden) {
-                redditApi.unhide(post.name)
-            } else {
-                redditApi.hide(post.name)
-            }
+    suspend fun hide(post: Post): Result<Post> =
+        try {
+            val success =
+                if (post.isHidden) {
+                    redditApi.unhide(post.name)
+                } else {
+                    redditApi.hide(post.name)
+                }
             if (success) {
                 val updatedPost = post.copy(isHidden = !post.isHidden)
-                _cachedPosts.update { it + (post.id to updatedPost) }
+                cachedPosts.update { it + (post.id to updatedPost) }
                 _postUpdates.emit(updatedPost)
                 Result.success(updatedPost)
             } else {
@@ -200,22 +210,20 @@ class PostRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
     suspend fun search(
         query: String,
         subreddit: String? = null,
         sort: SearchSort = SearchSort.RELEVANCE,
         time: TimeFilter = TimeFilter.ALL,
-        after: String? = null
-    ): Result<Listing<Post>> {
-        return try {
+        after: String? = null,
+    ): Result<Listing<Post>> =
+        try {
             val listing = redditApi.search(query, subreddit, sort, time, after)
             Result.success(listing)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
     suspend fun submitPost(
         subreddit: String,
@@ -223,9 +231,9 @@ class PostRepository(
         text: String? = null,
         url: String? = null,
         nsfw: Boolean = false,
-        spoiler: Boolean = false
-    ): Result<String> {
-        return try {
+        spoiler: Boolean = false,
+    ): Result<String> =
+        try {
             val kind = if (url != null) "link" else "self"
             val postName = redditApi.submitPost(subreddit, title, kind, text, url, nsfw, spoiler)
             if (postName != null) {
@@ -236,13 +244,13 @@ class PostRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    fun getCachedPost(postId: String): Post? = _cachedPosts.value[postId]
+    fun getCachedPost(postId: String): Post? = cachedPosts.value[postId]
 
-    private fun likesToVote(likes: Boolean?): Int = when (likes) {
-        true -> 1
-        false -> -1
-        null -> 0
-    }
+    private fun likesToVote(likes: Boolean?): Int =
+        when (likes) {
+            true -> 1
+            false -> -1
+            null -> 0
+        }
 }

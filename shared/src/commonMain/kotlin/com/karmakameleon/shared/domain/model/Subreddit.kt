@@ -47,5 +47,6 @@ data class SubredditRule(
     val descriptionHtml: String?,
     val priority: Int,
     val violationReason: String,
-    val kind: String // link, comment, all
+    // Link, comment, all
+    val kind: String,
 )

@@ -1,0 +1,5 @@
+# Commits that only reformat code, which git blame and GitHub's blame view skip.
+# For local git blame, run once: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Reformatted all Kotlin code with ktlint (#14)
+d52354b0b4d71f152ea3ebbb1287d14005f4f575

@@ -40,7 +40,8 @@ data class FlairRichtextDto(
     val e: String, // "text" or "emoji"
     val t: String? = null, // text content
     val a: String? = null, // emoji shortcode like ":61910:"
-    val u: String? = null  // emoji image URL
+    // Emoji image URL
+    val u: String? = null,
 )
 
 @Serializable
@@ -50,21 +51,21 @@ data class MoreCommentsDto(
     @SerialName("parent_id") val parentId: String,
     val count: Int = 0,
     val depth: Int = 0,
-    val children: List<String> = emptyList()
+    val children: List<String> = emptyList(),
 )
 
 @Serializable
 data class MoreChildrenResponse(
-    val json: MoreChildrenJson
+    val json: MoreChildrenJson,
 )
 
 @Serializable
 data class MoreChildrenJson(
     val errors: List<JsonElement> = emptyList(),
-    val data: MoreChildrenData? = null
+    val data: MoreChildrenData? = null,
 )
 
 @Serializable
 data class MoreChildrenData(
-    val things: List<ThingData> = emptyList()
+    val things: List<ThingData> = emptyList(),
 )

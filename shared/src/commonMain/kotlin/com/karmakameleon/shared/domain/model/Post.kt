@@ -50,75 +50,81 @@ data class Post(
     val crosspostParentPermalink: String? = null,
     val suggestedSort: CommentSort? = null,
 ) {
-    val isTextPost: Boolean get() = postHint == "self" || url.contains("reddit.com") && selfText != null
-    val isImagePost: Boolean get() = postHint == "image" || url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".png") || url.endsWith(".gif")
+    val isTextPost: Boolean get() = postHint == "self" || (url.contains("reddit.com") && selfText != null)
+    val isImagePost: Boolean get() =
+        postHint == "image" || url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".png") ||
+            url.endsWith(".gif")
     val isVideoPost: Boolean get() = postHint == "hosted:video" || postHint == "rich:video"
     val isLinkPost: Boolean get() = !isTextPost && !isImagePost && !isVideoPost && !isGallery
     val isGallery: Boolean get() = galleryData != null
-    
-    val voteState: VoteState get() = when (likes) {
-        true -> VoteState.UPVOTED
-        false -> VoteState.DOWNVOTED
-        null -> VoteState.NONE
-    }
+
+    val voteState: VoteState get() =
+        when (likes) {
+            true -> VoteState.UPVOTED
+            false -> VoteState.DOWNVOTED
+            null -> VoteState.NONE
+        }
 
     val isDeleted: Boolean get() = author == "[deleted]"
 
     val isVotingDisabled: Boolean get() = isLocked || isDeleted || isArchived
 
-    val votingDisabledReason: String? get() = when {
-        isLocked -> "This post is locked and cannot be voted on"
-        isDeleted -> "This post has been deleted and cannot be voted on"
-        isArchived -> "This post has been archived and cannot be voted on"
-        else -> null
-    }
+    val votingDisabledReason: String? get() =
+        when {
+            isLocked -> "This post is locked and cannot be voted on"
+            isDeleted -> "This post has been deleted and cannot be voted on"
+            isArchived -> "This post has been archived and cannot be voted on"
+            else -> null
+        }
 
     val isCommentingDisabled: Boolean get() = isLocked || isArchived
 
-    val commentingDisabledReason: String? get() = when {
-        isLocked -> "This post is locked and cannot be commented on"
-        isArchived -> "This post has been archived and cannot be commented on"
-        else -> null
-    }
+    val commentingDisabledReason: String? get() =
+        when {
+            isLocked -> "This post is locked and cannot be commented on"
+            isArchived -> "This post has been archived and cannot be commented on"
+            else -> null
+        }
 
     val createdInstant: Instant get() = Instant.fromEpochSeconds(createdUtc)
 
     val isYouTubePost: Boolean get() = extractYouTubeVideoId(url) != null
 
-    val contentLink: String? get() = when {
-        isImagePost -> url
-        isYouTubePost -> url
-        isVideoPost -> media?.redditVideo?.fallbackUrl ?: preview?.redditVideoPreview?.fallbackUrl
-        isGallery -> url
-        isLinkPost -> url
-        else -> null // text posts have no content link
-    }
+    val contentLink: String? get() =
+        when {
+            isImagePost -> url
+            isYouTubePost -> url
+            isVideoPost -> media?.redditVideo?.fallbackUrl ?: preview?.redditVideoPreview?.fallbackUrl
+            isGallery -> url
+            isLinkPost -> url
+            else -> null // text posts have no content link
+        }
 }
 
 @Serializable
 data class Preview(
     val images: List<PreviewImage>,
     val enabled: Boolean,
-    val redditVideoPreview: RedditVideo? = null
+    val redditVideoPreview: RedditVideo? = null,
 )
 
 @Serializable
 data class PreviewImage(
     val source: ImageSource,
     val resolutions: List<ImageSource>,
-    val mp4Url: String? = null
+    val mp4Url: String? = null,
 )
 
 @Serializable
 data class ImageSource(
     val url: String,
     val width: Int,
-    val height: Int
+    val height: Int,
 )
 
 @Serializable
 data class Media(
-    val redditVideo: RedditVideo?
+    val redditVideo: RedditVideo?,
 )
 
 @Serializable
@@ -127,12 +133,12 @@ data class RedditVideo(
     val height: Int,
     val width: Int,
     val duration: Int,
-    val isGif: Boolean
+    val isGif: Boolean,
 )
 
 @Serializable
 data class GalleryData(
-    val items: List<GalleryItem>
+    val items: List<GalleryItem>,
 )
 
 @Serializable
@@ -142,27 +148,33 @@ data class GalleryItem(
     val caption: String?,
     val url: String? = null,
     val isVideo: Boolean = false,
-    val gifUrl: String? = null
+    val gifUrl: String? = null,
 )
 
 enum class VoteState {
-    NONE, UPVOTED, DOWNVOTED
+    NONE,
+    UPVOTED,
+    DOWNVOTED,
 }
 
-enum class PostSort(val value: String) {
+enum class PostSort(
+    val value: String,
+) {
     HOT("hot"),
     NEW("new"),
     TOP("top"),
     RISING("rising"),
     CONTROVERSIAL("controversial"),
-    BEST("best")
+    BEST("best"),
 }
 
-enum class TimeFilter(val value: String) {
+enum class TimeFilter(
+    val value: String,
+) {
     HOUR("hour"),
     DAY("day"),
     WEEK("week"),
     MONTH("month"),
     YEAR("year"),
-    ALL("all")
+    ALL("all"),
 }
