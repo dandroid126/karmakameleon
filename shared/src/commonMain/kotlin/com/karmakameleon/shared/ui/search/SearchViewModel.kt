@@ -31,15 +31,14 @@ data class SearchUiState(
     val timeFilter: TimeFilter = TimeFilter.ALL,
     val after: String? = null,
     val hasMore: Boolean = true,
-    val detectedLink: RedditLink? = null
+    val detectedLink: RedditLink? = null,
 )
 
 class SearchViewModel(
     private val postRepository: PostRepository,
     private val subredditRepository: SubredditRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
@@ -47,10 +46,13 @@ class SearchViewModel(
 
     fun setQuery(query: String) {
         val trimmed = query.trim()
-        val link = if (trimmed.contains("reddit.com/") || trimmed.startsWith("/r/")) {
-            val parsed = parseRedditLink(trimmed)
-            if (parsed is RedditLink.External) null else parsed
-        } else null
+        val link =
+            if (trimmed.contains("reddit.com/") || trimmed.startsWith("/r/")) {
+                val parsed = parseRedditLink(trimmed)
+                if (parsed is RedditLink.External) null else parsed
+            } else {
+                null
+            }
 
         _uiState.update { it.copy(query = query, detectedLink = link) }
 
@@ -62,10 +64,11 @@ class SearchViewModel(
 
         searchJob?.cancel()
         if (query.length >= 2) {
-            searchJob = viewModelScope.launch {
-                delay(300) // debounce
-                search()
-            }
+            searchJob =
+                viewModelScope.launch {
+                    delay(300) // debounce
+                    search()
+                }
         } else {
             _uiState.update { it.copy(posts = emptyList(), subreddits = emptyList()) }
         }
@@ -79,8 +82,14 @@ class SearchViewModel(
             _uiState.update { it.copy(isLoading = true, error = null) }
 
             when (_uiState.value.searchType) {
-                SearchType.POST -> searchPosts(query)
-                SearchType.SUBREDDIT -> searchSubreddits(query)
+                SearchType.POST -> {
+                    searchPosts(query)
+                }
+
+                SearchType.SUBREDDIT -> {
+                    searchSubreddits(query)
+                }
+
                 SearchType.USER -> {} // Not implemented
             }
         }
@@ -88,11 +97,12 @@ class SearchViewModel(
 
     private suspend fun searchPosts(query: String) {
         val nsfwEnabled = settingsRepository.nsfwEnabled.value
-        val result = postRepository.search(
-            query = query,
-            sort = _uiState.value.searchSort,
-            time = _uiState.value.timeFilter
-        )
+        val result =
+            postRepository.search(
+                query = query,
+                sort = _uiState.value.searchSort,
+                time = _uiState.value.timeFilter,
+            )
 
         result.fold(
             onSuccess = { listing ->
@@ -102,13 +112,13 @@ class SearchViewModel(
                         posts = posts,
                         after = listing.after,
                         hasMore = listing.hasMore,
-                        isLoading = false
+                        isLoading = false,
                     )
                 }
             },
             onFailure = { error ->
                 _uiState.update { it.copy(isLoading = false, error = error.message) }
-            }
+            },
         )
     }
 
@@ -126,19 +136,19 @@ class SearchViewModel(
             },
             onFailure = { error ->
                 _uiState.update { it.copy(isLoading = false, error = error.message) }
-            }
+            },
         )
     }
 
     fun setSearchType(type: SearchType) {
         if (_uiState.value.searchType == type) return
-        _uiState.update { 
+        _uiState.update {
             it.copy(
-                searchType = type, 
-                posts = emptyList(), 
+                searchType = type,
+                posts = emptyList(),
                 subreddits = emptyList(),
-                after = null
-            ) 
+                after = null,
+            )
         }
         if (_uiState.value.query.length >= 2) {
             search()
@@ -165,12 +175,13 @@ class SearchViewModel(
             val nsfwEnabled = settingsRepository.nsfwEnabled.value
             _uiState.update { it.copy(isLoading = true) }
 
-            val result = postRepository.search(
-                query = currentState.query,
-                sort = currentState.searchSort,
-                time = currentState.timeFilter,
-                after = currentState.after
-            )
+            val result =
+                postRepository.search(
+                    query = currentState.query,
+                    sort = currentState.searchSort,
+                    time = currentState.timeFilter,
+                    after = currentState.after,
+                )
 
             result.fold(
                 onSuccess = { listing ->
@@ -180,13 +191,13 @@ class SearchViewModel(
                             posts = it.posts + posts,
                             after = listing.after,
                             hasMore = listing.hasMore,
-                            isLoading = false
+                            isLoading = false,
                         )
                     }
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoading = false) }
-                }
+                },
             )
         }
     }

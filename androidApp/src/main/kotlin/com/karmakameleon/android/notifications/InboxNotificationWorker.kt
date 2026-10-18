@@ -19,9 +19,9 @@ import java.util.concurrent.TimeUnit
 
 class InboxNotificationWorker(
     private val context: Context,
-    params: WorkerParameters
-) : CoroutineWorker(context, params), KoinComponent {
-
+    params: WorkerParameters,
+) : CoroutineWorker(context, params),
+    KoinComponent {
     private val messageRepository: MessageRepository by inject()
     private val authManager: AuthManager by inject()
     private val settingsRepository: SettingsRepository by inject()
@@ -34,8 +34,12 @@ class InboxNotificationWorker(
         val knownIdsRaw = prefs.getString(KEY_KNOWN_IDS, "") ?: ""
         val isFirstRun = prefs.getBoolean(KEY_FIRST_RUN, true)
 
-        val knownIds = if (knownIdsRaw.isEmpty()) emptySet()
-                       else knownIdsRaw.split(",").toSet()
+        val knownIds =
+            if (knownIdsRaw.isEmpty()) {
+                emptySet()
+            } else {
+                knownIdsRaw.split(",").toSet()
+            }
 
         val result = messageRepository.getInbox(InboxFilter.UNREAD)
         val messages = result.getOrNull()?.items ?: return Result.success()
@@ -75,13 +79,15 @@ class InboxNotificationWorker(
                 return
             }
 
-            val request = PeriodicWorkRequestBuilder<InboxNotificationWorker>(
-                interval.minutes!!, TimeUnit.MINUTES
-            ).build()
+            val request =
+                PeriodicWorkRequestBuilder<InboxNotificationWorker>(
+                    interval.minutes!!,
+                    TimeUnit.MINUTES,
+                ).build()
             workManager.enqueueUniquePeriodicWork(
                 WORK_NAME,
                 ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE,
-                request
+                request,
             )
         }
     }

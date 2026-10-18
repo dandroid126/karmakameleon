@@ -5,7 +5,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 data class OverflowMenuItem(
     val title: String,
     val icon: ImageVector? = null,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
 )
 
 class GlobalMenuManager {

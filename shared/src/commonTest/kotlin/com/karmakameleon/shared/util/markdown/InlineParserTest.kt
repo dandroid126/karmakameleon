@@ -7,7 +7,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class InlineParserTest {
-
     private fun parse(text: String) = parseInlineMarkdown(text)
 
     // ==================== Plain text ====================

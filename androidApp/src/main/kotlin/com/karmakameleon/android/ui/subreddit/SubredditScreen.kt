@@ -70,7 +70,7 @@ fun SubredditScreen(
     onSubredditClick: (String) -> Unit = {},
     onLinkClick: (String) -> Unit = {},
     viewModel: SubredditViewModel = koinViewModel { parametersOf(subredditName) },
-    navigationHandler: NavigationHandler = koinInject()
+    navigationHandler: NavigationHandler = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -123,21 +123,22 @@ fun SubredditScreen(
                     IconButton(onClick = { showSortSheet = true }) {
                         Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.loadPosts(forceRefresh = true) },
             state = pullToRefreshState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
         ) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             ) {
                 // Subreddit header
                 uiState.subreddit?.let { subreddit ->
@@ -145,7 +146,7 @@ fun SubredditScreen(
                         SubredditHeader(
                             subreddit = subreddit,
                             onSubscribeClick = viewModel::toggleSubscribe,
-                            isLoggedIn = uiState.isLoggedIn
+                            isLoggedIn = uiState.isLoggedIn,
                         )
                     }
                 }
@@ -153,10 +154,11 @@ fun SubredditScreen(
                 if (uiState.isLoading && uiState.posts.isEmpty()) {
                     item {
                         Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(32.dp),
-                            contentAlignment = Alignment.Center
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
                             CircularProgressIndicator()
                         }
@@ -164,7 +166,7 @@ fun SubredditScreen(
                 } else {
                     items(
                         items = uiState.posts,
-                        key = { it.id }
+                        key = { it.id },
                     ) { post ->
                         PostListItem(
                             post = post,
@@ -187,17 +189,18 @@ fun SubredditScreen(
                             },
                             isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
                             nsfwPreviewMode = effectiveNsfwPreviewMode,
-                            spoilerPreviewsEnabled = spoilerPreviewsEnabled
+                            spoilerPreviewsEnabled = spoilerPreviewsEnabled,
                         )
                     }
 
                     if (uiState.isLoadingMore) {
                         item {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                contentAlignment = Alignment.Center
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 CircularProgressIndicator(modifier = Modifier.size(32.dp))
                             }
@@ -214,7 +217,7 @@ fun SubredditScreen(
             currentTimeFilter = uiState.currentTimeFilter,
             onSortSelected = viewModel::setSort,
             onTimeFilterSelected = viewModel::setTimeFilter,
-            onDismiss = { showSortSheet = false }
+            onDismiss = { showSortSheet = false },
         )
     }
 }
@@ -223,12 +226,13 @@ fun SubredditScreen(
 private fun SubredditHeader(
     subreddit: com.karmakameleon.shared.domain.model.Subreddit,
     onSubscribeClick: () -> Unit,
-    isLoggedIn: Boolean
+    isLoggedIn: Boolean,
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -236,10 +240,11 @@ private fun SubredditHeader(
                     AsyncImage(
                         model = subreddit.iconUrl,
                         contentDescription = null,
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
+                        modifier =
+                            Modifier
+                                .size(64.dp)
+                                .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                 }
@@ -248,18 +253,18 @@ private fun SubredditHeader(
                     Text(
                         text = subreddit.displayNamePrefixed,
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
                     )
                     Text(
                         text = "${formatNumber(subreddit.subscribers.toInt())} members",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     subreddit.activeUserCount?.let { active ->
                         Text(
                             text = "${formatNumber(active)} online",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
@@ -267,11 +272,12 @@ private fun SubredditHeader(
                 if (isLoggedIn) {
                     Button(
                         onClick = onSubscribeClick,
-                        colors = if (subreddit.isSubscribed) {
-                            ButtonDefaults.outlinedButtonColors()
-                        } else {
-                            ButtonDefaults.buttonColors()
-                        }
+                        colors =
+                            if (subreddit.isSubscribed) {
+                                ButtonDefaults.outlinedButtonColors()
+                            } else {
+                                ButtonDefaults.buttonColors()
+                            },
                     ) {
                         Text(if (subreddit.isSubscribed) "Joined" else "Join")
                     }
@@ -284,7 +290,7 @@ private fun SubredditHeader(
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }

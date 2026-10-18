@@ -45,7 +45,7 @@ import org.koin.compose.koinInject
 fun WebBrowserScreen(
     url: String,
     onBackClick: () -> Unit,
-    globalMenuManager: GlobalMenuManager = koinInject()
+    globalMenuManager: GlobalMenuManager = koinInject(),
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
@@ -55,22 +55,24 @@ fun WebBrowserScreen(
     var webViewRef: WebView? by remember { mutableStateOf(null) }
 
     DisposableEffect(url) {
-        globalMenuManager.setScreenItems(listOf(
-            OverflowMenuItem(
-                title = "Copy Link",
-                icon = Icons.Default.Link,
-                onClick = {
-                    coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", url))) }
-                }
+        globalMenuManager.setScreenItems(
+            listOf(
+                OverflowMenuItem(
+                    title = "Copy Link",
+                    icon = Icons.Default.Link,
+                    onClick = {
+                        coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", url))) }
+                    },
+                ),
+                OverflowMenuItem(
+                    title = "Open in Browser",
+                    icon = Icons.Default.OpenInBrowser,
+                    onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+                    },
+                ),
             ),
-            OverflowMenuItem(
-                title = "Open in Browser",
-                icon = Icons.Default.OpenInBrowser,
-                onClick = {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-                }
-            )
-        ))
+        )
         onDispose { globalMenuManager.clearScreenItems() }
     }
 
@@ -87,39 +89,49 @@ fun WebBrowserScreen(
                     IconButton(onClick = { webViewRef?.reload() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
-                }
+                },
             )
-        }
+        },
     ) { padding ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .imePadding()
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .imePadding(),
         ) {
             AndroidView(
                 factory = { context ->
                     WebView(context).apply {
-                        webViewClient = object : WebViewClient() {
-                            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                                isLoading = true
-                                canGoBack = view?.canGoBack() ?: false
-                            }
+                        webViewClient =
+                            object : WebViewClient() {
+                                override fun onPageStarted(
+                                    view: WebView?,
+                                    url: String?,
+                                    favicon: android.graphics.Bitmap?,
+                                ) {
+                                    isLoading = true
+                                    canGoBack = view?.canGoBack() ?: false
+                                }
 
-                            override fun onPageFinished(view: WebView?, url: String?) {
-                                isLoading = false
-                                canGoBack = view?.canGoBack() ?: false
+                                override fun onPageFinished(
+                                    view: WebView?,
+                                    url: String?,
+                                ) {
+                                    isLoading = false
+                                    canGoBack = view?.canGoBack() ?: false
+                                }
                             }
-                        }
                         settings.apply {
                             javaScriptEnabled = true
                             domStorageEnabled = true
                         }
-                        val httpsUrl = if (url.startsWith("http://")) {
-                            url.replace("http://", "https://")
-                        } else {
-                            url
-                        }
+                        val httpsUrl =
+                            if (url.startsWith("http://")) {
+                                url.replace("http://", "https://")
+                            } else {
+                                url
+                            }
                         loadUrl(httpsUrl)
                         webViewRef = this
                     }
@@ -128,14 +140,15 @@ fun WebBrowserScreen(
                     webView.stopLoading()
                     webView.destroy()
                 },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
             )
 
             if (isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .align(androidx.compose.ui.Alignment.Center)
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .align(androidx.compose.ui.Alignment.Center),
                 )
             }
         }

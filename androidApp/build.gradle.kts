@@ -39,7 +39,7 @@ android {
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
         debug {
@@ -79,30 +79,30 @@ kotlin {
 
 dependencies {
     implementation(project(":shared"))
-    
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
-    
+
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.process)
     implementation(libs.androidx.navigation.compose)
-    
+
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
     implementation(libs.koin.androidx.compose)
-    
+
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     implementation(libs.coil.network.ktor)
-    
+
     implementation(libs.napier)
-    
+
     implementation(libs.androidx.work.runtime)
 
     implementation(libs.media3.exoplayer)
@@ -110,7 +110,7 @@ dependencies {
     implementation(libs.media3.ui)
 
     implementation(libs.android.youtube.player)
-    
+
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

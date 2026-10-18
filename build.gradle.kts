@@ -2,7 +2,9 @@ buildscript {
     dependencies {
         constraints {
             // AGP brings in older versions of some libraries with known vulnerabilities, so require fixed ones.
-            libs.bundles.security.fixes.get().forEach { classpath("${it.module}:${it.version}") }
+            libs.bundles.security.fixes
+                .get()
+                .forEach { classpath("${it.module}:${it.version}") }
         }
     }
 }
@@ -14,6 +16,22 @@ plugins {
     alias(libs.plugins.kotlinSerialization) apply false
     alias(libs.plugins.composeMultiplatform) apply false
     alias(libs.plugins.composeCompiler) apply false
+    alias(libs.plugins.spotless)
+}
+
+// Formats Kotlin with ktlint, using the rules in .editorconfig. Run spotlessApply to fix what it reports.
+spotless {
+    val buildOutput = listOf("**/build/**", ".gradle/**", ".kotlin/**")
+    kotlin {
+        target("**/*.kt")
+        targetExclude(buildOutput)
+        ktlint(libs.versions.ktlint.get())
+    }
+    kotlinGradle {
+        target("**/*.gradle.kts")
+        targetExclude(buildOutput)
+        ktlint(libs.versions.ktlint.get())
+    }
 }
 
 subprojects {

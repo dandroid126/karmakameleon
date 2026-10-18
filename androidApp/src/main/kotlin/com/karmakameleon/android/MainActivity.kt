@@ -22,12 +22,12 @@ import com.karmakameleon.android.ui.KarmaKameleonApp
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 
 class MainActivity : ComponentActivity() {
-
-    private val notificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) {
-        InboxNotificationWorker.schedule(this)
-    }
+    private val notificationPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) {
+            InboxNotificationWorker.schedule(this)
+        }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
             KarmaKameleonTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     KarmaKameleonApp()
                 }
@@ -65,10 +65,13 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
                 ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                        == PackageManager.PERMISSION_GRANTED -> {
+                    == PackageManager.PERMISSION_GRANTED -> {
                     InboxNotificationWorker.schedule(this)
                 }
-                else -> notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+
+                else -> {
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
             }
         } else {
             InboxNotificationWorker.schedule(this)

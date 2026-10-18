@@ -10,8 +10,9 @@ import org.koin.dsl.module
 // the names in sync.
 private const val TOKEN_SETTINGS_FILE = "auth_tokens"
 
-actual fun platformModule(): Module = module {
-    single<Settings>(TOKEN_SETTINGS) {
-        SharedPreferencesSettings(get<Context>().getSharedPreferences(TOKEN_SETTINGS_FILE, Context.MODE_PRIVATE))
+actual fun platformModule(): Module =
+    module {
+        single<Settings>(TOKEN_SETTINGS) {
+            SharedPreferencesSettings(get<Context>().getSharedPreferences(TOKEN_SETTINGS_FILE, Context.MODE_PRIVATE))
+        }
     }
-}

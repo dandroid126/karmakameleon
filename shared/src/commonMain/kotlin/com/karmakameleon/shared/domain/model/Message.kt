@@ -30,7 +30,7 @@ enum class MessageType {
     COMMENT_REPLY,
     POST_REPLY,
     USERNAME_MENTION,
-    MOD_MESSAGE
+    MOD_MESSAGE,
 }
 
 @Serializable
@@ -40,12 +40,14 @@ data class Inbox(
     val before: String?,
 )
 
-enum class InboxFilter(val value: String) {
+enum class InboxFilter(
+    val value: String,
+) {
     ALL("inbox"),
     UNREAD("unread"),
     MESSAGES("messages"),
     COMMENT_REPLIES("comments"),
     POST_REPLIES("selfreply"),
     MENTIONS("mentions"),
-    SENT("sent")
+    SENT("sent"),
 }

@@ -22,7 +22,7 @@ class UserRepository(
 ) {
     private val _currentAccount = MutableStateFlow<Account?>(null)
     val currentAccount: StateFlow<Account?> = _currentAccount.asStateFlow()
-    
+
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
 
@@ -35,8 +35,8 @@ class UserRepository(
         }
     }
 
-    suspend fun loadCurrentUser(): Result<Account> {
-        return try {
+    suspend fun loadCurrentUser(): Result<Account> =
+        try {
             val account = redditApi.getMe()
             if (account != null) {
                 _currentAccount.value = account
@@ -48,10 +48,9 @@ class UserRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
-    suspend fun getUser(username: String): Result<User> {
-        return try {
+    suspend fun getUser(username: String): Result<User> =
+        try {
             val user = redditApi.getUser(username)
             if (user != null) {
                 Result.success(user)
@@ -61,35 +60,32 @@ class UserRepository(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
     suspend fun getUserPosts(
         username: String,
         sort: PostSort = PostSort.NEW,
         timeFilter: TimeFilter? = null,
-        after: String? = null
-    ): Result<Listing<Post>> {
-        return try {
+        after: String? = null,
+    ): Result<Listing<Post>> =
+        try {
             val listing = redditApi.getUserPosts(username, sort, timeFilter, after)
             Result.success(listing)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
     suspend fun getUserComments(
         username: String,
         sort: PostSort = PostSort.NEW,
         timeFilter: TimeFilter? = null,
-        after: String? = null
-    ): Result<Listing<Comment>> {
-        return try {
+        after: String? = null,
+    ): Result<Listing<Comment>> =
+        try {
             val listing = redditApi.getUserComments(username, sort, timeFilter, after)
             Result.success(listing)
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
 
     suspend fun getSavedPosts(after: String? = null): Result<Listing<Post>> {
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
@@ -131,9 +127,7 @@ class UserRepository(
         }
     }
 
-    fun getAuthorizationUrl(state: String): String {
-        return authManager.getAuthorizationUrl(state)
-    }
+    fun getAuthorizationUrl(state: String): String = authManager.getAuthorizationUrl(state)
 
     suspend fun handleAuthCallback(code: String): Boolean {
         val success = authManager.exchangeCodeForToken(code)

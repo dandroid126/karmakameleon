@@ -7,11 +7,12 @@ private val inlineGifPattern = Regex("""!\[gif]\(giphy\|([^)]+)\)""")
 private val previewRedditUrlPattern = Regex("""https://preview\.redd\.it/[^\s)]+""")
 private val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[', ']', '(', ')', '#', '-', '.', '+', '|', '/')
 
-fun parseInlineMarkdown(text: String): List<MarkdownInline> {
-    return parseInlineRecursive(text, emptySet())
-}
+fun parseInlineMarkdown(text: String): List<MarkdownInline> = parseInlineRecursive(text, emptySet())
 
-private fun parseInlineRecursive(text: String, activeDelimiters: Set<String>): List<MarkdownInline> {
+private fun parseInlineRecursive(
+    text: String,
+    activeDelimiters: Set<String>,
+): List<MarkdownInline> {
     val result = mutableListOf<MarkdownInline>()
     var i = 0
     var textStart = i
@@ -57,7 +58,7 @@ private fun parseInlineRecursive(text: String, activeDelimiters: Set<String>): L
         if (imgMatch != null && imgMatch.range.first == i) {
             flushText(i)
             val content = imgMatch.groupValues[1]
-            val url = if (content.startsWith("http")) content else "https://preview.redd.it/${content}.jpeg"
+            val url = if (content.startsWith("http")) content else "https://preview.redd.it/$content.jpeg"
             result.add(MarkdownInline.Image(url))
             i = imgMatch.range.last + 1
             textStart = i
@@ -70,7 +71,7 @@ private fun parseInlineRecursive(text: String, activeDelimiters: Set<String>): L
             val gifId = parts[0]
             val params = parts.drop(1)
             val suffix = if ("downsized" in params) "giphy-downsized.gif" else "giphy.gif"
-            result.add(MarkdownInline.Image("https://i.giphy.com/${gifId}/${suffix}"))
+            result.add(MarkdownInline.Image("https://i.giphy.com/$gifId/$suffix"))
             i = gifMatch.range.last + 1
             textStart = i
             continue
@@ -94,6 +95,7 @@ private fun parseInlineRecursive(text: String, activeDelimiters: Set<String>): L
                             continue
                         }
                     }
+
                     text.getOrNull(closeTextIdx + 1) == '[' -> {
                         val refCloseIdx = text.indexOf("]", closeTextIdx + 2)
                         if (refCloseIdx != -1) {
@@ -106,6 +108,7 @@ private fun parseInlineRecursive(text: String, activeDelimiters: Set<String>): L
                             continue
                         }
                     }
+
                     else -> {}
                 }
             }
@@ -129,7 +132,8 @@ private fun parseInlineRecursive(text: String, activeDelimiters: Set<String>): L
         // Bold: ** or __
         if ((text.startsWith("**", i) || text.startsWith("__", i)) &&
             !text.startsWith("***", i) && !text.startsWith("___", i) &&
-            "**" !in activeDelimiters && "__" !in activeDelimiters) {
+            "**" !in activeDelimiters && "__" !in activeDelimiters
+        ) {
             val delim = text.substring(i, i + 2)
             val closeIdx = text.indexOf(delim, i + 2)
             if (closeIdx != -1 && !text.startsWith(delim + delim[0], closeIdx)) {
@@ -306,14 +310,14 @@ fun extractImageUrls(text: String): List<String> {
     val urls = mutableListOf<String>()
     for (match in inlineImagePattern.findAll(text)) {
         val content = match.groupValues[1]
-        urls.add(if (content.startsWith("http")) content else "https://preview.redd.it/${content}.jpeg")
+        urls.add(if (content.startsWith("http")) content else "https://preview.redd.it/$content.jpeg")
     }
     for (match in inlineGifPattern.findAll(text)) {
         val parts = match.groupValues[1].split("|")
         val gifId = parts[0]
         val params = parts.drop(1)
         val suffix = if ("downsized" in params) "giphy-downsized.gif" else "giphy.gif"
-        urls.add("https://i.giphy.com/${gifId}/${suffix}")
+        urls.add("https://i.giphy.com/$gifId/$suffix")
     }
     for (match in previewRedditUrlPattern.findAll(text)) {
         if (urls.none { it == match.value }) {

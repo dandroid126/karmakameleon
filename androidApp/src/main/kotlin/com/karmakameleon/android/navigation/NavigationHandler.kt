@@ -19,16 +19,27 @@ class NavigationHandler {
 
     fun handleLink(url: String) {
         when {
-            isImageUrl(url) -> onImageLinkClick(url)
-            isVideoUrl(url) -> onVideoLinkClick(url)
-            isYouTubeUrl(url) -> onYouTubeLinkClick(url)
-            else -> when (val link = parseRedditLink(url)) {
-                is RedditLink.Subreddit -> onSubredditClick(link.name)
-                is RedditLink.User -> onUserClick(link.name)
-                is RedditLink.Post -> onPostClick(link.subreddit, link.postId)
-                is RedditLink.Comment -> onCommentClick(link.subreddit, link.postId, link.commentId, link.context)
-                is RedditLink.ShareLink -> onShareLinkClick(link.subreddit, link.shareId)
-                is RedditLink.External -> onExternalLinkClick(link.url)
+            isImageUrl(url) -> {
+                onImageLinkClick(url)
+            }
+
+            isVideoUrl(url) -> {
+                onVideoLinkClick(url)
+            }
+
+            isYouTubeUrl(url) -> {
+                onYouTubeLinkClick(url)
+            }
+
+            else -> {
+                when (val link = parseRedditLink(url)) {
+                    is RedditLink.Subreddit -> onSubredditClick(link.name)
+                    is RedditLink.User -> onUserClick(link.name)
+                    is RedditLink.Post -> onPostClick(link.subreddit, link.postId)
+                    is RedditLink.Comment -> onCommentClick(link.subreddit, link.postId, link.commentId, link.context)
+                    is RedditLink.ShareLink -> onShareLinkClick(link.subreddit, link.shareId)
+                    is RedditLink.External -> onExternalLinkClick(link.url)
+                }
             }
         }
     }

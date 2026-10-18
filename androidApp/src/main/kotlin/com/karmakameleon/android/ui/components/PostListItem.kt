@@ -16,7 +16,10 @@ import com.karmakameleon.shared.domain.model.Post
  * Tapping a post highlights and expands it; tapping it again collapses it but keeps the highlight.
  */
 @Stable
-class CompactPostSelection(selectedPostId: String? = null, expanded: Boolean = false) {
+class CompactPostSelection(
+    selectedPostId: String? = null,
+    expanded: Boolean = false,
+) {
     var selectedPostId by mutableStateOf(selectedPostId)
         private set
     var expanded by mutableStateOf(expanded)
@@ -36,16 +39,16 @@ class CompactPostSelection(selectedPostId: String? = null, expanded: Boolean = f
     }
 
     companion object {
-        val Saver = listSaver<CompactPostSelection, Any?>(
-            save = { listOf(it.selectedPostId, it.expanded) },
-            restore = { CompactPostSelection(it[0] as String?, it[1] as Boolean) }
-        )
+        val Saver =
+            listSaver<CompactPostSelection, Any?>(
+                save = { listOf(it.selectedPostId, it.expanded) },
+                restore = { CompactPostSelection(it[0] as String?, it[1] as Boolean) },
+            )
     }
 }
 
 @Composable
-fun rememberCompactPostSelection(): CompactPostSelection =
-    rememberSaveable(saver = CompactPostSelection.Saver) { CompactPostSelection() }
+fun rememberCompactPostSelection(): CompactPostSelection = rememberSaveable(saver = CompactPostSelection.Saver) { CompactPostSelection() }
 
 /** Shows a post as a full [PostCard] or a [CompactPostCard] depending on the compact feed setting. */
 @Composable
@@ -67,7 +70,7 @@ fun PostListItem(
     onCrosspostClick: () -> Unit = {},
     isRead: Boolean = false,
     nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH,
-    spoilerPreviewsEnabled: Boolean = false
+    spoilerPreviewsEnabled: Boolean = false,
 ) {
     if (compact) {
         CompactPostCard(
@@ -89,7 +92,7 @@ fun PostListItem(
             modifier = modifier,
             isRead = isRead,
             nsfwPreviewMode = nsfwPreviewMode,
-            spoilerPreviewsEnabled = spoilerPreviewsEnabled
+            spoilerPreviewsEnabled = spoilerPreviewsEnabled,
         )
     } else {
         PostCard(
@@ -108,7 +111,7 @@ fun PostListItem(
             modifier = modifier,
             isRead = isRead,
             nsfwPreviewMode = nsfwPreviewMode,
-            spoilerPreviewsEnabled = spoilerPreviewsEnabled
+            spoilerPreviewsEnabled = spoilerPreviewsEnabled,
         )
     }
 }

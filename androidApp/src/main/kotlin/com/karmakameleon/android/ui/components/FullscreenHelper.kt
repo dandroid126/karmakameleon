@@ -8,13 +8,17 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 
-fun hideSystemBars(window: Window, view: View) {
+fun hideSystemBars(
+    window: Window,
+    view: View,
+) {
     WindowCompat.setDecorFitsSystemWindows(window, false)
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        window.attributes = window.attributes.also {
-            it.layoutInDisplayCutoutMode =
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-        }
+        window.attributes =
+            window.attributes.also {
+                it.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
     }
     val controller = WindowCompat.getInsetsController(window, view)
     controller.hide(WindowInsetsCompat.Type.systemBars())
@@ -22,7 +26,10 @@ fun hideSystemBars(window: Window, view: View) {
         WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 }
 
-fun showSystemBars(window: Window, view: View) {
+fun showSystemBars(
+    window: Window,
+    view: View,
+) {
     WindowCompat.setDecorFitsSystemWindows(window, true)
     WindowCompat.getInsetsController(window, view).show(WindowInsetsCompat.Type.systemBars())
 }

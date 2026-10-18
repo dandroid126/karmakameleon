@@ -30,7 +30,7 @@ data class PostDetailUiState(
     val useSuggestedSort: Boolean = true,
     val isLoggedIn: Boolean = false,
     val loggedInUsername: String? = null,
-    val focusedCommentId: String? = null
+    val focusedCommentId: String? = null,
 )
 
 class PostDetailViewModel(
@@ -42,14 +42,16 @@ class PostDetailViewModel(
     commentDraftRepository: CommentDraftRepository,
     private val settingsRepository: SettingsRepository,
     private val commentId: String? = null,
-    private val context: Int? = null
+    private val context: Int? = null,
 ) : ViewModel() {
-
     val commentViewModel = CommentViewModel(commentRepository, commentDraftRepository)
 
-    private val _uiState = MutableStateFlow(PostDetailUiState(
-        useSuggestedSort = settingsRepository.useSuggestedSort.value
-    ))
+    private val _uiState =
+        MutableStateFlow(
+            PostDetailUiState(
+                useSuggestedSort = settingsRepository.useSuggestedSort.value,
+            ),
+        )
     val uiState: StateFlow<PostDetailUiState> = _uiState.asStateFlow()
 
     private var isInitialLoad = true
@@ -79,12 +81,13 @@ class PostDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(focusedCommentId = newCommentId, isLoading = true) }
             commentViewModel.clearComments()
-            val result = postRepository.getPostWithComments(
-                subreddit = subreddit,
-                postId = postId,
-                sort = _uiState.value.commentSort,
-                commentId = newCommentId
-            )
+            val result =
+                postRepository.getPostWithComments(
+                    subreddit = subreddit,
+                    postId = postId,
+                    sort = _uiState.value.commentSort,
+                    commentId = newCommentId,
+                )
             result.fold(
                 onSuccess = { (post, comments) ->
                     _uiState.update { it.copy(post = post, isLoading = false) }
@@ -92,7 +95,7 @@ class PostDetailViewModel(
                 },
                 onFailure = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.message ?: "Failed to load comment") }
-                }
+                },
             )
         }
     }
@@ -101,11 +104,12 @@ class PostDetailViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(focusedCommentId = null, isLoading = true) }
             commentViewModel.clearComments()
-            val result = postRepository.getPostWithComments(
-                subreddit = subreddit,
-                postId = postId,
-                sort = _uiState.value.commentSort
-            )
+            val result =
+                postRepository.getPostWithComments(
+                    subreddit = subreddit,
+                    postId = postId,
+                    sort = _uiState.value.commentSort,
+                )
             result.fold(
                 onSuccess = { (post, comments) ->
                     _uiState.update { it.copy(post = post, isLoading = false) }
@@ -113,7 +117,7 @@ class PostDetailViewModel(
                 },
                 onFailure = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error.message ?: "Failed to load comments") }
-                }
+                },
             )
         }
     }
@@ -126,52 +130,54 @@ class PostDetailViewModel(
 
     fun loadPostWithComments(forceRefresh: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
-                    isLoading = !forceRefresh, 
+                    isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
-                    error = null
+                    error = null,
                 )
             }
-            
-            val result = postRepository.getPostWithComments(
-                subreddit = subreddit,
-                postId = postId,
-                sort = getEffectiveSort(),
-                commentId = commentId,
-                context = context
-            )
-            
+
+            val result =
+                postRepository.getPostWithComments(
+                    subreddit = subreddit,
+                    postId = postId,
+                    sort = getEffectiveSort(),
+                    commentId = commentId,
+                    context = context,
+                )
+
             result.fold(
                 onSuccess = { (post, comments) ->
                     val suggestedSort = post.suggestedSort
-                    val effectiveSort = if (isInitialLoad && _uiState.value.useSuggestedSort) {
-                        suggestedSort ?: CommentSort.CONFIDENCE
-                    } else {
-                        _uiState.value.commentSort
-                    }
+                    val effectiveSort =
+                        if (isInitialLoad && _uiState.value.useSuggestedSort) {
+                            suggestedSort ?: CommentSort.CONFIDENCE
+                        } else {
+                            _uiState.value.commentSort
+                        }
                     isInitialLoad = false
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
-                            post = post, 
+                            post = post,
                             isLoading = false,
                             isRefreshing = false,
                             suggestedSort = suggestedSort,
-                            commentSort = effectiveSort
+                            commentSort = effectiveSort,
                         )
                     }
                     commentViewModel.setComments(comments)
                 },
                 onFailure = { error ->
                     isInitialLoad = false
-                    _uiState.update { 
+                    _uiState.update {
                         it.copy(
-                            isLoading = false, 
+                            isLoading = false,
                             isRefreshing = false,
-                            error = error.message ?: "Failed to load post"
+                            error = error.message ?: "Failed to load post",
                         )
                     }
-                }
+                },
             )
         }
     }
@@ -191,23 +197,24 @@ class PostDetailViewModel(
     fun loadMoreComments(more: MoreComments) {
         val post = _uiState.value.post ?: return
         if (more.children.isEmpty()) return
-        
+
         viewModelScope.launch {
             commentViewModel.setLoadingMore(more.id)
-            
-            val result = postRepository.getMoreComments(
-                linkId = post.name,
-                children = more.children.take(100),
-                sort = _uiState.value.commentSort
-            )
-            
+
+            val result =
+                postRepository.getMoreComments(
+                    linkId = post.name,
+                    children = more.children.take(100),
+                    sort = _uiState.value.commentSort,
+                )
+
             result.fold(
                 onSuccess = { newComments ->
                     commentViewModel.insertMoreComments(more, newComments)
                 },
                 onFailure = {
                     commentViewModel.setLoadingMore(null)
-                }
+                },
             )
         }
     }
@@ -222,7 +229,7 @@ class PostDetailViewModel(
                 },
                 onFailure = { error ->
                     _uiState.update { it.copy(actionError = error.message) }
-                }
+                },
             )
         }
     }
@@ -238,9 +245,11 @@ class PostDetailViewModel(
     }
 
     fun navigateToParentRoot(commentId: String) {
-        val flatComments = commentViewModel.getFlattenedComments()
-            .filterIsInstance<FlatCommentItem.CommentEntry>()
-            .map { it.comment }
+        val flatComments =
+            commentViewModel
+                .getFlattenedComments()
+                .filterIsInstance<FlatCommentItem.CommentEntry>()
+                .map { it.comment }
         var current = flatComments.find { it.id == commentId } ?: return
         while (true) {
             val parent = flatComments.find { it.name == current.parentId }
@@ -256,20 +265,23 @@ class PostDetailViewModel(
             commentViewModel.clearComments()
             var parentCommentId = current.parentId.removePrefix("t1_")
             while (true) {
-                val result = postRepository.getPostWithComments(
-                    subreddit = subreddit,
-                    postId = postId,
-                    sort = _uiState.value.commentSort,
-                    commentId = parentCommentId
-                )
+                val result =
+                    postRepository.getPostWithComments(
+                        subreddit = subreddit,
+                        postId = postId,
+                        sort = _uiState.value.commentSort,
+                        commentId = parentCommentId,
+                    )
                 val comments = result.getOrNull()?.second ?: break
                 val topComment = comments.filterIsInstance<CommentOrMore.CommentItem>().firstOrNull()?.comment ?: break
                 if (!topComment.parentId.startsWith("t1_")) {
-                    _uiState.update { it.copy(
-                        focusedCommentId = topComment.id,
-                        post = result.getOrNull()?.first ?: _uiState.value.post,
-                        isLoading = false
-                    ) }
+                    _uiState.update {
+                        it.copy(
+                            focusedCommentId = topComment.id,
+                            post = result.getOrNull()?.first ?: _uiState.value.post,
+                            isLoading = false,
+                        )
+                    }
                     commentViewModel.setComments(comments)
                     return@launch
                 }

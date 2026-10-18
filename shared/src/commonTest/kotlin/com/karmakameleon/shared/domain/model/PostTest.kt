@@ -8,7 +8,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PostTest {
-
     @Test
     fun isTextPost_selfHint() {
         val post = createTestPost(postHint = "self", selfText = "text", url = "https://reddit.com/r/test")
@@ -77,9 +76,16 @@ class PostTest {
 
     @Test
     fun isGallery_withGalleryData() {
-        val post = createTestPost(galleryData = GalleryData(items = listOf(
-            GalleryItem(mediaId = "m1", id = 1L, caption = null)
-        )))
+        val post =
+            createTestPost(
+                galleryData =
+                    GalleryData(
+                        items =
+                            listOf(
+                                GalleryItem(mediaId = "m1", id = 1L, caption = null),
+                            ),
+                    ),
+            )
         assertTrue(post.isGallery)
     }
 
@@ -91,12 +97,13 @@ class PostTest {
 
     @Test
     fun isLinkPost_externalLink() {
-        val post = createTestPost(
-            url = "https://example.com/article",
-            postHint = "link",
-            selfText = null,
-            galleryData = null
-        )
+        val post =
+            createTestPost(
+                url = "https://example.com/article",
+                postHint = "link",
+                selfText = null,
+                galleryData = null,
+            )
         assertTrue(post.isLinkPost)
     }
 
@@ -144,11 +151,12 @@ class PostTest {
 
     @Test
     fun crosspostParentSubreddit_storesValue() {
-        val post = createTestPost(
-            isCrosspost = true,
-            crosspostParent = "t3_original",
-            crosspostParentSubreddit = "originalsubreddit"
-        )
+        val post =
+            createTestPost(
+                isCrosspost = true,
+                crosspostParent = "t3_original",
+                crosspostParentSubreddit = "originalsubreddit",
+            )
         assertEquals("originalsubreddit", post.crosspostParentSubreddit)
     }
 
@@ -160,11 +168,12 @@ class PostTest {
 
     @Test
     fun crosspostParentPermalink_storesValue() {
-        val post = createTestPost(
-            isCrosspost = true,
-            crosspostParent = "t3_original",
-            crosspostParentPermalink = "/r/originalsubreddit/comments/orig123/original_title/"
-        )
+        val post =
+            createTestPost(
+                isCrosspost = true,
+                crosspostParent = "t3_original",
+                crosspostParentPermalink = "/r/originalsubreddit/comments/orig123/original_title/",
+            )
         assertEquals("/r/originalsubreddit/comments/orig123/original_title/", post.crosspostParentPermalink)
     }
 
@@ -308,80 +317,96 @@ class PostTest {
 
     @Test
     fun contentLink_videoPost_returnsRedditVideoFallbackUrl() {
-        val post = createTestPost(
-            postHint = "hosted:video",
-            media = Media(redditVideo = RedditVideo(
-                fallbackUrl = "https://v.redd.it/abc/DASH_720.mp4",
-                height = 720,
-                width = 1280,
-                duration = 30,
-                isGif = false
-            ))
-        )
+        val post =
+            createTestPost(
+                postHint = "hosted:video",
+                media =
+                    Media(
+                        redditVideo =
+                            RedditVideo(
+                                fallbackUrl = "https://v.redd.it/abc/DASH_720.mp4",
+                                height = 720,
+                                width = 1280,
+                                duration = 30,
+                                isGif = false,
+                            ),
+                    ),
+            )
         assertEquals("https://v.redd.it/abc/DASH_720.mp4", post.contentLink)
     }
 
     @Test
     fun contentLink_videoPost_fallsBackToPreviewRedditVideo() {
-        val post = createTestPost(
-            postHint = "hosted:video",
-            media = Media(redditVideo = null),
-            preview = Preview(
-                images = emptyList(),
-                enabled = true,
-                redditVideoPreview = RedditVideo(
-                    fallbackUrl = "https://v.redd.it/preview/abc.mp4",
-                    height = 720,
-                    width = 1280,
-                    duration = 10,
-                    isGif = true
-                )
+        val post =
+            createTestPost(
+                postHint = "hosted:video",
+                media = Media(redditVideo = null),
+                preview =
+                    Preview(
+                        images = emptyList(),
+                        enabled = true,
+                        redditVideoPreview =
+                            RedditVideo(
+                                fallbackUrl = "https://v.redd.it/preview/abc.mp4",
+                                height = 720,
+                                width = 1280,
+                                duration = 10,
+                                isGif = true,
+                            ),
+                    ),
             )
-        )
         assertEquals("https://v.redd.it/preview/abc.mp4", post.contentLink)
     }
 
     @Test
     fun contentLink_galleryPost_returnsGalleryUrl() {
-        val post = createTestPost(
-            url = "https://reddit.com/r/test/comments/abc/gallery",
-            galleryData = GalleryData(items = listOf(
-                GalleryItem(mediaId = "m1", id = 1L, caption = null, url = "https://i.redd.it/gallery1.jpg"),
-                GalleryItem(mediaId = "m2", id = 2L, caption = null, url = "https://i.redd.it/gallery2.jpg")
-            ))
-        )
+        val post =
+            createTestPost(
+                url = "https://reddit.com/r/test/comments/abc/gallery",
+                galleryData =
+                    GalleryData(
+                        items =
+                            listOf(
+                                GalleryItem(mediaId = "m1", id = 1L, caption = null, url = "https://i.redd.it/gallery1.jpg"),
+                                GalleryItem(mediaId = "m2", id = 2L, caption = null, url = "https://i.redd.it/gallery2.jpg"),
+                            ),
+                    ),
+            )
         assertEquals("https://reddit.com/r/test/comments/abc/gallery", post.contentLink)
     }
 
     @Test
     fun contentLink_linkPost_returnsUrl() {
-        val post = createTestPost(
-            url = "https://example.com/article",
-            postHint = "link",
-            selfText = null,
-            galleryData = null
-        )
+        val post =
+            createTestPost(
+                url = "https://example.com/article",
+                postHint = "link",
+                selfText = null,
+                galleryData = null,
+            )
         assertEquals("https://example.com/article", post.contentLink)
     }
 
     @Test
     fun contentLink_textPost_returnsNull() {
-        val post = createTestPost(
-            postHint = "self",
-            selfText = "Some text content",
-            url = "https://reddit.com/r/test/comments/abc"
-        )
+        val post =
+            createTestPost(
+                postHint = "self",
+                selfText = "Some text content",
+                url = "https://reddit.com/r/test/comments/abc",
+            )
         assertNull(post.contentLink)
     }
 
     @Test
     fun contentLink_youtubePost_returnsUrl() {
-        val post = createTestPost(
-            url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            postHint = "link",
-            selfText = null,
-            galleryData = null
-        )
+        val post =
+            createTestPost(
+                url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                postHint = "link",
+                selfText = null,
+                galleryData = null,
+            )
         assertEquals("https://www.youtube.com/watch?v=dQw4w9WgXcQ", post.contentLink)
     }
 

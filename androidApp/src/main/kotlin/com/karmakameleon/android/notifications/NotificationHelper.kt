@@ -17,7 +17,6 @@ import com.karmakameleon.shared.domain.model.Message
 import com.karmakameleon.shared.domain.model.MessageType
 
 object NotificationHelper {
-
     const val CHANNEL_ID = "inbox_notifications"
     const val EXTRA_OPEN_INBOX_UNREAD = "open_inbox_unread"
     private const val CHANNEL_NAME = "Inbox"
@@ -26,42 +25,49 @@ object NotificationHelper {
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun createChannel(context: Context) {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_DEFAULT
-        ).apply {
-            description = CHANNEL_DESCRIPTION
-        }
+        val channel =
+            NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = CHANNEL_DESCRIPTION
+            }
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(channel)
     }
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    fun showNotifications(context: Context, newMessages: List<Message>) {
+    fun showNotifications(
+        context: Context,
+        newMessages: List<Message>,
+    ) {
         if (newMessages.isEmpty()) return
 
         val notificationManager = NotificationManagerCompat.from(context)
-        val tapIntent = PendingIntent.getActivity(
-            context,
-            0,
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                putExtra(EXTRA_OPEN_INBOX_UNREAD, true)
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val tapIntent =
+            PendingIntent.getActivity(
+                context,
+                0,
+                Intent(context, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    putExtra(EXTRA_OPEN_INBOX_UNREAD, true)
+                },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
 
         if (newMessages.size == 1) {
             val message = newMessages.first()
-            val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(drawable.ic_dialog_email)
-                .setContentTitle(buildTitle(message))
-                .setContentText(message.body.take(200))
-                .setStyle(NotificationCompat.BigTextStyle().bigText(message.body.take(500)))
-                .setContentIntent(tapIntent)
-                .setAutoCancel(true)
-                .build()
+            val notification =
+                NotificationCompat
+                    .Builder(context, CHANNEL_ID)
+                    .setSmallIcon(drawable.ic_dialog_email)
+                    .setContentTitle(buildTitle(message))
+                    .setContentText(message.body.take(200))
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(message.body.take(500)))
+                    .setContentIntent(tapIntent)
+                    .setAutoCancel(true)
+                    .build()
             notificationManager.notify(message.id.hashCode(), notification)
         } else {
             val inboxStyle = NotificationCompat.InboxStyle()
@@ -71,16 +77,18 @@ object NotificationHelper {
             if (newMessages.size > 5) {
                 inboxStyle.setSummaryText("+${newMessages.size - 5} more")
             }
-            val summary = NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(drawable.ic_dialog_email)
-                .setContentTitle("${newMessages.size} new inbox messages")
-                .setContentText(newMessages.joinToString(", ") { buildTitle(it) }.take(200))
-                .setStyle(inboxStyle)
-                .setContentIntent(tapIntent)
-                .setAutoCancel(true)
-                .setGroupSummary(true)
-                .setGroup(CHANNEL_ID)
-                .build()
+            val summary =
+                NotificationCompat
+                    .Builder(context, CHANNEL_ID)
+                    .setSmallIcon(drawable.ic_dialog_email)
+                    .setContentTitle("${newMessages.size} new inbox messages")
+                    .setContentText(newMessages.joinToString(", ") { buildTitle(it) }.take(200))
+                    .setStyle(inboxStyle)
+                    .setContentIntent(tapIntent)
+                    .setAutoCancel(true)
+                    .setGroupSummary(true)
+                    .setGroup(CHANNEL_ID)
+                    .build()
             notificationManager.notify(SUMMARY_NOTIFICATION_ID, summary)
         }
     }

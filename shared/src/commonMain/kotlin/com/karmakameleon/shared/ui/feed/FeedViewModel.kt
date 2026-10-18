@@ -18,10 +18,13 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class FeedType(val displayName: String, val subreddit: String?) {
+enum class FeedType(
+    val displayName: String,
+    val subreddit: String?,
+) {
     HOME("Home", null),
     ALL("r/all", "all"),
-    POPULAR("r/popular", "popular")
+    POPULAR("r/popular", "popular"),
 }
 
 data class FeedUiState(
@@ -36,16 +39,15 @@ data class FeedUiState(
     val currentFeedType: FeedType = FeedType.HOME,
     val after: String? = null,
     val hasMore: Boolean = true,
-    val isLoggedIn: Boolean = false
+    val isLoggedIn: Boolean = false,
 )
 
 class FeedViewModel(
     private val postRepository: PostRepository,
     private val subredditRepository: SubredditRepository,
     private val userRepository: UserRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(FeedUiState())
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
 
@@ -54,17 +56,18 @@ class FeedViewModel(
             combine(
                 userRepository.isLoggedIn,
                 settingsRepository.blockedSubreddits,
-                settingsRepository.nsfwEnabled
+                settingsRepository.nsfwEnabled,
             ) { isLoggedIn, blockedSubs, nsfwEnabled ->
                 Triple(isLoggedIn, blockedSubs, nsfwEnabled)
             }.collect { (isLoggedIn, blockedSubs, nsfwEnabled) ->
                 _uiState.update { state ->
                     state.copy(
                         isLoggedIn = isLoggedIn,
-                        posts = state.posts.filter { post ->
-                            post.subreddit.lowercase() !in blockedSubs.map { it.lowercase() } &&
-                                (nsfwEnabled || !post.isNsfw)
-                        }
+                        posts =
+                            state.posts.filter { post ->
+                                post.subreddit.lowercase() !in blockedSubs.map { it.lowercase() } &&
+                                    (nsfwEnabled || !post.isNsfw)
+                            },
                     )
                 }
             }
@@ -75,53 +78,60 @@ class FeedViewModel(
                     val exists = state.posts.any { it.id == updatedPost.id }
                     if (!exists) return@update state
                     state.copy(
-                        posts = if (updatedPost.isHidden) {
-                            state.posts.filter { it.id != updatedPost.id }
-                        } else {
-                            state.posts.map { if (it.id == updatedPost.id) updatedPost else it }
-                        }
+                        posts =
+                            if (updatedPost.isHidden) {
+                                state.posts.filter { it.id != updatedPost.id }
+                            } else {
+                                state.posts.map { if (it.id == updatedPost.id) updatedPost else it }
+                            },
                     )
                 }
-            }
-            .launchIn(viewModelScope)
+            }.launchIn(viewModelScope)
         loadPosts()
     }
 
     fun loadPosts(forceRefresh: Boolean = false) {
         if (_uiState.value.isLoading && !forceRefresh) return
-        
+
         viewModelScope.launch {
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
-                    isLoading = !forceRefresh, 
+                    isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
-                    error = null
-                ) 
+                    error = null,
+                )
             }
-            
-            val result = postRepository.getPosts(
-                subreddit = _uiState.value.currentSubreddit,
-                sort = _uiState.value.currentSort,
-                time = if (_uiState.value.currentSort == PostSort.TOP || 
-                          _uiState.value.currentSort == PostSort.CONTROVERSIAL) 
-                    _uiState.value.currentTimeFilter else null
-            )
-            
+
+            val result =
+                postRepository.getPosts(
+                    subreddit = _uiState.value.currentSubreddit,
+                    sort = _uiState.value.currentSort,
+                    time =
+                        if (_uiState.value.currentSort == PostSort.TOP ||
+                            _uiState.value.currentSort == PostSort.CONTROVERSIAL
+                        ) {
+                            _uiState.value.currentTimeFilter
+                        } else {
+                            null
+                        },
+                )
+
             result.fold(
                 onSuccess = { listing ->
                     val nsfwEnabled = settingsRepository.nsfwEnabled.value
                     val blockedSubs = settingsRepository.blockedSubreddits.value
-                    val filteredItems = listing.items.filter { post ->
-                        (nsfwEnabled || !post.isNsfw) &&
-                            post.subreddit.lowercase() !in blockedSubs
-                    }
+                    val filteredItems =
+                        listing.items.filter { post ->
+                            (nsfwEnabled || !post.isNsfw) &&
+                                post.subreddit.lowercase() !in blockedSubs
+                        }
                     _uiState.update {
                         it.copy(
                             posts = filteredItems,
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoading = false,
-                            isRefreshing = false
+                            isRefreshing = false,
                         )
                     }
                     enrichPosts(filteredItems)
@@ -131,10 +141,10 @@ class FeedViewModel(
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
-                            error = error.message ?: "Failed to load posts"
+                            error = error.message ?: "Failed to load posts",
                         )
                     }
-                }
+                },
             )
         }
     }
@@ -142,40 +152,47 @@ class FeedViewModel(
     fun loadMorePosts() {
         val currentState = _uiState.value
         if (currentState.isLoadingMore || !currentState.hasMore || currentState.after == null) return
-        
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoadingMore = true) }
-            
-            val result = postRepository.getPosts(
-                subreddit = currentState.currentSubreddit,
-                sort = currentState.currentSort,
-                time = if (currentState.currentSort == PostSort.TOP || 
-                          currentState.currentSort == PostSort.CONTROVERSIAL) 
-                    currentState.currentTimeFilter else null,
-                after = currentState.after
-            )
-            
+
+            val result =
+                postRepository.getPosts(
+                    subreddit = currentState.currentSubreddit,
+                    sort = currentState.currentSort,
+                    time =
+                        if (currentState.currentSort == PostSort.TOP ||
+                            currentState.currentSort == PostSort.CONTROVERSIAL
+                        ) {
+                            currentState.currentTimeFilter
+                        } else {
+                            null
+                        },
+                    after = currentState.after,
+                )
+
             result.fold(
                 onSuccess = { listing ->
                     val nsfwEnabled = settingsRepository.nsfwEnabled.value
                     val blockedSubs = settingsRepository.blockedSubreddits.value
-                    val filteredItems = listing.items.filter { post ->
-                        (nsfwEnabled || !post.isNsfw) &&
-                            post.subreddit.lowercase() !in blockedSubs
-                    }
+                    val filteredItems =
+                        listing.items.filter { post ->
+                            (nsfwEnabled || !post.isNsfw) &&
+                                post.subreddit.lowercase() !in blockedSubs
+                        }
                     _uiState.update {
                         it.copy(
                             posts = it.posts + filteredItems,
                             after = listing.after,
                             hasMore = listing.hasMore,
-                            isLoadingMore = false
+                            isLoadingMore = false,
                         )
                     }
                     enrichPosts(filteredItems)
                 },
                 onFailure = {
                     _uiState.update { it.copy(isLoadingMore = false) }
-                }
+                },
             )
         }
     }
@@ -218,13 +235,16 @@ class FeedViewModel(
         settingsRepository.addBlockedSubreddit(subreddit)
     }
 
-    fun vote(post: Post, direction: Int) {
+    fun vote(
+        post: Post,
+        direction: Int,
+    ) {
         viewModelScope.launch {
             val result = postRepository.vote(post, direction)
             result.onSuccess { updatedPost ->
                 _uiState.update { state ->
                     state.copy(
-                        posts = state.posts.map { if (it.id == post.id) updatedPost else it }
+                        posts = state.posts.map { if (it.id == post.id) updatedPost else it },
                     )
                 }
             }
@@ -237,7 +257,7 @@ class FeedViewModel(
             result.onSuccess { updatedPost ->
                 _uiState.update { state ->
                     state.copy(
-                        posts = state.posts.map { if (it.id == post.id) updatedPost else it }
+                        posts = state.posts.map { if (it.id == post.id) updatedPost else it },
                     )
                 }
             }
@@ -250,7 +270,7 @@ class FeedViewModel(
             result.onSuccess { updatedPost ->
                 _uiState.update { state ->
                     state.copy(
-                        posts = state.posts.filter { it.id != post.id }
+                        posts = state.posts.filter { it.id != post.id },
                     )
                 }
             }

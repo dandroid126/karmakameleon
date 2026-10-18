@@ -24,15 +24,14 @@ data class InboxUiState(
     val isLoggedIn: Boolean = false,
     val selectedMessageId: String? = null,
     val replyingToMessage: Message? = null,
-    val replyText: String = ""
+    val replyText: String = "",
 )
 
 class InboxViewModel(
     private val messageRepository: MessageRepository,
     private val userRepository: UserRepository,
-    private val inboxPoller: InboxPoller
+    private val inboxPoller: InboxPoller,
 ) : ViewModel() {
-
     private val _uiState = MutableStateFlow(InboxUiState())
     val uiState: StateFlow<InboxUiState> = _uiState.asStateFlow()
 
@@ -57,11 +56,11 @@ class InboxViewModel(
         if (_uiState.value.isLoading && !forceRefresh) return
 
         viewModelScope.launch {
-            _uiState.update { 
+            _uiState.update {
                 it.copy(
-                    isLoading = !forceRefresh, 
+                    isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
-                    error = null
+                    error = null,
                 )
             }
 
@@ -75,19 +74,19 @@ class InboxViewModel(
                             after = listing.after,
                             hasMore = listing.after != null,
                             isLoading = false,
-                            isRefreshing = false
+                            isRefreshing = false,
                         )
                     }
                 },
                 onFailure = { error ->
                     _uiState.update {
                         it.copy(
-                            isLoading = false, 
+                            isLoading = false,
                             isRefreshing = false,
-                            error = error.message
+                            error = error.message,
                         )
                     }
-                }
+                },
             )
         }
     }
@@ -103,9 +102,10 @@ class InboxViewModel(
             messageRepository.markAsRead(message)
             _uiState.update { state ->
                 state.copy(
-                    messages = state.messages.map {
-                        if (it.id == message.id) it.copy(isNew = false) else it
-                    }
+                    messages =
+                        state.messages.map {
+                            if (it.id == message.id) it.copy(isNew = false) else it
+                        },
                 )
             }
         }
@@ -124,7 +124,10 @@ class InboxViewModel(
         _uiState.update { it.copy(selectedMessageId = if (it.selectedMessageId == id) null else id) }
     }
 
-    fun voteOnMessage(message: Message, direction: Int) {
+    fun voteOnMessage(
+        message: Message,
+        direction: Int,
+    ) {
         viewModelScope.launch {
             val result = messageRepository.voteOnMessage(message, direction)
             result.onSuccess { updated ->
@@ -141,7 +144,7 @@ class InboxViewModel(
             _uiState.update { state ->
                 state.copy(
                     messages = state.messages.map { if (it.id == message.id) it.copy(isNew = true) else it },
-                    selectedMessageId = null
+                    selectedMessageId = null,
                 )
             }
         }

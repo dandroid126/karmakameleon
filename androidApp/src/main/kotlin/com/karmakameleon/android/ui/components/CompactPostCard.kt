@@ -115,7 +115,7 @@ fun CompactPostCard(
     onCrosspostClick: () -> Unit = {},
     isRead: Boolean = false,
     nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH,
-    spoilerPreviewsEnabled: Boolean = false
+    spoilerPreviewsEnabled: Boolean = false,
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showShareMenu by remember { mutableStateOf(false) }
@@ -131,32 +131,39 @@ fun CompactPostCard(
 
     val baseColor = CardDefaults.cardColors().containerColor
     val containerColor by animateColorAsState(
-        targetValue = if (isHighlighted) {
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f).compositeOver(baseColor)
-        } else baseColor,
+        targetValue =
+            if (isHighlighted) {
+                MaterialTheme.colorScheme.primary
+                    .copy(alpha = 0.14f)
+                    .compositeOver(baseColor)
+            } else {
+                baseColor
+            },
         animationSpec = tween(EXPAND_ANIMATION_MS),
-        label = "compactPostHighlight"
+        label = "compactPostHighlight",
     )
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 3.dp),
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
             verticalAlignment = Alignment.Top,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onToggleExpanded)
-                .padding(start = 2.dp, end = 8.dp, top = 6.dp, bottom = 6.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggleExpanded)
+                    .padding(start = 2.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
         ) {
             // Vote column
             val votingDisabled = post.isVotingDisabled
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(44.dp)
+                modifier = Modifier.width(44.dp),
             ) {
                 IconButton(
                     onClick = {
@@ -166,17 +173,22 @@ fun CompactPostCard(
                             else -> onUpvote()
                         }
                     },
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(28.dp),
                 ) {
                     Icon(
-                        imageVector = if (post.voteState == VoteState.UPVOTED)
-                            Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
+                        imageVector =
+                            if (post.voteState == VoteState.UPVOTED) {
+                                Icons.Filled.KeyboardArrowUp
+                            } else {
+                                Icons.Outlined.KeyboardArrowUp
+                            },
                         contentDescription = "Upvote",
-                        tint = when {
-                            votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        tint =
+                            when {
+                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                 }
 
@@ -185,12 +197,13 @@ fun CompactPostCard(
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    color = when {
-                        votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                        post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
-                        post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
-                        else -> MaterialTheme.colorScheme.onSurface
-                    }
+                    color =
+                        when {
+                            votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                            post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
+                            post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
                 )
 
                 IconButton(
@@ -201,32 +214,38 @@ fun CompactPostCard(
                             else -> onDownvote()
                         }
                     },
-                    modifier = Modifier.size(28.dp)
+                    modifier = Modifier.size(28.dp),
                 ) {
                     Icon(
-                        imageVector = if (post.voteState == VoteState.DOWNVOTED)
-                            Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
+                        imageVector =
+                            if (post.voteState == VoteState.DOWNVOTED) {
+                                Icons.Filled.KeyboardArrowDown
+                            } else {
+                                Icons.Outlined.KeyboardArrowDown
+                            },
                         contentDescription = "Downvote",
-                        tint = when {
-                            votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        tint =
+                            when {
+                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                                post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                 }
             }
 
             // Title and metadata
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 2.dp, end = 8.dp, top = 2.dp)
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .padding(start = 2.dp, end = 8.dp, top = 2.dp),
             ) {
                 if (post.isNsfw || post.isSpoiler || post.isStickied || post.linkFlairText != null) {
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier.padding(bottom = 4.dp)
+                        modifier = Modifier.padding(bottom = 4.dp),
                     ) {
                         if (post.isNsfw) {
                             FlairChip(text = "NSFW", color = postFlairColors.nsfwColor)
@@ -246,23 +265,24 @@ fun CompactPostCard(
                 val domainColor = MaterialTheme.colorScheme.onSurfaceVariant
                 val domainStyle = MaterialTheme.typography.labelMedium
                 Text(
-                    text = buildAnnotatedString {
-                        append(post.title)
-                        if (post.isLinkPost) {
-                            withStyle(
-                                SpanStyle(
-                                    color = domainColor,
-                                    fontSize = domainStyle.fontSize,
-                                    fontWeight = FontWeight.Normal
-                                )
-                            ) {
-                                append(" (${post.domain})")
+                    text =
+                        buildAnnotatedString {
+                            append(post.title)
+                            if (post.isLinkPost) {
+                                withStyle(
+                                    SpanStyle(
+                                        color = domainColor,
+                                        fontSize = domainStyle.fontSize,
+                                        fontWeight = FontWeight.Normal,
+                                    ),
+                                ) {
+                                    append(" (${post.domain})")
+                                }
                             }
-                        }
-                    },
+                        },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = if (isRead) FontWeight.Normal else FontWeight.SemiBold,
-                    color = if (isRead) readStateColors.readTitleColor else MaterialTheme.colorScheme.onSurface
+                    color = if (isRead) readStateColors.readTitleColor else MaterialTheme.colorScheme.onSurface,
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -275,29 +295,30 @@ fun CompactPostCard(
                         color = MaterialTheme.colorScheme.primary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .clickable(onClick = onSubredditClick)
+                        modifier =
+                            Modifier
+                                .weight(1f, fill = false)
+                                .clickable(onClick = onSubredditClick),
                     )
                     Text(
                         text = " • ${formatNumber(post.numComments)} comments • ${formatTimeAgo(post.createdUtc)}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        maxLines = 1,
                     )
                 }
 
                 AnimatedVisibility(
                     visible = isExpanded,
                     enter = expandVertically(tween(EXPAND_ANIMATION_MS)) + fadeIn(tween(EXPAND_ANIMATION_MS)),
-                    exit = shrinkVertically(tween(EXPAND_ANIMATION_MS)) + fadeOut(tween(EXPAND_ANIMATION_MS))
+                    exit = shrinkVertically(tween(EXPAND_ANIMATION_MS)) + fadeOut(tween(EXPAND_ANIMATION_MS)),
                 ) {
                     Text(
                         text = "by u/${post.author}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                 }
             }
@@ -307,7 +328,7 @@ fun CompactPostCard(
                 nsfwPreviewMode = nsfwPreviewMode,
                 spoilerPreviewsEnabled = spoilerPreviewsEnabled,
                 onClick = onClick,
-                modifier = Modifier.padding(top = 2.dp)
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
 
@@ -315,19 +336,20 @@ fun CompactPostCard(
         AnimatedVisibility(
             visible = isExpanded,
             enter = expandVertically(tween(EXPAND_ANIMATION_MS)) + fadeIn(tween(EXPAND_ANIMATION_MS)),
-            exit = shrinkVertically(tween(EXPAND_ANIMATION_MS)) + fadeOut(tween(EXPAND_ANIMATION_MS))
+            exit = shrinkVertically(tween(EXPAND_ANIMATION_MS)) + fadeOut(tween(EXPAND_ANIMATION_MS)),
         ) {
             Column {
                 HorizontalDivider(
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(horizontal = 12.dp)
+                    modifier = Modifier.padding(horizontal = 12.dp),
                 )
                 Row(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp)
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp),
                 ) {
                     val iconTint = MaterialTheme.colorScheme.onSurfaceVariant
                     val accountIconTint = if (isLoggedIn) iconTint else iconTint.copy(alpha = 0.38f)
@@ -337,13 +359,13 @@ fun CompactPostCard(
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share",
-                                tint = iconTint
+                                tint = iconTint,
                             )
                         }
 
                         DropdownMenu(
                             expanded = showShareMenu,
-                            onDismissRequest = { showShareMenu = false }
+                            onDismissRequest = { showShareMenu = false },
                         ) {
                             DropdownMenuItem(
                                 text = { Text("Copy comments link") },
@@ -354,7 +376,7 @@ fun CompactPostCard(
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Link, contentDescription = null)
-                                }
+                                },
                             )
                             post.contentLink?.let { contentLink ->
                                 DropdownMenuItem(
@@ -365,7 +387,7 @@ fun CompactPostCard(
                                     },
                                     leadingIcon = {
                                         Icon(Icons.Default.Link, contentDescription = null)
-                                    }
+                                    },
                                 )
                             }
                         }
@@ -376,7 +398,7 @@ fun CompactPostCard(
                         Icon(
                             imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
                             contentDescription = if (post.isSaved) "Unsave" else "Save",
-                            tint = if (post.isSaved) MaterialTheme.colorScheme.primary else accountIconTint
+                            tint = if (post.isSaved) MaterialTheme.colorScheme.primary else accountIconTint,
                         )
                     }
 
@@ -384,7 +406,7 @@ fun CompactPostCard(
                         Icon(
                             imageVector = Icons.Outlined.VisibilityOff,
                             contentDescription = if (post.isHidden) "Unhide" else "Hide",
-                            tint = accountIconTint
+                            tint = accountIconTint,
                         )
                     }
 
@@ -393,7 +415,7 @@ fun CompactPostCard(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
                                 contentDescription = "Open link",
-                                tint = iconTint
+                                tint = iconTint,
                             )
                         }
                     }
@@ -403,7 +425,7 @@ fun CompactPostCard(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.CallMerge,
                                 contentDescription = "View original post",
-                                tint = iconTint
+                                tint = iconTint,
                             )
                         }
                     }
@@ -413,13 +435,13 @@ fun CompactPostCard(
                             Icon(
                                 imageVector = Icons.Default.MoreVert,
                                 contentDescription = "More options",
-                                tint = iconTint
+                                tint = iconTint,
                             )
                         }
 
                         DropdownMenu(
                             expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
+                            onDismissRequest = { showMenu = false },
                         ) {
                             DropdownMenuItem(
                                 text = { Text("u/${post.author}'s profile") },
@@ -429,7 +451,7 @@ fun CompactPostCard(
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Person, contentDescription = null)
-                                }
+                                },
                             )
                             DropdownMenuItem(
                                 text = { Text("Block r/${post.subreddit}") },
@@ -440,7 +462,7 @@ fun CompactPostCard(
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Block, contentDescription = null)
-                                }
+                                },
                             )
                         }
                     }
@@ -460,64 +482,80 @@ private fun CompactThumbnail(
     nsfwPreviewMode: NsfwPreviewMode,
     spoilerPreviewsEnabled: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val postFlairColors = postFlairColors()
     val mediaColors = mediaColors()
     val previewImage = post.preview?.images?.firstOrNull()
     // Reddit's preview resolutions run small to large; 216px is enough for a 72dp square
-    val thumbnailUrl = previewImage?.resolutions?.firstOrNull { it.width >= 216 }?.url
-        ?: previewImage?.resolutions?.lastOrNull()?.url
-        ?: previewImage?.source?.url
-        ?: post.galleryData?.items?.firstOrNull()?.url
-        ?: post.thumbnail?.takeIf { it.startsWith("http") }
-        ?: post.url.takeIf { post.isImagePost }
+    val thumbnailUrl =
+        previewImage?.resolutions?.firstOrNull { it.width >= 216 }?.url
+            ?: previewImage?.resolutions?.lastOrNull()?.url
+            ?: previewImage?.source?.url
+            ?: post.galleryData
+                ?.items
+                ?.firstOrNull()
+                ?.url
+            ?: post.thumbnail?.takeIf { it.startsWith("http") }
+            ?: post.url.takeIf { post.isImagePost }
 
     Box(
         contentAlignment = Alignment.Center,
-        modifier = modifier
-            .size(COMPACT_THUMBNAIL_SIZE)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
+        modifier =
+            modifier
+                .size(COMPACT_THUMBNAIL_SIZE)
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable(onClick = onClick),
     ) {
         when {
-            post.isSpoiler && !spoilerPreviewsEnabled -> HiddenThumbnail(
-                label = "Spoiler",
-                color = postFlairColors.spoilerColor
-            )
-            thumbnailUrl == null -> Icon(
-                imageVector = if (post.isLinkPost) Icons.Default.Link else Icons.AutoMirrored.Outlined.Article,
-                contentDescription = "Open post",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(32.dp)
-            )
-            post.isNsfw && nsfwPreviewMode == NsfwPreviewMode.DO_NOT_PREFETCH -> HiddenThumbnail(
-                label = "NSFW",
-                color = postFlairColors.nsfwColor
-            )
+            post.isSpoiler && !spoilerPreviewsEnabled -> {
+                HiddenThumbnail(
+                    label = "Spoiler",
+                    color = postFlairColors.spoilerColor,
+                )
+            }
+
+            thumbnailUrl == null -> {
+                Icon(
+                    imageVector = if (post.isLinkPost) Icons.Default.Link else Icons.AutoMirrored.Outlined.Article,
+                    contentDescription = "Open post",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(32.dp),
+                )
+            }
+
+            post.isNsfw && nsfwPreviewMode == NsfwPreviewMode.DO_NOT_PREFETCH -> {
+                HiddenThumbnail(
+                    label = "NSFW",
+                    color = postFlairColors.nsfwColor,
+                )
+            }
+
             else -> {
                 val blurred = post.isNsfw && nsfwPreviewMode == NsfwPreviewMode.PREFETCH_AND_BLUR
                 AsyncImage(
                     model = thumbnailUrl,
                     contentDescription = "Open post",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .then(if (blurred) Modifier.blur(10.dp) else Modifier)
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .then(if (blurred) Modifier.blur(10.dp) else Modifier),
                 )
                 if (blurred) {
                     Box(
                         contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(mediaColors.blurScrimColor)
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .background(mediaColors.blurScrimColor),
                     ) {
                         Icon(
                             imageVector = Icons.Default.VisibilityOff,
                             contentDescription = null,
                             tint = mediaColors.onOverlayColor,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(20.dp),
                         )
                     }
                 } else {
@@ -529,32 +567,39 @@ private fun CompactThumbnail(
 }
 
 @Composable
-private fun HiddenThumbnail(label: String, color: Color) {
+private fun HiddenThumbnail(
+    label: String,
+    color: Color,
+) {
     val mediaColors = mediaColors()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier
-            .fillMaxSize()
-            .background(mediaColors.hiddenPreviewColor)
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(mediaColors.hiddenPreviewColor),
     ) {
         Icon(
             imageVector = Icons.Default.VisibilityOff,
             contentDescription = null,
             tint = color,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(20.dp),
         )
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = color
+            color = color,
         )
     }
 }
 
 /** Small corner badge marking videos and multi-image galleries. */
 @Composable
-private fun MediaBadge(post: Post, modifier: Modifier = Modifier) {
+private fun MediaBadge(
+    post: Post,
+    modifier: Modifier = Modifier,
+) {
     val galleryCount = post.galleryData?.items?.size ?: 0
     if (!post.isVideoPost && galleryCount <= 1) return
 
@@ -562,24 +607,24 @@ private fun MediaBadge(post: Post, modifier: Modifier = Modifier) {
     Surface(
         color = mediaColors.overlayBadgeColor,
         shape = RoundedCornerShape(6.dp),
-        modifier = modifier.padding(4.dp)
+        modifier = modifier.padding(4.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
         ) {
             Icon(
                 imageVector = if (post.isVideoPost) Icons.Default.PlayArrow else Icons.Outlined.PhotoLibrary,
                 contentDescription = null,
                 tint = mediaColors.onOverlayColor,
-                modifier = Modifier.size(12.dp)
+                modifier = Modifier.size(12.dp),
             )
             if (!post.isVideoPost) {
                 Text(
                     text = "$galleryCount",
                     style = MaterialTheme.typography.labelSmall,
                     color = mediaColors.onOverlayColor,
-                    modifier = Modifier.padding(start = 2.dp)
+                    modifier = Modifier.padding(start = 2.dp),
                 )
             }
         }

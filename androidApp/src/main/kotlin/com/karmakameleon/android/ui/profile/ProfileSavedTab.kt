@@ -89,18 +89,18 @@ internal fun ProfileSavedTab(
         Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.clickable { showSavedTypeMenu = true }
+                modifier = Modifier.clickable { showSavedTypeMenu = true },
             ) {
                 Text(
                     savedContentType.displayName,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 Icon(Icons.Default.ArrowDropDown, contentDescription = "Change saved type")
             }
             DropdownMenu(
                 expanded = showSavedTypeMenu,
-                onDismissRequest = { showSavedTypeMenu = false }
+                onDismissRequest = { showSavedTypeMenu = false },
             ) {
                 SavedContentType.entries.forEach { type ->
                     DropdownMenuItem(
@@ -108,7 +108,7 @@ internal fun ProfileSavedTab(
                         onClick = {
                             onSetSavedContentType(type)
                             showSavedTypeMenu = false
-                        }
+                        },
                     )
                 }
             }
@@ -148,14 +148,14 @@ internal fun ProfileSavedTab(
                                 },
                                 isRead = readPostsRepository.isRead(post, nsfwHistoryMode),
                                 nsfwPreviewMode = nsfwPreviewMode,
-                                spoilerPreviewsEnabled = spoilerPreviewsEnabled
+                                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
                             )
                         }
                         if (isLoadingMorePosts) {
                             item {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                                 }
@@ -164,6 +164,7 @@ internal fun ProfileSavedTab(
                     }
                 }
             }
+
             SavedContentType.COMMENTS -> {
                 if (isLoadingContent && savedComments.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -190,7 +191,9 @@ internal fun ProfileSavedTab(
                                 onCommentUpdated = onCommentUpdated,
                                 onShare = {
                                     coroutineScope.launch {
-                                        clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", "https://reddit.com${comment.permalink}")))
+                                        clipboard.setClipEntry(
+                                            ClipEntry(ClipData.newPlainText("", "https://reddit.com${comment.permalink}")),
+                                        )
                                     }
                                 },
                                 onReply = { onReply(comment.name) },
@@ -198,11 +201,12 @@ internal fun ProfileSavedTab(
                                 onDelete = { onDelete(comment.id) },
                                 onSave = {
                                     onSaveComment(comment)
-                                    Toast.makeText(
-                                        context,
-                                        if (comment.isSaved) "Unsaved comment" else "Saved comment",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    Toast
+                                        .makeText(
+                                            context,
+                                            if (comment.isSaved) "Unsaved comment" else "Saved comment",
+                                            Toast.LENGTH_SHORT,
+                                        ).show()
                                 },
                                 isLoggedIn = isLoggedIn,
                                 loggedInUsername = loggedInUsername,
@@ -212,14 +216,14 @@ internal fun ProfileSavedTab(
                                     val postId = comment.linkId.removePrefix("t3_")
                                     onCommentClick(comment.subreddit, postId, commentId)
                                 },
-                                modifier = Modifier.padding(vertical = 4.dp)
+                                modifier = Modifier.padding(vertical = 4.dp),
                             )
                         }
                         if (isLoadingMoreComments) {
                             item {
                                 Box(
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                    contentAlignment = Alignment.Center
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     CircularProgressIndicator(modifier = Modifier.size(32.dp))
                                 }

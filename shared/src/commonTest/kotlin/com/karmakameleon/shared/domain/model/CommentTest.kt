@@ -7,7 +7,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class CommentTest {
-
     @Test
     fun voteState_upvoted() {
         val comment = createTestComment(likes = true)

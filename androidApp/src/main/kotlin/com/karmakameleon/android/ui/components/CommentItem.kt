@@ -1,5 +1,6 @@
 package com.karmakameleon.android.ui.components
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -49,10 +50,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import android.widget.Toast
+import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.theme.commentColors
 import com.karmakameleon.android.ui.theme.voteColors
-import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.VoteState
@@ -88,11 +88,11 @@ fun CommentItem(
     onGoToCommentNav: (commentId: String) -> Unit = {},
     showTopControls: Boolean = true,
     showSubreddit: Boolean = false,
-    postRepository: PostRepository = koinInject()
+    postRepository: PostRepository = koinInject(),
 ) {
     val scope = rememberCoroutineScope()
     val navigationHandler = koinInject<NavigationHandler>()
-    
+
     fun vote(direction: Int) {
         scope.launch {
             val result = postRepository.voteComment(comment, direction)
@@ -101,7 +101,7 @@ fun CommentItem(
             }
         }
     }
-    
+
     val commentColors = commentColors()
     val voteColors = voteColors()
     val depthColor = commentColors.depthColors[comment.depth % commentColors.depthColors.size]
@@ -109,21 +109,25 @@ fun CommentItem(
     val showParentControls = if (isSingleThreadMode) hasParentComment else comment.depth > 0
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = (comment.depth * 12).dp)
-            .then(
-                if (isSelected) Modifier.background(commentColors.selectedBackground)
-                else Modifier
-            )
-            .clickable { onSelect() }
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(start = (comment.depth * 12).dp)
+                .then(
+                    if (isSelected) {
+                        Modifier.background(commentColors.selectedBackground)
+                    } else {
+                        Modifier
+                    },
+                ).clickable { onSelect() },
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
             if (comment.depth > 0) {
                 Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .background(depthColor.copy(alpha = 0.5f))
+                    modifier =
+                        Modifier
+                            .width(2.dp)
+                            .background(depthColor.copy(alpha = 0.5f)),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
@@ -133,7 +137,7 @@ fun CommentItem(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             TextButton(onClick = onDone, modifier = Modifier.height(32.dp)) {
@@ -169,7 +173,7 @@ fun CommentItem(
                         text = "r/${comment.subreddit}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { navigationHandler.onSubredditClick(comment.subreddit) }
+                        modifier = Modifier.clickable { navigationHandler.onSubredditClick(comment.subreddit) },
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                 }
@@ -179,14 +183,15 @@ fun CommentItem(
                         text = comment.author,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = when {
-                            comment.isSubmitter -> commentColors.submitterColor
-                            comment.distinguished == "moderator" -> commentColors.moderatorColor
-                            comment.distinguished == "admin" -> commentColors.adminColor
-                            loggedInUsername != null && comment.author == loggedInUsername -> commentColors.ownCommentColor
-                            else -> MaterialTheme.colorScheme.onSurface
-                        },
-                        modifier = Modifier.clickable { navigationHandler.onUserClick(comment.author) }
+                        color =
+                            when {
+                                comment.isSubmitter -> commentColors.submitterColor
+                                comment.distinguished == "moderator" -> commentColors.moderatorColor
+                                comment.distinguished == "admin" -> commentColors.adminColor
+                                loggedInUsername != null && comment.author == loggedInUsername -> commentColors.ownCommentColor
+                                else -> MaterialTheme.colorScheme.onSurface
+                            },
+                        modifier = Modifier.clickable { navigationHandler.onUserClick(comment.author) },
                     )
                     if (comment.isSubmitter) {
                         Spacer(modifier = Modifier.width(4.dp))
@@ -198,14 +203,14 @@ fun CommentItem(
                         RichFlairChip(
                             richtext = comment.authorFlairRichtext,
                             backgroundColor = comment.authorFlairBackgroundColor,
-                            modifier = Modifier.weight(1f, fill = false)
+                            modifier = Modifier.weight(1f, fill = false),
                         )
                     } else if (!flairText.isNullOrBlank()) {
                         Spacer(modifier = Modifier.width(4.dp))
                         SubredditFlairChip(
                             text = flairText,
                             backgroundColor = comment.authorFlairBackgroundColor,
-                            modifier = Modifier.weight(1f, fill = false)
+                            modifier = Modifier.weight(1f, fill = false),
                         )
                     }
                     Spacer(modifier = Modifier.width(8.dp))
@@ -213,26 +218,32 @@ fun CommentItem(
                     Text(
                         text = if (comment.scoreHidden) "[~]" else formatNumber(comment.score),
                         style = MaterialTheme.typography.labelSmall,
-                        color = when (comment.voteState) {
-                            VoteState.UPVOTED -> voteColors.upvoteColor
-                            VoteState.DOWNVOTED -> voteColors.downvoteColor
-                            VoteState.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        modifier = if (comment.scoreHidden) Modifier.clickable {
-                            Toast.makeText(scoreContext, "Score hidden by subreddit rules", Toast.LENGTH_SHORT).show()
-                        } else Modifier
+                        color =
+                            when (comment.voteState) {
+                                VoteState.UPVOTED -> voteColors.upvoteColor
+                                VoteState.DOWNVOTED -> voteColors.downvoteColor
+                                VoteState.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        modifier =
+                            if (comment.scoreHidden) {
+                                Modifier.clickable {
+                                    Toast.makeText(scoreContext, "Score hidden by subreddit rules", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                Modifier
+                            },
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = formatTimeAgo(comment.createdUtc),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (comment.isEdited) {
                         Text(
                             text = " (edited)",
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     if (isHidden) {
@@ -241,7 +252,7 @@ fun CommentItem(
                             Icons.Filled.VisibilityOff,
                             contentDescription = "Hidden",
                             modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -249,14 +260,17 @@ fun CommentItem(
                 if (!isHidden) {
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    Box(modifier = Modifier.pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) {
-                                awaitPointerEvent(PointerEventPass.Initial)
-                                onTouchStart()
-                            }
-                        }
-                    }) {
+                    Box(
+                        modifier =
+                            Modifier.pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitPointerEvent(PointerEventPass.Initial)
+                                        onTouchStart()
+                                    }
+                                }
+                            },
+                    ) {
                         key(selectionVersion) {
                             SelectionContainer {
                                 MarkdownText(
@@ -264,7 +278,7 @@ fun CommentItem(
                                     style = MaterialTheme.typography.bodyMedium,
                                     onTextClick = onSelect,
                                     renderInlineImages = renderInlineImages,
-                                    onImageClick = onInlineImageClick
+                                    onImageClick = onInlineImageClick,
                                 )
                             }
                         }
@@ -277,40 +291,76 @@ fun CommentItem(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                     ) {
                         if (isLoggedIn) {
                             if (loggedInUsername != null && comment.author == loggedInUsername) {
                                 IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                                    Icon(Icons.Default.Edit, contentDescription = "Edit", modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Icon(
+                                        Icons.Default.Edit,
+                                        contentDescription = "Edit",
+                                        modifier = Modifier.size(22.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
                                 IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", modifier = Modifier.size(22.dp), tint = MaterialTheme.colorScheme.error)
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        modifier = Modifier.size(22.dp),
+                                        tint = MaterialTheme.colorScheme.error,
+                                    )
                                 }
                             }
                         }
                         IconButton(
                             onClick = { vote(if (comment.likes == true) 0 else 1) },
                             enabled = isLoggedIn,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(36.dp),
                         ) {
                             Icon(
-                                if (comment.voteState == VoteState.UPVOTED) Icons.Filled.KeyboardArrowUp else Icons.Outlined.KeyboardArrowUp,
+                                if (comment.voteState ==
+                                    VoteState.UPVOTED
+                                ) {
+                                    Icons.Filled.KeyboardArrowUp
+                                } else {
+                                    Icons.Outlined.KeyboardArrowUp
+                                },
                                 contentDescription = "Upvote",
                                 modifier = Modifier.size(24.dp),
-                                tint = if (comment.voteState == VoteState.UPVOTED) voteColors.upvoteColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint =
+                                    if (comment.voteState ==
+                                        VoteState.UPVOTED
+                                    ) {
+                                        voteColors.upvoteColor
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
                             )
                         }
                         IconButton(
                             onClick = { vote(if (comment.likes == false) 0 else -1) },
                             enabled = isLoggedIn,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(36.dp),
                         ) {
                             Icon(
-                                if (comment.voteState == VoteState.DOWNVOTED) Icons.Filled.KeyboardArrowDown else Icons.Outlined.KeyboardArrowDown,
+                                if (comment.voteState ==
+                                    VoteState.DOWNVOTED
+                                ) {
+                                    Icons.Filled.KeyboardArrowDown
+                                } else {
+                                    Icons.Outlined.KeyboardArrowDown
+                                },
                                 contentDescription = "Downvote",
                                 modifier = Modifier.size(24.dp),
-                                tint = if (comment.voteState == VoteState.DOWNVOTED) voteColors.downvoteColor else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint =
+                                    if (comment.voteState ==
+                                        VoteState.DOWNVOTED
+                                    ) {
+                                        voteColors.downvoteColor
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
                             )
                         }
                         Box {
@@ -320,12 +370,12 @@ fun CommentItem(
                                     Icons.Default.MoreVert,
                                     contentDescription = "More",
                                     modifier = Modifier.size(22.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                             DropdownMenu(
                                 expanded = showContextMenu,
-                                onDismissRequest = { showContextMenu = false }
+                                onDismissRequest = { showContextMenu = false },
                             ) {
                                 DropdownMenuItem(
                                     text = { Text("Share") },
@@ -333,7 +383,7 @@ fun CommentItem(
                                         showContextMenu = false
                                         onShare()
                                     },
-                                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) }
+                                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
                                 )
                                 if (isLoggedIn) {
                                     DropdownMenuItem(
@@ -345,9 +395,9 @@ fun CommentItem(
                                         leadingIcon = {
                                             Icon(
                                                 if (comment.isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                                contentDescription = null
+                                                contentDescription = null,
                                             )
-                                        }
+                                        },
                                     )
                                 }
                                 DropdownMenuItem(
@@ -356,7 +406,7 @@ fun CommentItem(
                                         showContextMenu = false
                                         onGoToCommentNav(comment.id)
                                     },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) }
+                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
                                 )
                             }
                         }

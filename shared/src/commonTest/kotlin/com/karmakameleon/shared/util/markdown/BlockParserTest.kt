@@ -8,7 +8,6 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class BlockParserTest {
-
     private fun parse(text: String) = parseMarkdownBlocks(text)
 
     // ==================== Headings ====================

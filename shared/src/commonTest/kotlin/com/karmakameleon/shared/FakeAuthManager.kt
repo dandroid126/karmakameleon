@@ -8,12 +8,12 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
 
 class FakeAuthManager(
-    private val settings: MapSettings = MapSettings()
+    private val settings: MapSettings = MapSettings(),
 ) : AuthManager(
-    httpClient = HttpClient(MockEngine { respond("", HttpStatusCode.OK) }),
-    settings = settings,
-    tokenSettings = MapSettings(),
-) {
+        httpClient = HttpClient(MockEngine { respond("", HttpStatusCode.OK) }),
+        settings = settings,
+        tokenSettings = MapSettings(),
+    ) {
     var fakeAccessToken: String? = "fake_token"
     var fakeIsLoggedIn: Boolean = false
     var exchangeSucceeds: Boolean = true

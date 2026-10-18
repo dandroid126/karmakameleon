@@ -13,14 +13,18 @@ data class OAuthRedirect(
          * Returns the redirect's parameters if [url] is a redirect to [redirectUri], or null for any other page.
          * The scheme, host, port and path must match; Reddit appends its parameters as a query string.
          */
-        fun parse(url: String, redirectUri: String): OAuthRedirect? {
+        fun parse(
+            url: String,
+            redirectUri: String,
+        ): OAuthRedirect? {
             if (!redirectUri.contains("://")) return null
             val actual = parseUrl(url) ?: return null
             val expected = parseUrl(redirectUri) ?: return null
-            val matches = actual.protocol.name.equals(expected.protocol.name, ignoreCase = true) &&
-                actual.host.equals(expected.host, ignoreCase = true) &&
-                actual.port == expected.port &&
-                actual.encodedPath.trimEnd('/') == expected.encodedPath.trimEnd('/')
+            val matches =
+                actual.protocol.name.equals(expected.protocol.name, ignoreCase = true) &&
+                    actual.host.equals(expected.host, ignoreCase = true) &&
+                    actual.port == expected.port &&
+                    actual.encodedPath.trimEnd('/') == expected.encodedPath.trimEnd('/')
             if (!matches) return null
             return OAuthRedirect(
                 code = actual.parameters["code"],
@@ -29,10 +33,11 @@ data class OAuthRedirect(
             )
         }
 
-        private fun parseUrl(url: String): Url? = try {
-            Url(url.trim())
-        } catch (_: Exception) {
-            null
-        }
+        private fun parseUrl(url: String): Url? =
+            try {
+                Url(url.trim())
+            } catch (_: Exception) {
+                null
+            }
     }
 }

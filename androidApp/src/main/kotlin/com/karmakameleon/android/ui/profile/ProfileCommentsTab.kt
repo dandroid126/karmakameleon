@@ -78,11 +78,12 @@ internal fun ProfileCommentsTab(
                     onDelete = { onDelete(comment.id) },
                     onSave = {
                         onSave(comment)
-                        Toast.makeText(
-                            context,
-                            if (comment.isSaved) "Unsaved comment" else "Saved comment",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast
+                            .makeText(
+                                context,
+                                if (comment.isSaved) "Unsaved comment" else "Saved comment",
+                                Toast.LENGTH_SHORT,
+                            ).show()
                     },
                     isLoggedIn = isLoggedIn,
                     loggedInUsername = loggedInUsername,
@@ -92,14 +93,14 @@ internal fun ProfileCommentsTab(
                         val postId = comment.linkId.removePrefix("t3_")
                         onCommentClick(comment.subreddit, postId, commentId)
                     },
-                    modifier = Modifier.padding(vertical = 4.dp)
+                    modifier = Modifier.padding(vertical = 4.dp),
                 )
             }
             if (isLoadingMore) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(32.dp))
                     }

@@ -75,14 +75,14 @@ internal fun ProfilePostsTab(
                     },
                     isRead = readPostsRepository.isRead(post, nsfwHistoryMode),
                     nsfwPreviewMode = nsfwPreviewMode,
-                    spoilerPreviewsEnabled = spoilerPreviewsEnabled
+                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
                 )
             }
             if (isLoadingMore) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator(modifier = Modifier.size(32.dp))
                     }

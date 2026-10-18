@@ -25,7 +25,6 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
-
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var postRepo: PostRepository
@@ -61,185 +60,214 @@ class SearchViewModelTest {
         assertEquals(SearchType.POST, viewModel.uiState.value.searchType)
         assertEquals(SearchSort.RELEVANCE, viewModel.uiState.value.searchSort)
         assertEquals(TimeFilter.ALL, viewModel.uiState.value.timeFilter)
-        assertTrue(viewModel.uiState.value.posts.isEmpty())
-        assertTrue(viewModel.uiState.value.subreddits.isEmpty())
+        assertTrue(
+            viewModel.uiState.value.posts
+                .isEmpty(),
+        )
+        assertTrue(
+            viewModel.uiState.value.subreddits
+                .isEmpty(),
+        )
     }
 
     // ==================== Query Setting ====================
 
     @Test
-    fun setQuery_updatesQuery() = runTest {
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        assertEquals("kotlin", viewModel.uiState.value.query)
-    }
+    fun setQuery_updatesQuery() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+            assertEquals("kotlin", viewModel.uiState.value.query)
+        }
 
     @Test
-    fun setQuery_trimsWhitespace() = runTest {
-        viewModel.setQuery("  kotlin  ")
-        advanceUntilIdle()
-        // Query is stored as-is, trimming happens during search
-        assertTrue(viewModel.uiState.value.query.contains("kotlin"))
-    }
+    fun setQuery_trimsWhitespace() =
+        runTest {
+            viewModel.setQuery("  kotlin  ")
+            advanceUntilIdle()
+            // Query is stored as-is, trimming happens during search
+            assertTrue(
+                viewModel.uiState.value.query
+                    .contains("kotlin"),
+            )
+        }
 
     @Test
-    fun setQuery_emptyQuery() = runTest {
-        viewModel.setQuery("")
-        advanceUntilIdle()
-        assertEquals("", viewModel.uiState.value.query)
-    }
+    fun setQuery_emptyQuery() =
+        runTest {
+            viewModel.setQuery("")
+            advanceUntilIdle()
+            assertEquals("", viewModel.uiState.value.query)
+        }
 
     @Test
-    fun setQuery_debouncesSearch() = runTest {
-        viewModel.setQuery("k")
-        advanceUntilIdle()
-        viewModel.setQuery("ko")
-        advanceUntilIdle()
-        viewModel.setQuery("kot")
-        advanceUntilIdle()
-        viewModel.setQuery("kotl")
-        advanceUntilIdle()
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        
-        assertEquals("kotlin", viewModel.uiState.value.query)
-    }
+    fun setQuery_debouncesSearch() =
+        runTest {
+            viewModel.setQuery("k")
+            advanceUntilIdle()
+            viewModel.setQuery("ko")
+            advanceUntilIdle()
+            viewModel.setQuery("kot")
+            advanceUntilIdle()
+            viewModel.setQuery("kotl")
+            advanceUntilIdle()
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            assertEquals("kotlin", viewModel.uiState.value.query)
+        }
 
     @Test
-    fun setQuery_redditLink_detectsLink() = runTest {
-        viewModel.setQuery("https://reddit.com/r/kotlin")
-        advanceUntilIdle()
-        
-        // Link detection may or may not work depending on parser
-        assertTrue(viewModel.uiState.value.query.contains("reddit"))
-    }
+    fun setQuery_redditLink_detectsLink() =
+        runTest {
+            viewModel.setQuery("https://reddit.com/r/kotlin")
+            advanceUntilIdle()
+
+            // Link detection may or may not work depending on parser
+            assertTrue(
+                viewModel.uiState.value.query
+                    .contains("reddit"),
+            )
+        }
 
     @Test
-    fun setQuery_subredditLink_detectsLink() = runTest {
-        viewModel.setQuery("/r/kotlin")
-        advanceUntilIdle()
-        
-        assertEquals("/r/kotlin", viewModel.uiState.value.query)
-    }
+    fun setQuery_subredditLink_detectsLink() =
+        runTest {
+            viewModel.setQuery("/r/kotlin")
+            advanceUntilIdle()
+
+            assertEquals("/r/kotlin", viewModel.uiState.value.query)
+        }
 
     // ==================== Search Type ====================
 
     @Test
-    fun setSearchType_changesSearchType() = runTest {
-        viewModel.setSearchType(SearchType.SUBREDDIT)
-        advanceUntilIdle()
-        assertEquals(SearchType.SUBREDDIT, viewModel.uiState.value.searchType)
-    }
+    fun setSearchType_changesSearchType() =
+        runTest {
+            viewModel.setSearchType(SearchType.SUBREDDIT)
+            advanceUntilIdle()
+            assertEquals(SearchType.SUBREDDIT, viewModel.uiState.value.searchType)
+        }
 
     @Test
-    fun setSearchType_post_searchesPosts() = runTest {
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        
-        viewModel.setSearchType(SearchType.POST)
-        advanceUntilIdle()
-        
-        assertEquals(SearchType.POST, viewModel.uiState.value.searchType)
-    }
+    fun setSearchType_post_searchesPosts() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            viewModel.setSearchType(SearchType.POST)
+            advanceUntilIdle()
+
+            assertEquals(SearchType.POST, viewModel.uiState.value.searchType)
+        }
 
     @Test
-    fun setSearchType_subreddit_searchesSubreddits() = runTest {
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        
-        viewModel.setSearchType(SearchType.SUBREDDIT)
-        advanceUntilIdle()
-        
-        assertEquals(SearchType.SUBREDDIT, viewModel.uiState.value.searchType)
-    }
+    fun setSearchType_subreddit_searchesSubreddits() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            viewModel.setSearchType(SearchType.SUBREDDIT)
+            advanceUntilIdle()
+
+            assertEquals(SearchType.SUBREDDIT, viewModel.uiState.value.searchType)
+        }
 
     // ==================== Search Sort ====================
 
     @Test
-    fun setSearchSort_changesSearchSort() = runTest {
-        viewModel.setSearchSort(SearchSort.HOT)
-        advanceUntilIdle()
-        assertEquals(SearchSort.HOT, viewModel.uiState.value.searchSort)
-    }
+    fun setSearchSort_changesSearchSort() =
+        runTest {
+            viewModel.setSearchSort(SearchSort.HOT)
+            advanceUntilIdle()
+            assertEquals(SearchSort.HOT, viewModel.uiState.value.searchSort)
+        }
 
     @Test
-    fun setSearchSort_triggersNewSearch() = runTest {
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        
-        viewModel.setSearchSort(SearchSort.TOP)
-        advanceUntilIdle()
-        
-        assertEquals(SearchSort.TOP, viewModel.uiState.value.searchSort)
-    }
+    fun setSearchSort_triggersNewSearch() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            viewModel.setSearchSort(SearchSort.TOP)
+            advanceUntilIdle()
+
+            assertEquals(SearchSort.TOP, viewModel.uiState.value.searchSort)
+        }
 
     // ==================== Time Filter ====================
 
     @Test
-    fun setTimeFilter_changesTimeFilter() = runTest {
-        viewModel.setTimeFilter(TimeFilter.WEEK)
-        advanceUntilIdle()
-        assertEquals(TimeFilter.WEEK, viewModel.uiState.value.timeFilter)
-    }
+    fun setTimeFilter_changesTimeFilter() =
+        runTest {
+            viewModel.setTimeFilter(TimeFilter.WEEK)
+            advanceUntilIdle()
+            assertEquals(TimeFilter.WEEK, viewModel.uiState.value.timeFilter)
+        }
 
     @Test
-    fun setTimeFilter_triggersNewSearch() = runTest {
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        
-        viewModel.setTimeFilter(TimeFilter.MONTH)
-        advanceUntilIdle()
-        
-        assertEquals(TimeFilter.MONTH, viewModel.uiState.value.timeFilter)
-    }
+    fun setTimeFilter_triggersNewSearch() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            viewModel.setTimeFilter(TimeFilter.MONTH)
+            advanceUntilIdle()
+
+            assertEquals(TimeFilter.MONTH, viewModel.uiState.value.timeFilter)
+        }
 
     // ==================== Loading More ====================
 
     @Test
-    fun loadMore_appendsToExistingResults() = runTest {
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        
-        val initialCount = viewModel.uiState.value.posts.size
-        viewModel.loadMore()
-        advanceUntilIdle()
-        
-        assertTrue(viewModel.uiState.value.posts.size >= initialCount)
-    }
+    fun loadMore_appendsToExistingResults() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            val initialCount = viewModel.uiState.value.posts.size
+            viewModel.loadMore()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.posts.size >= initialCount)
+        }
 
     @Test
-    fun loadMore_preventsLoadWhenNoMore() = runTest {
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        
-        viewModel.loadMore()
-        advanceUntilIdle()
-        
-        assertFalse(viewModel.uiState.value.isLoading)
-    }
+    fun loadMore_preventsLoadWhenNoMore() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            viewModel.loadMore()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
 
     @Test
-    fun loadMore_preventsMultipleConcurrentLoads() = runTest {
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        
-        viewModel.loadMore()
-        viewModel.loadMore()
-        advanceUntilIdle()
-        
-        assertFalse(viewModel.uiState.value.isLoading)
-    }
+    fun loadMore_preventsMultipleConcurrentLoads() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            viewModel.loadMore()
+            viewModel.loadMore()
+            advanceUntilIdle()
+
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
 
     // ==================== Empty Query ====================
 
     @Test
-    fun emptyQuery_clearsResults() = runTest {
-        viewModel.setQuery("kotlin")
-        advanceUntilIdle()
-        
-        viewModel.setQuery("")
-        advanceUntilIdle()
-        
-        assertEquals("", viewModel.uiState.value.query)
-    }
+    fun emptyQuery_clearsResults() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            viewModel.setQuery("")
+            advanceUntilIdle()
+
+            assertEquals("", viewModel.uiState.value.query)
+        }
 }
