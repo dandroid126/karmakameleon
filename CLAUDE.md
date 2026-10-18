@@ -9,6 +9,10 @@ All colors go in the color constants file, `androidApp/src/main/kotlin/com/karma
 - `Color.Transparent` (no color) and `Color.Unspecified` (inherit) aren't colors, so they can be used anywhere.
 - Tests should use these constants too where they can. Tests in the `shared` module can't see `Theme.kt`, so they may use literal values.
 
+## Errors
+
+In code that can suspend, use `runSuspendCatching` (`shared/.../util/RunSuspendCatching.kt`) instead of `catch (e: Exception)`, so coroutine cancellation isn't caught. Elsewhere, catch the specific exceptions the code can throw.
+
 ## Checks
 
 Before committing, run `./gradlew qualityGate` (the static checks) and `./gradlew :shared:testAndroidHostTest` (the unit tests). The PR checks run the same tasks and must pass before a PR can merge.

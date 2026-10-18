@@ -90,7 +90,7 @@ class FakeRedditApi(
         limit: Int,
         commentId: String?,
         context: Int?,
-    ): Pair<Post, List<CommentOrMore>> = throwOrReturn(postWithCommentsResult ?: throw Exception("No result configured"))
+    ): Pair<Post, List<CommentOrMore>> = throwOrReturn(postWithCommentsResult ?: error("No result configured"))
 
     override suspend fun getMoreComments(
         linkId: String,

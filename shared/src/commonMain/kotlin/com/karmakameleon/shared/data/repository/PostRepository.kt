@@ -9,6 +9,7 @@ import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.TimeFilter
+import com.karmakameleon.shared.util.runSuspendCatching
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -29,15 +30,13 @@ class PostRepository(
         after: String? = null,
         limit: Int = 25,
     ): Result<Listing<Post>> =
-        try {
+        runSuspendCatching {
             val listing = redditApi.getPosts(subreddit, sort, time, after, limit)
             // Cache posts
             cachedPosts.update { cache ->
                 cache + listing.items.associateBy { it.id }
             }
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
+            listing
         }
 
     suspend fun enrichSparsePosts(posts: List<Post>): List<Post> {
@@ -63,16 +62,10 @@ class PostRepository(
         // Check cache first
         cachedPosts.value[postId]?.let { return Result.success(it) }
 
-        return try {
-            val post = redditApi.getPost(subreddit, postId)
-            if (post != null) {
-                cachedPosts.update { it + (postId to post) }
-                Result.success(post)
-            } else {
-                Result.failure(Exception("Post not found"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        return runSuspendCatching {
+            val post = redditApi.getPost(subreddit, postId) ?: error("Post not found")
+            cachedPosts.update { it + (postId to post) }
+            post
         }
     }
 
@@ -83,13 +76,11 @@ class PostRepository(
         commentId: String? = null,
         context: Int? = null,
     ): Result<Pair<Post, List<CommentOrMore>>> =
-        try {
+        runSuspendCatching {
             val result = redditApi.getPostWithComments(subreddit, postId, sort, commentId = commentId, context = context)
             val post = preserveCachedPreviewData(result.first)
             cachedPosts.update { it + (postId to post) }
-            Result.success(post to result.second)
-        } catch (e: Exception) {
-            Result.failure(e)
+            post to result.second
         }
 
     private fun preserveCachedPreviewData(freshPost: Post): Post {
@@ -107,108 +98,78 @@ class PostRepository(
         linkId: String,
         children: List<String>,
         sort: CommentSort = CommentSort.CONFIDENCE,
-    ): Result<List<CommentOrMore>> =
-        try {
-            val comments = redditApi.getMoreComments(linkId, children, sort)
-            Result.success(comments)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    ): Result<List<CommentOrMore>> = runSuspendCatching { redditApi.getMoreComments(linkId, children, sort) }
 
     suspend fun vote(
         post: Post,
         direction: Int,
     ): Result<Post> =
-        try {
-            val success = redditApi.vote(post.name, direction)
-            if (success) {
-                val newLikes =
-                    when (direction) {
-                        1 -> true
-                        -1 -> false
-                        else -> null
-                    }
-                val scoreDiff = direction - likesToVote(post.likes)
-                val updatedPost =
-                    post.copy(
-                        likes = newLikes,
-                        score = post.score + scoreDiff,
-                    )
-                cachedPosts.update { it + (post.id to updatedPost) }
-                _postUpdates.emit(updatedPost)
-                Result.success(updatedPost)
-            } else {
-                Result.failure(Exception("Vote failed"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            check(redditApi.vote(post.name, direction)) { "Vote failed" }
+            val newLikes =
+                when (direction) {
+                    1 -> true
+                    -1 -> false
+                    else -> null
+                }
+            val scoreDiff = direction - likesToVote(post.likes)
+            val updatedPost =
+                post.copy(
+                    likes = newLikes,
+                    score = post.score + scoreDiff,
+                )
+            cachedPosts.update { it + (post.id to updatedPost) }
+            _postUpdates.emit(updatedPost)
+            updatedPost
         }
 
     suspend fun voteComment(
         comment: Comment,
         direction: Int,
     ): Result<Comment> =
-        try {
-            val success = redditApi.vote(comment.name, direction)
-            if (success) {
-                val newLikes =
-                    when (direction) {
-                        1 -> true
-                        -1 -> false
-                        else -> null
-                    }
-                val scoreDiff = direction - likesToVote(comment.likes)
-                val updatedComment =
-                    comment.copy(
-                        likes = newLikes,
-                        score = comment.score + scoreDiff,
-                    )
-                Result.success(updatedComment)
-            } else {
-                Result.failure(Exception("Vote failed"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            check(redditApi.vote(comment.name, direction)) { "Vote failed" }
+            val newLikes =
+                when (direction) {
+                    1 -> true
+                    -1 -> false
+                    else -> null
+                }
+            val scoreDiff = direction - likesToVote(comment.likes)
+            comment.copy(
+                likes = newLikes,
+                score = comment.score + scoreDiff,
+            )
         }
 
     suspend fun save(post: Post): Result<Post> =
-        try {
+        runSuspendCatching {
             val success =
                 if (post.isSaved) {
                     redditApi.unsave(post.name)
                 } else {
                     redditApi.save(post.name)
                 }
-            if (success) {
-                val updatedPost = post.copy(isSaved = !post.isSaved)
-                cachedPosts.update { it + (post.id to updatedPost) }
-                _postUpdates.emit(updatedPost)
-                Result.success(updatedPost)
-            } else {
-                Result.failure(Exception("Save failed"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+            check(success) { "Save failed" }
+            val updatedPost = post.copy(isSaved = !post.isSaved)
+            cachedPosts.update { it + (post.id to updatedPost) }
+            _postUpdates.emit(updatedPost)
+            updatedPost
         }
 
     suspend fun hide(post: Post): Result<Post> =
-        try {
+        runSuspendCatching {
             val success =
                 if (post.isHidden) {
                     redditApi.unhide(post.name)
                 } else {
                     redditApi.hide(post.name)
                 }
-            if (success) {
-                val updatedPost = post.copy(isHidden = !post.isHidden)
-                cachedPosts.update { it + (post.id to updatedPost) }
-                _postUpdates.emit(updatedPost)
-                Result.success(updatedPost)
-            } else {
-                Result.failure(Exception("Hide failed"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+            check(success) { "Hide failed" }
+            val updatedPost = post.copy(isHidden = !post.isHidden)
+            cachedPosts.update { it + (post.id to updatedPost) }
+            _postUpdates.emit(updatedPost)
+            updatedPost
         }
 
     suspend fun search(
@@ -217,13 +178,7 @@ class PostRepository(
         sort: SearchSort = SearchSort.RELEVANCE,
         time: TimeFilter = TimeFilter.ALL,
         after: String? = null,
-    ): Result<Listing<Post>> =
-        try {
-            val listing = redditApi.search(query, subreddit, sort, time, after)
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    ): Result<Listing<Post>> = runSuspendCatching { redditApi.search(query, subreddit, sort, time, after) }
 
     suspend fun submitPost(
         subreddit: String,
@@ -233,16 +188,9 @@ class PostRepository(
         nsfw: Boolean = false,
         spoiler: Boolean = false,
     ): Result<String> =
-        try {
+        runSuspendCatching {
             val kind = if (url != null) "link" else "self"
-            val postName = redditApi.submitPost(subreddit, title, kind, text, url, nsfw, spoiler)
-            if (postName != null) {
-                Result.success(postName)
-            } else {
-                Result.failure(Exception("Failed to submit post"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+            redditApi.submitPost(subreddit, title, kind, text, url, nsfw, spoiler) ?: error("Failed to submit post")
         }
 
     fun getCachedPost(postId: String): Post? = cachedPosts.value[postId]

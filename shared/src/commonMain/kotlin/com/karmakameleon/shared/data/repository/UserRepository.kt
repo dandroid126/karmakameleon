@@ -9,6 +9,7 @@ import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
+import com.karmakameleon.shared.util.runSuspendCatching
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -40,95 +41,47 @@ class UserRepository(
     }
 
     suspend fun loadCurrentUser(): Result<Account> =
-        try {
-            val account = redditApi.getMe()
-            if (account != null) {
-                _currentAccount.value = account
-                _isLoggedIn.value = true
-                Result.success(account)
-            } else {
-                Result.failure(Exception("Failed to load user"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            val account = redditApi.getMe() ?: error("Failed to load user")
+            _currentAccount.value = account
+            _isLoggedIn.value = true
+            account
         }
 
-    suspend fun getUser(username: String): Result<User> =
-        try {
-            val user = redditApi.getUser(username)
-            if (user != null) {
-                Result.success(user)
-            } else {
-                Result.failure(Exception("User not found"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend fun getUser(username: String): Result<User> = runSuspendCatching { redditApi.getUser(username) ?: error("User not found") }
 
     suspend fun getUserPosts(
         username: String,
         sort: PostSort = PostSort.NEW,
         timeFilter: TimeFilter? = null,
         after: String? = null,
-    ): Result<Listing<Post>> =
-        try {
-            val listing = redditApi.getUserPosts(username, sort, timeFilter, after)
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    ): Result<Listing<Post>> = runSuspendCatching { redditApi.getUserPosts(username, sort, timeFilter, after) }
 
     suspend fun getUserComments(
         username: String,
         sort: PostSort = PostSort.NEW,
         timeFilter: TimeFilter? = null,
         after: String? = null,
-    ): Result<Listing<Comment>> =
-        try {
-            val listing = redditApi.getUserComments(username, sort, timeFilter, after)
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    ): Result<Listing<Comment>> = runSuspendCatching { redditApi.getUserComments(username, sort, timeFilter, after) }
 
     suspend fun getSavedPosts(after: String? = null): Result<Listing<Post>> {
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
-        return try {
-            val listing = redditApi.getSavedPosts(username, after)
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return runSuspendCatching { redditApi.getSavedPosts(username, after) }
     }
 
     suspend fun getSavedComments(after: String? = null): Result<Listing<Comment>> {
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
-        return try {
-            val listing = redditApi.getSavedComments(username, after)
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return runSuspendCatching { redditApi.getSavedComments(username, after) }
     }
 
     suspend fun getUpvotedPosts(after: String? = null): Result<Listing<Post>> {
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
-        return try {
-            val listing = redditApi.getUpvotedPosts(username, after)
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return runSuspendCatching { redditApi.getUpvotedPosts(username, after) }
     }
 
     suspend fun getDownvotedPosts(after: String? = null): Result<Listing<Post>> {
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
-        return try {
-            val listing = redditApi.getDownvotedPosts(username, after)
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+        return runSuspendCatching { redditApi.getDownvotedPosts(username, after) }
     }
 
     fun getAuthorizationUrl(state: String): String = authManager.getAuthorizationUrl(state)

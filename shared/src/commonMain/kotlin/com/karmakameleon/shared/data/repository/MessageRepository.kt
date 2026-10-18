@@ -5,6 +5,7 @@ import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Message
+import com.karmakameleon.shared.util.runSuspendCatching
 
 class MessageRepository(
     private val redditApi: RedditApi,
@@ -12,111 +13,57 @@ class MessageRepository(
     suspend fun getInbox(
         filter: InboxFilter = InboxFilter.ALL,
         after: String? = null,
-    ): Result<Listing<Message>> =
-        try {
-            val listing = redditApi.getInbox(filter, after)
-            Result.success(listing)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    ): Result<Listing<Message>> = runSuspendCatching { redditApi.getInbox(filter, after) }
 
     suspend fun sendMessage(
         to: String,
         subject: String,
         body: String,
     ): Result<Unit> =
-        try {
-            val success = redditApi.sendMessage(to, subject, body)
-            if (success) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Failed to send message"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            check(redditApi.sendMessage(to, subject, body)) { "Failed to send message" }
         }
 
     suspend fun markAsRead(message: Message): Result<Unit> =
-        try {
-            val success = redditApi.markMessageRead(message.name)
-            if (success) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Failed to mark as read"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            check(redditApi.markMessageRead(message.name)) { "Failed to mark as read" }
         }
 
     suspend fun markAllAsRead(): Result<Unit> =
-        try {
-            val success = redditApi.markAllMessagesRead()
-            if (success) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Failed to mark all as read"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            check(redditApi.markAllMessagesRead()) { "Failed to mark all as read" }
         }
 
     suspend fun markAsUnread(message: Message): Result<Unit> =
-        try {
-            val success = redditApi.markMessageUnread(message.name)
-            if (success) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Failed to mark as unread"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            check(redditApi.markMessageUnread(message.name)) { "Failed to mark as unread" }
         }
 
     suspend fun blockUser(username: String): Result<Unit> =
-        try {
-            val success = redditApi.blockUser(username)
-            if (success) {
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Failed to block user"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            check(redditApi.blockUser(username)) { "Failed to block user" }
         }
 
     suspend fun voteOnMessage(
         message: Message,
         direction: Int,
     ): Result<Message> =
-        try {
-            val success = redditApi.vote(message.name, direction)
-            if (success) {
-                val newLikes =
-                    when (direction) {
-                        1 -> true
-                        -1 -> false
-                        else -> null
-                    }
-                Result.success(message.copy(likes = newLikes))
-            } else {
-                Result.failure(Exception("Vote failed"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            check(redditApi.vote(message.name, direction)) { "Vote failed" }
+            val newLikes =
+                when (direction) {
+                    1 -> true
+                    -1 -> false
+                    else -> null
+                }
+            message.copy(likes = newLikes)
         }
 
     suspend fun replyToMessage(
         message: Message,
         text: String,
     ): Result<Comment> =
-        try {
-            val comment = redditApi.submitComment(message.name, text)
-            if (comment != null) {
-                Result.success(comment)
-            } else {
-                Result.failure(Exception("Failed to submit reply"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        runSuspendCatching {
+            redditApi.submitComment(message.name, text) ?: error("Failed to submit reply")
         }
 }

@@ -42,6 +42,7 @@ import com.karmakameleon.shared.domain.model.User
 import com.karmakameleon.shared.domain.model.UserSubreddit
 import com.karmakameleon.shared.util.RedditLink
 import com.karmakameleon.shared.util.parseRedditLink
+import com.karmakameleon.shared.util.runSuspendCatching
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
@@ -57,10 +58,12 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.Parameters
 import io.ktor.http.isSuccess
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -77,8 +80,9 @@ open class RedditApi(
     private val httpClient: HttpClient,
     private val authManager: AuthManager,
     private val settingsRepository: SettingsRepository? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    private val apiScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val apiScope = CoroutineScope(ioDispatcher + SupervisorJob())
 
     private val json =
         Json {
@@ -96,7 +100,7 @@ open class RedditApi(
     private suspend fun authenticatedRequest(block: HttpRequestBuilder.() -> Unit): HttpResponse {
         val token =
             authManager.getAccessToken()
-                ?: throw IllegalStateException("No Reddit Client ID configured. Please enter your Client ID in the Profile tab.")
+                ?: error("No Reddit Client ID configured. Please enter your Client ID in the Profile tab.")
         return httpClient.request {
             block()
             header(HttpHeaders.Authorization, "Bearer $token")
@@ -130,7 +134,7 @@ open class RedditApi(
     }
 
     open suspend fun fetchPostsByIds(fullnames: List<String>): List<Post> =
-        try {
+        runSuspendCatching {
             val response =
                 authenticatedRequest {
                     method = HttpMethod.Get
@@ -141,9 +145,7 @@ open class RedditApi(
             val body = response.bodyAsText()
             val redditResponse = json.decodeFromString<RedditResponse<ListingData>>(body)
             parsePostListing(redditResponse.data).items
-        } catch (_: Exception) {
-            emptyList()
-        }
+        }.getOrDefault(emptyList())
 
     open suspend fun getPost(
         subreddit: String,
@@ -658,20 +660,12 @@ open class RedditApi(
             }
 
         val body = response.bodyAsText() // Always consume body to release connection
-        if (!response.status.isSuccess()) {
-            parseApiErrors(body)?.let { throw it }
-            return null
-        }
+        // Reddit reports errors such as rate limits in the body, with a success status too.
+        parseApiErrors(body)?.let { throw it }
+        if (!response.status.isSuccess()) return null
         // Parse the response to extract the new comment
         return try {
             val jsonResponse = json.parseToJsonElement(body).jsonObject
-            val errors = jsonResponse["json"]?.jsonObject?.get("errors")?.jsonArray
-            if (!errors.isNullOrEmpty()) {
-                val firstError = errors.firstOrNull()?.jsonArray
-                val errorCode = firstError?.getOrNull(0)?.jsonPrimitive?.content ?: "UNKNOWN"
-                val errorMessage = firstError?.getOrNull(1)?.jsonPrimitive?.content ?: "Unknown error"
-                throw RedditApiException(errorCode, errorMessage)
-            }
             val data = jsonResponse["json"]?.jsonObject?.get("data")?.jsonObject
             val things =
                 data
@@ -680,9 +674,7 @@ open class RedditApi(
                     ?.firstOrNull()
                     ?.jsonObject
             things?.get("data")?.let { parseComment(it, 0) }
-        } catch (e: RedditApiException) {
-            throw e
-        } catch (e: Exception) {
+        } catch (e: IllegalArgumentException) {
             Napier.e("Failed to parse comment response", e)
             null
         }
@@ -875,7 +867,7 @@ open class RedditApi(
             val jsonResponse = json.parseToJsonElement(body).jsonObject
             val data = jsonResponse["json"]?.jsonObject?.get("data")?.jsonObject
             data?.get("name")?.jsonPrimitive?.content
-        } catch (e: Exception) {
+        } catch (e: IllegalArgumentException) {
             Napier.e("Failed to parse submit response", e)
             null
         }
@@ -983,7 +975,7 @@ open class RedditApi(
 
     private suspend fun fetchSubredditsBatch(subredditNames: List<String>) {
         subredditNames.chunked(100).forEach { batch ->
-            try {
+            runSuspendCatching {
                 val response =
                     authenticatedRequest {
                         method = HttpMethod.Get
@@ -996,7 +988,7 @@ open class RedditApi(
                 parseSubredditListing(redditResponse.data).items.forEach { subreddit ->
                     settingsRepository?.setSubredditNsfw(subreddit.displayName, subreddit.isNsfw)
                 }
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 Napier.e("Failed to batch fetch subreddits", e)
                 batch.forEach { fetchAndCacheSubredditNsfw(it) }
             }
@@ -1004,10 +996,10 @@ open class RedditApi(
     }
 
     private suspend fun fetchAndCacheSubredditNsfw(subredditName: String) {
-        try {
+        runSuspendCatching {
             val subreddit = getSubreddit(subredditName)
             settingsRepository?.setSubredditNsfw(subredditName, subreddit?.isNsfw ?: false)
-        } catch (e: Exception) {
+        }.onFailure { e ->
             Napier.e("Failed to fetch subreddit NSFW status: $subredditName", e)
             settingsRepository?.setSubredditNsfw(subredditName, false)
         }
@@ -1278,7 +1270,7 @@ open class RedditApi(
                     emptyList()
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: IllegalArgumentException) {
             Napier.e("Failed to parse replies", e)
             emptyList()
         }
@@ -1286,14 +1278,10 @@ open class RedditApi(
 
     private fun parseEdited(edited: JsonElement?): Long? {
         if (edited == null) return null
-        return try {
-            when {
-                edited is JsonPrimitive && edited.booleanOrNull == false -> null
-                edited is JsonPrimitive && edited.doubleOrNull != null -> edited.double.toLong()
-                else -> null
-            }
-        } catch (e: Exception) {
-            null
+        return when {
+            edited is JsonPrimitive && edited.booleanOrNull == false -> null
+            edited is JsonPrimitive && edited.doubleOrNull != null -> edited.double.toLong()
+            else -> null
         }
     }
 
@@ -1434,8 +1422,8 @@ open class RedditApi(
     open suspend fun resolveShareLink(
         subreddit: String,
         shareId: String,
-    ): Pair<String, String>? {
-        return try {
+    ): Pair<String, String>? =
+        runSuspendCatching {
             val noRedirectClient =
                 okhttp3.OkHttpClient
                     .Builder()
@@ -1448,7 +1436,7 @@ open class RedditApi(
                     .header("User-Agent", "KK/1.0.0 (Android)")
                     .build()
             val locationUrl =
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                withContext(ioDispatcher) {
                     noRedirectClient.newCall(request).execute().use { response ->
                         response.header("Location")
                     }
@@ -1457,10 +1445,7 @@ open class RedditApi(
                 is RedditLink.Post -> Pair(parsed.subreddit, parsed.postId)
                 else -> null
             }
-        } catch (_: Exception) {
-            null
-        }
-    }
+        }.getOrNull()
 
     private fun resolveRedditMediaUrl(url: String): String {
         if (url.startsWith("https://www.reddit.com/media?url=") || url.startsWith("https://reddit.com/media?url=")) {

@@ -39,7 +39,6 @@
     <ID>CyclomaticComplexMethod:VideoPlayer.kt:@Composable private fun VideoControlsOverlay</ID>
     <ID>CyclomaticComplexMethod:VideoPlayer.kt:@OptIn(UnstableApi::class) @Composable fun VideoPlayer</ID>
     <ID>ImplicitDefaultLocale:VideoPlayer.kt:"%d:%02d".format(minutes, seconds)</ID>
-    <ID>InjectDispatcher:MediaLongPressMenu.kt:IO</ID>
     <ID>LongMethod:CommentItem.kt:@Composable fun CommentItem</ID>
     <ID>LongMethod:CompactPostCard.kt:@Composable private fun CompactThumbnail</ID>
     <ID>LongMethod:CompactPostCard.kt:@OptIn(ExperimentalLayoutApi::class) @Composable fun CompactPostCard</ID>
@@ -119,8 +118,6 @@
     <ID>ParameterNaming:SortBottomSheet.kt:onSortSelected: (PostSort) -&gt; Unit</ID>
     <ID>ParameterNaming:SortBottomSheet.kt:onTimeFilterSelected: (TimeFilter) -&gt; Unit</ID>
     <ID>ReturnCount:InboxNotificationWorker.kt:InboxNotificationWorker$override suspend fun doWork: Result</ID>
-    <ID>SwallowedException:MediaLongPressMenu.kt:e: Exception</ID>
-    <ID>TooGenericExceptionCaught:MediaLongPressMenu.kt:e: Exception</ID>
     <ID>UnnecessaryLaunchedEffect:FeedScreen.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:InboxScreen.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:KarmaKameleonApp.kt:LaunchedEffect</ID>
