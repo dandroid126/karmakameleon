@@ -65,7 +65,6 @@ class InboxNotificationWorker(
         private const val KEY_KNOWN_IDS = "known_message_ids"
         private const val KEY_FIRST_RUN = "first_run"
         const val WORK_NAME = "inbox_notification_worker"
-        private const val MIN_INTERVAL_MINUTES = 15L
 
         fun schedule(context: Context) {
             val workManager = WorkManager.getInstance(context)

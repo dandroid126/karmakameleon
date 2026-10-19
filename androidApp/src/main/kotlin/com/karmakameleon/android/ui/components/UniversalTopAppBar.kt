@@ -28,7 +28,6 @@ fun UniversalTopAppBar(
     modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable () -> Unit = {},
-    currentRoute: String? = null,
     excludeProfile: Boolean = false,
     excludeInbox: Boolean = false,
     excludeSettings: Boolean = false,

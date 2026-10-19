@@ -23,10 +23,6 @@
     <ID>MagicNumber:PostCard.kt:86400</ID>
     <ID>MatchingDeclarationName:MediaLongPressMenu.kt:MediaMenuItem</ID>
     <ID>MatchingDeclarationName:PostListItem.kt:CompactPostSelection</ID>
-    <ID>UnusedParameter:SubredditScreen.kt:onSubredditClick: (String) -&gt; Unit = {}</ID>
-    <ID>UnusedParameter:Theme.kt:darkTheme: Boolean = isSystemInDarkTheme()</ID>
-    <ID>UnusedParameter:UniversalTopAppBar.kt:currentRoute: String? = null</ID>
-    <ID>UnusedPrivateProperty:InboxNotificationWorker.kt:InboxNotificationWorker.Companion$private const val MIN_INTERVAL_MINUTES = 15L</ID>
     <ID>UseOrEmpty:InboxNotificationWorker.kt:InboxNotificationWorker$prefs.getString(KEY_KNOWN_IDS, "") ?: ""</ID>
   </CurrentIssues>
 </SmellBaseline>

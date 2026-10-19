@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.update
 
 class SubredditRepository(
     private val redditApi: RedditApi,
-    private val settingsRepository: SettingsRepository,
+    settingsRepository: SettingsRepository,
 ) {
     private val _subscribedSubreddits = MutableStateFlow<List<Subreddit>>(emptyList())
     val subscribedSubreddits: StateFlow<List<Subreddit>> = _subscribedSubreddits.asStateFlow()

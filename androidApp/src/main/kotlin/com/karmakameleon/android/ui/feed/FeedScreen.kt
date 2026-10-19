@@ -72,7 +72,6 @@ fun FeedScreen(
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    currentRoute: String? = null,
     onLinkClick: (String) -> Unit = {},
     viewModel: FeedViewModel = koinViewModel(),
     navigationHandler: NavigationHandler = koinInject(),
@@ -92,7 +91,6 @@ fun FeedScreen(
         topBar = {
             FeedTopBar(
                 currentFeedType = uiState.currentFeedType,
-                currentRoute = currentRoute,
                 onSelectFeedType = viewModel::setFeedType,
                 onSortClick = { showSortSheet = true },
             )
@@ -142,12 +140,10 @@ fun FeedScreen(
 @Composable
 private fun FeedTopBar(
     currentFeedType: FeedType,
-    currentRoute: String?,
     onSelectFeedType: (FeedType) -> Unit,
     onSortClick: () -> Unit,
 ) {
     UniversalTopAppBar(
-        currentRoute = currentRoute,
         title = { FeedTypeMenu(currentFeedType = currentFeedType, onSelectFeedType = onSelectFeedType) },
         actions = {
             IconButton(onClick = onSortClick) {

@@ -107,7 +107,6 @@ fun ProfileScreen(
     onSubredditClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     username: String? = null,
-    currentRoute: String? = null,
     onBackClick: (() -> Unit)? = null,
     onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, c -> onPostClick(s, p) },
     onLinkClick: (String) -> Unit = {},
@@ -135,7 +134,6 @@ fun ProfileScreen(
             ProfileTopBar(
                 uiState = uiState,
                 username = username,
-                currentRoute = currentRoute,
                 onBackClick = onBackClick,
                 onCancelLogin = viewModel::cancelLogin,
                 onLogout = {
@@ -358,13 +356,11 @@ private fun ProfileLoading(
 private fun ProfileTopBar(
     uiState: ProfileUiState,
     username: String?,
-    currentRoute: String?,
     onBackClick: (() -> Unit)?,
     onCancelLogin: () -> Unit,
     onLogout: () -> Unit,
 ) {
     UniversalTopAppBar(
-        currentRoute = currentRoute,
         excludeProfile = uiState.isOwnProfile,
         title = {
             val titleText =

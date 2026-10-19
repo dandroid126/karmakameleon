@@ -140,7 +140,6 @@ fun PostDetailScreen(
     modifier: Modifier = Modifier,
     commentId: String? = null,
     commentContext: Int? = null,
-    currentRoute: String? = null,
     onGoToCommentNav: (commentId: String) -> Unit = {},
     viewModel: PostDetailViewModel = koinViewModel { parametersOf(PostDetailTarget(subreddit, postId, commentId, commentContext)) },
     settingsRepository: SettingsRepository = koinInject(),
@@ -162,7 +161,7 @@ fun PostDetailScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { PostDetailTopBar(currentRoute = currentRoute, onBackClick = onBackClick) },
+        topBar = { PostDetailTopBar(onBackClick = onBackClick) },
         bottomBar = {
             if (uiState.isLoggedIn) PostReplyBar(commentState = commentState, actions = replyActions)
         },
@@ -231,12 +230,8 @@ private fun rememberPostDetailScreenState(): PostDetailScreenState {
 }
 
 @Composable
-private fun PostDetailTopBar(
-    currentRoute: String?,
-    onBackClick: () -> Unit,
-) {
+private fun PostDetailTopBar(onBackClick: () -> Unit) {
     UniversalTopAppBar(
-        currentRoute = currentRoute,
         title = { Text("Comments") },
         navigationIcon = {
             IconButton(onClick = onBackClick) {

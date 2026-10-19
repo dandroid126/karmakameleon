@@ -76,8 +76,6 @@ fun SubredditScreen(
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onUserClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    currentRoute: String? = null,
-    onSubredditClick: (String) -> Unit = {},
     onLinkClick: (String) -> Unit = {},
     viewModel: SubredditViewModel = koinViewModel { parametersOf(subredditName) },
     navigationHandler: NavigationHandler = koinInject(),
@@ -106,7 +104,6 @@ fun SubredditScreen(
         topBar = {
             SubredditTopBar(
                 subredditName = subredditName,
-                currentRoute = currentRoute,
                 onBackClick = onBackClick,
                 onSortClick = { showSortSheet = true },
             )
@@ -145,12 +142,10 @@ fun SubredditScreen(
 @Composable
 private fun SubredditTopBar(
     subredditName: String,
-    currentRoute: String?,
     onBackClick: () -> Unit,
     onSortClick: () -> Unit,
 ) {
     UniversalTopAppBar(
-        currentRoute = currentRoute,
         title = { Text("r/$subredditName") },
         navigationIcon = {
             IconButton(onClick = onBackClick) {

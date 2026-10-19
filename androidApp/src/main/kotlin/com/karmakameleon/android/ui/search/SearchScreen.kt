@@ -75,7 +75,6 @@ fun SearchScreen(
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    currentRoute: String? = null,
     onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, _ -> onPostClick(s, p) },
     onLinkClick: (String) -> Unit = {},
     viewModel: SearchViewModel = koinViewModel(),
@@ -94,7 +93,6 @@ fun SearchScreen(
         modifier = modifier,
         topBar = {
             SearchTopBar(
-                currentRoute = currentRoute,
                 uiState = uiState,
                 onQueryChange = viewModel::setQuery,
                 onSortClick = { showSortMenu = true },
@@ -197,14 +195,12 @@ private fun BoxScope.SearchContent(
 // The app bar, the search field and, while searching posts, the sort and time filter.
 @Composable
 private fun SearchTopBar(
-    currentRoute: String?,
     uiState: SearchUiState,
     onQueryChange: (String) -> Unit,
     onSortClick: () -> Unit,
 ) {
     Column {
         UniversalTopAppBar(
-            currentRoute = currentRoute,
             title = { Text("Search") },
         )
 

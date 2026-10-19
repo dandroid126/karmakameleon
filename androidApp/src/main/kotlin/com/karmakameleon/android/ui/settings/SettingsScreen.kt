@@ -52,7 +52,6 @@ import org.koin.compose.koinInject
 fun SettingsScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
-    currentRoute: String? = null,
     settingsRepository: SettingsRepository = koinInject(),
     readPostsRepository: ReadPostsRepository = koinInject(),
 ) {
@@ -75,7 +74,6 @@ fun SettingsScreen(
         modifier = modifier,
         topBar = {
             UniversalTopAppBar(
-                currentRoute = currentRoute,
                 excludeSettings = true,
                 title = { Text("Settings") },
                 navigationIcon = {

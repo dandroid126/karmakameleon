@@ -5,7 +5,7 @@
 All colors go in the color constants file, `androidApp/src/main/kotlin/com/karmakameleon/android/ui/theme/Theme.kt`. Never hardcode a color (`Color(0x...)`, `Color.Black`, `Color.White`, `Color.Gray`, etc.) anywhere else.
 
 - Prefer a `MaterialTheme.colorScheme` role when one fits.
-- Otherwise add a field to the matching colors class in `Theme.kt` (`VoteColors`, `PostFlairColors`, `CommentColors`, `MessageColors`, `MediaColors`, `ReadStateColors`), or add a new class there following the same pattern. Read it through its composable, e.g. `mediaColors().onOverlayColor`.
+- Otherwise add a field to the matching colors class in `Theme.kt` (`VoteColors`, `PostFlairColors`, `CommentColors`, `MessageColors`, `MediaColors`, `ReadStateColors`), or add a new class there following the same pattern. Read it through its function, e.g. `mediaColors().onOverlayColor`; the function is `@Composable` only when the colors depend on the theme.
 - `Color.Transparent` (no color) and `Color.Unspecified` (inherit) aren't colors, so they can be used anywhere.
 - Tests should use these constants too where they can. Tests in the `shared` module can't see `Theme.kt`, so they may use literal values.
 

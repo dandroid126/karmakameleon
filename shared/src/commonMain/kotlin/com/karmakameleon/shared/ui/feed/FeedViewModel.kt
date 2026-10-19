@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
-import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
@@ -44,7 +43,6 @@ data class FeedUiState(
 
 class FeedViewModel(
     private val postRepository: PostRepository,
-    private val subredditRepository: SubredditRepository,
     private val userRepository: UserRepository,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {

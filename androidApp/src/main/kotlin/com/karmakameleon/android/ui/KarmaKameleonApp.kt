@@ -176,9 +176,9 @@ fun KarmaKameleonApp(modifier: Modifier = Modifier) {
                     .padding(innerPadding)
                     .consumeWindowInsets(innerPadding),
         ) {
-            mainTabs(navController, currentRoute)
-            profileAndSettingsScreens(navController, currentRoute, ownUsername = currentAccount?.name)
-            contentScreens(navController, currentRoute)
+            mainTabs(navController)
+            profileAndSettingsScreens(navController, ownUsername = currentAccount?.name)
+            contentScreens(navController)
             mediaViewers(navController)
         }
     }
@@ -391,13 +391,9 @@ private fun NavBackStackEntry.stringArgument(name: String): String = arguments?.
 
 private fun NavBackStackEntry.urlArgument(name: String): String = decodeUrl(stringArgument(name))
 
-private fun NavGraphBuilder.mainTabs(
-    navController: NavController,
-    currentRoute: String?,
-) {
+private fun NavGraphBuilder.mainTabs(navController: NavController) {
     composable(Screen.Feed.route) {
         FeedScreen(
-            currentRoute = currentRoute,
             onPostClick = { subreddit, postId -> navController.openPost(subreddit, postId) },
             onSubredditClick = navController::openSubreddit,
             onUserClick = navController::openUser,
@@ -405,11 +401,10 @@ private fun NavGraphBuilder.mainTabs(
         )
     }
     composable(Screen.Subreddits.route) {
-        SubredditListScreen(currentRoute = currentRoute, onSubredditClick = navController::openSubreddit)
+        SubredditListScreen(onSubredditClick = navController::openSubreddit)
     }
     composable(Screen.Search.route) {
         SearchScreen(
-            currentRoute = currentRoute,
             onPostClick = { subreddit, postId -> navController.openPost(subreddit, postId) },
             onCommentClick = navController::openPost,
             onSubredditClick = navController::openSubreddit,
@@ -421,7 +416,6 @@ private fun NavGraphBuilder.mainTabs(
 
 private fun NavGraphBuilder.profileAndSettingsScreens(
     navController: NavController,
-    currentRoute: String?,
     ownUsername: String?,
 ) {
     detailScreen(
@@ -438,14 +432,12 @@ private fun NavGraphBuilder.profileAndSettingsScreens(
         val filterName = backStackEntry.arguments?.getString("filter")
         InboxScreen(
             initialFilter = filterName?.let { runCatching { InboxFilter.valueOf(it) }.getOrNull() },
-            currentRoute = currentRoute,
             onBackClick = { navController.popBackStack() },
         )
     }
     detailScreen(DetailScreen.OwnProfile.route) {
         ProfileScreen(
             username = ownUsername,
-            currentRoute = currentRoute,
             onBackClick = { navController.popBackStack() },
             onPostClick = { subreddit, postId -> navController.openPost(subreddit, postId) },
             onCommentClick = navController::openPost,
@@ -456,7 +448,6 @@ private fun NavGraphBuilder.profileAndSettingsScreens(
     detailScreen(DetailScreen.UserProfile.route, listOf(navArgument("username") { type = NavType.StringType })) { backStackEntry ->
         ProfileScreen(
             username = backStackEntry.stringArgument("username"),
-            currentRoute = currentRoute,
             onBackClick = { navController.popBackStack() },
             onPostClick = { subreddit, postId -> navController.openPost(subreddit, postId) },
             onCommentClick = navController::openPost,
@@ -464,22 +455,17 @@ private fun NavGraphBuilder.profileAndSettingsScreens(
         )
     }
     detailScreen(DetailScreen.Settings.route) {
-        SettingsScreen(currentRoute = currentRoute, onBackClick = { navController.popBackStack() })
+        SettingsScreen(onBackClick = { navController.popBackStack() })
     }
 }
 
-private fun NavGraphBuilder.contentScreens(
-    navController: NavController,
-    currentRoute: String?,
-) {
+private fun NavGraphBuilder.contentScreens(navController: NavController) {
     detailScreen(DetailScreen.SubredditDetail.route, listOf(navArgument("subredditName") { type = NavType.StringType })) { backStackEntry ->
         SubredditScreen(
             subredditName = backStackEntry.stringArgument("subredditName"),
-            currentRoute = currentRoute,
             onBackClick = { navController.popBackStack() },
             onPostClick = { subreddit, postId -> navController.openPost(subreddit, postId) },
             onUserClick = navController::openUser,
-            onSubredditClick = navController::openSubreddit,
             onLinkClick = navController::openLink,
         )
     }
@@ -507,7 +493,6 @@ private fun NavGraphBuilder.contentScreens(
             postId = postId,
             commentId = backStackEntry.arguments?.getString("commentId"),
             commentContext = backStackEntry.arguments?.getInt("context"),
-            currentRoute = currentRoute,
             onBackClick = { navController.popBackStack() },
             onGoToCommentNav = { targetCommentId -> navController.openPost(subreddit, postId, targetCommentId) },
         )
