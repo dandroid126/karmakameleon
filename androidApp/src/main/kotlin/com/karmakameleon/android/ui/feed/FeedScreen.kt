@@ -48,6 +48,7 @@ import com.karmakameleon.android.ui.components.LoadMoreNearEnd
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
 import com.karmakameleon.android.ui.components.PostListItem
+import com.karmakameleon.android.ui.components.PostListScaffold
 import com.karmakameleon.android.ui.components.ScrollToTopAfterRefresh
 import com.karmakameleon.android.ui.components.ScrollToTopOnChange
 import com.karmakameleon.android.ui.components.SortBottomSheet
@@ -77,64 +78,41 @@ fun FeedScreen(
     navigationHandler: NavigationHandler = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val postListState by viewModel.postList.state.collectAsState()
     val listState = rememberLazyListState()
-    var showSortSheet by remember { mutableStateOf(false) }
     val feedSettings = rememberPostFeedSettings()
-
-    LoadMoreNearEnd(listState, postListState.posts.size, enabled = postListState.canLoadMore) { viewModel.postList.loadMore() }
-    ScrollToTopAfterRefresh(listState, postListState.isRefreshing)
 
     ScrollToTopOnChange(listState, uiState.currentFeedType)
 
-    Scaffold(
-        modifier = modifier,
-        topBar = {
+    PostListScaffold(
+        postList = viewModel.postList,
+        listState = listState,
+        topBar = { onSortClick ->
             FeedTopBar(
                 currentFeedType = uiState.currentFeedType,
                 onSelectFeedType = viewModel::setFeedType,
-                onSortClick = { showSortSheet = true },
+                onSortClick = onSortClick,
             )
         },
-    ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = postListState.isRefreshing,
-            onRefresh = { viewModel.postList.load(forceRefresh = true) },
-            state = rememberPullToRefreshState(),
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-        ) {
-            FeedContent(
-                postList = postListState,
-                isLoggedIn = uiState.isLoggedIn,
-                listState = listState,
-                feedSettings = feedSettings,
-                callbacks =
-                    PostListCallbacks(
-                        onPostClick = onPostClick,
-                        onSubredditClick = onSubredditClick,
-                        onUserClick = onUserClick,
-                        onLinkClick = onLinkClick,
-                        onCrosspostClick = navigationHandler::handleLink,
-                        onVote = viewModel.postList::vote,
-                        onSave = viewModel.postList::save,
-                        onHide = viewModel.postList::hide,
-                        onBlockSubreddit = viewModel::blockSubreddit,
-                    ),
-                onRetry = { viewModel.postList.load(forceRefresh = true) },
-            )
-        }
-    }
-
-    if (showSortSheet) {
-        SortBottomSheet(
-            currentSort = postListState.currentSort,
-            currentTimeFilter = postListState.currentTimeFilter,
-            onSelectSort = viewModel.postList::setSort,
-            onSelectTimeFilter = viewModel.postList::setTimeFilter,
-            onDismiss = { showSortSheet = false },
+        modifier = modifier,
+    ) { postListState ->
+        FeedContent(
+            postList = postListState,
+            isLoggedIn = uiState.isLoggedIn,
+            listState = listState,
+            feedSettings = feedSettings,
+            callbacks =
+                PostListCallbacks(
+                    onPostClick = onPostClick,
+                    onSubredditClick = onSubredditClick,
+                    onUserClick = onUserClick,
+                    onLinkClick = onLinkClick,
+                    onCrosspostClick = navigationHandler::handleLink,
+                    onVote = viewModel.postList::vote,
+                    onSave = viewModel.postList::save,
+                    onHide = viewModel.postList::hide,
+                    onBlockSubreddit = viewModel::blockSubreddit,
+                ),
+            onRetry = { viewModel.postList.load(forceRefresh = true) },
         )
     }
 }

@@ -51,6 +51,7 @@ import com.karmakameleon.android.ui.components.LoadMoreNearEnd
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
 import com.karmakameleon.android.ui.components.PostListItem
+import com.karmakameleon.android.ui.components.PostListScaffold
 import com.karmakameleon.android.ui.components.ScrollToTopAfterRefresh
 import com.karmakameleon.android.ui.components.SortBottomSheet
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
@@ -82,10 +83,8 @@ fun SubredditScreen(
     navigationHandler: NavigationHandler = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val postListState by viewModel.postList.state.collectAsState()
     val listState = rememberLazyListState()
     val feedSettings = rememberPostFeedSettings()
-    var showSortSheet by remember { mutableStateOf(false) }
     // Posts here are all in this subreddit, so tapping their subreddit does nothing and blocking isn't offered.
     val callbacks =
         PostListCallbacks(
@@ -98,46 +97,25 @@ fun SubredditScreen(
             onHide = viewModel.postList::hide,
         )
 
-    LoadMoreNearEnd(listState, postListState.posts.size, enabled = postListState.canLoadMore) { viewModel.postList.loadMore() }
-    ScrollToTopAfterRefresh(listState, postListState.isRefreshing)
-
-    Scaffold(
-        modifier = modifier,
-        topBar = {
+    PostListScaffold(
+        postList = viewModel.postList,
+        listState = listState,
+        topBar = { onSortClick ->
             SubredditTopBar(
                 subredditName = subredditName,
                 onBackClick = onBackClick,
-                onSortClick = { showSortSheet = true },
+                onSortClick = onSortClick,
             )
         },
-    ) { padding ->
-        PullToRefreshBox(
-            isRefreshing = postListState.isRefreshing,
-            onRefresh = { viewModel.postList.load(forceRefresh = true) },
-            state = rememberPullToRefreshState(),
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-        ) {
-            SubredditPostList(
-                uiState = uiState,
-                postList = postListState,
-                listState = listState,
-                feedSettings = feedSettings,
-                callbacks = callbacks,
-                onSubscribeClick = viewModel::toggleSubscribe,
-            )
-        }
-    }
-
-    if (showSortSheet) {
-        SortBottomSheet(
-            currentSort = postListState.currentSort,
-            currentTimeFilter = postListState.currentTimeFilter,
-            onSelectSort = viewModel.postList::setSort,
-            onSelectTimeFilter = viewModel.postList::setTimeFilter,
-            onDismiss = { showSortSheet = false },
+        modifier = modifier,
+    ) { postListState ->
+        SubredditPostList(
+            uiState = uiState,
+            postList = postListState,
+            listState = listState,
+            feedSettings = feedSettings,
+            callbacks = callbacks,
+            onSubscribeClick = viewModel::toggleSubscribe,
         )
     }
 }

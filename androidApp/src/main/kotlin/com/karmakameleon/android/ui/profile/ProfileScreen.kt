@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -61,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -83,14 +86,12 @@ import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
-import com.karmakameleon.shared.domain.model.Account
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
-import com.karmakameleon.shared.domain.model.User
 import com.karmakameleon.shared.ui.PagedList
 import com.karmakameleon.shared.ui.profile.ProfileList
 import com.karmakameleon.shared.ui.profile.ProfileTab
@@ -606,7 +607,18 @@ private fun ProfileSelectedTab(
 
     when (uiState.selectedTab) {
         ProfileTab.ABOUT -> {
-            if (uiState.isOwnProfile) AboutTab(account = uiState.account) else AboutTabForUser(user = uiState.user)
+            val account = uiState.account
+            val user = uiState.user
+            when {
+                // Premium and moderator status are only shown on your own profile.
+                uiState.isOwnProfile && account != null -> {
+                    AboutTab(account.linkKarma, account.commentKarma, account.totalKarma, account.isGold, account.isMod)
+                }
+
+                !uiState.isOwnProfile && user != null -> {
+                    AboutTab(user.linkKarma, user.commentKarma, user.totalKarma)
+                }
+            }
         }
 
         ProfileTab.POSTS -> {
@@ -788,51 +800,58 @@ private fun UserHeader(
     }
 }
 
+// The karma breakdown, then the account's Premium and moderator status when it has either.
 @Composable
-private fun AboutTab(account: Account?) {
-    if (account == null) return
-
+private fun AboutTab(
+    linkKarma: Int,
+    commentKarma: Int,
+    totalKarma: Int,
+    isGold: Boolean = false,
+    isMod: Boolean = false,
+) {
     LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        item {
-            Text("Karma Breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
+        aboutSection("Karma Breakdown") {
+            KarmaRow("Post Karma", linkKarma)
+            KarmaRow("Comment Karma", commentKarma)
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            KarmaRow("Total Karma", totalKarma, bold = true)
         }
-        item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    KarmaRow("Post Karma", account.linkKarma)
-                    KarmaRow("Comment Karma", account.commentKarma)
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    KarmaRow("Total Karma", account.totalKarma, bold = true)
-                }
+        if (isGold || isMod) {
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+            aboutSection("Account Info") {
+                if (isGold) AccountBadge(Icons.Default.Star, "Reddit Premium")
+                if (isGold && isMod) Spacer(modifier = Modifier.height(8.dp))
+                if (isMod) AccountBadge(Icons.Default.Verified, "Moderator")
             }
         }
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Account Info", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
+    }
+}
+
+// A heading and a card holding [content].
+private fun LazyListScope.aboutSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    item {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+    }
+    item {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp), content = content)
         }
-        item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    if (account.isGold) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Reddit Premium", fontWeight = FontWeight.Medium)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    if (account.isMod) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Verified, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Moderator", fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
-            }
-        }
+    }
+}
+
+@Composable
+private fun AccountBadge(
+    icon: ImageVector,
+    label: String,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(label, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -845,27 +864,5 @@ private fun KarmaRow(
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
         Text(formatNumber(value), fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal)
-    }
-}
-
-@Composable
-private fun AboutTabForUser(user: User?) {
-    if (user == null) return
-
-    LazyColumn(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        item {
-            Text("Karma Breakdown", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        item {
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    KarmaRow("Post Karma", user.linkKarma)
-                    KarmaRow("Comment Karma", user.commentKarma)
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    KarmaRow("Total Karma", user.totalKarma, bold = true)
-                }
-            }
-        }
     }
 }
