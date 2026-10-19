@@ -64,8 +64,8 @@ private val timeFilterLabels =
 fun SortBottomSheet(
     currentSort: PostSort,
     currentTimeFilter: TimeFilter,
-    onSortSelected: (PostSort) -> Unit,
-    onTimeFilterSelected: (TimeFilter) -> Unit,
+    onSelectSort: (PostSort) -> Unit,
+    onSelectTimeFilter: (TimeFilter) -> Unit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState()
@@ -94,7 +94,7 @@ fun SortBottomSheet(
                         selected = currentSort == choice.sort,
                         showArrow = choice.needsTimeFilter,
                         onClick = {
-                            onSortSelected(choice.sort)
+                            onSelectSort(choice.sort)
                             if (choice.needsTimeFilter) showTimeFilter = true else onDismiss()
                         },
                     )
@@ -105,7 +105,7 @@ fun SortBottomSheet(
                         text = label,
                         selected = currentTimeFilter == timeFilter,
                         onClick = {
-                            onTimeFilterSelected(timeFilter)
+                            onSelectTimeFilter(timeFilter)
                             onDismiss()
                         },
                     )

@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import com.karmakameleon.android.ui.menu.GlobalMenuManager
 import com.karmakameleon.android.ui.menu.OverflowMenuItem
 import com.karmakameleon.shared.data.repository.UserRepository
@@ -24,6 +25,7 @@ import org.koin.compose.koinInject
 @Composable
 fun UniversalTopAppBar(
     title: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable () -> Unit = {},
     currentRoute: String? = null,
@@ -43,6 +45,7 @@ fun UniversalTopAppBar(
 
     TopAppBar(
         title = title,
+        modifier = modifier,
         navigationIcon = navigationIcon,
         actions = {
             actions()

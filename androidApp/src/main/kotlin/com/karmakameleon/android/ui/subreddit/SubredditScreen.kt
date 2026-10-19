@@ -72,10 +72,11 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun SubredditScreen(
     subredditName: String,
-    currentRoute: String? = null,
     onBackClick: () -> Unit,
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onUserClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    currentRoute: String? = null,
     onSubredditClick: (String) -> Unit = {},
     onLinkClick: (String) -> Unit = {},
     viewModel: SubredditViewModel = koinViewModel { parametersOf(subredditName) },
@@ -101,6 +102,7 @@ fun SubredditScreen(
     ScrollToTopAfterRefresh(listState, uiState.isRefreshing)
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             SubredditTopBar(
                 subredditName = subredditName,
@@ -133,8 +135,8 @@ fun SubredditScreen(
         SortBottomSheet(
             currentSort = uiState.currentSort,
             currentTimeFilter = uiState.currentTimeFilter,
-            onSortSelected = viewModel::setSort,
-            onTimeFilterSelected = viewModel::setTimeFilter,
+            onSelectSort = viewModel::setSort,
+            onSelectTimeFilter = viewModel::setTimeFilter,
             onDismiss = { showSortSheet = false },
         )
     }

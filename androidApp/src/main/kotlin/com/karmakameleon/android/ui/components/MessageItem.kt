@@ -61,6 +61,7 @@ fun MessageItem(
     isSelected: Boolean,
     isLoggedIn: Boolean,
     actions: MessageActions,
+    modifier: Modifier = Modifier,
     navigationHandler: NavigationHandler = koinInject(),
 ) {
     // Replies and mentions are comments, so they can be voted on and opened in their thread.
@@ -68,7 +69,7 @@ fun MessageItem(
 
     Column(
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .background(if (isSelected) messageColors().selectedBackground else Color.Transparent)
                 .clickable { actions.onSelect() },

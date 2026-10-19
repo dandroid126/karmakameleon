@@ -71,11 +71,12 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
-    currentRoute: String? = null,
     onPostClick: (subreddit: String, postId: String) -> Unit,
-    onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, _ -> onPostClick(s, p) },
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    currentRoute: String? = null,
+    onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, _ -> onPostClick(s, p) },
     onLinkClick: (String) -> Unit = {},
     viewModel: SearchViewModel = koinViewModel(),
     navigationHandler: NavigationHandler = koinInject(),
@@ -90,6 +91,7 @@ fun SearchScreen(
     LoadMoreNearEnd(listState, uiState.posts.size, enabled = canLoadMore) { viewModel.loadMore() }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             SearchTopBar(
                 currentRoute = currentRoute,
