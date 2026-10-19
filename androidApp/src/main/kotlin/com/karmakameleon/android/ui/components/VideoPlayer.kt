@@ -1,6 +1,7 @@
 package com.karmakameleon.android.ui.components
 
 import android.app.Activity
+import android.content.Context
 import android.content.pm.ActivityInfo
 import android.view.TextureView
 import androidx.annotation.OptIn
@@ -40,6 +41,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
@@ -51,7 +54,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -76,7 +81,6 @@ import com.karmakameleon.android.data.VideoCacheProvider
 import com.karmakameleon.android.ui.theme.mediaColors
 import kotlinx.coroutines.delay
 
-@OptIn(UnstableApi::class)
 @Composable
 fun VideoPlayer(
     videoUrl: String,
@@ -84,139 +88,14 @@ fun VideoPlayer(
     modifier: Modifier = Modifier,
     menuItems: List<MediaMenuItem> = emptyList(),
 ) {
-    val context = LocalContext.current
-
-    var isOverlayVisible by remember { mutableStateOf(true) }
-    var isMuted by remember { mutableStateOf(false) }
-    var isLooping by remember { mutableStateOf(isGif) }
-    var isPlaying by remember { mutableStateOf(false) }
-    var currentPosition by remember { mutableLongStateOf(0L) }
-    var duration by remember { mutableLongStateOf(0L) }
-    var lastInteractionTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val player = rememberVideoPlayer(videoUrl, isGif)
+    val state = remember { VideoPlaybackState(player, isGif) }
     var isFullscreen by remember { mutableStateOf(false) }
+    // Bumped when leaving fullscreen, so the inline surface is recreated and takes the video back.
     var inlineViewKey by remember { mutableIntStateOf(0) }
-    var videoAspectRatio by remember { mutableFloatStateOf(16f / 9f) }
     var showMenu by remember { mutableStateOf(false) }
-    val hasRetriedWithoutAudio = remember { mutableStateOf(false) }
-
-    val exoPlayer =
-        remember {
-            val cache = VideoCacheProvider.getCache(context)
-            val cacheDataSourceFactory =
-                CacheDataSource
-                    .Factory()
-                    .setCache(cache)
-                    .setUpstreamDataSourceFactory(DefaultDataSource.Factory(context))
-                    .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-
-            ExoPlayer
-                .Builder(context)
-                .setMediaSourceFactory(DefaultMediaSourceFactory(cacheDataSourceFactory))
-                .build()
-                .apply {
-                    val cleanUrl = videoUrl.replace(Regex("\\?.*"), "")
-                    if (cleanUrl.contains("v.redd.it")) {
-                        val baseUrl = cleanUrl.substringBeforeLast("/")
-                        val hlsUrl = "$baseUrl/HLSPlaylist.m3u8"
-                        setMediaItem(MediaItem.fromUri(hlsUrl))
-                    } else {
-                        setMediaItem(MediaItem.fromUri(videoUrl))
-                    }
-                    repeatMode = if (isGif) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
-                    volume = 0f
-                    playWhenReady = true
-                    prepare()
-                }
-        }
-
-    DisposableEffect(Unit) {
-        val listener =
-            object : Player.Listener {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    if (playbackState == Player.STATE_READY) {
-                        duration = exoPlayer.duration.coerceAtLeast(0L)
-                    }
-                }
-
-                override fun onIsPlayingChanged(playing: Boolean) {
-                    isPlaying = playing
-                }
-
-                override fun onVideoSizeChanged(videoSize: VideoSize) {
-                    if (videoSize.width > 0 && videoSize.height > 0) {
-                        videoAspectRatio = videoSize.width.toFloat() / videoSize.height.toFloat()
-                    }
-                }
-
-                override fun onPlayerError(error: PlaybackException) {
-                    if (!hasRetriedWithoutAudio.value) {
-                        hasRetriedWithoutAudio.value = true
-                        exoPlayer.setMediaItem(MediaItem.fromUri(videoUrl))
-                        exoPlayer.prepare()
-                        exoPlayer.play()
-                    }
-                }
-            }
-        exoPlayer.addListener(listener)
-
-        onDispose {
-            exoPlayer.removeListener(listener)
-            exoPlayer.stop()
-            exoPlayer.release()
-        }
-    }
-
-    // Pause when the app leaves the screen, so the audio doesn't keep playing in the background, and pick up again on
-    // return if it was playing.
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        var wasPlaying = false
-        val observer =
-            LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_STOP -> {
-                        wasPlaying = exoPlayer.playWhenReady
-                        exoPlayer.pause()
-                    }
-
-                    Lifecycle.Event.ON_START -> {
-                        if (wasPlaying) exoPlayer.play()
-                    }
-
-                    else -> {}
-                }
-            }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
-    // Update position periodically while playing
-    LaunchedEffect(isPlaying) {
-        while (isPlaying) {
-            currentPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
-            delay(200L)
-        }
-    }
-
-    // Auto-hide overlay after 2 seconds of no interaction
-    LaunchedEffect(lastInteractionTime, isOverlayVisible) {
-        if (isOverlayVisible) {
-            delay(2000L)
-            if (System.currentTimeMillis() - lastInteractionTime >= 2000L) {
-                isOverlayVisible = false
-            }
-        }
-    }
-
-    // Sync mute state
-    LaunchedEffect(isMuted) {
-        exoPlayer.volume = if (isMuted) 0f else 1f
-    }
-
-    // Sync loop state
-    LaunchedEffect(isLooping) {
-        exoPlayer.repeatMode = if (isLooping) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
-    }
+    val hasAudio = !isGif && !state.hasRetriedWithoutAudio
+    VideoPlayerEffects(state = state, videoUrl = videoUrl)
 
     Box(
         modifier =
@@ -227,243 +106,381 @@ fun VideoPlayer(
                 .combinedClickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = {
-                        if (isOverlayVisible) {
-                            isOverlayVisible = false
-                        } else {
-                            isOverlayVisible = true
-                            lastInteractionTime = System.currentTimeMillis()
-                        }
-                    },
+                    onClick = state::toggleOverlay,
                     onLongClick = { if (menuItems.isNotEmpty()) showMenu = true },
                 ),
     ) {
         key(inlineViewKey) {
-            AndroidView(
-                factory = { ctx ->
-                    TextureView(ctx).also { textureView ->
-                        exoPlayer.setVideoTextureView(textureView)
-                    }
-                },
-                onRelease = {
-                    exoPlayer.clearVideoTextureView(it)
-                },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(videoAspectRatio),
-            )
+            VideoSurface(player = player, modifier = Modifier.fillMaxWidth().aspectRatio(state.videoAspectRatio))
         }
-
         Box(modifier = Modifier.align(Alignment.BottomEnd)) {
-            MediaLongPressMenu(
-                items = menuItems,
-                expanded = showMenu,
-                onDismiss = { showMenu = false },
-            )
+            MediaLongPressMenu(items = menuItems, expanded = showMenu, onDismiss = { showMenu = false })
         }
-
-        // Controls overlay
-        AnimatedVisibility(
-            visible = isOverlayVisible,
-            enter = fadeIn(),
-            exit = fadeOut(),
+        VideoControls(
+            state = state,
+            isFullscreen = false,
+            hasAudio = hasAudio,
+            onFullscreenClick = {
+                state.touched()
+                isFullscreen = true
+            },
             modifier = Modifier.align(Alignment.BottomCenter),
-        ) {
-            VideoControlsOverlay(
-                isPlaying = isPlaying,
-                isMuted = isMuted,
-                isLooping = isLooping,
-                isFullscreen = false,
-                hasAudio = !isGif && !hasRetriedWithoutAudio.value,
-                currentPosition = currentPosition,
-                duration = duration,
-                onPlayPauseClick = {
-                    lastInteractionTime = System.currentTimeMillis()
-                    if (exoPlayer.playbackState == Player.STATE_ENDED) {
-                        exoPlayer.seekTo(0)
-                        exoPlayer.play()
-                    } else if (exoPlayer.isPlaying) {
-                        exoPlayer.pause()
-                    } else {
-                        exoPlayer.play()
-                    }
-                },
-                onMuteClick = {
-                    lastInteractionTime = System.currentTimeMillis()
-                    isMuted = !isMuted
-                },
-                onLoopClick = {
-                    lastInteractionTime = System.currentTimeMillis()
-                    isLooping = !isLooping
-                },
-                onSeek = { position ->
-                    lastInteractionTime = System.currentTimeMillis()
-                    exoPlayer.seekTo(position)
-                    currentPosition = position
-                },
-                onFullscreenClick = {
-                    lastInteractionTime = System.currentTimeMillis()
-                    isFullscreen = true
-                },
-            )
-        }
+        )
     }
 
     if (isFullscreen) {
-        var zoomScale by remember { mutableFloatStateOf(1f) }
-        var zoomOffsetX by remember { mutableFloatStateOf(0f) }
-        var zoomOffsetY by remember { mutableFloatStateOf(0f) }
+        FullscreenVideoDialog(
+            state = state,
+            hasAudio = hasAudio,
+            onExitFullscreen = {
+                state.touched()
+                isFullscreen = false
+                inlineViewKey++
+            },
+            onDismiss = { isFullscreen = false },
+        )
+    }
+}
 
-        Dialog(
-            onDismissRequest = { isFullscreen = false },
-            properties =
-                DialogProperties(
-                    usePlatformDefaultWidth = false,
-                    decorFitsSystemWindows = false,
-                ),
-        ) {
-            // Hide system bars and unlock orientation for true fullscreen
-            val dialogView = LocalView.current
-            DisposableEffect(Unit) {
-                val activity = context as? Activity
-                val originalOrientation = activity?.requestedOrientation
-                activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+private const val DEFAULT_ASPECT_RATIO = 16f / 9f
 
-                val dialogWindow = (dialogView.parent as? DialogWindowProvider)?.window
-                dialogWindow?.let { window -> hideSystemBars(window, dialogView) }
-                onDispose {
-                    activity?.requestedOrientation =
-                        originalOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                }
+// The player's state as the controls see it, and what the controls do. Using a control counts as interaction, which
+// keeps the controls from hiding.
+@Stable
+private class VideoPlaybackState(
+    val player: ExoPlayer,
+    isGif: Boolean,
+) {
+    var isOverlayVisible by mutableStateOf(true)
+    var isMuted by mutableStateOf(false)
+    var isLooping by mutableStateOf(isGif)
+    var isPlaying by mutableStateOf(false)
+    var currentPosition by mutableLongStateOf(0L)
+    var duration by mutableLongStateOf(0L)
+    var lastInteractionTime by mutableLongStateOf(System.currentTimeMillis())
+    var videoAspectRatio by mutableFloatStateOf(DEFAULT_ASPECT_RATIO)
+
+    // Set when playback failed and the video was retried from its plain URL, which has no audio.
+    var hasRetriedWithoutAudio by mutableStateOf(false)
+
+    fun touched() {
+        lastInteractionTime = System.currentTimeMillis()
+    }
+
+    fun toggleOverlay() {
+        isOverlayVisible = !isOverlayVisible
+        if (isOverlayVisible) touched()
+    }
+
+    // Plays from the start again once the video has ended.
+    fun playPause() {
+        touched()
+        when {
+            player.playbackState == Player.STATE_ENDED -> {
+                player.seekTo(0)
+                player.play()
             }
 
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .background(mediaColors().mediaBackgroundColor)
-                        .pointerInput(Unit) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                val newScale = (zoomScale * zoom).coerceIn(1f, 5f)
-                                zoomScale = newScale
-                                if (newScale > 1f) {
-                                    zoomOffsetX += pan.x
-                                    zoomOffsetY += pan.y
-                                } else {
-                                    zoomOffsetX = 0f
-                                    zoomOffsetY = 0f
-                                }
-                            }
-                        }.pointerInput(Unit) {
-                            detectTapGestures(
-                                onTap = {
-                                    if (isOverlayVisible) {
-                                        isOverlayVisible = false
-                                    } else {
-                                        isOverlayVisible = true
-                                        lastInteractionTime = System.currentTimeMillis()
-                                    }
-                                },
-                                onDoubleTap = {
-                                    zoomScale = 1f
-                                    zoomOffsetX = 0f
-                                    zoomOffsetY = 0f
-                                },
-                            )
-                        },
-            ) {
-                AndroidView(
-                    factory = { ctx ->
-                        TextureView(ctx).also { textureView ->
-                            exoPlayer.setVideoTextureView(textureView)
-                        }
-                    },
-                    onRelease = {
-                        exoPlayer.clearVideoTextureView(it)
-                    },
-                    modifier =
-                        Modifier
-                            .align(Alignment.Center)
-                            .aspectRatio(videoAspectRatio)
-                            .graphicsLayer {
-                                scaleX = zoomScale
-                                scaleY = zoomScale
-                                translationX = zoomOffsetX
-                                translationY = zoomOffsetY
-                            },
-                )
+            player.isPlaying -> {
+                player.pause()
+            }
 
-                AnimatedVisibility(
-                    visible = isOverlayVisible,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                ) {
-                    VideoControlsOverlay(
-                        isPlaying = isPlaying,
-                        isMuted = isMuted,
-                        isLooping = isLooping,
-                        isFullscreen = true,
-                        hasAudio = !isGif && !hasRetriedWithoutAudio.value,
-                        currentPosition = currentPosition,
-                        duration = duration,
-                        onPlayPauseClick = {
-                            lastInteractionTime = System.currentTimeMillis()
-                            if (exoPlayer.playbackState == Player.STATE_ENDED) {
-                                exoPlayer.seekTo(0)
-                                exoPlayer.play()
-                            } else if (exoPlayer.isPlaying) {
-                                exoPlayer.pause()
-                            } else {
-                                exoPlayer.play()
-                            }
-                        },
-                        onMuteClick = {
-                            lastInteractionTime = System.currentTimeMillis()
-                            isMuted = !isMuted
-                        },
-                        onLoopClick = {
-                            lastInteractionTime = System.currentTimeMillis()
-                            isLooping = !isLooping
-                        },
-                        onSeek = { position ->
-                            lastInteractionTime = System.currentTimeMillis()
-                            exoPlayer.seekTo(position)
-                            currentPosition = position
-                        },
-                        onFullscreenClick = {
-                            lastInteractionTime = System.currentTimeMillis()
-                            isFullscreen = false
-                            inlineViewKey++
-                        },
-                    )
+            else -> {
+                player.play()
+            }
+        }
+    }
+
+    fun toggleMute() {
+        touched()
+        isMuted = !isMuted
+    }
+
+    fun toggleLoop() {
+        touched()
+        isLooping = !isLooping
+    }
+
+    fun seek(position: Long) {
+        touched()
+        player.seekTo(position)
+        currentPosition = position
+    }
+}
+
+// Starts muted and playing, reading through the video cache. GIFs loop.
+@Composable
+private fun rememberVideoPlayer(
+    videoUrl: String,
+    isGif: Boolean,
+): ExoPlayer {
+    val context = LocalContext.current
+    return remember { buildVideoPlayer(context, videoUrl, isGif) }
+}
+
+@OptIn(UnstableApi::class)
+private fun buildVideoPlayer(
+    context: Context,
+    videoUrl: String,
+    isGif: Boolean,
+): ExoPlayer {
+    val cacheDataSourceFactory =
+        CacheDataSource
+            .Factory()
+            .setCache(VideoCacheProvider.getCache(context))
+            .setUpstreamDataSourceFactory(DefaultDataSource.Factory(context))
+            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+    return ExoPlayer
+        .Builder(context)
+        .setMediaSourceFactory(DefaultMediaSourceFactory(cacheDataSourceFactory))
+        .build()
+        .apply {
+            setMediaItem(MediaItem.fromUri(playbackUrl(videoUrl)))
+            repeatMode = if (isGif) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
+            volume = 0f
+            playWhenReady = true
+            prepare()
+        }
+}
+
+// Reddit videos are played from their HLS playlist, which carries the audio track.
+private fun playbackUrl(videoUrl: String): String {
+    val cleanUrl = videoUrl.replace(Regex("\\?.*"), "")
+    return if (cleanUrl.contains("v.redd.it")) "${cleanUrl.substringBeforeLast("/")}/HLSPlaylist.m3u8" else videoUrl
+}
+
+// Keeps the state in step with the player, pauses while the app is in the background, and hides the controls after
+// two seconds without interaction.
+@Composable
+private fun VideoPlayerEffects(
+    state: VideoPlaybackState,
+    videoUrl: String,
+) {
+    PlayerListener(state = state, videoUrl = videoUrl)
+    PauseInBackground(player = state.player)
+
+    LaunchedEffect(state.isPlaying) {
+        while (state.isPlaying) {
+            state.currentPosition = state.player.currentPosition.coerceAtLeast(0L)
+            delay(200L)
+        }
+    }
+
+    LaunchedEffect(state.lastInteractionTime, state.isOverlayVisible) {
+        if (state.isOverlayVisible) {
+            delay(2000L)
+            if (System.currentTimeMillis() - state.lastInteractionTime >= 2000L) {
+                state.isOverlayVisible = false
+            }
+        }
+    }
+
+    SideEffect {
+        state.player.volume = if (state.isMuted) 0f else 1f
+        state.player.repeatMode = if (state.isLooping) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
+    }
+}
+
+// Releases the player when it leaves the composition. If playback fails, retries once from the plain URL, which
+// works for videos the HLS playlist doesn't.
+@Composable
+private fun PlayerListener(
+    state: VideoPlaybackState,
+    videoUrl: String,
+) {
+    val player = state.player
+    DisposableEffect(Unit) {
+        val listener =
+            object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_READY) state.duration = player.duration.coerceAtLeast(0L)
+                }
+
+                override fun onIsPlayingChanged(playing: Boolean) {
+                    state.isPlaying = playing
+                }
+
+                override fun onVideoSizeChanged(videoSize: VideoSize) {
+                    if (videoSize.width > 0 && videoSize.height > 0) {
+                        state.videoAspectRatio = videoSize.width.toFloat() / videoSize.height.toFloat()
+                    }
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    if (!state.hasRetriedWithoutAudio) {
+                        state.hasRetriedWithoutAudio = true
+                        player.setMediaItem(MediaItem.fromUri(videoUrl))
+                        player.prepare()
+                        player.play()
+                    }
                 }
             }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            player.stop()
+            player.release()
         }
     }
 }
 
+// Pause when the app leaves the screen, so the audio doesn't keep playing in the background, and pick up again on
+// return if it was playing.
 @Composable
-private fun VideoControlsOverlay(
-    isPlaying: Boolean,
-    isMuted: Boolean,
-    isLooping: Boolean,
+private fun PauseInBackground(player: ExoPlayer) {
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        var wasPlaying = false
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_STOP -> {
+                        wasPlaying = player.playWhenReady
+                        player.pause()
+                    }
+
+                    Lifecycle.Event.ON_START -> {
+                        if (wasPlaying) player.play()
+                    }
+
+                    else -> {}
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+}
+
+// Shows the player's video. Only the most recently created surface gets the video.
+@Composable
+private fun VideoSurface(
+    player: ExoPlayer,
+    modifier: Modifier = Modifier,
+) {
+    AndroidView(
+        factory = { context -> TextureView(context).also { player.setVideoTextureView(it) } },
+        onRelease = { player.clearVideoTextureView(it) },
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun VideoControls(
+    state: VideoPlaybackState,
     isFullscreen: Boolean,
     hasAudio: Boolean,
-    currentPosition: Long,
-    duration: Long,
-    onPlayPauseClick: () -> Unit,
-    onMuteClick: () -> Unit,
-    onLoopClick: () -> Unit,
-    onSeek: (Long) -> Unit,
+    onFullscreenClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = state.isOverlayVisible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier,
+    ) {
+        VideoControlsOverlay(state = state, isFullscreen = isFullscreen, hasAudio = hasAudio, onFullscreenClick = onFullscreenClick)
+    }
+}
+
+// The video on its own, filling the screen in any orientation, with pinch to zoom and double tap to reset.
+@Composable
+private fun FullscreenVideoDialog(
+    state: VideoPlaybackState,
+    hasAudio: Boolean,
+    onExitFullscreen: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var zoom by remember { mutableStateOf(VideoZoom()) }
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        FullscreenWindowSetup()
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(mediaColors().mediaBackgroundColor)
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, gestureZoom, _ -> zoom = zoom.transformed(pan.x, pan.y, gestureZoom) }
+                    }.pointerInput(Unit) {
+                        detectTapGestures(onTap = { state.toggleOverlay() }, onDoubleTap = { zoom = VideoZoom() })
+                    },
+        ) {
+            VideoSurface(
+                player = state.player,
+                modifier =
+                    Modifier
+                        .align(Alignment.Center)
+                        .aspectRatio(state.videoAspectRatio)
+                        .graphicsLayer {
+                            scaleX = zoom.scale
+                            scaleY = zoom.scale
+                            translationX = zoom.offsetX
+                            translationY = zoom.offsetY
+                        },
+            )
+            VideoControls(
+                state = state,
+                isFullscreen = true,
+                hasAudio = hasAudio,
+                onFullscreenClick = onExitFullscreen,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+    }
+}
+
+// How far the fullscreen video is zoomed (1x to 5x) and panned. Panning only applies while zoomed in.
+private data class VideoZoom(
+    val scale: Float = 1f,
+    val offsetX: Float = 0f,
+    val offsetY: Float = 0f,
+) {
+    fun transformed(
+        panX: Float,
+        panY: Float,
+        gestureZoom: Float,
+    ): VideoZoom {
+        val newScale = (scale * gestureZoom).coerceIn(1f, MAX_ZOOM)
+        return if (newScale > 1f) VideoZoom(newScale, offsetX + panX, offsetY + panY) else VideoZoom(newScale)
+    }
+}
+
+private const val MAX_ZOOM = 5f
+
+// Hides the system bars and lets the screen rotate while fullscreen, restoring the orientation afterwards.
+@Composable
+private fun FullscreenWindowSetup() {
+    val context = LocalContext.current
+    val dialogView = LocalView.current
+    DisposableEffect(Unit) {
+        val activity = context as? Activity
+        val originalOrientation = activity?.requestedOrientation
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
+
+        val dialogWindow = (dialogView.parent as? DialogWindowProvider)?.window
+        dialogWindow?.let { window -> hideSystemBars(window, dialogView) }
+        onDispose {
+            activity?.requestedOrientation = originalOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+}
+
+// The time, play/pause, mute (dimmed when there's no audio), loop and fullscreen buttons, and a seek bar.
+@Composable
+private fun VideoControlsOverlay(
+    state: VideoPlaybackState,
+    isFullscreen: Boolean,
+    hasAudio: Boolean,
     onFullscreenClick: () -> Unit,
 ) {
+    val mediaColors = mediaColors()
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(mediaColors().controlsBackgroundColor)
+                .background(mediaColors.controlsBackgroundColor)
                 .padding(horizontal = if (isFullscreen) 24.dp else 8.dp, vertical = 4.dp),
     ) {
         Row(
@@ -471,98 +488,87 @@ private fun VideoControlsOverlay(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Timestamp
             Text(
-                text = "${formatDuration(currentPosition)} / ${formatDuration(duration)}",
-                color = mediaColors().onOverlayColor,
+                text = "${formatDuration(state.currentPosition)} / ${formatDuration(state.duration)}",
+                color = mediaColors.onOverlayColor,
                 style = MaterialTheme.typography.labelMedium,
             )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(0.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Play/Pause
-                IconButton(
-                    onClick = onPlayPauseClick,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play",
-                        tint = mediaColors().onOverlayColor,
-                        modifier = Modifier.size(28.dp),
-                    )
-                }
-
-                // Mute toggle
-                IconButton(
-                    onClick =
-                        if (hasAudio) {
-                            onMuteClick
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                VideoControlButton(
+                    imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (state.isPlaying) "Pause" else "Play",
+                    onClick = state::playPause,
+                )
+                VideoControlButton(
+                    imageVector =
+                        if (!hasAudio ||
+                            state.isMuted
+                        ) {
+                            Icons.AutoMirrored.Filled.VolumeOff
                         } else {
-                            {}
+                            Icons.AutoMirrored.Filled.VolumeUp
                         },
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        imageVector = if (!hasAudio || isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription =
-                            if (!hasAudio) {
-                                "No audio available"
-                            } else if (isMuted) {
-                                "Unmute"
-                            } else {
-                                "Mute"
-                            },
-                        tint = if (!hasAudio) mediaColors().noAudioColor else mediaColors().onOverlayColor,
-                        modifier = Modifier.size(28.dp),
-                    )
-                }
-
-                // Loop toggle
-                IconButton(
-                    onClick = onLoopClick,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Repeat,
-                        contentDescription = if (isLooping) "Disable loop" else "Enable loop",
-                        tint = if (isLooping) mediaColors().loopActiveColor else mediaColors().onOverlayColor,
-                        modifier = Modifier.size(28.dp),
-                    )
-                }
-
-                // Fullscreen toggle
-                IconButton(
+                    contentDescription = muteDescription(hasAudio, state.isMuted),
+                    onClick = { if (hasAudio) state.toggleMute() },
+                    tint = if (hasAudio) mediaColors.onOverlayColor else mediaColors.noAudioColor,
+                )
+                VideoControlButton(
+                    imageVector = Icons.Filled.Repeat,
+                    contentDescription = if (state.isLooping) "Disable loop" else "Enable loop",
+                    onClick = state::toggleLoop,
+                    tint = if (state.isLooping) mediaColors.loopActiveColor else mediaColors.onOverlayColor,
+                )
+                VideoControlButton(
+                    imageVector = if (isFullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
+                    contentDescription = if (isFullscreen) "Exit fullscreen" else "Fullscreen",
                     onClick = onFullscreenClick,
-                    modifier = Modifier.size(40.dp),
-                ) {
-                    Icon(
-                        imageVector = if (isFullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
-                        contentDescription = if (isFullscreen) "Exit fullscreen" else "Fullscreen",
-                        tint = mediaColors().onOverlayColor,
-                        modifier = Modifier.size(28.dp),
-                    )
-                }
+                )
             }
         }
-
-        // Seek bar
-        Slider(
-            value = if (duration > 0) currentPosition.toFloat() / duration.toFloat() else 0f,
-            onValueChange = { fraction ->
-                onSeek((fraction * duration).toLong())
-            },
-            modifier = Modifier.fillMaxWidth().height(24.dp),
-            colors =
-                SliderDefaults.colors(
-                    thumbColor = mediaColors().onOverlayColor,
-                    activeTrackColor = mediaColors().onOverlayColor,
-                    inactiveTrackColor = mediaColors().seekBarInactiveTrackColor,
-                ),
-        )
+        VideoSeekBar(position = state.currentPosition, duration = state.duration, onSeek = state::seek)
     }
+}
+
+private fun muteDescription(
+    hasAudio: Boolean,
+    isMuted: Boolean,
+): String =
+    when {
+        !hasAudio -> "No audio available"
+        isMuted -> "Unmute"
+        else -> "Mute"
+    }
+
+@Composable
+private fun VideoControlButton(
+    imageVector: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    tint: Color = mediaColors().onOverlayColor,
+) {
+    IconButton(onClick = onClick, modifier = Modifier.size(40.dp)) {
+        Icon(imageVector = imageVector, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(28.dp))
+    }
+}
+
+@Composable
+private fun VideoSeekBar(
+    position: Long,
+    duration: Long,
+    onSeek: (Long) -> Unit,
+) {
+    val mediaColors = mediaColors()
+    Slider(
+        value = if (duration > 0) position.toFloat() / duration.toFloat() else 0f,
+        onValueChange = { fraction -> onSeek((fraction * duration).toLong()) },
+        modifier = Modifier.fillMaxWidth().height(24.dp),
+        colors =
+            SliderDefaults.colors(
+                thumbColor = mediaColors.onOverlayColor,
+                activeTrackColor = mediaColors.onOverlayColor,
+                inactiveTrackColor = mediaColors.seekBarInactiveTrackColor,
+            ),
+    )
 }
 
 private fun formatDuration(ms: Long): String {
