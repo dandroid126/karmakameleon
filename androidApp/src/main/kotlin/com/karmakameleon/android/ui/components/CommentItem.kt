@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -64,28 +66,13 @@ fun CommentItem(
     comment: Comment,
     isSelected: Boolean,
     isHidden: Boolean,
-    onSelect: () -> Unit,
-    onDone: () -> Unit,
-    onHide: () -> Unit,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
-    onRoot: () -> Unit,
-    onParent: () -> Unit,
-    onShare: () -> Unit,
-    onReply: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
+    actions: CommentActions,
     isLoggedIn: Boolean,
     modifier: Modifier = Modifier,
-    onCommentUpdated: (Comment) -> Unit = {},
-    onSave: () -> Unit = {},
     loggedInUsername: String? = null,
     selectionVersion: Int = 0,
-    onTouchStart: () -> Unit = {},
     renderInlineImages: Boolean = true,
-    onInlineImageClick: (String) -> Unit = {},
     isSingleThreadMode: Boolean = false,
-    onGoToCommentNav: (commentId: String) -> Unit = {},
     showTopControls: Boolean = true,
     showSubreddit: Boolean = false,
     postRepository: PostRepository = koinInject(),
@@ -93,17 +80,11 @@ fun CommentItem(
     val scope = rememberCoroutineScope()
     val navigationHandler = koinInject<NavigationHandler>()
 
-    fun vote(direction: Int) {
-        scope.launch {
-            val result = postRepository.voteComment(comment, direction)
-            result.onSuccess { updatedComment ->
-                onCommentUpdated(updatedComment)
-            }
-        }
+    val vote = { direction: Int ->
+        scope.launch { postRepository.voteComment(comment, direction).onSuccess(actions.onCommentUpdated) }
     }
 
     val commentColors = commentColors()
-    val voteColors = voteColors()
     val depthColor = commentColors.depthColors[comment.depth % commentColors.depthColors.size]
     val hasParentComment = comment.parentId.startsWith("t1_")
     val showParentControls = if (isSingleThreadMode) hasParentComment else comment.depth > 0
@@ -113,297 +94,368 @@ fun CommentItem(
             modifier
                 .fillMaxWidth()
                 .padding(start = (comment.depth * 12).dp)
-                .then(
-                    if (isSelected) {
-                        Modifier.background(commentColors.selectedBackground)
-                    } else {
-                        Modifier
-                    },
-                ).clickable { onSelect() },
+                .background(if (isSelected) commentColors.selectedBackground else Color.Transparent)
+                .clickable { actions.onSelect() },
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
-            if (comment.depth > 0) {
-                Box(
-                    modifier =
-                        Modifier
-                            .width(2.dp)
-                            .background(depthColor.copy(alpha = 0.5f)),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
+            if (comment.depth > 0) DepthBar(color = depthColor)
 
             Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp, horizontal = 8.dp)) {
-                if (isSelected && showTopControls) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            TextButton(onClick = onDone, modifier = Modifier.height(32.dp)) {
-                                Text("Done", style = MaterialTheme.typography.labelMedium)
-                            }
-                            TextButton(onClick = onHide, modifier = Modifier.height(32.dp)) {
-                                Text("Hide", style = MaterialTheme.typography.labelMedium)
-                            }
-                        }
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            if (showParentControls) {
-                                TextButton(onClick = onRoot, modifier = Modifier.height(32.dp)) {
-                                    Text("Root", style = MaterialTheme.typography.labelMedium)
-                                }
-                                TextButton(onClick = onParent, modifier = Modifier.height(32.dp)) {
-                                    Text("Parent", style = MaterialTheme.typography.labelMedium)
-                                }
-                            } else {
-                                TextButton(onClick = onPrev, modifier = Modifier.height(32.dp)) {
-                                    Text("Prev", style = MaterialTheme.typography.labelMedium)
-                                }
-                                TextButton(onClick = onNext, modifier = Modifier.height(32.dp)) {
-                                    Text("Next", style = MaterialTheme.typography.labelMedium)
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-
-                if (showSubreddit) {
-                    Text(
-                        text = "r/${comment.subreddit}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { navigationHandler.onSubredditClick(comment.subreddit) },
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = comment.author,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color =
-                            when {
-                                comment.isSubmitter -> commentColors.submitterColor
-                                comment.distinguished == "moderator" -> commentColors.moderatorColor
-                                comment.distinguished == "admin" -> commentColors.adminColor
-                                loggedInUsername != null && comment.author == loggedInUsername -> commentColors.ownCommentColor
-                                else -> MaterialTheme.colorScheme.onSurface
-                            },
-                        modifier = Modifier.clickable { navigationHandler.onUserClick(comment.author) },
-                    )
-                    if (comment.isSubmitter) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("OP", style = MaterialTheme.typography.labelSmall, color = commentColors.submitterColor)
-                    }
-                    val flairText = comment.authorFlairText
-                    if (comment.authorFlairRichtext.isNotEmpty()) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        RichFlairChip(
-                            richtext = comment.authorFlairRichtext,
-                            backgroundColor = comment.authorFlairBackgroundColor,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                    } else if (!flairText.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        SubredditFlairChip(
-                            text = flairText,
-                            backgroundColor = comment.authorFlairBackgroundColor,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    val scoreContext = LocalContext.current
-                    Text(
-                        text = if (comment.scoreHidden) "[~]" else formatNumber(comment.score),
-                        style = MaterialTheme.typography.labelSmall,
-                        color =
-                            when (comment.voteState) {
-                                VoteState.UPVOTED -> voteColors.upvoteColor
-                                VoteState.DOWNVOTED -> voteColors.downvoteColor
-                                VoteState.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                        modifier =
-                            if (comment.scoreHidden) {
-                                Modifier.clickable {
-                                    Toast.makeText(scoreContext, "Score hidden by subreddit rules", Toast.LENGTH_SHORT).show()
-                                }
-                            } else {
-                                Modifier
-                            },
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = formatTimeAgo(comment.createdUtc),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (comment.isEdited) {
-                        Text(
-                            text = " (edited)",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    if (isHidden) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Icon(
-                            Icons.Filled.VisibilityOff,
-                            contentDescription = "Hidden",
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+                CommentHeader(
+                    comment = comment,
+                    showControls = isSelected && showTopControls,
+                    controls = actions.navigationControls(showParentControls),
+                    showSubreddit = showSubreddit,
+                    isHidden = isHidden,
+                    loggedInUsername = loggedInUsername,
+                    navigationHandler = navigationHandler,
+                )
 
                 if (!isHidden) {
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    SelectableArea(selectionVersion = selectionVersion, onTouchStart = onTouchStart) {
-                        MarkdownText(
-                            markdown = comment.body,
-                            style = MaterialTheme.typography.bodyMedium,
-                            onTextClick = onSelect,
-                            renderInlineImages = renderInlineImages,
-                            onImageClick = onInlineImageClick,
-                        )
-                    }
+                    CommentBody(
+                        body = comment.body,
+                        selectionVersion = selectionVersion,
+                        onTouchStart = actions.onTouchStart,
+                        onTextClick = actions.onSelect,
+                        renderInlineImages = renderInlineImages,
+                        onInlineImageClick = actions.onInlineImageClick,
+                    )
                 }
 
                 if (isSelected) {
                     Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                    ) {
-                        if (isLoggedIn) {
-                            if (loggedInUsername != null && comment.author == loggedInUsername) {
-                                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                                    Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "Edit",
-                                        modifier = Modifier.size(22.dp),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = "Delete",
-                                        modifier = Modifier.size(22.dp),
-                                        tint = MaterialTheme.colorScheme.error,
-                                    )
-                                }
-                            }
-                        }
-                        IconButton(
-                            onClick = { vote(if (comment.likes == true) 0 else 1) },
-                            enabled = isLoggedIn,
-                            modifier = Modifier.size(36.dp),
-                        ) {
-                            Icon(
-                                if (comment.voteState ==
-                                    VoteState.UPVOTED
-                                ) {
-                                    Icons.Filled.KeyboardArrowUp
-                                } else {
-                                    Icons.Outlined.KeyboardArrowUp
-                                },
-                                contentDescription = "Upvote",
-                                modifier = Modifier.size(24.dp),
-                                tint =
-                                    if (comment.voteState ==
-                                        VoteState.UPVOTED
-                                    ) {
-                                        voteColors.upvoteColor
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                            )
-                        }
-                        IconButton(
-                            onClick = { vote(if (comment.likes == false) 0 else -1) },
-                            enabled = isLoggedIn,
-                            modifier = Modifier.size(36.dp),
-                        ) {
-                            Icon(
-                                if (comment.voteState ==
-                                    VoteState.DOWNVOTED
-                                ) {
-                                    Icons.Filled.KeyboardArrowDown
-                                } else {
-                                    Icons.Outlined.KeyboardArrowDown
-                                },
-                                contentDescription = "Downvote",
-                                modifier = Modifier.size(24.dp),
-                                tint =
-                                    if (comment.voteState ==
-                                        VoteState.DOWNVOTED
-                                    ) {
-                                        voteColors.downvoteColor
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    },
-                            )
-                        }
-                        Box {
-                            var showContextMenu by remember { mutableStateOf(false) }
-                            IconButton(onClick = { showContextMenu = true }, modifier = Modifier.size(36.dp)) {
-                                Icon(
-                                    Icons.Default.MoreVert,
-                                    contentDescription = "More",
-                                    modifier = Modifier.size(22.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showContextMenu,
-                                onDismissRequest = { showContextMenu = false },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text("Share") },
-                                    onClick = {
-                                        showContextMenu = false
-                                        onShare()
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
-                                )
-                                if (isLoggedIn) {
-                                    DropdownMenuItem(
-                                        text = { Text(if (comment.isSaved) "Unsave" else "Save") },
-                                        onClick = {
-                                            showContextMenu = false
-                                            onSave()
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                if (comment.isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                                contentDescription = null,
-                                            )
-                                        },
-                                    )
-                                }
-                                DropdownMenuItem(
-                                    text = { Text("Go to comment") },
-                                    onClick = {
-                                        showContextMenu = false
-                                        onGoToCommentNav(comment.id)
-                                    },
-                                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
-                                )
-                            }
-                        }
-                        if (isLoggedIn) {
-                            IconButton(onClick = onReply, modifier = Modifier.size(36.dp)) {
-                                Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Reply", modifier = Modifier.size(22.dp))
-                            }
-                        }
-                    }
+                    CommentActionRow(
+                        comment = comment,
+                        isLoggedIn = isLoggedIn,
+                        isOwnComment = loggedInUsername != null && comment.author == loggedInUsername,
+                        onVote = { vote(it) },
+                        actions = actions,
+                    )
                 }
             }
+        }
+    }
+}
+
+// The thread's depth line at the comment's left edge.
+@Composable
+private fun DepthBar(color: Color) {
+    Box(
+        modifier =
+            Modifier
+                .padding(end = 8.dp)
+                .width(2.dp)
+                .background(color.copy(alpha = 0.5f)),
+    )
+}
+
+@Composable
+private fun CommentBody(
+    body: String,
+    selectionVersion: Int,
+    onTouchStart: () -> Unit,
+    onTextClick: () -> Unit,
+    renderInlineImages: Boolean,
+    onInlineImageClick: (String) -> Unit,
+) {
+    SelectableArea(
+        selectionVersion = selectionVersion,
+        onTouchStart = onTouchStart,
+        modifier = Modifier.padding(top = 4.dp),
+    ) {
+        MarkdownText(
+            markdown = body,
+            style = MaterialTheme.typography.bodyMedium,
+            onTextClick = onTextClick,
+            renderInlineImages = renderInlineImages,
+            onImageClick = onInlineImageClick,
+        )
+    }
+}
+
+// Done and Hide, then a pair of buttons for moving to another comment: Root and Parent move up the thread, Prev and
+// Next move between top-level comments.
+private class CommentControls(
+    val onDone: () -> Unit,
+    val onHide: () -> Unit,
+    val first: Pair<String, () -> Unit>,
+    val second: Pair<String, () -> Unit>,
+)
+
+private fun CommentActions.navigationControls(showParentControls: Boolean) =
+    if (showParentControls) {
+        CommentControls(onDone, onHide, "Root" to onRoot, "Parent" to onParent)
+    } else {
+        CommentControls(onDone, onHide, "Prev" to onPrev, "Next" to onNext)
+    }
+
+// The controls of a selected comment, its subreddit when shown outside its thread, and the byline.
+@Composable
+private fun CommentHeader(
+    comment: Comment,
+    showControls: Boolean,
+    controls: CommentControls,
+    showSubreddit: Boolean,
+    isHidden: Boolean,
+    loggedInUsername: String?,
+    navigationHandler: NavigationHandler,
+) {
+    Column {
+        if (showControls) {
+            CommentTopControls(controls)
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+        if (showSubreddit) {
+            Text(
+                text = "r/${comment.subreddit}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.clickable { navigationHandler.onSubredditClick(comment.subreddit) },
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+        }
+        CommentByline(
+            comment = comment,
+            isHidden = isHidden,
+            loggedInUsername = loggedInUsername,
+            onUserClick = { navigationHandler.onUserClick(comment.author) },
+        )
+    }
+}
+
+@Composable
+private fun CommentTopControls(controls: CommentControls) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            CommentControlButton("Done", controls.onDone)
+            CommentControlButton("Hide", controls.onHide)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            CommentControlButton(controls.first.first, controls.first.second)
+            CommentControlButton(controls.second.first, controls.second.second)
+        }
+    }
+}
+
+@Composable
+private fun CommentControlButton(
+    text: String,
+    onClick: () -> Unit,
+) {
+    TextButton(onClick = onClick, modifier = Modifier.height(32.dp)) {
+        Text(text, style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+// The author (colored for OP, moderators, admins and you), their flair, the score, the age, and whether the comment
+// was edited or is hidden.
+@Composable
+private fun CommentByline(
+    comment: Comment,
+    isHidden: Boolean,
+    loggedInUsername: String?,
+    onUserClick: () -> Unit,
+) {
+    val commentColors = commentColors()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = comment.author,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color =
+                when {
+                    comment.isSubmitter -> commentColors.submitterColor
+                    comment.distinguished == "moderator" -> commentColors.moderatorColor
+                    comment.distinguished == "admin" -> commentColors.adminColor
+                    loggedInUsername != null && comment.author == loggedInUsername -> commentColors.ownCommentColor
+                    else -> MaterialTheme.colorScheme.onSurface
+                },
+            modifier = Modifier.clickable(onClick = onUserClick),
+        )
+        if (comment.isSubmitter) {
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("OP", style = MaterialTheme.typography.labelSmall, color = commentColors.submitterColor)
+        }
+        AuthorFlair(comment)
+        Spacer(modifier = Modifier.width(8.dp))
+        CommentScore(comment)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = formatTimeAgo(comment.createdUtc) + if (comment.isEdited) " (edited)" else "",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (isHidden) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                Icons.Filled.VisibilityOff,
+                contentDescription = "Hidden",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+// Rich flair (with emoji) when the author has it, otherwise plain flair text.
+@Composable
+private fun RowScope.AuthorFlair(comment: Comment) {
+    val flairText = comment.authorFlairText
+    if (comment.authorFlairRichtext.isNotEmpty()) {
+        Spacer(modifier = Modifier.width(4.dp))
+        RichFlairChip(
+            richtext = comment.authorFlairRichtext,
+            backgroundColor = comment.authorFlairBackgroundColor,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+    } else if (!flairText.isNullOrBlank()) {
+        Spacer(modifier = Modifier.width(4.dp))
+        SubredditFlairChip(
+            text = flairText,
+            backgroundColor = comment.authorFlairBackgroundColor,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+    }
+}
+
+// The score in the color of your vote. Subreddits can hide scores for a while; tapping explains the [~].
+@Composable
+private fun CommentScore(comment: Comment) {
+    val voteColors = voteColors()
+    val context = LocalContext.current
+    Text(
+        text = if (comment.scoreHidden) "[~]" else formatNumber(comment.score),
+        style = MaterialTheme.typography.labelSmall,
+        color =
+            when (comment.voteState) {
+                VoteState.UPVOTED -> voteColors.upvoteColor
+                VoteState.DOWNVOTED -> voteColors.downvoteColor
+                VoteState.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        modifier =
+            if (comment.scoreHidden) {
+                Modifier.clickable { showShortToast(context, "Score hidden by subreddit rules") }
+            } else {
+                Modifier
+            },
+    )
+}
+
+// Shown under a selected comment: edit and delete for your own, votes, more options, and reply. Voting again in the
+// same direction removes the vote.
+@Composable
+private fun CommentActionRow(
+    comment: Comment,
+    isLoggedIn: Boolean,
+    isOwnComment: Boolean,
+    onVote: (direction: Int) -> Unit,
+    actions: CommentActions,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+    ) {
+        if (isLoggedIn && isOwnComment) {
+            CommentActionIcon(Icons.Default.Edit, "Edit", actions.onEdit)
+            CommentActionIcon(Icons.Default.Delete, "Delete", actions.onDelete, tint = MaterialTheme.colorScheme.error)
+        }
+        CommentVoteButton(comment, isUpvote = true, enabled = isLoggedIn) { onVote(if (comment.likes == true) 0 else 1) }
+        CommentVoteButton(comment, isUpvote = false, enabled = isLoggedIn) { onVote(if (comment.likes == false) 0 else -1) }
+        CommentOverflowMenu(comment = comment, isLoggedIn = isLoggedIn, actions = actions)
+        if (isLoggedIn) {
+            IconButton(onClick = actions.onReply, modifier = Modifier.size(36.dp)) {
+                Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Reply", modifier = Modifier.size(22.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommentActionIcon(
+    imageVector: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
+    IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) {
+        Icon(imageVector, contentDescription = contentDescription, modifier = Modifier.size(22.dp), tint = tint)
+    }
+}
+
+@Composable
+private fun CommentVoteButton(
+    comment: Comment,
+    isUpvote: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val voteColors = voteColors()
+    val isCurrentVote = comment.voteState == if (isUpvote) VoteState.UPVOTED else VoteState.DOWNVOTED
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(36.dp)) {
+        Icon(
+            when {
+                isUpvote && isCurrentVote -> Icons.Filled.KeyboardArrowUp
+                isUpvote -> Icons.Outlined.KeyboardArrowUp
+                isCurrentVote -> Icons.Filled.KeyboardArrowDown
+                else -> Icons.Outlined.KeyboardArrowDown
+            },
+            contentDescription = if (isUpvote) "Upvote" else "Downvote",
+            modifier = Modifier.size(24.dp),
+            tint =
+                when {
+                    !isCurrentVote -> MaterialTheme.colorScheme.onSurfaceVariant
+                    isUpvote -> voteColors.upvoteColor
+                    else -> voteColors.downvoteColor
+                },
+        )
+    }
+}
+
+// Share, save (needs an account) and opening the comment on its own.
+@Composable
+private fun CommentOverflowMenu(
+    comment: Comment,
+    isLoggedIn: Boolean,
+    actions: CommentActions,
+) {
+    var showContextMenu by remember { mutableStateOf(false) }
+    val runAndClose = { action: () -> Unit ->
+        showContextMenu = false
+        action()
+    }
+    Box {
+        CommentActionIcon(Icons.Default.MoreVert, "More", onClick = { showContextMenu = true })
+        DropdownMenu(
+            expanded = showContextMenu,
+            onDismissRequest = { showContextMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("Share") },
+                onClick = { runAndClose(actions.onShare) },
+                leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+            )
+            if (isLoggedIn) {
+                DropdownMenuItem(
+                    text = { Text(if (comment.isSaved) "Unsave" else "Save") },
+                    onClick = { runAndClose(actions.onSave) },
+                    leadingIcon = {
+                        Icon(
+                            if (comment.isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                            contentDescription = null,
+                        )
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text("Go to comment") },
+                onClick = { runAndClose { actions.onGoToCommentNav(comment.id) } },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
+            )
         }
     }
 }

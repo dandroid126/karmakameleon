@@ -90,6 +90,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.data.PendingQuote
 import com.karmakameleon.android.navigation.NavigationHandler
+import com.karmakameleon.android.ui.components.CommentActions
 import com.karmakameleon.android.ui.components.CommentItem
 import com.karmakameleon.android.ui.components.FlairChip
 import com.karmakameleon.android.ui.components.FullScreenImageViewer
@@ -706,30 +707,33 @@ private fun ThreadComment(
         comment = comment,
         isSelected = isSelected,
         isHidden = isHidden,
-        onSelect = { threadComments.select(comment) },
-        onDone = threadComments::deselect,
-        onHide = { threadComments.hide(comment) },
-        onPrev = { threadComments.previous(comment) },
-        onNext = { threadComments.next(comment) },
-        onRoot = { threadComments.root(comment) },
-        onParent = { threadComments.parent(comment) },
-        onCommentUpdated = threadComments::update,
-        onShare = { threadComments.share(comment) },
-        onReply = { threadComments.reply(comment) },
-        onEdit = { threadComments.edit(comment) },
-        onDelete = { threadComments.delete(comment) },
-        onSave = { threadComments.save(comment) },
+        actions =
+            CommentActions(
+                onSelect = { threadComments.select(comment) },
+                onDone = threadComments::deselect,
+                onShare = { threadComments.share(comment) },
+                onReply = { threadComments.reply(comment) },
+                onEdit = { threadComments.edit(comment) },
+                onDelete = { threadComments.delete(comment) },
+                onSave = { threadComments.save(comment) },
+                onCommentUpdated = threadComments::update,
+                onGoToCommentNav = onGoToCommentNav,
+                onHide = { threadComments.hide(comment) },
+                onPrev = { threadComments.previous(comment) },
+                onNext = { threadComments.next(comment) },
+                onRoot = { threadComments.root(comment) },
+                onParent = { threadComments.parent(comment) },
+                onTouchStart = {
+                    screen.selection.onSelectableTouched()
+                    threadComments.touched(comment)
+                },
+                onInlineImageClick = { url -> screen.openImages(listOf(url)) },
+            ),
         isLoggedIn = isLoggedIn,
         loggedInUsername = loggedInUsername,
         selectionVersion = screen.selection.version,
-        onTouchStart = {
-            screen.selection.onSelectableTouched()
-            threadComments.touched(comment)
-        },
         renderInlineImages = renderInlineImages,
-        onInlineImageClick = { url -> screen.openImages(listOf(url)) },
         isSingleThreadMode = isSingleThread,
-        onGoToCommentNav = onGoToCommentNav,
     )
 }
 
