@@ -91,151 +91,44 @@ class CommentViewModel(
 
     fun getFlattenedComments(): List<FlatCommentItem> {
         val state = _uiState.value
-        return flattenCommentTree(state.comments, state.hiddenCommentIds)
-    }
-
-    private fun flattenCommentTree(
-        items: List<CommentOrMore>,
-        hiddenIds: Set<String>,
-    ): List<FlatCommentItem> {
-        val result = mutableListOf<FlatCommentItem>()
-        for (item in items) {
-            when (item) {
-                is CommentOrMore.CommentItem -> {
-                    result.add(FlatCommentItem.CommentEntry(item.comment))
-                    if (!hiddenIds.contains(item.comment.id)) {
-                        result.addAll(flattenReplies(item.comment.replies, hiddenIds))
-                        item.comment.moreReplies?.let { more ->
-                            if (more.count > 0 && more.children.isNotEmpty()) {
-                                result.add(FlatCommentItem.MoreEntry(more))
-                            }
-                        }
-                    }
-                }
-
-                is CommentOrMore.More -> {
-                    result.add(FlatCommentItem.MoreEntry(item.more))
-                }
-            }
-        }
-        return result
-    }
-
-    private fun flattenReplies(
-        replies: List<Comment>,
-        hiddenIds: Set<String>,
-    ): List<FlatCommentItem> {
-        val result = mutableListOf<FlatCommentItem>()
-        for (comment in replies) {
-            result.add(FlatCommentItem.CommentEntry(comment))
-            if (!hiddenIds.contains(comment.id)) {
-                result.addAll(flattenReplies(comment.replies, hiddenIds))
-                comment.moreReplies?.let { more ->
-                    if (more.count > 0 && more.children.isNotEmpty()) {
-                        result.add(FlatCommentItem.MoreEntry(more))
-                    }
-                }
-            }
-        }
-        return result
+        return state.comments.flatten(state.hiddenCommentIds)
     }
 
     // ==================== Navigation ====================
 
     fun findRootCommentId(commentId: String): String? {
-        val flatComments =
-            getFlattenedComments()
-                .filterIsInstance<FlatCommentItem.CommentEntry>()
-                .map { it.comment }
-        val comment = flatComments.find { it.id == commentId } ?: return null
-        if (comment.depth == 0) return comment.id
-        var current = comment
+        val visible = visibleComments()
+        var current = visible.find { it.id == commentId } ?: return null
         while (current.depth > 0) {
-            val parent = flatComments.find { it.name == current.parentId } ?: break
-            current = parent
+            current = visible.find { it.name == current.parentId } ?: break
         }
         return current.id
     }
 
     fun findParentCommentId(commentId: String): String? {
-        val flatComments =
-            getFlattenedComments()
-                .filterIsInstance<FlatCommentItem.CommentEntry>()
-                .map { it.comment }
-        val comment = flatComments.find { it.id == commentId } ?: return null
-        if (comment.depth == 0) return null
-        return flatComments.find { it.name == comment.parentId }?.id
+        val visible = visibleComments()
+        val comment = visible.find { it.id == commentId }?.takeIf { it.depth > 0 } ?: return null
+        return visible.find { it.name == comment.parentId }?.id
     }
 
-    fun findPrevRootCommentId(commentId: String): String? {
-        val state = _uiState.value
-        val rootComments =
-            state.comments
+    fun findPrevRootCommentId(commentId: String): String? = neighborRootCommentId(commentId, -1)
+
+    fun findNextRootCommentId(commentId: String): String? = neighborRootCommentId(commentId, 1)
+
+    private fun visibleComments(): List<Comment> =
+        getFlattenedComments().filterIsInstance<FlatCommentItem.CommentEntry>().map { it.comment }
+
+    // The top-level comment offset places before or after the one whose thread contains commentId.
+    private fun neighborRootCommentId(
+        commentId: String,
+        offset: Int,
+    ): String? {
+        val rootIds =
+            _uiState.value.comments
                 .filterIsInstance<CommentOrMore.CommentItem>()
-                .map { it.comment }
+                .map { it.comment.id }
         val currentRootId = findRootCommentId(commentId) ?: return null
-        val idx = rootComments.indexOfFirst { it.id == currentRootId }
-        return if (idx > 0) rootComments[idx - 1].id else null
-    }
-
-    fun findNextRootCommentId(commentId: String): String? {
-        val state = _uiState.value
-        val rootComments =
-            state.comments
-                .filterIsInstance<CommentOrMore.CommentItem>()
-                .map { it.comment }
-        val currentRootId = findRootCommentId(commentId) ?: return null
-        val idx = rootComments.indexOfFirst { it.id == currentRootId }
-        return if (idx < rootComments.size - 1) rootComments[idx + 1].id else null
-    }
-
-    // ==================== Tree Building ====================
-
-    fun buildCommentTree(flatItems: List<CommentOrMore>): List<CommentOrMore> {
-        val comments = flatItems.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
-        val moreEntries = flatItems.filterIsInstance<CommentOrMore.More>()
-
-        val commentByName = mutableMapOf<String, Comment>()
-        for (c in comments) commentByName[c.name] = c
-
-        val childNamesOf = mutableMapOf<String, MutableList<String>>()
-        for (c in comments) {
-            if (c.parentId in commentByName) {
-                childNamesOf.getOrPut(c.parentId) { mutableListOf() }.add(c.name)
-            }
-        }
-        val moreOf = mutableMapOf<String, MoreComments>()
-        for (m in moreEntries) {
-            if (m.more.parentId in commentByName) {
-                moreOf[m.more.parentId] = m.more
-            }
-        }
-
-        for (c in comments.sortedByDescending { it.depth }) {
-            val childNames = childNamesOf[c.name]
-            val more = moreOf[c.name]
-            if (childNames != null || more != null) {
-                val children = childNames?.map { commentByName.getValue(it) }.orEmpty()
-                commentByName[c.name] =
-                    commentByName.getValue(c.name).copy(
-                        replies = children,
-                        moreReplies = more,
-                    )
-            }
-        }
-
-        val result = mutableListOf<CommentOrMore>()
-        for (c in comments) {
-            if (c.parentId !in commentByName) {
-                result.add(CommentOrMore.CommentItem(commentByName.getValue(c.name)))
-            }
-        }
-        for (m in moreEntries) {
-            if (m.more.parentId !in commentByName) {
-                result.add(m)
-            }
-        }
-        return result
+        return rootIds.getOrNull(rootIds.indexOf(currentRootId) + offset)
     }
 
     // ==================== Tree Modifications ====================
@@ -247,154 +140,24 @@ class CommentViewModel(
         val treeComments = buildCommentTree(newComments)
         _uiState.update { state ->
             state.copy(
-                comments = insertCommentsInTree(state.comments, more, treeComments),
+                comments = state.comments.withMoreComments(more, treeComments),
                 loadingMoreId = null,
             )
         }
     }
 
-    private fun insertCommentsInTree(
-        existing: List<CommentOrMore>,
-        more: MoreComments,
-        newComments: List<CommentOrMore>,
-    ): List<CommentOrMore> =
-        existing.flatMap { item ->
-            when (item) {
-                is CommentOrMore.More -> {
-                    if (item.more.id == more.id) {
-                        newComments
-                    } else {
-                        listOf(item)
-                    }
-                }
-
-                is CommentOrMore.CommentItem -> {
-                    if (item.comment.moreReplies?.id == more.id) {
-                        val addedReplies = newComments.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
-                        val newMore = newComments.filterIsInstance<CommentOrMore.More>().firstOrNull()?.more
-                        listOf(
-                            CommentOrMore.CommentItem(
-                                item.comment.copy(
-                                    replies = item.comment.replies + addedReplies,
-                                    moreReplies = newMore,
-                                ),
-                            ),
-                        )
-                    } else {
-                        listOf(
-                            CommentOrMore.CommentItem(
-                                item.comment.copy(
-                                    replies = insertCommentsInReplies(item.comment.replies, more, newComments),
-                                ),
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-
-    private fun insertCommentsInReplies(
-        replies: List<Comment>,
-        more: MoreComments,
-        newComments: List<CommentOrMore>,
-    ): List<Comment> =
-        replies.map { comment ->
-            if (comment.moreReplies?.id == more.id) {
-                val addedReplies = newComments.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
-                val newMore = newComments.filterIsInstance<CommentOrMore.More>().firstOrNull()?.more
-                comment.copy(
-                    replies = comment.replies + addedReplies,
-                    moreReplies = newMore,
-                )
-            } else {
-                comment.copy(
-                    replies = insertCommentsInReplies(comment.replies, more, newComments),
-                )
-            }
-        }
-
     fun updateComment(updatedComment: Comment) {
-        _uiState.update { state ->
-            state.copy(comments = updateCommentInTree(state.comments, updatedComment))
-        }
+        _uiState.update { state -> state.copy(comments = state.comments.withUpdatedComment(updatedComment)) }
     }
-
-    private fun updateCommentInTree(
-        comments: List<CommentOrMore>,
-        updated: Comment,
-    ): List<CommentOrMore> =
-        comments.map { item ->
-            when (item) {
-                is CommentOrMore.CommentItem -> {
-                    if (item.comment.id == updated.id) {
-                        CommentOrMore.CommentItem(updated.copy(replies = item.comment.replies, moreReplies = item.comment.moreReplies))
-                    } else {
-                        CommentOrMore.CommentItem(
-                            item.comment.copy(replies = updateCommentInReplies(item.comment.replies, updated)),
-                        )
-                    }
-                }
-
-                is CommentOrMore.More -> {
-                    item
-                }
-            }
-        }
-
-    private fun updateCommentInReplies(
-        replies: List<Comment>,
-        updated: Comment,
-    ): List<Comment> =
-        replies.map { comment ->
-            if (comment.id == updated.id) {
-                updated.copy(replies = comment.replies, moreReplies = comment.moreReplies)
-            } else {
-                comment.copy(replies = updateCommentInReplies(comment.replies, updated))
-            }
-        }
 
     fun removeComment(commentId: String) {
         _uiState.update { state ->
             state.copy(
-                comments = removeCommentFromTree(state.comments, commentId),
+                comments = state.comments.withoutComment(commentId),
                 selectedCommentId = null,
             )
         }
     }
-
-    private fun removeCommentFromTree(
-        comments: List<CommentOrMore>,
-        commentId: String,
-    ): List<CommentOrMore> =
-        comments.mapNotNull { item ->
-            when (item) {
-                is CommentOrMore.CommentItem -> {
-                    if (item.comment.id == commentId) {
-                        null
-                    } else {
-                        CommentOrMore.CommentItem(
-                            item.comment.copy(replies = removeCommentFromReplies(item.comment.replies, commentId)),
-                        )
-                    }
-                }
-
-                is CommentOrMore.More -> {
-                    item
-                }
-            }
-        }
-
-    private fun removeCommentFromReplies(
-        replies: List<Comment>,
-        commentId: String,
-    ): List<Comment> =
-        replies.mapNotNull { comment ->
-            if (comment.id == commentId) {
-                null
-            } else {
-                comment.copy(replies = removeCommentFromReplies(comment.replies, commentId))
-            }
-        }
 
     fun addReplyToTree(
         parentId: String,
@@ -407,112 +170,17 @@ class CommentViewModel(
                     if (isReplyToPost) {
                         listOf(CommentOrMore.CommentItem(newComment.copy(depth = 0))) + state.comments
                     } else {
-                        addReplyToComment(state.comments, parentId, newComment)
+                        state.comments.withReply(parentId, newComment)
                     },
             )
         }
     }
 
-    private fun addReplyToComment(
-        comments: List<CommentOrMore>,
-        parentId: String,
-        newComment: Comment,
-    ): List<CommentOrMore> =
-        comments.map { item ->
-            when (item) {
-                is CommentOrMore.CommentItem -> {
-                    if (item.comment.name == parentId) {
-                        val adjustedComment = newComment.copy(depth = item.comment.depth + 1)
-                        CommentOrMore.CommentItem(
-                            item.comment.copy(
-                                replies = listOf(adjustedComment) + item.comment.replies,
-                            ),
-                        )
-                    } else {
-                        CommentOrMore.CommentItem(
-                            item.comment.copy(
-                                replies = addReplyToReplies(item.comment.replies, parentId, newComment),
-                            ),
-                        )
-                    }
-                }
-
-                is CommentOrMore.More -> {
-                    item
-                }
-            }
-        }
-
-    private fun addReplyToReplies(
-        replies: List<Comment>,
-        parentId: String,
-        newComment: Comment,
-    ): List<Comment> =
-        replies.map { comment ->
-            if (comment.name == parentId) {
-                val adjustedComment = newComment.copy(depth = comment.depth + 1)
-                comment.copy(replies = listOf(adjustedComment) + comment.replies)
-            } else {
-                comment.copy(
-                    replies = addReplyToReplies(comment.replies, parentId, newComment),
-                )
-            }
-        }
-
     // ==================== Finding Comments ====================
 
-    fun findCommentById(commentId: String): Comment? {
-        for (item in _uiState.value.comments) {
-            if (item is CommentOrMore.CommentItem) {
-                if (item.comment.id == commentId) return item.comment
-                val found = searchReplies(item.comment.replies, commentId)
-                if (found != null) return found
-            }
-        }
-        return null
-    }
+    fun findCommentById(commentId: String): Comment? = _uiState.value.comments.findComment { it.id == commentId }
 
-    private fun searchReplies(
-        replies: List<Comment>,
-        commentId: String,
-    ): Comment? {
-        for (comment in replies) {
-            if (comment.id == commentId) return comment
-            val found = searchReplies(comment.replies, commentId)
-            if (found != null) return found
-        }
-        return null
-    }
-
-    fun findCommentByName(commentName: String): Comment? {
-        fun searchTree(items: List<CommentOrMore>): Comment? {
-            for (item in items) {
-                when (item) {
-                    is CommentOrMore.CommentItem -> {
-                        if (item.comment.name == commentName) return item.comment
-                        val found = searchRepliesForName(item.comment.replies, commentName)
-                        if (found != null) return found
-                    }
-
-                    is CommentOrMore.More -> {}
-                }
-            }
-            return null
-        }
-        return searchTree(_uiState.value.comments)
-    }
-
-    private fun searchRepliesForName(
-        replies: List<Comment>,
-        commentName: String,
-    ): Comment? {
-        for (comment in replies) {
-            if (comment.name == commentName) return comment
-            val found = searchRepliesForName(comment.replies, commentName)
-            if (found != null) return found
-        }
-        return null
-    }
+    fun findCommentByName(commentName: String): Comment? = _uiState.value.comments.findComment { it.name == commentName }
 
     // ==================== Loading More ====================
 
@@ -557,13 +225,6 @@ class CommentViewModel(
         _uiState.update { it.copy(replyingTo = parentId, editingCommentId = null, replyText = formatted, savedDraftText = draft) }
     }
 
-    fun insertQuotedText(text: String) {
-        if (text.isBlank()) return
-        val formatted = text.lines().joinToString("\n") { ">$it" } + "\n\n"
-        val current = _uiState.value.replyText
-        _uiState.update { it.copy(replyText = formatted + current) }
-    }
-
     fun insertQuote(parentText: String) {
         if (parentText.isBlank()) return
         val formatted = parentText.lines().joinToString("\n") { ">$it" } + "\n\n"
@@ -595,22 +256,6 @@ class CommentViewModel(
             val result = commentRepository.save(comment)
             result.onSuccess { updatedComment ->
                 updateComment(updatedComment)
-            }
-        }
-    }
-
-    fun submitReply(isReplyToPost: Boolean) {
-        val parentId = _uiState.value.replyingTo ?: return
-        val text = _uiState.value.replyText.trim()
-        if (text.isEmpty()) return
-
-        viewModelScope.launch {
-            val result = commentRepository.submitComment(parentId, text)
-            result.onSuccess { newComment ->
-                deleteDraft(parentId)
-                val adjustedComment = newComment.copy(likes = true, score = 1)
-                _uiState.update { it.copy(replyingTo = null, replyText = "", savedDraftText = null) }
-                addReplyToTree(parentId, adjustedComment, isReplyToPost)
             }
         }
     }

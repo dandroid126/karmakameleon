@@ -165,7 +165,7 @@ fun PostDetailScreen(
                 PendingQuote.consume()
                 val post = uiState.post ?: return@collect
                 if (commentState.replyingTo != null || commentState.editingCommentId != null) {
-                    viewModel.commentViewModel.insertQuotedText(text)
+                    viewModel.commentViewModel.insertQuote(text)
                 } else {
                     val parentId = commentState.lastTouchedCommentName ?: post.name
                     viewModel.commentViewModel.startReplyWithQuote(parentId, text)

@@ -272,7 +272,7 @@ class CommentViewModelTest {
                 CommentOrMore.CommentItem(parent),
                 CommentOrMore.CommentItem(child),
             )
-        val tree = viewModel.buildCommentTree(items)
+        val tree = buildCommentTree(items)
         assertEquals(1, tree.size)
         val rootComment = (tree[0] as CommentOrMore.CommentItem).comment
         assertEquals(1, rootComment.replies.size)
@@ -288,7 +288,7 @@ class CommentViewModelTest {
                 CommentOrMore.CommentItem(parent),
                 CommentOrMore.More(more),
             )
-        val tree = viewModel.buildCommentTree(items)
+        val tree = buildCommentTree(items)
         assertEquals(1, tree.size)
         val rootComment = (tree[0] as CommentOrMore.CommentItem).comment
         assertEquals("more1", rootComment.moreReplies?.id)
@@ -485,9 +485,9 @@ class CommentViewModelTest {
     }
 
     @Test
-    fun insertQuotedText_prependsToExistingText() {
+    fun insertQuote_prependsToExistingText() {
         viewModel.setReplyText("existing text")
-        viewModel.insertQuotedText("quoted line")
+        viewModel.insertQuote("quoted line")
         assertTrue(
             viewModel.uiState.value.replyText
                 .startsWith(">quoted line"),
@@ -499,9 +499,9 @@ class CommentViewModelTest {
     }
 
     @Test
-    fun insertQuotedText_ignoresBlankText() {
+    fun insertQuote_ignoresWhitespaceText() {
         viewModel.setReplyText("existing")
-        viewModel.insertQuotedText("  ")
+        viewModel.insertQuote("  ")
         assertEquals("existing", viewModel.uiState.value.replyText)
     }
 
