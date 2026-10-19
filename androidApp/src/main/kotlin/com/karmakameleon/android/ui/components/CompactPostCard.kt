@@ -1,6 +1,7 @@
 package com.karmakameleon.android.ui.components
 
 import android.content.ClipData
+import android.content.Context
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -88,49 +89,77 @@ import kotlinx.coroutines.launch
 
 private const val EXPAND_ANIMATION_MS = 200
 private val COMPACT_THUMBNAIL_SIZE = 72.dp
+private const val THUMBNAIL_SOURCE_MIN_WIDTH = 216
 
 /**
  * Compact feed variant of [PostCard]. Tapping the card toggles a control bar instead of opening
  * the post; tapping the thumbnail opens the post. The highlight stays on the last tapped post
  * after its controls are collapsed.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CompactPostCard(
     post: Post,
     isExpanded: Boolean,
     isHighlighted: Boolean,
     onToggleExpanded: () -> Unit,
-    onClick: () -> Unit,
-    onSubredditClick: () -> Unit,
-    onUserClick: () -> Unit,
-    onUpvote: () -> Unit,
-    onDownvote: () -> Unit,
-    onSave: () -> Unit,
-    onHide: () -> Unit,
+    actions: PostActions,
     isLoggedIn: Boolean,
     modifier: Modifier = Modifier,
-    onBlockSubreddit: () -> Unit = {},
-    onLinkClick: (String) -> Unit = {},
-    onCrosspostClick: () -> Unit = {},
     isRead: Boolean = false,
     nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH,
     spoilerPreviewsEnabled: Boolean = false,
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-    var showShareMenu by remember { mutableStateOf(false) }
-    val clipboard = LocalClipboard.current
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val voteColors = voteColors()
-    val postFlairColors = postFlairColors()
-    val readStateColors = readStateColors()
-    val showLoginRequired = {
-        Toast.makeText(context, "You need to be logged in to do that", Toast.LENGTH_SHORT).show()
-    }
+    Card(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+        colors = CardDefaults.cardColors(containerColor = highlightedCardColor(isHighlighted)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.Top,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggleExpanded)
+                    .padding(start = 2.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+        ) {
+            CompactVoteColumn(post = post, isLoggedIn = isLoggedIn, onUpvote = actions.onUpvote, onDownvote = actions.onDownvote)
+            CompactPostInfo(
+                post = post,
+                isExpanded = isExpanded,
+                isRead = isRead,
+                onSubredditClick = actions.onSubredditClick,
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .padding(start = 2.dp, end = 8.dp, top = 2.dp),
+            )
+            CompactThumbnail(
+                post = post,
+                nsfwPreviewMode = nsfwPreviewMode,
+                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
+                onClick = actions.onClick,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
 
+        AnimatedVisibility(
+            visible = isExpanded,
+            enter = expandVertically(tween(EXPAND_ANIMATION_MS)) + fadeIn(tween(EXPAND_ANIMATION_MS)),
+            exit = shrinkVertically(tween(EXPAND_ANIMATION_MS)) + fadeOut(tween(EXPAND_ANIMATION_MS)),
+        ) {
+            CompactControlBar(post = post, isLoggedIn = isLoggedIn, actions = actions)
+        }
+    }
+}
+
+// The card's color, tinted while it's the highlighted post.
+@Composable
+private fun highlightedCardColor(isHighlighted: Boolean): Color {
     val baseColor = CardDefaults.cardColors().containerColor
-    val containerColor by animateColorAsState(
+    val color by animateColorAsState(
         targetValue =
             if (isHighlighted) {
                 MaterialTheme.colorScheme.primary
@@ -142,332 +171,276 @@ fun CompactPostCard(
         animationSpec = tween(EXPAND_ANIMATION_MS),
         label = "compactPostHighlight",
     )
+    return color
+}
 
-    Card(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 3.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+private fun showLoginRequired(context: Context) = showShortToast(context, "You need to be logged in to do that")
+
+// Votes need an account and an open post; tapping explains which is missing.
+@Composable
+private fun CompactVoteColumn(
+    post: Post,
+    isLoggedIn: Boolean,
+    onUpvote: () -> Unit,
+    onDownvote: () -> Unit,
+) {
+    val context = LocalContext.current
+    val voteOrExplain = { vote: () -> Unit ->
+        when {
+            !isLoggedIn -> showLoginRequired(context)
+            post.isVotingDisabled -> showShortToast(context, post.votingDisabledReason)
+            else -> vote()
+        }
+    }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(44.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.Top,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onToggleExpanded)
-                    .padding(start = 2.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
-        ) {
-            // Vote column
-            val votingDisabled = post.isVotingDisabled
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.width(44.dp),
+        VoteArrowButton(post = post, isUpvote = true, onClick = { voteOrExplain(onUpvote) }, modifier = Modifier.size(28.dp))
+        PostScore(post = post, maxLines = 1)
+        VoteArrowButton(post = post, isUpvote = false, onClick = { voteOrExplain(onDownvote) }, modifier = Modifier.size(28.dp))
+    }
+}
+
+// Flairs, title with the link's domain, subreddit and stats, and the author once expanded.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CompactPostInfo(
+    post: Post,
+    isExpanded: Boolean,
+    isRead: Boolean,
+    onSubredditClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        if (post.hasFlairs) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.padding(bottom = 4.dp),
             ) {
-                IconButton(
-                    onClick = {
-                        when {
-                            !isLoggedIn -> showLoginRequired()
-                            votingDisabled -> Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show()
-                            else -> onUpvote()
-                        }
-                    },
-                    modifier = Modifier.size(28.dp),
-                ) {
-                    Icon(
-                        imageVector =
-                            if (post.voteState == VoteState.UPVOTED) {
-                                Icons.Filled.KeyboardArrowUp
-                            } else {
-                                Icons.Outlined.KeyboardArrowUp
-                            },
-                        contentDescription = "Upvote",
-                        tint =
-                            when {
-                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                    )
-                }
-
-                Text(
-                    text = formatNumber(post.score),
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    color =
-                        when {
-                            votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
-                            post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
-                            else -> MaterialTheme.colorScheme.onSurface
-                        },
-                )
-
-                IconButton(
-                    onClick = {
-                        when {
-                            !isLoggedIn -> showLoginRequired()
-                            votingDisabled -> Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show()
-                            else -> onDownvote()
-                        }
-                    },
-                    modifier = Modifier.size(28.dp),
-                ) {
-                    Icon(
-                        imageVector =
-                            if (post.voteState == VoteState.DOWNVOTED) {
-                                Icons.Filled.KeyboardArrowDown
-                            } else {
-                                Icons.Outlined.KeyboardArrowDown
-                            },
-                        contentDescription = "Downvote",
-                        tint =
-                            when {
-                                votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
-                                else -> MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                    )
-                }
+                PostFlairChips(post)
             }
-
-            // Title and metadata
-            Column(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .padding(start = 2.dp, end = 8.dp, top = 2.dp),
-            ) {
-                if (post.isNsfw || post.isSpoiler || post.isStickied || post.linkFlairText != null) {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                        modifier = Modifier.padding(bottom = 4.dp),
-                    ) {
-                        if (post.isNsfw) {
-                            FlairChip(text = "NSFW", color = postFlairColors.nsfwColor)
-                        }
-                        if (post.isSpoiler) {
-                            FlairChip(text = "Spoiler", color = postFlairColors.spoilerColor)
-                        }
-                        if (post.isStickied) {
-                            FlairChip(text = "Pinned", color = postFlairColors.pinnedColor)
-                        }
-                        post.linkFlairText?.let { flair ->
-                            SubredditFlairChip(text = flair, backgroundColor = post.linkFlairBackgroundColor)
-                        }
-                    }
-                }
-
-                val domainColor = MaterialTheme.colorScheme.onSurfaceVariant
-                val domainStyle = MaterialTheme.typography.labelMedium
-                Text(
-                    text =
-                        buildAnnotatedString {
-                            append(post.title)
-                            if (post.isLinkPost) {
-                                withStyle(
-                                    SpanStyle(
-                                        color = domainColor,
-                                        fontSize = domainStyle.fontSize,
-                                        fontWeight = FontWeight.Normal,
-                                    ),
-                                ) {
-                                    append(" (${post.domain})")
-                                }
-                            }
-                        },
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = if (isRead) FontWeight.Normal else FontWeight.SemiBold,
-                    color = if (isRead) readStateColors.readTitleColor else MaterialTheme.colorScheme.onSurface,
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "r/${post.subreddit}",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier =
-                            Modifier
-                                .weight(1f, fill = false)
-                                .clickable(onClick = onSubredditClick),
-                    )
-                    Text(
-                        text = " • ${formatNumber(post.numComments)} comments • ${formatTimeAgo(post.createdUtc)}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-
-                AnimatedVisibility(
-                    visible = isExpanded,
-                    enter = expandVertically(tween(EXPAND_ANIMATION_MS)) + fadeIn(tween(EXPAND_ANIMATION_MS)),
-                    exit = shrinkVertically(tween(EXPAND_ANIMATION_MS)) + fadeOut(tween(EXPAND_ANIMATION_MS)),
-                ) {
-                    Text(
-                        text = "by u/${post.author}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
-            }
-
-            CompactThumbnail(
-                post = post,
-                nsfwPreviewMode = nsfwPreviewMode,
-                spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                onClick = onClick,
-                modifier = Modifier.padding(top = 2.dp),
-            )
         }
 
-        // Control bar
+        CompactTitle(post = post, isRead = isRead)
+        Spacer(modifier = Modifier.height(4.dp))
+        CompactSubredditLine(post = post, onSubredditClick = onSubredditClick)
+
         AnimatedVisibility(
             visible = isExpanded,
             enter = expandVertically(tween(EXPAND_ANIMATION_MS)) + fadeIn(tween(EXPAND_ANIMATION_MS)),
             exit = shrinkVertically(tween(EXPAND_ANIMATION_MS)) + fadeOut(tween(EXPAND_ANIMATION_MS)),
         ) {
-            Column {
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                )
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 2.dp),
-                ) {
-                    val iconTint = MaterialTheme.colorScheme.onSurfaceVariant
-                    val accountIconTint = if (isLoggedIn) iconTint else iconTint.copy(alpha = 0.38f)
+            Text(
+                text = "by u/${post.author}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+        }
+    }
+}
 
-                    Box {
-                        IconButton(onClick = { showShareMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Share",
-                                tint = iconTint,
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = showShareMenu,
-                            onDismissRequest = { showShareMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Copy comments link") },
-                                onClick = {
-                                    val link = "https://www.reddit.com${post.permalink}"
-                                    coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) }
-                                    showShareMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Link, contentDescription = null)
-                                },
-                            )
-                            post.contentLink?.let { contentLink ->
-                                DropdownMenuItem(
-                                    text = { Text("Copy post link") },
-                                    onClick = {
-                                        coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", contentLink))) }
-                                        showShareMenu = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(Icons.Default.Link, contentDescription = null)
-                                    },
-                                )
-                            }
-                        }
-                    }
-
-                    // Save and hide need an account; dimmed when logged out and explain why when tapped
-                    IconButton(onClick = if (isLoggedIn) onSave else showLoginRequired) {
-                        Icon(
-                            imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = if (post.isSaved) "Unsave" else "Save",
-                            tint = if (post.isSaved) MaterialTheme.colorScheme.primary else accountIconTint,
-                        )
-                    }
-
-                    IconButton(onClick = if (isLoggedIn) onHide else showLoginRequired) {
-                        Icon(
-                            imageVector = Icons.Outlined.VisibilityOff,
-                            contentDescription = if (post.isHidden) "Unhide" else "Hide",
-                            tint = accountIconTint,
-                        )
-                    }
-
-                    if (post.isLinkPost) {
-                        IconButton(onClick = { onLinkClick(post.url) }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
-                                contentDescription = "Open link",
-                                tint = iconTint,
-                            )
-                        }
-                    }
-
-                    if (post.isCrosspost) {
-                        IconButton(onClick = onCrosspostClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.CallMerge,
-                                contentDescription = "View original post",
-                                tint = iconTint,
-                            )
-                        }
-                    }
-
-                    Box {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.MoreVert,
-                                contentDescription = "More options",
-                                tint = iconTint,
-                            )
-                        }
-
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false },
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("u/${post.author}'s profile") },
-                                onClick = {
-                                    onUserClick()
-                                    showMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Person, contentDescription = null)
-                                },
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Block r/${post.subreddit}") },
-                                onClick = {
-                                    onBlockSubreddit()
-                                    Toast.makeText(context, "Blocked r/${post.subreddit}", Toast.LENGTH_SHORT).show()
-                                    showMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Block, contentDescription = null)
-                                },
-                            )
-                        }
+// The title, followed by the domain for a link post.
+@Composable
+private fun CompactTitle(
+    post: Post,
+    isRead: Boolean,
+) {
+    val readStateColors = readStateColors()
+    val domainColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val domainStyle = MaterialTheme.typography.labelMedium
+    Text(
+        text =
+            buildAnnotatedString {
+                append(post.title)
+                if (post.isLinkPost) {
+                    withStyle(
+                        SpanStyle(
+                            color = domainColor,
+                            fontSize = domainStyle.fontSize,
+                            fontWeight = FontWeight.Normal,
+                        ),
+                    ) {
+                        append(" (${post.domain})")
                     }
                 }
+            },
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = if (isRead) FontWeight.Normal else FontWeight.SemiBold,
+        color = if (isRead) readStateColors.readTitleColor else MaterialTheme.colorScheme.onSurface,
+    )
+}
+
+// The subreddit, comment count and age.
+@Composable
+private fun CompactSubredditLine(
+    post: Post,
+    onSubredditClick: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "r/${post.subreddit}",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier =
+                Modifier
+                    .weight(1f, fill = false)
+                    .clickable(onClick = onSubredditClick),
+        )
+        Text(
+            text = " • ${formatNumber(post.numComments)} comments • ${formatTimeAgo(post.createdUtc)}",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun CompactControlBar(
+    post: Post,
+    isLoggedIn: Boolean,
+    actions: PostActions,
+) {
+    val context = LocalContext.current
+    Column {
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+            modifier = Modifier.padding(horizontal = 12.dp),
+        )
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp),
+        ) {
+            val iconTint = MaterialTheme.colorScheme.onSurfaceVariant
+            val accountIconTint = if (isLoggedIn) iconTint else iconTint.copy(alpha = 0.38f)
+
+            CompactShareMenu(post = post, iconTint = iconTint)
+
+            // Save and hide need an account; dimmed when logged out and explain why when tapped
+            IconButton(onClick = if (isLoggedIn) actions.onSave else ({ showLoginRequired(context) })) {
+                Icon(
+                    imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = if (post.isSaved) "Unsave" else "Save",
+                    tint = if (post.isSaved) MaterialTheme.colorScheme.primary else accountIconTint,
+                )
             }
+
+            IconButton(onClick = if (isLoggedIn) actions.onHide else ({ showLoginRequired(context) })) {
+                Icon(
+                    imageVector = Icons.Outlined.VisibilityOff,
+                    contentDescription = if (post.isHidden) "Unhide" else "Hide",
+                    tint = accountIconTint,
+                )
+            }
+
+            if (post.isLinkPost) {
+                IconButton(onClick = { actions.onLinkClick(post.url) }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
+                        contentDescription = "Open link",
+                        tint = iconTint,
+                    )
+                }
+            }
+
+            if (post.isCrosspost) {
+                IconButton(onClick = actions.onCrosspostClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.CallMerge,
+                        contentDescription = "View original post",
+                        tint = iconTint,
+                    )
+                }
+            }
+
+            CompactMoreMenu(
+                post = post,
+                iconTint = iconTint,
+                onUserClick = actions.onUserClick,
+                onBlockSubreddit = actions.onBlockSubreddit,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactShareMenu(
+    post: Post,
+    iconTint: Color,
+) {
+    var showShareMenu by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { showShareMenu = true }) {
+            Icon(
+                imageVector = Icons.Default.Share,
+                contentDescription = "Share",
+                tint = iconTint,
+            )
+        }
+
+        DropdownMenu(
+            expanded = showShareMenu,
+            onDismissRequest = { showShareMenu = false },
+        ) {
+            CopyLinkMenuItems(post = post, onDone = { showShareMenu = false })
+        }
+    }
+}
+
+@Composable
+private fun CompactMoreMenu(
+    post: Post,
+    iconTint: Color,
+    onUserClick: () -> Unit,
+    onBlockSubreddit: () -> Unit,
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    Box {
+        IconButton(onClick = { showMenu = true }) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "More options",
+                tint = iconTint,
+            )
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text("u/${post.author}'s profile") },
+                onClick = {
+                    onUserClick()
+                    showMenu = false
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Person, contentDescription = null)
+                },
+            )
+            DropdownMenuItem(
+                text = { Text("Block r/${post.subreddit}") },
+                onClick = {
+                    onBlockSubreddit()
+                    showShortToast(context, "Blocked r/${post.subreddit}")
+                    showMenu = false
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Block, contentDescription = null)
+                },
+            )
         }
     }
 }
@@ -485,19 +458,7 @@ private fun CompactThumbnail(
     modifier: Modifier = Modifier,
 ) {
     val postFlairColors = postFlairColors()
-    val mediaColors = mediaColors()
-    val previewImage = post.preview?.images?.firstOrNull()
-    // Reddit's preview resolutions run small to large; 216px is enough for a 72dp square
-    val thumbnailUrl =
-        previewImage?.resolutions?.firstOrNull { it.width >= 216 }?.url
-            ?: previewImage?.resolutions?.lastOrNull()?.url
-            ?: previewImage?.source?.url
-            ?: post.galleryData
-                ?.items
-                ?.firstOrNull()
-                ?.url
-            ?: post.thumbnail?.takeIf { it.startsWith("http") }
-            ?: post.url.takeIf { post.isImagePost }
+    val thumbnailUrl = compactThumbnailUrl(post)
 
     Box(
         contentAlignment = Alignment.Center,
@@ -532,36 +493,63 @@ private fun CompactThumbnail(
                 )
             }
 
+            post.isNsfw && nsfwPreviewMode == NsfwPreviewMode.PREFETCH_AND_BLUR -> {
+                BlurredThumbnail(thumbnailUrl)
+            }
+
             else -> {
-                val blurred = post.isNsfw && nsfwPreviewMode == NsfwPreviewMode.PREFETCH_AND_BLUR
                 AsyncImage(
                     model = thumbnailUrl,
                     contentDescription = "Open post",
                     contentScale = ContentScale.Crop,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .then(if (blurred) Modifier.blur(10.dp) else Modifier),
+                    modifier = Modifier.fillMaxSize(),
                 )
-                if (blurred) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .background(mediaColors.blurScrimColor),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.VisibilityOff,
-                            contentDescription = null,
-                            tint = mediaColors.onOverlayColor,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                } else {
-                    MediaBadge(post = post, modifier = Modifier.align(Alignment.BottomEnd))
-                }
+                MediaBadge(post = post, modifier = Modifier.align(Alignment.BottomEnd))
             }
+        }
+    }
+}
+
+// Reddit's preview resolutions run small to large; 216px is enough for a 72dp square
+private fun compactThumbnailUrl(post: Post): String? {
+    val previewImage = post.preview?.images?.firstOrNull()
+    return previewImage?.resolutions?.firstOrNull { it.width >= THUMBNAIL_SOURCE_MIN_WIDTH }?.url
+        ?: previewImage?.resolutions?.lastOrNull()?.url
+        ?: previewImage?.source?.url
+        ?: post.galleryData
+            ?.items
+            ?.firstOrNull()
+            ?.url
+        ?: post.thumbnail?.takeIf { it.startsWith("http") }
+        ?: post.url.takeIf { post.isImagePost }
+}
+
+@Composable
+private fun BlurredThumbnail(url: String) {
+    val mediaColors = mediaColors()
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+        AsyncImage(
+            model = url,
+            contentDescription = "Open post",
+            contentScale = ContentScale.Crop,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .blur(10.dp),
+        )
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(mediaColors.blurScrimColor),
+        ) {
+            Icon(
+                imageVector = Icons.Default.VisibilityOff,
+                contentDescription = null,
+                tint = mediaColors.onOverlayColor,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }

@@ -95,56 +95,36 @@ fun parseRedditLink(url: String): RedditLink {
         } catch (_: Exception) {
             return RedditLink.External(url)
         }
-
-    val host = parsedUrl.host
-    if (!redditHostRegex.matches(host)) {
-        return RedditLink.External(url)
-    }
+    if (!redditHostRegex.matches(parsedUrl.host)) return RedditLink.External(url)
 
     val pathSegments = parsedUrl.segments.filter { it.isNotEmpty() }
-    val contextParam = parsedUrl.parameters["context"]?.toIntOrNull()
+    val context = parsedUrl.parameters["context"]?.toIntOrNull()
+    return redditLinkFromPath(pathSegments, context) ?: RedditLink.External(url)
+}
 
-    return when {
-        pathSegments.size >= 6 &&
-            pathSegments[0] == "r" &&
-            pathSegments[2] == "comments" &&
-            pathSegments[5].isNotEmpty() -> {
-            RedditLink.Comment(
-                subreddit = pathSegments[1],
-                postId = pathSegments[3],
-                commentId = pathSegments[5],
-                context = contextParam,
-            )
-        }
+private fun redditLinkFromPath(
+    pathSegments: List<String>,
+    context: Int?,
+): RedditLink? {
+    val name = pathSegments.getOrNull(1) ?: return null
+    return when (pathSegments[0]) {
+        "r" -> subredditPathLink(name, pathSegments, context)
+        "u", "user" -> RedditLink.User(name)
+        else -> null
+    }
+}
 
-        pathSegments.size >= 4 &&
-            pathSegments[0] == "r" &&
-            pathSegments[2] == "comments" -> {
-            RedditLink.Post(
-                subreddit = pathSegments[1],
-                postId = pathSegments[3],
-            )
-        }
-
-        pathSegments.size >= 4 &&
-            pathSegments[0] == "r" &&
-            pathSegments[2] == "s" -> {
-            RedditLink.ShareLink(
-                subreddit = pathSegments[1],
-                shareId = pathSegments[3],
-            )
-        }
-
-        pathSegments.size >= 2 && pathSegments[0] == "r" -> {
-            RedditLink.Subreddit(name = pathSegments[1])
-        }
-
-        pathSegments.size >= 2 && (pathSegments[0] == "u" || pathSegments[0] == "user") -> {
-            RedditLink.User(name = pathSegments[1])
-        }
-
-        else -> {
-            RedditLink.External(url)
-        }
+// A link under /r/<subreddit>/: the subreddit itself, a post, a comment or a share link.
+private fun subredditPathLink(
+    subreddit: String,
+    pathSegments: List<String>,
+    context: Int?,
+): RedditLink {
+    val id = pathSegments.getOrNull(3) ?: return RedditLink.Subreddit(subreddit)
+    val commentId = pathSegments.getOrNull(5)
+    return when (pathSegments[2]) {
+        "comments" -> if (commentId != null) RedditLink.Comment(subreddit, id, commentId, context) else RedditLink.Post(subreddit, id)
+        "s" -> RedditLink.ShareLink(subreddit, id)
+        else -> RedditLink.Subreddit(subreddit)
     }
 }

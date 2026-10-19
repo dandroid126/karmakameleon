@@ -49,59 +49,37 @@ import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Subreddit
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SubredditListScreen(
-    currentRoute: String? = null,
     onSubredditClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    currentRoute: String? = null,
+    subredditRepository: SubredditRepository = koinInject(),
+    userRepository: UserRepository = koinInject(),
+    settingsRepository: SettingsRepository = koinInject(),
 ) {
-    val subredditRepository: SubredditRepository = koinInject()
-    val userRepository: UserRepository = koinInject()
-    val settingsRepository: SettingsRepository = koinInject()
-
     val subscribedSubreddits by subredditRepository.sortedSubscribedSubreddits.collectAsState(emptyList())
     val favoriteSubreddits by settingsRepository.favoriteSubreddits.collectAsState()
     val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
     val nsfwSearchEnabled by settingsRepository.nsfwSearchEnabled.collectAsState()
     val isLoggedIn by userRepository.isLoggedIn.collectAsState()
-    var isLoading by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    var searchResults by remember { mutableStateOf<List<Subreddit>>(emptyList()) }
-    var isSearching by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    val filteredSubscribedSubreddits =
-        remember(subscribedSubreddits, nsfwEnabled) {
-            if (nsfwEnabled) subscribedSubreddits else subscribedSubreddits.filter { !it.isNsfw }
-        }
-
-    LaunchedEffect(isLoggedIn) {
-        if (isLoggedIn && subscribedSubreddits.isEmpty()) {
-            isLoading = true
-            subredditRepository.loadSubscribedSubreddits()
-            isLoading = false
-        }
-    }
-
-    LaunchedEffect(searchQuery, nsfwEnabled, nsfwSearchEnabled) {
-        if (searchQuery.length >= 2) {
-            isSearching = true
-            val includeOver18 = nsfwEnabled && nsfwSearchEnabled
-            val result = subredditRepository.searchSubreddits(searchQuery, includeOver18 = includeOver18)
-            result.onSuccess { searchResults = it }
-            isSearching = false
-        } else {
-            searchResults = emptyList()
-        }
+    val isLoading = loadSubscriptionsOnLogin(isLoggedIn, hasSubscriptions = subscribedSubreddits.isNotEmpty(), subredditRepository)
+    val searchResults = searchSubreddits(searchQuery, includeOver18 = nsfwEnabled && nsfwSearchEnabled, subredditRepository)
+    val visibleSubscriptions = remember(subscribedSubreddits, nsfwEnabled) { subscribedSubreddits.filter { nsfwEnabled || !it.isNsfw } }
+    val section = @Composable { title: String, subreddits: List<Subreddit> ->
+        SubredditSection(
+            title = title,
+            subreddits = subreddits,
+            favoriteSubreddits = favoriteSubreddits,
+            onFavoriteClick = settingsRepository::toggleFavoriteSubreddit,
+            onSubredditClick = onSubredditClick,
+        )
     }
 
     Scaffold(
-        topBar = {
-            UniversalTopAppBar(
-                currentRoute = currentRoute,
-                title = { Text("Subreddits") },
-            )
-        },
+        modifier = modifier,
+        topBar = { UniversalTopAppBar(currentRoute = currentRoute, title = { Text("Subreddits") }) },
     ) { padding ->
         Column(
             modifier =
@@ -109,90 +87,131 @@ fun SubredditListScreen(
                     .fillMaxSize()
                     .padding(padding),
         ) {
-            // Search bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Search subreddits") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                singleLine = true,
-            )
+            SubredditSearchField(query = searchQuery, onQueryChange = { searchQuery = it })
 
-            if (isLoading) {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else if (searchQuery.isNotEmpty() && searchResults.isNotEmpty()) {
-                LazyColumn {
-                    item {
-                        Text(
-                            text = "Search Results",
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
-                    items(searchResults) { subreddit ->
-                        SubredditListItem(
-                            subreddit = subreddit,
-                            isFavorite = subreddit.displayName.lowercase() in favoriteSubreddits,
-                            onFavoriteClick = { settingsRepository.toggleFavoriteSubreddit(subreddit.displayName) },
-                            onClick = { onSubredditClick(subreddit.displayName) },
-                        )
+            when {
+                isLoading -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
-            } else if (!isLoggedIn) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Log in to see your subscriptions")
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Use search to find subreddits",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+
+                searchQuery.isNotEmpty() && searchResults.isNotEmpty() -> {
+                    section("Search Results", searchResults)
                 }
-            } else if (filteredSubscribedSubreddits.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("No subscriptions yet")
+
+                !isLoggedIn -> {
+                    CenteredMessage("Log in to see your subscriptions", "Use search to find subreddits")
                 }
-            } else {
-                LazyColumn {
-                    item {
-                        Text(
-                            text = "Your Subscriptions",
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
-                    items(
-                        items = filteredSubscribedSubreddits,
-                        key = { it.id },
-                    ) { subreddit ->
-                        SubredditListItem(
-                            subreddit = subreddit,
-                            isFavorite = subreddit.displayName.lowercase() in favoriteSubreddits,
-                            onFavoriteClick = { settingsRepository.toggleFavoriteSubreddit(subreddit.displayName) },
-                            onClick = { onSubredditClick(subreddit.displayName) },
-                        )
-                    }
+
+                visibleSubscriptions.isEmpty() -> {
+                    CenteredMessage("No subscriptions yet")
                 }
+
+                else -> {
+                    section("Your Subscriptions", visibleSubscriptions)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubredditSearchField(
+    query: String,
+    onQueryChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        placeholder = { Text("Search subreddits") },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        singleLine = true,
+    )
+}
+
+// Loads the subscriptions once logged in, if they aren't loaded yet. Returns whether they're loading.
+@Composable
+private fun loadSubscriptionsOnLogin(
+    isLoggedIn: Boolean,
+    hasSubscriptions: Boolean,
+    subredditRepository: SubredditRepository,
+): Boolean {
+    var isLoading by remember { mutableStateOf(false) }
+    LaunchedEffect(isLoggedIn) {
+        if (isLoggedIn && !hasSubscriptions) {
+            isLoading = true
+            subredditRepository.loadSubscribedSubreddits()
+            isLoading = false
+        }
+    }
+    return isLoading
+}
+
+// Searches once the query is at least two characters long.
+@Composable
+private fun searchSubreddits(
+    query: String,
+    includeOver18: Boolean,
+    subredditRepository: SubredditRepository,
+): List<Subreddit> {
+    var results by remember { mutableStateOf<List<Subreddit>>(emptyList()) }
+    LaunchedEffect(query, includeOver18) {
+        if (query.length >= 2) {
+            subredditRepository.searchSubreddits(query, includeOver18 = includeOver18).onSuccess { results = it }
+        } else {
+            results = emptyList()
+        }
+    }
+    return results
+}
+
+@Composable
+private fun SubredditSection(
+    title: String,
+    subreddits: List<Subreddit>,
+    favoriteSubreddits: Set<String>,
+    onFavoriteClick: (String) -> Unit,
+    onSubredditClick: (String) -> Unit,
+) {
+    LazyColumn {
+        item {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+        items(items = subreddits, key = { it.id }) { subreddit ->
+            SubredditListItem(
+                subreddit = subreddit,
+                isFavorite = subreddit.displayName.lowercase() in favoriteSubreddits,
+                onFavoriteClick = { onFavoriteClick(subreddit.displayName) },
+                onClick = { onSubredditClick(subreddit.displayName) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CenteredMessage(
+    text: String,
+    detail: String? = null,
+) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text)
+            if (detail != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

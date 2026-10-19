@@ -37,48 +37,9 @@ fun UniversalTopAppBar(
     val isLoggedIn by userRepository.isLoggedIn.collectAsState()
     var showOverflowMenu by remember { mutableStateOf(false) }
 
-    val account = currentAccount
-    val baseItems =
-        buildList {
-            if (!excludeProfile) {
-                when {
-                    !isLoggedIn -> {
-                        add(
-                            OverflowMenuItem(
-                                title = "Log In",
-                                onClick = { globalMenuManager.onNavigateToOwnProfile() },
-                            ),
-                        )
-                    }
-
-                    account != null -> {
-                        add(
-                            OverflowMenuItem(
-                                title = "${account.name}'s Profile",
-                                onClick = { globalMenuManager.onNavigateToProfile(account.name) },
-                            ),
-                        )
-                    }
-
-                    else -> {
-                        add(
-                            OverflowMenuItem(
-                                title = "Profile",
-                                onClick = { globalMenuManager.onNavigateToOwnProfile() },
-                            ),
-                        )
-                    }
-                }
-            }
-            if (!excludeInbox && isLoggedIn) {
-                add(OverflowMenuItem(title = "Inbox", onClick = { globalMenuManager.onNavigateToInbox() }))
-            }
-            if (!excludeSettings) {
-                add(OverflowMenuItem(title = "Settings", onClick = { globalMenuManager.onNavigateToSettings() }))
-            }
-        }
-
-    val screenItems = globalMenuManager.getScreenItems()
+    val menuItems =
+        globalMenuManager.getScreenItems() +
+            globalMenuManager.appMenuItems(isLoggedIn, currentAccount?.name, excludeProfile, excludeInbox, excludeSettings)
 
     TopAppBar(
         title = title,
@@ -92,20 +53,7 @@ fun UniversalTopAppBar(
                 expanded = showOverflowMenu,
                 onDismissRequest = { showOverflowMenu = false },
             ) {
-                screenItems.forEach { item ->
-                    DropdownMenuItem(
-                        text = { Text(item.title) },
-                        leadingIcon =
-                            item.icon?.let { icon ->
-                                { Icon(icon, contentDescription = null) }
-                            },
-                        onClick = {
-                            showOverflowMenu = false
-                            item.onClick()
-                        },
-                    )
-                }
-                baseItems.forEach { item ->
+                menuItems.forEach { item ->
                     DropdownMenuItem(
                         text = { Text(item.title) },
                         leadingIcon =
@@ -122,3 +70,40 @@ fun UniversalTopAppBar(
         },
     )
 }
+
+// The overflow menu's app-wide items: your profile (or logging in), the inbox and settings, minus the screen's own.
+private fun GlobalMenuManager.appMenuItems(
+    isLoggedIn: Boolean,
+    accountName: String?,
+    excludeProfile: Boolean,
+    excludeInbox: Boolean,
+    excludeSettings: Boolean,
+): List<OverflowMenuItem> =
+    buildList {
+        if (!excludeProfile) {
+            add(
+                when {
+                    !isLoggedIn -> {
+                        OverflowMenuItem(title = "Log In", onClick = { onNavigateToOwnProfile() })
+                    }
+
+                    accountName != null -> {
+                        OverflowMenuItem(
+                            title = "$accountName's Profile",
+                            onClick = { onNavigateToProfile(accountName) },
+                        )
+                    }
+
+                    else -> {
+                        OverflowMenuItem(title = "Profile", onClick = { onNavigateToOwnProfile() })
+                    }
+                },
+            )
+        }
+        if (!excludeInbox && isLoggedIn) {
+            add(OverflowMenuItem(title = "Inbox", onClick = { onNavigateToInbox() }))
+        }
+        if (!excludeSettings) {
+            add(OverflowMenuItem(title = "Settings", onClick = { onNavigateToSettings() }))
+        }
+    }

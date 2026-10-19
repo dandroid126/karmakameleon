@@ -3,74 +3,12 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>AbstractClassCanBeInterface:MarkdownText.kt:InlineSegment$InlineSegment</ID>
-    <ID>ComplexCondition:CompactPostCard.kt:post.isNsfw || post.isSpoiler || post.isStickied || post.linkFlairText != null</ID>
-    <ID>ComplexCondition:PostCard.kt:post.isNsfw || post.isSpoiler || post.isStickied || post.linkFlairText != null</ID>
-    <ID>ComplexCondition:ProfileScreen.kt:uiState.selectedTab == ProfileTab.COMMENTS &amp;&amp; shouldLoadMoreComments &amp;&amp; !uiState.isLoadingMoreComments &amp;&amp; uiState.hasMoreComments</ID>
-    <ID>ComplexCondition:ProfileScreen.kt:uiState.selectedTab == ProfileTab.DOWNVOTED &amp;&amp; shouldLoadMoreDownvoted &amp;&amp; !uiState.isLoadingMoreDownvoted &amp;&amp; uiState.hasMoreDownvoted</ID>
-    <ID>ComplexCondition:ProfileScreen.kt:uiState.selectedTab == ProfileTab.POSTS &amp;&amp; shouldLoadMorePosts &amp;&amp; !uiState.isLoadingMorePosts &amp;&amp; uiState.hasMorePosts</ID>
-    <ID>ComplexCondition:ProfileScreen.kt:uiState.selectedTab == ProfileTab.SAVED &amp;&amp; uiState.savedContentType == SavedContentType.COMMENTS &amp;&amp; shouldLoadMoreSavedComments &amp;&amp; !uiState.isLoadingMoreSavedComments &amp;&amp; uiState.hasMoreSavedComments</ID>
-    <ID>ComplexCondition:ProfileScreen.kt:uiState.selectedTab == ProfileTab.SAVED &amp;&amp; uiState.savedContentType == SavedContentType.POSTS &amp;&amp; shouldLoadMoreSavedPosts &amp;&amp; !uiState.isLoadingMoreSavedPosts &amp;&amp; uiState.hasMoreSavedPosts</ID>
-    <ID>ComplexCondition:ProfileScreen.kt:uiState.selectedTab == ProfileTab.UPVOTED &amp;&amp; shouldLoadMoreUpvoted &amp;&amp; !uiState.isLoadingMoreUpvoted &amp;&amp; uiState.hasMoreUpvoted</ID>
-    <ID>ComplexCondition:SearchScreen.kt:shouldLoadMore &amp;&amp; !uiState.isLoading &amp;&amp; uiState.hasMore &amp;&amp; uiState.searchType == SearchType.POST</ID>
     <ID>ComposableParamOrder:FeedScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun FeedScreen</ID>
     <ID>ComposableParamOrder:PostDetailScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun PostDetailScreen</ID>
     <ID>ComposableParamOrder:ProfileScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen</ID>
     <ID>ComposableParamOrder:SearchScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SearchScreen</ID>
-    <ID>ComposableParamOrder:SettingsScreen.kt:@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun SettingsScreen</ID>
     <ID>ComposableParamOrder:SubredditScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SubredditScreen</ID>
-    <ID>CyclomaticComplexMethod:CommentItem.kt:@Composable fun CommentItem</ID>
-    <ID>CyclomaticComplexMethod:CompactPostCard.kt:@Composable private fun CompactThumbnail</ID>
-    <ID>CyclomaticComplexMethod:CompactPostCard.kt:@OptIn(ExperimentalLayoutApi::class) @Composable fun CompactPostCard</ID>
-    <ID>CyclomaticComplexMethod:FeedScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun FeedScreen</ID>
-    <ID>CyclomaticComplexMethod:InboxScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun InboxScreen</ID>
-    <ID>CyclomaticComplexMethod:KarmaKameleonApp.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun KarmaKameleonApp</ID>
-    <ID>CyclomaticComplexMethod:MarkdownText.kt:@Composable private fun RenderBlock</ID>
-    <ID>CyclomaticComplexMethod:MarkdownText.kt:private fun AnnotatedString.Builder.appendInline</ID>
-    <ID>CyclomaticComplexMethod:MediaLongPressMenu.kt:internal suspend fun saveImageToGallery</ID>
-    <ID>CyclomaticComplexMethod:MessageItem.kt:@Composable fun MessageItem</ID>
-    <ID>CyclomaticComplexMethod:PostCard.kt:@Composable fun PostCard</ID>
-    <ID>CyclomaticComplexMethod:PostDetailScreen.kt:@Composable private fun PostHeader</ID>
-    <ID>CyclomaticComplexMethod:PostDetailScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun PostDetailScreen</ID>
-    <ID>CyclomaticComplexMethod:ProfileSavedTab.kt:@Composable internal fun ProfileSavedTab</ID>
-    <ID>CyclomaticComplexMethod:ProfileScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen</ID>
-    <ID>CyclomaticComplexMethod:SearchScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SearchScreen</ID>
-    <ID>CyclomaticComplexMethod:SubredditScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SubredditScreen</ID>
-    <ID>CyclomaticComplexMethod:Theme.kt:@Composable fun KarmaKameleonTheme</ID>
-    <ID>CyclomaticComplexMethod:VideoPlayer.kt:@Composable private fun VideoControlsOverlay</ID>
-    <ID>CyclomaticComplexMethod:VideoPlayer.kt:@OptIn(UnstableApi::class) @Composable fun VideoPlayer</ID>
     <ID>ImplicitDefaultLocale:VideoPlayer.kt:"%d:%02d".format(minutes, seconds)</ID>
-    <ID>LongMethod:CommentItem.kt:@Composable fun CommentItem</ID>
-    <ID>LongMethod:CompactPostCard.kt:@Composable private fun CompactThumbnail</ID>
-    <ID>LongMethod:CompactPostCard.kt:@OptIn(ExperimentalLayoutApi::class) @Composable fun CompactPostCard</ID>
-    <ID>LongMethod:FeedScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun FeedScreen</ID>
-    <ID>LongMethod:FullScreenImageViewer.kt:@Composable fun FullScreenImageViewer</ID>
-    <ID>LongMethod:FullScreenImageViewer.kt:@Composable private fun ZoomableImage</ID>
-    <ID>LongMethod:FullScreenVideoScreen.kt:@Composable fun FullScreenVideoScreen</ID>
-    <ID>LongMethod:InboxScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun InboxScreen</ID>
-    <ID>LongMethod:KarmaKameleonApp.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun KarmaKameleonApp</ID>
-    <ID>LongMethod:MarkdownText.kt:@Composable private fun RenderBlock</ID>
-    <ID>LongMethod:MarkdownText.kt:@Composable private fun RenderTable</ID>
-    <ID>LongMethod:MarkdownText.kt:private fun AnnotatedString.Builder.appendInline</ID>
-    <ID>LongMethod:MessageItem.kt:@Composable fun MessageItem</ID>
-    <ID>LongMethod:PostCard.kt:@Composable fun PostCard</ID>
-    <ID>LongMethod:PostDetailScreen.kt:@Composable private fun PostHeader</ID>
-    <ID>LongMethod:PostDetailScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun PostDetailScreen</ID>
-    <ID>LongMethod:PostDetailScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable private fun CommentSortBottomSheet</ID>
-    <ID>LongMethod:ProfileCommentsTab.kt:@Composable internal fun ProfileCommentsTab</ID>
-    <ID>LongMethod:ProfileSavedTab.kt:@Composable internal fun ProfileSavedTab</ID>
-    <ID>LongMethod:ProfileScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen</ID>
-    <ID>LongMethod:ReplyBar.kt:@Composable fun ReplyBar</ID>
-    <ID>LongMethod:SearchScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SearchScreen</ID>
-    <ID>LongMethod:SettingsScreen.kt:@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun SettingsScreen</ID>
-    <ID>LongMethod:SortBottomSheet.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SortBottomSheet</ID>
-    <ID>LongMethod:SubredditListScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SubredditListScreen</ID>
-    <ID>LongMethod:SubredditScreen.kt:@Composable private fun SubredditHeader</ID>
-    <ID>LongMethod:SubredditScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SubredditScreen</ID>
-    <ID>LongMethod:UniversalTopAppBar.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun UniversalTopAppBar</ID>
-    <ID>LongMethod:VideoPlayer.kt:@Composable private fun VideoControlsOverlay</ID>
-    <ID>LongMethod:VideoPlayer.kt:@OptIn(UnstableApi::class) @Composable fun VideoPlayer</ID>
-    <ID>LongMethod:WebBrowser.kt:@SuppressLint("SetJavaScriptEnabled") @Composable fun WebBrowserScreen</ID>
-    <ID>LongParameterList:MarkdownText.kt:private fun AnnotatedString.Builder.appendInline</ID>
     <ID>MagicNumber:KarmaKameleonApplication.kt:KarmaKameleonApplication$1024</ID>
     <ID>MagicNumber:KarmaKameleonApplication.kt:KarmaKameleonApplication$28</ID>
     <ID>MagicNumber:KarmaKameleonApplication.kt:KarmaKameleonApplication$512L</ID>
@@ -90,62 +28,26 @@
     <ID>MagicNumber:PostCard.kt:86400</ID>
     <ID>MatchingDeclarationName:MediaLongPressMenu.kt:MediaMenuItem</ID>
     <ID>MatchingDeclarationName:PostListItem.kt:CompactPostSelection</ID>
-    <ID>MissingNonRestartableComposable:ProfileDownvotedTab.kt:@Composable internal fun ProfileDownvotedTab</ID>
-    <ID>MissingNonRestartableComposable:ProfileUpvotedTab.kt:@Composable internal fun ProfileUpvotedTab</ID>
     <ID>ModifierMissing:FeedScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun FeedScreen</ID>
-    <ID>ModifierMissing:FullScreenImageViewer.kt:@Composable fun FullScreenImageViewer</ID>
-    <ID>ModifierMissing:FullScreenVideoScreen.kt:@Composable fun FullScreenVideoScreen</ID>
-    <ID>ModifierMissing:InboxScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun InboxScreen</ID>
-    <ID>ModifierMissing:KarmaKameleonApp.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun KarmaKameleonApp</ID>
     <ID>ModifierMissing:MessageItem.kt:@Composable fun MessageItem</ID>
     <ID>ModifierMissing:PostDetailScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun PostDetailScreen</ID>
     <ID>ModifierMissing:ProfileScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen</ID>
     <ID>ModifierMissing:ReplyBar.kt:@Composable fun ReplyBar</ID>
     <ID>ModifierMissing:SearchScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SearchScreen</ID>
-    <ID>ModifierMissing:SettingsScreen.kt:@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class) @Composable fun SettingsScreen</ID>
-    <ID>ModifierMissing:SubredditListScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SubredditListScreen</ID>
     <ID>ModifierMissing:SubredditScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SubredditScreen</ID>
     <ID>ModifierMissing:UniversalTopAppBar.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun UniversalTopAppBar</ID>
-    <ID>ModifierMissing:WebBrowser.kt:@SuppressLint("SetJavaScriptEnabled") @Composable fun WebBrowserScreen</ID>
     <ID>ModifierMissing:YouTubeVideoScreen.kt:@Composable fun YouTubeVideoScreen</ID>
-    <ID>ParameterNaming:CommentItem.kt:onCommentUpdated: (Comment) -&gt; Unit = {}</ID>
     <ID>ParameterNaming:CompactPostCard.kt:onToggleExpanded: () -&gt; Unit</ID>
-    <ID>ParameterNaming:PostDetailScreen.kt:onSortSelected: (CommentSort) -&gt; Unit</ID>
-    <ID>ParameterNaming:PostDetailScreen.kt:onToggleBodyExpanded: () -&gt; Unit</ID>
-    <ID>ParameterNaming:PostDetailScreen.kt:onUseSuggestedSortChanged: (Boolean) -&gt; Unit</ID>
-    <ID>ParameterNaming:ProfileCommentsTab.kt:onCommentUpdated: (Comment) -&gt; Unit</ID>
-    <ID>ParameterNaming:ProfileSavedTab.kt:onCommentUpdated: (Comment) -&gt; Unit</ID>
     <ID>ParameterNaming:SortBottomSheet.kt:onSortSelected: (PostSort) -&gt; Unit</ID>
     <ID>ParameterNaming:SortBottomSheet.kt:onTimeFilterSelected: (TimeFilter) -&gt; Unit</ID>
-    <ID>ReturnCount:InboxNotificationWorker.kt:InboxNotificationWorker$override suspend fun doWork: Result</ID>
-    <ID>UnnecessaryLaunchedEffect:FeedScreen.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:InboxScreen.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:KarmaKameleonApp.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:PostDetailScreen.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:ProfileScreen.kt:LaunchedEffect</ID>
-    <ID>UnnecessaryLaunchedEffect:SearchScreen.kt:LaunchedEffect</ID>
-    <ID>UnnecessaryLaunchedEffect:SubredditScreen.kt:LaunchedEffect</ID>
-    <ID>UnnecessaryLaunchedEffect:VideoPlayer.kt:LaunchedEffect</ID>
     <ID>UnusedParameter:SubredditScreen.kt:onSubredditClick: (String) -&gt; Unit = {}</ID>
     <ID>UnusedParameter:Theme.kt:darkTheme: Boolean = isSystemInDarkTheme()</ID>
     <ID>UnusedParameter:UniversalTopAppBar.kt:currentRoute: String? = null</ID>
     <ID>UnusedPrivateProperty:InboxNotificationWorker.kt:InboxNotificationWorker.Companion$private const val MIN_INTERVAL_MINUTES = 15L</ID>
-    <ID>UnusedVariable:FeedScreen.kt:val readPostIds by readPostsRepository.readPostIds.collectAsState()</ID>
-    <ID>UnusedVariable:PostDetailScreen.kt:val galleryUrls = remember(galleryItems) { galleryItems.mapNotNull { it.url } }</ID>
-    <ID>UnusedVariable:ProfileScreen.kt:val clipboard = LocalClipboard.current</ID>
-    <ID>UnusedVariable:ProfileScreen.kt:val coroutineScope = rememberCoroutineScope()</ID>
-    <ID>UnusedVariable:SearchScreen.kt:val readPostIds by readPostsRepository.readPostIds.collectAsState()</ID>
-    <ID>UnusedVariable:SubredditListScreen.kt:val scope = rememberCoroutineScope()</ID>
-    <ID>UnusedVariable:SubredditScreen.kt:val readPostIds by readPostsRepository.readPostIds.collectAsState()</ID>
     <ID>UseOrEmpty:InboxNotificationWorker.kt:InboxNotificationWorker$prefs.getString(KEY_KNOWN_IDS, "") ?: ""</ID>
-    <ID>UseOrEmpty:KarmaKameleonApp.kt:backStackEntry.arguments?.getString("postId") ?: ""</ID>
-    <ID>UseOrEmpty:KarmaKameleonApp.kt:backStackEntry.arguments?.getString("subreddit") ?: ""</ID>
-    <ID>UseOrEmpty:KarmaKameleonApp.kt:backStackEntry.arguments?.getString("subredditName") ?: ""</ID>
-    <ID>UseOrEmpty:KarmaKameleonApp.kt:backStackEntry.arguments?.getString("url") ?: ""</ID>
-    <ID>UseOrEmpty:KarmaKameleonApp.kt:backStackEntry.arguments?.getString("username") ?: ""</ID>
-    <ID>UseOrEmpty:KarmaKameleonApp.kt:backStackEntry.arguments?.getString("videoId") ?: ""</ID>
-    <ID>UseOrEmpty:PostDetailScreen.kt:draft ?: ""</ID>
-    <ID>UseOrEmpty:PostDetailScreen.kt:item.url ?: ""</ID>
-    <ID>UseOrEmpty:PostDetailScreen.kt:post.galleryData?.items?.filter { it.url != null } ?: emptyList()</ID>
   </CurrentIssues>
 </SmellBaseline>

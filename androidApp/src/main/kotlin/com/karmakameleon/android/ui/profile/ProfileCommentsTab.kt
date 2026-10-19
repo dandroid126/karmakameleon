@@ -20,92 +20,92 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.karmakameleon.android.ui.components.CommentActions
 import com.karmakameleon.android.ui.components.CommentItem
+import com.karmakameleon.android.ui.components.loadingMoreItem
+import com.karmakameleon.android.ui.components.showShortToast
 import com.karmakameleon.shared.domain.model.Comment
 import kotlinx.coroutines.launch
+
+/** What the profile's comment lists do with a comment. */
+internal data class ProfileCommentCallbacks(
+    val onUpdate: (Comment) -> Unit,
+    val onReply: (commentName: String) -> Unit,
+    val onEdit: (Comment) -> Unit,
+    val onDelete: (commentId: String) -> Unit,
+    val onSave: (Comment) -> Unit,
+    val onOpen: (subreddit: String, postId: String, commentId: String) -> Unit,
+)
+
+/** State the profile's comment lists share: who's logged in and which comment is selected. */
+internal class ProfileCommentListState(
+    val isLoggedIn: Boolean,
+    val loggedInUsername: String?,
+    val selectedCommentId: String?,
+    val onSelectComment: (String?) -> Unit,
+)
 
 @Composable
 internal fun ProfileCommentsTab(
     comments: List<Comment>,
     isLoadingContent: Boolean,
     isLoadingMore: Boolean,
-    isLoggedIn: Boolean,
-    loggedInUsername: String?,
     listState: LazyListState,
-    selectedCommentId: String?,
-    onSelectComment: (String?) -> Unit,
-    onCommentUpdated: (Comment) -> Unit,
-    onReply: (String) -> Unit,
-    onEdit: (Comment) -> Unit,
-    onDelete: (String) -> Unit,
-    onSave: (Comment) -> Unit,
-    onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit,
+    state: ProfileCommentListState,
+    callbacks: ProfileCommentCallbacks,
+    emptyText: String = "No comments",
+) {
+    ProfileListContent(isLoadingContent = isLoadingContent, isEmpty = comments.isEmpty(), emptyText = emptyText) {
+        LazyColumn(state = listState) {
+            items(comments, key = { it.id }) { comment ->
+                ProfileComment(comment = comment, state = state, callbacks = callbacks)
+            }
+            if (isLoadingMore) loadingMoreItem()
+        }
+    }
+}
+
+// A comment shown outside its thread, with its subreddit and without thread navigation.
+@Composable
+private fun ProfileComment(
+    comment: Comment,
+    state: ProfileCommentListState,
+    callbacks: ProfileCommentCallbacks,
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val coroutineScope = rememberCoroutineScope()
-
-    if (isLoadingContent && comments.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else if (comments.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No comments")
-        }
-    } else {
-        LazyColumn(state = listState) {
-            items(comments, key = { it.id }) { comment ->
-                CommentItem(
-                    comment = comment,
-                    isSelected = selectedCommentId == comment.id,
-                    isHidden = false,
-                    onSelect = { onSelectComment(if (selectedCommentId == comment.id) null else comment.id) },
-                    onDone = { onSelectComment(null) },
-                    onHide = {},
-                    onPrev = {},
-                    onNext = {},
-                    onRoot = {},
-                    onParent = {},
-                    onCommentUpdated = onCommentUpdated,
-                    onShare = {
-                        coroutineScope.launch {
-                            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", "https://reddit.com${comment.permalink}")))
-                        }
-                    },
-                    onReply = { onReply(comment.name) },
-                    onEdit = { onEdit(comment) },
-                    onDelete = { onDelete(comment.id) },
-                    onSave = {
-                        onSave(comment)
-                        Toast
-                            .makeText(
-                                context,
-                                if (comment.isSaved) "Unsaved comment" else "Saved comment",
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                    },
-                    isLoggedIn = isLoggedIn,
-                    loggedInUsername = loggedInUsername,
-                    showTopControls = false,
-                    showSubreddit = true,
-                    onGoToCommentNav = { commentId ->
-                        val postId = comment.linkId.removePrefix("t3_")
-                        onCommentClick(comment.subreddit, postId, commentId)
-                    },
-                    modifier = Modifier.padding(vertical = 4.dp),
-                )
-            }
-            if (isLoadingMore) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
+    val isSelected = state.selectedCommentId == comment.id
+    CommentItem(
+        comment = comment,
+        isSelected = isSelected,
+        isHidden = false,
+        actions =
+            CommentActions(
+                onSelect = { state.onSelectComment(if (isSelected) null else comment.id) },
+                onDone = { state.onSelectComment(null) },
+                onShare = {
+                    coroutineScope.launch {
+                        clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", "https://reddit.com${comment.permalink}")))
                     }
-                }
-            }
-        }
-    }
+                },
+                onReply = { callbacks.onReply(comment.name) },
+                onEdit = { callbacks.onEdit(comment) },
+                onDelete = { callbacks.onDelete(comment.id) },
+                onSave = {
+                    callbacks.onSave(comment)
+                    showShortToast(context, if (comment.isSaved) "Unsaved comment" else "Saved comment")
+                },
+                onCommentUpdated = callbacks.onUpdate,
+                onGoToCommentNav = { commentId ->
+                    val postId = comment.linkId.removePrefix("t3_")
+                    callbacks.onOpen(comment.subreddit, postId, commentId)
+                },
+            ),
+        isLoggedIn = state.isLoggedIn,
+        loggedInUsername = state.loggedInUsername,
+        showTopControls = false,
+        showSubreddit = true,
+        modifier = Modifier.padding(vertical = 4.dp),
+    )
 }

@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.doAfterTextChanged
@@ -53,15 +54,6 @@ fun ReplyBar(
     hasDraft: Boolean = false,
     showDraftControls: Boolean = false,
 ) {
-    // Cap the text field at half the space left above the keyboard so the whole bar stays visible.
-    val imeHeight = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp() }
-    val windowHeight =
-        with(LocalDensity.current) {
-            LocalWindowInfo.current.containerSize.height
-                .toDp()
-        }
-    val maxHeight = (windowHeight - imeHeight) / 2
-
     Surface(
         color = MaterialTheme.colorScheme.surface,
         modifier =
@@ -82,32 +74,16 @@ fun ReplyBar(
                 IconButton(onClick = onCancel) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
                 }
-                Row(
+                ReplyBarTextActions(
+                    canSaveDraft = replyText.isNotBlank(),
+                    hasDraft = hasDraft,
+                    showDraftControls = showDraftControls,
+                    onQuote = onQuote,
+                    onLoadDraft = onLoadDraft,
+                    onSaveDraft = onSaveDraft,
                     modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(onClick = onQuote) {
-                        Text("Quote", style = MaterialTheme.typography.labelSmall)
-                    }
-                    if (showDraftControls) {
-                        if (hasDraft) {
-                            TextButton(onClick = onLoadDraft) {
-                                Text("Load Draft", style = MaterialTheme.typography.labelSmall)
-                            }
-                        }
-                        TextButton(
-                            onClick = onSaveDraft,
-                            enabled = replyText.isNotBlank(),
-                        ) {
-                            Text("Save Draft", style = MaterialTheme.typography.labelSmall)
-                        }
-                    }
-                }
-                IconButton(
-                    onClick = onSubmit,
-                    enabled = replyText.isNotBlank(),
-                ) {
+                )
+                IconButton(onClick = onSubmit, enabled = replyText.isNotBlank()) {
                     Icon(Icons.AutoMirrored.Default.Send, contentDescription = "Send")
                 }
             }
@@ -118,8 +94,53 @@ fun ReplyBar(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(max = maxHeight),
+                        .heightIn(max = replyFieldMaxHeight()),
             )
+        }
+    }
+}
+
+// Half the space left above the keyboard, so the whole bar stays visible.
+@Composable
+private fun replyFieldMaxHeight(): Dp {
+    val density = LocalDensity.current
+    val imeHeight = with(density) { WindowInsets.ime.getBottom(this).toDp() }
+    val windowHeight =
+        with(density) {
+            LocalWindowInfo.current.containerSize.height
+                .toDp()
+        }
+    return (windowHeight - imeHeight) / 2
+}
+
+// Quote, and with draft controls, Load Draft (when there's one) and Save Draft (when there's text).
+@Composable
+private fun ReplyBarTextActions(
+    canSaveDraft: Boolean,
+    hasDraft: Boolean,
+    showDraftControls: Boolean,
+    onQuote: () -> Unit,
+    onLoadDraft: () -> Unit,
+    onSaveDraft: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(onClick = onQuote) {
+            Text("Quote", style = MaterialTheme.typography.labelSmall)
+        }
+        if (showDraftControls) {
+            if (hasDraft) {
+                TextButton(onClick = onLoadDraft) {
+                    Text("Load Draft", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            TextButton(onClick = onSaveDraft, enabled = canSaveDraft) {
+                Text("Save Draft", style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
 }

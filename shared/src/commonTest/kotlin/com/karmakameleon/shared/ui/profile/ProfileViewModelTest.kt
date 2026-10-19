@@ -430,13 +430,13 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             val post =
-                viewModel.uiState.value.posts
+                viewModel.uiState.value.posts.items
                     .firstOrNull() ?: return@runTest
             viewModel.vote(post, 1)
             advanceUntilIdle()
 
             assertTrue(
-                viewModel.uiState.value.posts
+                viewModel.uiState.value.posts.items
                     .any { it.id == post.id },
             )
         }
@@ -448,13 +448,13 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             val post =
-                viewModel.uiState.value.posts
+                viewModel.uiState.value.posts.items
                     .firstOrNull() ?: return@runTest
             viewModel.save(post)
             advanceUntilIdle()
 
             assertTrue(
-                viewModel.uiState.value.posts
+                viewModel.uiState.value.posts.items
                     .any { it.id == post.id },
             )
         }
@@ -468,14 +468,14 @@ class ProfileViewModelTest {
             fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
             viewModel.loadOwnProfile()
             advanceUntilIdle()
-            val initialCount = viewModel.uiState.value.posts.size
+            val initialCount = viewModel.uiState.value.posts.items.size
 
             fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p2")))
-            viewModel.loadMoreUserPosts()
+            viewModel.loadMore(ProfileList.POSTS)
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.posts.size > initialCount)
-            assertFalse(viewModel.uiState.value.isLoadingMorePosts)
+            assertTrue(viewModel.uiState.value.posts.items.size > initialCount)
+            assertFalse(viewModel.uiState.value.posts.isLoadingMore)
         }
 
     @Test
@@ -486,11 +486,11 @@ class ProfileViewModelTest {
             viewModel.loadOwnProfile()
             advanceUntilIdle()
 
-            viewModel.loadMoreUserPosts()
+            viewModel.loadMore(ProfileList.POSTS)
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoadingMorePosts)
-            assertEquals(1, viewModel.uiState.value.posts.size)
+            assertFalse(viewModel.uiState.value.posts.isLoadingMore)
+            assertEquals(1, viewModel.uiState.value.posts.items.size)
         }
 
     @Test
@@ -502,11 +502,11 @@ class ProfileViewModelTest {
             advanceUntilIdle()
 
             fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p2")), after = "token2")
-            viewModel.loadMoreUserPosts()
+            viewModel.loadMore(ProfileList.POSTS)
             advanceUntilIdle()
 
-            assertEquals("token2", viewModel.uiState.value.postsAfter)
-            assertTrue(viewModel.uiState.value.hasMorePosts)
+            assertEquals("token2", viewModel.uiState.value.posts.after)
+            assertTrue(viewModel.uiState.value.posts.hasMore)
         }
 
     // ==================== Load More: Comments ====================
@@ -520,14 +520,14 @@ class ProfileViewModelTest {
             advanceUntilIdle()
             viewModel.setSelectedTab(ProfileTab.COMMENTS)
             advanceUntilIdle()
-            val initialCount = viewModel.uiState.value.comments.size
+            val initialCount = viewModel.uiState.value.comments.items.size
 
             fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c2")))
-            viewModel.loadMoreUserComments()
+            viewModel.loadMore(ProfileList.COMMENTS)
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.comments.size > initialCount)
-            assertFalse(viewModel.uiState.value.isLoadingMoreComments)
+            assertTrue(viewModel.uiState.value.comments.items.size > initialCount)
+            assertFalse(viewModel.uiState.value.comments.isLoadingMore)
         }
 
     @Test
@@ -540,11 +540,11 @@ class ProfileViewModelTest {
             viewModel.setSelectedTab(ProfileTab.COMMENTS)
             advanceUntilIdle()
 
-            viewModel.loadMoreUserComments()
+            viewModel.loadMore(ProfileList.COMMENTS)
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoadingMoreComments)
-            assertEquals(1, viewModel.uiState.value.comments.size)
+            assertFalse(viewModel.uiState.value.comments.isLoadingMore)
+            assertEquals(1, viewModel.uiState.value.comments.items.size)
         }
 
     // ==================== Load More: Saved Posts ====================
@@ -558,14 +558,14 @@ class ProfileViewModelTest {
             advanceUntilIdle()
             viewModel.setSelectedTab(ProfileTab.SAVED)
             advanceUntilIdle()
-            val initialCount = viewModel.uiState.value.savedPosts.size
+            val initialCount = viewModel.uiState.value.savedPosts.items.size
 
             fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s2")))
-            viewModel.loadMoreSavedPosts()
+            viewModel.loadMore(ProfileList.SAVED_POSTS)
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.savedPosts.size > initialCount)
-            assertFalse(viewModel.uiState.value.isLoadingMoreSavedPosts)
+            assertTrue(viewModel.uiState.value.savedPosts.items.size > initialCount)
+            assertFalse(viewModel.uiState.value.savedPosts.isLoadingMore)
         }
 
     @Test
@@ -578,11 +578,11 @@ class ProfileViewModelTest {
             viewModel.setSelectedTab(ProfileTab.SAVED)
             advanceUntilIdle()
 
-            viewModel.loadMoreSavedPosts()
+            viewModel.loadMore(ProfileList.SAVED_POSTS)
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoadingMoreSavedPosts)
-            assertEquals(1, viewModel.uiState.value.savedPosts.size)
+            assertFalse(viewModel.uiState.value.savedPosts.isLoadingMore)
+            assertEquals(1, viewModel.uiState.value.savedPosts.items.size)
         }
 
     // ==================== Load More: Saved Comments ====================
@@ -596,14 +596,14 @@ class ProfileViewModelTest {
             advanceUntilIdle()
             viewModel.setSelectedTab(ProfileTab.SAVED)
             advanceUntilIdle()
-            val initialCount = viewModel.uiState.value.savedComments.size
+            val initialCount = viewModel.uiState.value.savedComments.items.size
 
             fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc2")))
-            viewModel.loadMoreSavedComments()
+            viewModel.loadMore(ProfileList.SAVED_COMMENTS)
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.savedComments.size > initialCount)
-            assertFalse(viewModel.uiState.value.isLoadingMoreSavedComments)
+            assertTrue(viewModel.uiState.value.savedComments.items.size > initialCount)
+            assertFalse(viewModel.uiState.value.savedComments.isLoadingMore)
         }
 
     @Test
@@ -616,11 +616,11 @@ class ProfileViewModelTest {
             viewModel.setSelectedTab(ProfileTab.SAVED)
             advanceUntilIdle()
 
-            viewModel.loadMoreSavedComments()
+            viewModel.loadMore(ProfileList.SAVED_COMMENTS)
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoadingMoreSavedComments)
-            assertEquals(1, viewModel.uiState.value.savedComments.size)
+            assertFalse(viewModel.uiState.value.savedComments.isLoadingMore)
+            assertEquals(1, viewModel.uiState.value.savedComments.items.size)
         }
 
     // ==================== Load More: Upvoted ====================
@@ -634,14 +634,14 @@ class ProfileViewModelTest {
             advanceUntilIdle()
             viewModel.setSelectedTab(ProfileTab.UPVOTED)
             advanceUntilIdle()
-            val initialCount = viewModel.uiState.value.upvotedPosts.size
+            val initialCount = viewModel.uiState.value.upvotedPosts.items.size
 
             fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u2")))
-            viewModel.loadMoreUpvotedPosts()
+            viewModel.loadMore(ProfileList.UPVOTED)
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.upvotedPosts.size > initialCount)
-            assertFalse(viewModel.uiState.value.isLoadingMoreUpvoted)
+            assertTrue(viewModel.uiState.value.upvotedPosts.items.size > initialCount)
+            assertFalse(viewModel.uiState.value.upvotedPosts.isLoadingMore)
         }
 
     @Test
@@ -654,11 +654,11 @@ class ProfileViewModelTest {
             viewModel.setSelectedTab(ProfileTab.UPVOTED)
             advanceUntilIdle()
 
-            viewModel.loadMoreUpvotedPosts()
+            viewModel.loadMore(ProfileList.UPVOTED)
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoadingMoreUpvoted)
-            assertEquals(1, viewModel.uiState.value.upvotedPosts.size)
+            assertFalse(viewModel.uiState.value.upvotedPosts.isLoadingMore)
+            assertEquals(1, viewModel.uiState.value.upvotedPosts.items.size)
         }
 
     // ==================== Load More: Downvoted ====================
@@ -672,14 +672,14 @@ class ProfileViewModelTest {
             advanceUntilIdle()
             viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
             advanceUntilIdle()
-            val initialCount = viewModel.uiState.value.downvotedPosts.size
+            val initialCount = viewModel.uiState.value.downvotedPosts.items.size
 
             fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d2")))
-            viewModel.loadMoreDownvotedPosts()
+            viewModel.loadMore(ProfileList.DOWNVOTED)
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.downvotedPosts.size > initialCount)
-            assertFalse(viewModel.uiState.value.isLoadingMoreDownvoted)
+            assertTrue(viewModel.uiState.value.downvotedPosts.items.size > initialCount)
+            assertFalse(viewModel.uiState.value.downvotedPosts.isLoadingMore)
         }
 
     @Test
@@ -692,11 +692,11 @@ class ProfileViewModelTest {
             viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
             advanceUntilIdle()
 
-            viewModel.loadMoreDownvotedPosts()
+            viewModel.loadMore(ProfileList.DOWNVOTED)
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoadingMoreDownvoted)
-            assertEquals(1, viewModel.uiState.value.downvotedPosts.size)
+            assertFalse(viewModel.uiState.value.downvotedPosts.isLoadingMore)
+            assertEquals(1, viewModel.uiState.value.downvotedPosts.items.size)
         }
 
     // ==================== Error Handling ====================
@@ -717,7 +717,7 @@ class ProfileViewModelTest {
             viewModel.clearAllData()
 
             assertTrue(
-                viewModel.uiState.value.posts
+                viewModel.uiState.value.posts.items
                     .isEmpty(),
             )
             assertNull(viewModel.uiState.value.account)

@@ -2,9 +2,6 @@ package com.karmakameleon.android.ui.profile
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -13,13 +10,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.karmakameleon.android.navigation.NavigationHandler
-import com.karmakameleon.android.ui.components.PostListItem
+import com.karmakameleon.android.ui.components.FeedPostItem
+import com.karmakameleon.android.ui.components.PostFeedSettings
+import com.karmakameleon.android.ui.components.PostListCallbacks
+import com.karmakameleon.android.ui.components.loadingMoreItem
 import com.karmakameleon.android.ui.components.rememberCompactPostSelection
-import com.karmakameleon.shared.data.repository.ReadPostsRepository
-import com.karmakameleon.shared.domain.model.NsfwHistoryMode
-import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.Post
 
 @Composable
@@ -29,65 +24,45 @@ internal fun ProfilePostsTab(
     isLoadingMore: Boolean,
     isLoggedIn: Boolean,
     listState: LazyListState,
-    readPostsRepository: ReadPostsRepository,
-    nsfwHistoryMode: NsfwHistoryMode,
-    nsfwPreviewMode: NsfwPreviewMode,
-    spoilerPreviewsEnabled: Boolean,
-    compactFeed: Boolean,
-    navigationHandler: NavigationHandler,
-    onPostClick: (subreddit: String, postId: String) -> Unit,
-    onSubredditClick: (String) -> Unit,
-    onLinkClick: (String) -> Unit,
-    onVote: (Post, Int) -> Unit,
-    onSave: (Post) -> Unit,
-    emptyText: String = "No posts",
+    feedSettings: PostFeedSettings,
+    callbacks: PostListCallbacks,
+    emptyText: String,
 ) {
-    val compactSelection = rememberCompactPostSelection()
-    if (isLoadingContent && posts.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
-    } else if (posts.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(emptyText)
-        }
-    } else {
+    // Each list remembers which compact post is expanded.
+    val settings = feedSettings.copy(compactSelection = rememberCompactPostSelection())
+    ProfileListContent(isLoadingContent = isLoadingContent, isEmpty = posts.isEmpty(), emptyText = emptyText) {
         LazyColumn(state = listState) {
             items(posts, key = { it.id }) { post ->
-                PostListItem(
-                    post = post,
-                    compact = compactFeed,
-                    compactSelection = compactSelection,
-                    onClick = {
-                        readPostsRepository.markAsRead(post, nsfwHistoryMode)
-                        onPostClick(post.subreddit, post.id)
-                    },
-                    onSubredditClick = { onSubredditClick(post.subreddit) },
-                    onUserClick = {},
-                    onUpvote = { onVote(post, if (post.likes == true) 0 else 1) },
-                    onDownvote = { onVote(post, if (post.likes == false) 0 else -1) },
-                    onSave = { onSave(post) },
-                    onHide = {},
-                    isLoggedIn = isLoggedIn,
-                    onLinkClick = onLinkClick,
-                    onCrosspostClick = {
-                        post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
-                    },
-                    isRead = readPostsRepository.isRead(post, nsfwHistoryMode),
-                    nsfwPreviewMode = nsfwPreviewMode,
-                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                )
+                FeedPostItem(post = post, settings = settings, callbacks = callbacks, isLoggedIn = isLoggedIn)
             }
-            if (isLoadingMore) {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                    }
-                }
+            if (isLoadingMore) loadingMoreItem()
+        }
+    }
+}
+
+/** A spinner while a list's first page loads, a message when it's empty, otherwise the list. */
+@Composable
+internal fun ProfileListContent(
+    isLoadingContent: Boolean,
+    isEmpty: Boolean,
+    emptyText: String,
+    list: @Composable () -> Unit,
+) {
+    when {
+        isLoadingContent && isEmpty -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
+        }
+
+        isEmpty -> {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(emptyText)
+            }
+        }
+
+        else -> {
+            list()
         }
     }
 }

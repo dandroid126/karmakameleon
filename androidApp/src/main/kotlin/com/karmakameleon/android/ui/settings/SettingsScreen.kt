@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -44,57 +45,34 @@ import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NotificationInterval
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
+import kotlinx.coroutines.flow.StateFlow
 import org.koin.compose.koinInject
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
-    currentRoute: String? = null,
     onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    currentRoute: String? = null,
     settingsRepository: SettingsRepository = koinInject(),
     readPostsRepository: ReadPostsRepository = koinInject(),
 ) {
-    val inlineImagesEnabled by settingsRepository.inlineImagesEnabled.collectAsState()
-    val notificationInterval by settingsRepository.notificationInterval.collectAsState()
-    val blockedSubreddits by settingsRepository.blockedSubreddits.collectAsState()
     val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
-    val nsfwCacheMedia by settingsRepository.nsfwCacheMedia.collectAsState()
-    val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
-    val nsfwSearchEnabled by settingsRepository.nsfwSearchEnabled.collectAsState()
-    val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
-    val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
-    val compactFeedEnabled by settingsRepository.compactFeedEnabled.collectAsState()
+    val blockedSubreddits by settingsRepository.blockedSubreddits.collectAsState()
     val context = LocalContext.current
     var showPurgeConfirmDialog by remember { mutableStateOf(false) }
 
     if (showPurgeConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { showPurgeConfirmDialog = false },
-            title = { Text("Clear NSFW Read History") },
-            text = { Text("This will mark all NSFW posts and posts from NSFW subreddits as unread. This cannot be undone.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        readPostsRepository.purgeNsfwReadPosts()
-                        showPurgeConfirmDialog = false
-                    },
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                        ),
-                ) {
-                    Text("Clear")
-                }
+        PurgeNsfwHistoryDialog(
+            onConfirm = {
+                readPostsRepository.purgeNsfwReadPosts()
+                showPurgeConfirmDialog = false
             },
-            dismissButton = {
-                TextButton(onClick = { showPurgeConfirmDialog = false }) {
-                    Text("Cancel")
-                }
-            },
+            onDismiss = { showPurgeConfirmDialog = false },
         )
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             UniversalTopAppBar(
                 currentRoute = currentRoute,
@@ -114,363 +92,289 @@ fun SettingsScreen(
                     .fillMaxSize()
                     .padding(padding),
         ) {
-            item {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Inline Images",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = "Render images and GIFs inline in comments and post text",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = inlineImagesEnabled,
-                        onCheckedChange = { settingsRepository.setInlineImagesEnabled(it) },
+            generalSettings(settingsRepository, onIntervalChange = { InboxNotificationWorker.schedule(context) })
+            nsfwSettings(settingsRepository, nsfwEnabled = nsfwEnabled, onClearHistoryClick = { showPurgeConfirmDialog = true })
+            spoilerSettings(settingsRepository)
+            blockedSubredditSettings(blockedSubreddits, onUnblock = settingsRepository::removeBlockedSubreddit)
+        }
+    }
+}
+
+// The notification worker is rescheduled whenever the interval changes.
+private fun LazyListScope.generalSettings(
+    settingsRepository: SettingsRepository,
+    onIntervalChange: () -> Unit,
+) {
+    item {
+        SwitchSetting(
+            title = "Inline Images",
+            description = "Render images and GIFs inline in comments and post text",
+            state = settingsRepository.inlineImagesEnabled,
+            onCheckedChange = settingsRepository::setInlineImagesEnabled,
+        )
+    }
+    item {
+        SwitchSetting(
+            title = "Compact Feed",
+            description =
+                "Show posts as compact cards with small thumbnails. Tap a post for its controls, " +
+                    "or tap the thumbnail to open it",
+            state = settingsRepository.compactFeedEnabled,
+            onCheckedChange = settingsRepository::setCompactFeedEnabled,
+        )
+    }
+    item { SettingsDivider() }
+    item {
+        ChoiceSetting(
+            title = "Inbox Notification Interval",
+            description = "How often to check for new inbox messages in the background",
+            options = NotificationInterval.entries,
+            state = settingsRepository.notificationInterval,
+            label = { it.displayName },
+            onSelect = {
+                settingsRepository.setNotificationInterval(it)
+                onIntervalChange()
+            },
+        )
+    }
+    item { SettingsDivider() }
+}
+
+// The other NSFW options only show while NSFW content is enabled.
+private fun LazyListScope.nsfwSettings(
+    settingsRepository: SettingsRepository,
+    nsfwEnabled: Boolean,
+    onClearHistoryClick: () -> Unit,
+) {
+    item { SettingsSectionHeader("NSFW Content") }
+    item {
+        SwitchSetting(
+            title = "Enable NSFW Content",
+            description = "Allow loading and viewing NSFW posts and subreddits",
+            state = settingsRepository.nsfwEnabled,
+            onCheckedChange = settingsRepository::setNsfwEnabled,
+        )
+    }
+    item { ClearNsfwHistoryButton(onClick = onClearHistoryClick) }
+    if (nsfwEnabled) {
+        item {
+            SwitchSetting(
+                title = "Cache NSFW Media",
+                description = "Allow caching images and videos from NSFW posts",
+                state = settingsRepository.nsfwCacheMedia,
+                onCheckedChange = settingsRepository::setNsfwCacheMedia,
+            )
+        }
+        item {
+            ChoiceSetting(
+                title = "NSFW Preview Mode",
+                description = "How to display NSFW image and video previews in feeds",
+                options = NsfwPreviewMode.entries,
+                state = settingsRepository.nsfwPreviewMode,
+                label = { it.displayName },
+                onSelect = settingsRepository::setNsfwPreviewMode,
+            )
+        }
+        item {
+            SwitchSetting(
+                title = "Show NSFW Subreddits in Search",
+                description = "Include NSFW subreddits in subreddit search results",
+                state = settingsRepository.nsfwSearchEnabled,
+                onCheckedChange = settingsRepository::setNsfwSearchEnabled,
+            )
+        }
+        item {
+            ChoiceSetting(
+                title = "NSFW Post History",
+                description = "Whether to save read history for NSFW posts",
+                options = NsfwHistoryMode.entries,
+                state = settingsRepository.nsfwHistoryMode,
+                label = { it.displayName },
+                onSelect = settingsRepository::setNsfwHistoryMode,
+            )
+        }
+    }
+    item { SettingsDivider() }
+}
+
+private fun LazyListScope.spoilerSettings(settingsRepository: SettingsRepository) {
+    item { SettingsSectionHeader("Spoiler Content") }
+    item {
+        SwitchSetting(
+            title = "Show Spoiler Previews",
+            description = "Show image and video previews for spoiler posts in feeds",
+            state = settingsRepository.spoilerPreviewsEnabled,
+            onCheckedChange = settingsRepository::setSpoilerPreviewsEnabled,
+        )
+    }
+    item { SettingsDivider() }
+}
+
+// Tapping a blocked subreddit unblocks it.
+@OptIn(ExperimentalLayoutApi::class)
+private fun LazyListScope.blockedSubredditSettings(
+    blockedSubreddits: Set<String>,
+    onUnblock: (String) -> Unit,
+) {
+    item {
+        SettingTitle(
+            title = "Blocked Subreddits",
+            description = "Posts from these subreddits will be hidden from all feeds",
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+    }
+    item {
+        if (blockedSubreddits.isEmpty()) {
+            Text(
+                text = "No blocked subreddits",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        } else {
+            FlowRow(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                blockedSubreddits.sorted().forEach { subreddit ->
+                    InputChip(
+                        selected = false,
+                        onClick = { onUnblock(subreddit) },
+                        label = { Text("r/$subreddit") },
+                        trailingIcon = { Icon(Icons.Default.Close, contentDescription = "Unblock") },
                     )
-                }
-            }
-
-            item {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Compact Feed",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text =
-                                "Show posts as compact cards with small thumbnails. Tap a post for its controls, " +
-                                    "or tap the thumbnail to open it",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = compactFeedEnabled,
-                        onCheckedChange = { settingsRepository.setCompactFeedEnabled(it) },
-                    )
-                }
-            }
-
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            item {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "Inbox Notification Interval",
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        text = "How often to check for new inbox messages in the background",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    FlowColumn {
-                        NotificationInterval.entries.forEach { interval ->
-                            FilterChip(
-                                selected = notificationInterval == interval,
-                                onClick = {
-                                    settingsRepository.setNotificationInterval(interval)
-                                    InboxNotificationWorker.schedule(context)
-                                },
-                                label = { Text(interval.displayName) },
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // NSFW Settings
-            item {
-                Text(
-                    text = "NSFW Content",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-
-            item {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Enable NSFW Content",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = "Allow loading and viewing NSFW posts and subreddits",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = nsfwEnabled,
-                        onCheckedChange = { settingsRepository.setNsfwEnabled(it) },
-                    )
-                }
-            }
-
-            item {
-                Button(
-                    onClick = { showPurgeConfirmDialog = true },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors =
-                        ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                            contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                        ),
-                ) {
-                    Text("Clear NSFW Read History")
-                }
-            }
-
-            if (nsfwEnabled) {
-                item {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Cache NSFW Media",
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Text(
-                                text = "Allow caching images and videos from NSFW posts",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = nsfwCacheMedia,
-                            onCheckedChange = { settingsRepository.setNsfwCacheMedia(it) },
-                        )
-                    }
-                }
-
-                item {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = "NSFW Preview Mode",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = "How to display NSFW image and video previews in feeds",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        FlowColumn {
-                            NsfwPreviewMode.entries.forEach { mode ->
-                                FilterChip(
-                                    selected = nsfwPreviewMode == mode,
-                                    onClick = { settingsRepository.setNsfwPreviewMode(mode) },
-                                    label = { Text(mode.displayName) },
-                                )
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    Row(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Show NSFW Subreddits in Search",
-                                style = MaterialTheme.typography.bodyLarge,
-                            )
-                            Text(
-                                text = "Include NSFW subreddits in subreddit search results",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Switch(
-                            checked = nsfwSearchEnabled,
-                            onCheckedChange = { settingsRepository.setNsfwSearchEnabled(it) },
-                        )
-                    }
-                }
-
-                item {
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = "NSFW Post History",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = "Whether to save read history for NSFW posts",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        FlowColumn {
-                            NsfwHistoryMode.entries.forEach { mode ->
-                                FilterChip(
-                                    selected = nsfwHistoryMode == mode,
-                                    onClick = { settingsRepository.setNsfwHistoryMode(mode) },
-                                    label = { Text(mode.displayName) },
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            // Spoiler Settings
-            item {
-                Text(
-                    text = "Spoiler Content",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-            }
-
-            item {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Show Spoiler Previews",
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
-                        Text(
-                            text = "Show image and video previews for spoiler posts in feeds",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Switch(
-                        checked = spoilerPreviewsEnabled,
-                        onCheckedChange = { settingsRepository.setSpoilerPreviewsEnabled(it) },
-                    )
-                }
-            }
-
-            item {
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-            }
-
-            item {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                ) {
-                    Text(
-                        text = "Blocked Subreddits",
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Text(
-                        text = "Posts from these subreddits will be hidden from all feeds",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            if (blockedSubreddits.isEmpty()) {
-                item {
-                    Text(
-                        text = "No blocked subreddits",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
-            } else {
-                item {
-                    FlowRow(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        blockedSubreddits.sorted().forEach { subreddit ->
-                            InputChip(
-                                selected = false,
-                                onClick = { settingsRepository.removeBlockedSubreddit(subreddit) },
-                                label = { Text("r/$subreddit") },
-                                trailingIcon = {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Unblock",
-                                    )
-                                },
-                            )
-                        }
-                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SettingsSectionHeader(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    )
+}
+
+@Composable
+private fun SettingsDivider() {
+    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+}
+
+@Composable
+private fun SettingTitle(
+    title: String,
+    description: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(text = title, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun SwitchSetting(
+    title: String,
+    description: String,
+    state: StateFlow<Boolean>,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    val checked by state.collectAsState()
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SettingTitle(title = title, description = description, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+// A setting with a few options, shown as chips in a column.
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun <T> ChoiceSetting(
+    title: String,
+    description: String,
+    options: List<T>,
+    state: StateFlow<T>,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
+) {
+    val selected by state.collectAsState()
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        SettingTitle(title = title, description = description)
+        FlowColumn {
+            options.forEach { option ->
+                FilterChip(
+                    selected = selected == option,
+                    onClick = { onSelect(option) },
+                    label = { Text(label(option)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ClearNsfwHistoryButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            ),
+    ) {
+        Text("Clear NSFW Read History")
+    }
+}
+
+@Composable
+private fun PurgeNsfwHistoryDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Clear NSFW Read History") },
+        text = { Text("This will mark all NSFW posts and posts from NSFW subreddits as unread. This cannot be undone.") },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+            ) {
+                Text("Clear")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
