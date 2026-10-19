@@ -72,16 +72,17 @@ class InboxNotificationWorker(
             val koin = GlobalContext.get()
             val authManager = koin.get<AuthManager>()
             val settingsRepository = koin.get<SettingsRepository>()
-            val interval = settingsRepository.notificationInterval.value
+            // Null when notifications are off.
+            val intervalMinutes = settingsRepository.notificationInterval.value.minutes
 
-            if (!authManager.isLoggedIn() || interval == NotificationInterval.OFF) {
+            if (!authManager.isLoggedIn() || intervalMinutes == null) {
                 workManager.cancelUniqueWork(WORK_NAME)
                 return
             }
 
             val request =
                 PeriodicWorkRequestBuilder<InboxNotificationWorker>(
-                    interval.minutes!!,
+                    intervalMinutes,
                     TimeUnit.MINUTES,
                 ).build()
             workManager.enqueueUniquePeriodicWork(

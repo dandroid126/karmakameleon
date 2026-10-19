@@ -612,13 +612,8 @@ private fun InlineImage(
         modifier =
             modifier
                 .fillMaxWidth()
-                .then(
-                    if (aspectRatio != null) {
-                        Modifier.aspectRatio(aspectRatio!!)
-                    } else {
-                        Modifier
-                    },
-                ).clipToBounds()
+                .then(aspectRatio?.let { Modifier.aspectRatio(it) } ?: Modifier)
+                .clipToBounds()
                 .combinedClickable(
                     interactionSource =
                         remember {

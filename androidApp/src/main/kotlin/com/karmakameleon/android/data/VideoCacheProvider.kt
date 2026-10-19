@@ -14,15 +14,13 @@ object VideoCacheProvider {
     private const val MAX_CACHE_BYTES = 256L * 1024 * 1024 // 256 MB
 
     @Synchronized
-    fun getCache(context: Context): SimpleCache {
-        if (cache == null) {
+    fun getCache(context: Context): SimpleCache =
+        cache ?: run {
             val cacheDir = File(context.cacheDir, "video_cache")
             val evictor = LeastRecentlyUsedCacheEvictor(MAX_CACHE_BYTES)
             val databaseProvider = StandaloneDatabaseProvider(context)
-            cache = SimpleCache(cacheDir, evictor, databaseProvider)
+            SimpleCache(cacheDir, evictor, databaseProvider).also { cache = it }
         }
-        return cache!!
-    }
 
     @Synchronized
     fun release() {

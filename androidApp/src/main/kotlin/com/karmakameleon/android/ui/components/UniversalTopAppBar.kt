@@ -37,6 +37,7 @@ fun UniversalTopAppBar(
     val isLoggedIn by userRepository.isLoggedIn.collectAsState()
     var showOverflowMenu by remember { mutableStateOf(false) }
 
+    val account = currentAccount
     val baseItems =
         buildList {
             if (!excludeProfile) {
@@ -50,11 +51,11 @@ fun UniversalTopAppBar(
                         )
                     }
 
-                    currentAccount != null -> {
+                    account != null -> {
                         add(
                             OverflowMenuItem(
-                                title = "${currentAccount!!.name}'s Profile",
-                                onClick = { globalMenuManager.onNavigateToProfile(currentAccount!!.name) },
+                                title = "${account.name}'s Profile",
+                                onClick = { globalMenuManager.onNavigateToProfile(account.name) },
                             ),
                         )
                     }
