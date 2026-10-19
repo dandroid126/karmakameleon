@@ -68,10 +68,11 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
-    currentRoute: String? = null,
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    currentRoute: String? = null,
     onLinkClick: (String) -> Unit = {},
     viewModel: FeedViewModel = koinViewModel(),
     navigationHandler: NavigationHandler = koinInject(),
@@ -87,15 +88,13 @@ fun FeedScreen(
     ScrollToTopOnChange(listState, uiState.currentFeedType)
 
     Scaffold(
+        modifier = modifier,
         topBar = {
-            UniversalTopAppBar(
+            FeedTopBar(
+                currentFeedType = uiState.currentFeedType,
                 currentRoute = currentRoute,
-                title = { FeedTypeMenu(currentFeedType = uiState.currentFeedType, onSelectFeedType = viewModel::setFeedType) },
-                actions = {
-                    IconButton(onClick = { showSortSheet = true }) {
-                        Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort")
-                    }
-                },
+                onSelectFeedType = viewModel::setFeedType,
+                onSortClick = { showSortSheet = true },
             )
         },
     ) { padding ->
@@ -133,11 +132,29 @@ fun FeedScreen(
         SortBottomSheet(
             currentSort = uiState.currentSort,
             currentTimeFilter = uiState.currentTimeFilter,
-            onSortSelected = viewModel::setSort,
-            onTimeFilterSelected = viewModel::setTimeFilter,
+            onSelectSort = viewModel::setSort,
+            onSelectTimeFilter = viewModel::setTimeFilter,
             onDismiss = { showSortSheet = false },
         )
     }
+}
+
+@Composable
+private fun FeedTopBar(
+    currentFeedType: FeedType,
+    currentRoute: String?,
+    onSelectFeedType: (FeedType) -> Unit,
+    onSortClick: () -> Unit,
+) {
+    UniversalTopAppBar(
+        currentRoute = currentRoute,
+        title = { FeedTypeMenu(currentFeedType = currentFeedType, onSelectFeedType = onSelectFeedType) },
+        actions = {
+            IconButton(onClick = onSortClick) {
+                Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort")
+            }
+        },
+    )
 }
 
 // The feed's name, opening a menu of the other feeds.

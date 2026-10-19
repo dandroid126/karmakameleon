@@ -47,6 +47,7 @@ fun ReplyBar(
     onReplyTextChange: (String) -> Unit,
     onSubmit: () -> Unit,
     onCancel: () -> Unit,
+    modifier: Modifier = Modifier,
     placeholder: String = "Write a reply...",
     onSaveDraft: () -> Unit = {},
     onLoadDraft: () -> Unit = {},
@@ -57,7 +58,7 @@ fun ReplyBar(
     Surface(
         color = MaterialTheme.colorScheme.surface,
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .imePadding(),
     ) {

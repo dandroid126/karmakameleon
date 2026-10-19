@@ -68,7 +68,7 @@ fun PostListItem(
             post = post,
             isExpanded = compactSelection.isExpanded(post.id),
             isHighlighted = compactSelection.isHighlighted(post.id),
-            onToggleExpanded = { compactSelection.toggle(post.id) },
+            onToggleExpansion = { compactSelection.toggle(post.id) },
             actions = actions,
             isLoggedIn = isLoggedIn,
             modifier = modifier,

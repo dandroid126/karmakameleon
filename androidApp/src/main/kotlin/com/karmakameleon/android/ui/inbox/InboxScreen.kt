@@ -32,7 +32,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -66,7 +66,7 @@ fun InboxScreen(
     val uiState by viewModel.uiState.collectAsState()
     var blockPendingMessage by remember { mutableStateOf<Message?>(null) }
 
-    LaunchedEffect(initialFilter) {
+    SideEffect(initialFilter) {
         if (initialFilter != null) {
             viewModel.setFilter(initialFilter)
         }

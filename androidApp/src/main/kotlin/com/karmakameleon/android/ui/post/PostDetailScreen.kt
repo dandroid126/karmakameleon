@@ -61,6 +61,7 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -135,10 +136,11 @@ import org.koin.core.parameter.parametersOf
 fun PostDetailScreen(
     subreddit: String,
     postId: String,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
     commentId: String? = null,
     commentContext: Int? = null,
     currentRoute: String? = null,
-    onBackClick: () -> Unit,
     onGoToCommentNav: (commentId: String) -> Unit = {},
     viewModel: PostDetailViewModel = koinViewModel { parametersOf(PostDetailTarget(subreddit, postId, commentId, commentContext)) },
     settingsRepository: SettingsRepository = koinInject(),
@@ -159,6 +161,7 @@ fun PostDetailScreen(
     BackHandler(enabled = uiState.isLoggedIn && isReplying, onBack = replyActions.requestClose)
 
     Scaffold(
+        modifier = modifier,
         topBar = { PostDetailTopBar(currentRoute = currentRoute, onBackClick = onBackClick) },
         bottomBar = {
             if (uiState.isLoggedIn) PostReplyBar(commentState = commentState, actions = replyActions)
@@ -341,7 +344,7 @@ private fun ShowActionErrors(
 ) {
     val context = LocalContext.current
     val currentOnConsumeError by rememberUpdatedState(onConsumeError)
-    LaunchedEffect(actionError) {
+    SideEffect(actionError) {
         actionError?.let { error ->
             Toast.makeText(context, error, Toast.LENGTH_LONG).show()
             currentOnConsumeError()

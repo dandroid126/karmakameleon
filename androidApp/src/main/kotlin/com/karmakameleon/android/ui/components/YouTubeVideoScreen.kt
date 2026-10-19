@@ -21,12 +21,13 @@ import com.karmakameleon.android.ui.theme.mediaColors
 fun YouTubeVideoScreen(
     videoId: String,
     onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBackClick)
 
     Box(
         modifier =
-            Modifier
+            modifier
                 .fillMaxSize()
                 .background(mediaColors().mediaBackgroundColor),
     ) {

@@ -101,7 +101,7 @@ fun CompactPostCard(
     post: Post,
     isExpanded: Boolean,
     isHighlighted: Boolean,
-    onToggleExpanded: () -> Unit,
+    onToggleExpansion: () -> Unit,
     actions: PostActions,
     isLoggedIn: Boolean,
     modifier: Modifier = Modifier,
@@ -122,7 +122,7 @@ fun CompactPostCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onToggleExpanded)
+                    .clickable(onClick = onToggleExpansion)
                     .padding(start = 2.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
         ) {
             CompactVoteColumn(post = post, isLoggedIn = isLoggedIn, onUpvote = actions.onUpvote, onDownvote = actions.onDownvote)

@@ -3,11 +3,6 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>AbstractClassCanBeInterface:MarkdownText.kt:InlineSegment$InlineSegment</ID>
-    <ID>ComposableParamOrder:FeedScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun FeedScreen</ID>
-    <ID>ComposableParamOrder:PostDetailScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun PostDetailScreen</ID>
-    <ID>ComposableParamOrder:ProfileScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen</ID>
-    <ID>ComposableParamOrder:SearchScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SearchScreen</ID>
-    <ID>ComposableParamOrder:SubredditScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SubredditScreen</ID>
     <ID>ImplicitDefaultLocale:VideoPlayer.kt:"%d:%02d".format(minutes, seconds)</ID>
     <ID>MagicNumber:KarmaKameleonApplication.kt:KarmaKameleonApplication$1024</ID>
     <ID>MagicNumber:KarmaKameleonApplication.kt:KarmaKameleonApplication$28</ID>
@@ -28,22 +23,6 @@
     <ID>MagicNumber:PostCard.kt:86400</ID>
     <ID>MatchingDeclarationName:MediaLongPressMenu.kt:MediaMenuItem</ID>
     <ID>MatchingDeclarationName:PostListItem.kt:CompactPostSelection</ID>
-    <ID>ModifierMissing:FeedScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun FeedScreen</ID>
-    <ID>ModifierMissing:MessageItem.kt:@Composable fun MessageItem</ID>
-    <ID>ModifierMissing:PostDetailScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun PostDetailScreen</ID>
-    <ID>ModifierMissing:ProfileScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun ProfileScreen</ID>
-    <ID>ModifierMissing:ReplyBar.kt:@Composable fun ReplyBar</ID>
-    <ID>ModifierMissing:SearchScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SearchScreen</ID>
-    <ID>ModifierMissing:SubredditScreen.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun SubredditScreen</ID>
-    <ID>ModifierMissing:UniversalTopAppBar.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun UniversalTopAppBar</ID>
-    <ID>ModifierMissing:YouTubeVideoScreen.kt:@Composable fun YouTubeVideoScreen</ID>
-    <ID>ParameterNaming:CompactPostCard.kt:onToggleExpanded: () -&gt; Unit</ID>
-    <ID>ParameterNaming:SortBottomSheet.kt:onSortSelected: (PostSort) -&gt; Unit</ID>
-    <ID>ParameterNaming:SortBottomSheet.kt:onTimeFilterSelected: (TimeFilter) -&gt; Unit</ID>
-    <ID>UnnecessaryLaunchedEffect:InboxScreen.kt:LaunchedEffect</ID>
-    <ID>UnnecessaryLaunchedEffect:KarmaKameleonApp.kt:LaunchedEffect</ID>
-    <ID>UnnecessaryLaunchedEffect:PostDetailScreen.kt:LaunchedEffect</ID>
-    <ID>UnnecessaryLaunchedEffect:ProfileScreen.kt:LaunchedEffect</ID>
     <ID>UnusedParameter:SubredditScreen.kt:onSubredditClick: (String) -&gt; Unit = {}</ID>
     <ID>UnusedParameter:Theme.kt:darkTheme: Boolean = isSystemInDarkTheme()</ID>
     <ID>UnusedParameter:UniversalTopAppBar.kt:currentRoute: String? = null</ID>

@@ -49,7 +49,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -103,12 +103,13 @@ import org.koin.compose.koinInject
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    onPostClick: (subreddit: String, postId: String) -> Unit,
+    onSubredditClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
     username: String? = null,
     currentRoute: String? = null,
     onBackClick: (() -> Unit)? = null,
-    onPostClick: (subreddit: String, postId: String) -> Unit,
     onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, c -> onPostClick(s, p) },
-    onSubredditClick: (String) -> Unit,
     onLinkClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
     userRepository: UserRepository = koinInject(),
@@ -129,6 +130,7 @@ fun ProfileScreen(
     )
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             ProfileTopBar(
                 uiState = uiState,
@@ -328,7 +330,7 @@ private fun ProfileLoading(
         onDispose { currentOnClear() }
     }
 
-    LaunchedEffect(username, currentAccountName) {
+    SideEffect(username, currentAccountName) {
         currentOnClear()
         when (username) {
             // Not logged in: the login prompt is shown.
@@ -344,7 +346,7 @@ private fun ProfileLoading(
         }
     }
 
-    LaunchedEffect(errorMessage) {
+    SideEffect(errorMessage) {
         errorMessage?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_LONG).show()
             currentOnConsumeError()
@@ -518,8 +520,8 @@ private fun ProfileSortButton(
         SortBottomSheet(
             currentSort = sort,
             currentTimeFilter = timeFilter,
-            onSortSelected = onSelectSort,
-            onTimeFilterSelected = onSelectTimeFilter,
+            onSelectSort = onSelectSort,
+            onSelectTimeFilter = onSelectTimeFilter,
             onDismiss = { showSortSheet = false },
         )
     }
