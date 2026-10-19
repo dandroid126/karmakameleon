@@ -13,14 +13,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-sealed class FlatCommentItem {
+sealed interface FlatCommentItem {
     data class CommentEntry(
         val comment: Comment,
-    ) : FlatCommentItem()
+    ) : FlatCommentItem
 
     data class MoreEntry(
         val more: MoreComments,
-    ) : FlatCommentItem()
+    ) : FlatCommentItem
 }
 
 data class CommentUiState(

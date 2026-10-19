@@ -79,7 +79,7 @@ class ReadPostsRepository(
                 val parts = raw.split("|")
                 when (parts.size) {
                     1 -> ReadPostEntry(parts[0], isNsfw = false, subredditIsNsfw = false)
-                    3 -> ReadPostEntry(parts[0], parts[1] == "1", parts[2] == "1")
+                    ENTRY_FIELD_COUNT -> ReadPostEntry(parts[0], parts[1] == "1", parts[2] == "1")
                     else -> null
                 }
             }.toSet()
@@ -92,5 +92,8 @@ class ReadPostsRepository(
 
     companion object {
         private const val KEY_READ_POSTS = "read_post_ids"
+
+        // postId|isNsfw|subredditIsNsfw; older entries are just the postId.
+        private const val ENTRY_FIELD_COUNT = 3
     }
 }

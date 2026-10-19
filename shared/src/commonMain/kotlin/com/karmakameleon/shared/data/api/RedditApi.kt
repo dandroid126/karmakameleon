@@ -97,6 +97,9 @@ open class RedditApi(
         const val BASE_URL = "https://oauth.reddit.com"
         const val WWW_URL = "https://www.reddit.com"
         const val AUTH_URL = "https://www.reddit.com/api/v1"
+
+        // Reddit's /api/info returns at most 100 items per request.
+        private const val MAX_SUBREDDITS_PER_INFO_REQUEST = 100
     }
 
     private suspend fun authenticatedRequest(block: HttpRequestBuilder.() -> Unit): HttpResponse {
@@ -248,7 +251,9 @@ open class RedditApi(
                     .first()
                     .data,
             )
-        val comments = parser.commentsOrMore(listings.getOrNull(1)?.data?.children ?: emptyList())
+        // The second listing holds the comments; it is missing when the post has none.
+        val commentChildren = listings.getOrNull(1)?.data?.children
+        val comments = parser.commentsOrMore(commentChildren.orEmpty())
         return post to comments
     }
 
@@ -494,7 +499,7 @@ open class RedditApi(
     // ==================== NSFW status of subreddits ====================
 
     private suspend fun fetchSubredditsBatch(subredditNames: List<String>) {
-        subredditNames.chunked(100).forEach { batch ->
+        subredditNames.chunked(MAX_SUBREDDITS_PER_INFO_REQUEST).forEach { batch ->
             runSuspendCatching {
                 val listing = getListing("/api/info.json") { parameter("sr_name", batch.joinToString(",")) }
                 parser.subredditListing(listing).items.forEach { subreddit ->
@@ -546,12 +551,12 @@ open class RedditApi(
         }.getOrNull()
 }
 
-sealed class CommentOrMore {
+sealed interface CommentOrMore {
     data class CommentItem(
         val comment: Comment,
-    ) : CommentOrMore()
+    ) : CommentOrMore
 
     data class More(
         val more: MoreComments,
-    ) : CommentOrMore()
+    ) : CommentOrMore
 }

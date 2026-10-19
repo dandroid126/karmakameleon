@@ -301,7 +301,7 @@ class PostDetailViewModel(
         if (post != null && post.name == parentId) {
             return post.selfText?.takeIf { it.isNotBlank() } ?: post.title
         }
-        return commentViewModel.findCommentByName(parentId)?.body ?: ""
+        return commentViewModel.findCommentByName(parentId)?.body.orEmpty()
     }
 
     fun insertQuote() {

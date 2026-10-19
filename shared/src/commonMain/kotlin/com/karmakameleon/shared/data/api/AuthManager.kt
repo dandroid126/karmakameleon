@@ -45,6 +45,7 @@ open class AuthManager(
 
         private const val AUTH_URL = "https://www.reddit.com/api/v1"
         private const val TOKEN_EXPIRY_BUFFER = 60 // seconds before expiry to refresh
+        private const val DEVICE_ID_LENGTH = 30
     }
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -84,7 +85,7 @@ open class AuthManager(
     // Neither value can contain whitespace, and pasting often brings a trailing newline along.
     // Getters also trim, for values saved before whitespace was stripped.
 
-    open fun getClientId(): String = (settings.get<String>(KEY_CLIENT_ID) ?: "").trim()
+    open fun getClientId(): String = settings.get<String>(KEY_CLIENT_ID).orEmpty().trim()
 
     open fun setClientId(clientId: String) {
         settings[KEY_CLIENT_ID] = clientId.filterNot { it.isWhitespace() }
@@ -266,7 +267,7 @@ open class AuthManager(
 
     private fun generateDeviceId(): String {
         val chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-        return (1..30).map { chars.random() }.joinToString("")
+        return (1..DEVICE_ID_LENGTH).map { chars.random() }.joinToString("")
     }
 
     @OptIn(ExperimentalEncodingApi::class)
