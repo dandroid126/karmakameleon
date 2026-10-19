@@ -126,11 +126,6 @@
     <ID>UnnecessaryLaunchedEffect:SearchScreen.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:SubredditScreen.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:VideoPlayer.kt:LaunchedEffect</ID>
-    <ID>UnsafeCallOnNullableType:InboxNotificationWorker.kt:InboxNotificationWorker.Companion$interval.minutes!!</ID>
-    <ID>UnsafeCallOnNullableType:MarkdownText.kt:aspectRatio!!</ID>
-    <ID>UnsafeCallOnNullableType:PostDetailScreen.kt:item.url!!</ID>
-    <ID>UnsafeCallOnNullableType:UniversalTopAppBar.kt:currentAccount!!</ID>
-    <ID>UnsafeCallOnNullableType:VideoCacheProvider.kt:VideoCacheProvider$cache!!</ID>
     <ID>UnusedParameter:SubredditScreen.kt:onSubredditClick: (String) -&gt; Unit = {}</ID>
     <ID>UnusedParameter:Theme.kt:darkTheme: Boolean = isSystemInDarkTheme()</ID>
     <ID>UnusedParameter:UniversalTopAppBar.kt:currentRoute: String? = null</ID>

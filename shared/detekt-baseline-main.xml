@@ -54,8 +54,6 @@
     <ID>MagicNumber:RedditApi.kt:RedditApi$100</ID>
     <ID>MagicNumber:RedditApi.kt:RedditApi$3</ID>
     <ID>MagicNumber:SearchViewModel.kt:SearchViewModel$300</ID>
-    <ID>MapGetWithNotNullAssertionOperator:CommentViewModel.kt:CommentViewModel$commentByName[c.name]!!</ID>
-    <ID>MapGetWithNotNullAssertionOperator:CommentViewModel.kt:CommentViewModel$commentByName[it]!!</ID>
     <ID>NestedBlockDepth:CommentViewModel.kt:CommentViewModel$private fun flattenCommentTree: List&lt;FlatCommentItem&gt;</ID>
     <ID>NestedBlockDepth:InlineParser.kt:private fun parseInlineRecursive: List&lt;MarkdownInline&gt;</ID>
     <ID>NoNameShadowing:FeedViewModel.kt:FeedViewModel${ it.copy(isLoadingMore = false) }</ID>
@@ -96,12 +94,9 @@
     <ID>TooManyFunctions:RedditApi.kt:RedditApi</ID>
     <ID>TooManyFunctions:SettingsRepository.kt:SettingsRepository</ID>
     <ID>TooManyFunctions:UserRepository.kt:UserRepository</ID>
-    <ID>UnsafeCallOnNullableType:CommentViewModel.kt:CommentViewModel$commentByName[c.name]!!</ID>
-    <ID>UnsafeCallOnNullableType:CommentViewModel.kt:CommentViewModel$commentByName[it]!!</ID>
     <ID>UnusedPrivateProperty:FeedViewModel.kt:FeedViewModel$private val subredditRepository: SubredditRepository</ID>
     <ID>UnusedPrivateProperty:SubredditRepository.kt:SubredditRepository$private val settingsRepository: SettingsRepository</ID>
     <ID>UseOrEmpty:AuthManager.kt:AuthManager$settings.get&lt;String&gt;(KEY_CLIENT_ID) ?: ""</ID>
-    <ID>UseOrEmpty:CommentViewModel.kt:CommentViewModel$childNames?.map { commentByName[it]!! } ?: emptyList()</ID>
     <ID>UseOrEmpty:PostDetailViewModel.kt:PostDetailViewModel$commentViewModel.findCommentByName(parentId)?.body ?: ""</ID>
     <ID>UseOrEmpty:RedditApi.kt:RedditApi$dto.authorFlairRichtext?.map { rt -&gt; FlairRichtext( type = rt.e, text = rt.t, url = rt.u, ) } ?: emptyList()</ID>
     <ID>UseOrEmpty:RedditApi.kt:RedditApi$dto.permalink ?: ""</ID>

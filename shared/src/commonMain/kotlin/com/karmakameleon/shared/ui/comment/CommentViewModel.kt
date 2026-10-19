@@ -215,9 +215,9 @@ class CommentViewModel(
             val childNames = childNamesOf[c.name]
             val more = moreOf[c.name]
             if (childNames != null || more != null) {
-                val children = childNames?.map { commentByName[it]!! } ?: emptyList()
+                val children = childNames?.map { commentByName.getValue(it) }.orEmpty()
                 commentByName[c.name] =
-                    commentByName[c.name]!!.copy(
+                    commentByName.getValue(c.name).copy(
                         replies = children,
                         moreReplies = more,
                     )
@@ -227,7 +227,7 @@ class CommentViewModel(
         val result = mutableListOf<CommentOrMore>()
         for (c in comments) {
             if (c.parentId !in commentByName) {
-                result.add(CommentOrMore.CommentItem(commentByName[c.name]!!))
+                result.add(CommentOrMore.CommentItem(commentByName.getValue(c.name)))
             }
         }
         for (m in moreEntries) {

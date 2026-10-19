@@ -881,12 +881,13 @@ private fun PostHeader(
                                     .clip(RoundedCornerShape(8.dp)),
                         ) { page ->
                             val item = galleryItems[page]
-                            if (item.isVideo && item.url != null) {
+                            val itemUrl = item.url
+                            if (item.isVideo && itemUrl != null) {
                                 VideoPlayer(
-                                    videoUrl = item.url!!,
+                                    videoUrl = itemUrl,
                                     isGif = true,
                                     modifier = Modifier.fillMaxSize(),
-                                    menuItems = gifMenuItems(item.url!!, gifImageUrl = item.gifUrl),
+                                    menuItems = gifMenuItems(itemUrl, gifImageUrl = item.gifUrl),
                                 )
                             } else {
                                 LongPressMenuBox(
