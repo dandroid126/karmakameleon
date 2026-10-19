@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
@@ -74,96 +75,36 @@ private val POST_CARD_MAX_CONTENT_HEIGHT = 400.dp
 @Composable
 fun PostCard(
     post: Post,
-    onClick: () -> Unit,
-    onSubredditClick: () -> Unit,
-    onUserClick: () -> Unit,
-    onUpvote: () -> Unit,
-    onDownvote: () -> Unit,
-    onSave: () -> Unit,
-    onHide: () -> Unit,
+    actions: PostActions,
     isLoggedIn: Boolean,
     modifier: Modifier = Modifier,
-    onBlockSubreddit: () -> Unit = {},
-    onLinkClick: (String) -> Unit = {},
-    onCrosspostClick: () -> Unit = {},
     isRead: Boolean = false,
     nsfwPreviewMode: NsfwPreviewMode = NsfwPreviewMode.DO_NOT_PREFETCH,
     spoilerPreviewsEnabled: Boolean = false,
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-    val clipboard = LocalClipboard.current
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
-    val voteColors = voteColors()
-    val postFlairColors = postFlairColors()
     val readStateColors = readStateColors()
-
     Card(
         modifier =
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 8.dp, vertical = 4.dp)
-                .clickable(onClick = onClick),
+                .clickable(onClick = actions.onClick),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            // Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = "r/${post.subreddit}",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(onClick = onSubredditClick),
-                )
-                Text(
-                    text = " • ",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "u/${post.author}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable(onClick = onUserClick),
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = formatTimeAgo(post.createdUtc),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
+            PostCardHeader(post = post, onSubredditClick = actions.onSubredditClick, onUserClick = actions.onUserClick)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Flairs
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                if (post.isNsfw) {
-                    FlairChip(text = "NSFW", color = postFlairColors.nsfwColor)
-                }
-                if (post.isSpoiler) {
-                    FlairChip(text = "Spoiler", color = postFlairColors.spoilerColor)
-                }
-                if (post.isStickied) {
-                    FlairChip(text = "Pinned", color = postFlairColors.pinnedColor)
-                }
-                post.linkFlairText?.let { flair ->
-                    SubredditFlairChip(text = flair, backgroundColor = post.linkFlairBackgroundColor)
-                }
+                PostFlairChips(post)
             }
-
-            if (post.isNsfw || post.isSpoiler || post.isStickied || post.linkFlairText != null) {
+            if (post.hasFlairs) {
                 Spacer(modifier = Modifier.height(4.dp))
             }
 
-            // Title
             Text(
                 text = post.title,
                 style = MaterialTheme.typography.titleMedium,
@@ -173,408 +114,361 @@ fun PostCard(
                 overflow = TextOverflow.Ellipsis,
             )
 
-            // Content preview with max height and fade
             if (post.isSpoiler && !spoilerPreviewsEnabled) {
                 Spacer(modifier = Modifier.height(8.dp))
                 SpoilerBlackBox(
-                    modifier = Modifier.clickable { onClick() },
+                    modifier = Modifier.clickable { actions.onClick() },
                 )
             } else {
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = POST_CARD_MAX_CONTENT_HEIGHT)
-                            .clipToBounds(),
-                ) {
-                    Column {
-                        // Thumbnail/Preview (for both videos and images)
-                        val previewImage = post.preview?.images?.firstOrNull()
-                        val galleryUrl =
-                            post.galleryData
-                                ?.items
-                                ?.firstOrNull()
-                                ?.url
-                        val highResUrl =
-                            previewImage?.source?.url
-                                ?: galleryUrl
-                                ?: post.thumbnail?.takeIf { it.startsWith("http") }
-                                ?: post.url.takeIf { post.isImagePost }
-                        val lowResUrl =
-                            previewImage?.resolutions?.firstOrNull()?.url
-                                ?: post.thumbnail?.takeIf { it.startsWith("http") }
-
-                        if (highResUrl != null) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            if (post.isNsfw) {
-                                when (nsfwPreviewMode) {
-                                    NsfwPreviewMode.DO_NOT_PREFETCH -> {
-                                        NsfwBlackBox()
-                                    }
-
-                                    NsfwPreviewMode.PREFETCH_AND_BLUR -> {
-                                        NsfwBlurredImage(
-                                            lowResUrl = lowResUrl,
-                                            highResUrl = highResUrl,
-                                        )
-                                    }
-
-                                    NsfwPreviewMode.SHOW_PREVIEWS -> {
-                                        Box {
-                                            ProgressiveAsyncImage(
-                                                lowResUrl = lowResUrl,
-                                                highResUrl = highResUrl,
-                                                contentDescription = null,
-                                                modifier =
-                                                    Modifier
-                                                        .fillMaxWidth()
-                                                        .heightIn(max = 300.dp)
-                                                        .clip(RoundedCornerShape(8.dp)),
-                                                contentScale = ContentScale.Crop,
-                                            )
-                                            val galleryCount = post.galleryData?.items?.size ?: 0
-                                            if (galleryCount > 1) {
-                                                Surface(
-                                                    color = mediaColors().overlayBadgeColor,
-                                                    shape = RoundedCornerShape(12.dp),
-                                                    modifier =
-                                                        Modifier
-                                                            .align(Alignment.TopEnd)
-                                                            .padding(8.dp),
-                                                ) {
-                                                    Text(
-                                                        text = "1/$galleryCount",
-                                                        style = MaterialTheme.typography.labelSmall,
-                                                        color = mediaColors().onOverlayColor,
-                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                Box {
-                                    ProgressiveAsyncImage(
-                                        lowResUrl = lowResUrl,
-                                        highResUrl = highResUrl,
-                                        contentDescription = null,
-                                        modifier =
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .heightIn(max = 300.dp)
-                                                .clip(RoundedCornerShape(8.dp)),
-                                        // Commenting this out for now, but this is where we would add the clickability of the image to
-                                        // follow the link.
-                                        // I can't decide if I like it or not.
-                                        // Maybe this will be configurable in the settings.
-//                                    .then(
-//                                        if (post.isLinkPost) Modifier.clickable { onLinkClick(post.url) }
-//                                        else Modifier
-//                                    ),
-                                        contentScale = ContentScale.Crop,
-                                    )
-                                    val galleryCount = post.galleryData?.items?.size ?: 0
-                                    if (galleryCount > 1) {
-                                        Surface(
-                                            color = mediaColors().overlayBadgeColor,
-                                            shape = RoundedCornerShape(12.dp),
-                                            modifier =
-                                                Modifier
-                                                    .align(Alignment.TopEnd)
-                                                    .padding(8.dp),
-                                        ) {
-                                            Text(
-                                                text = "1/$galleryCount",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = mediaColors().onOverlayColor,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Self text preview (plain text, no clickable links)
-                        if (post.isTextPost) {
-                            post.selfText?.let { text ->
-                                if (text.isNotBlank()) {
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Text(
-                                        text = text,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 6,
-                                        overflow = TextOverflow.Ellipsis,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                        }
-
-                        // Link domain
-                        if (post.isLinkPost) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = post.domain,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                            )
-                        }
-                    }
-                }
+                PostCardPreview(post = post, nsfwPreviewMode = nsfwPreviewMode)
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+            PostCardActionRow(post = post, isLoggedIn = isLoggedIn, actions = actions)
+        }
+    }
+}
 
-            // Actions
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                val votingDisabled = post.isVotingDisabled
-                val commentingDisabled = post.isCommentingDisabled
+@Composable
+private fun PostCardHeader(
+    post: Post,
+    onSubredditClick: () -> Unit,
+    onUserClick: () -> Unit,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = "r/${post.subreddit}",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clickable(onClick = onSubredditClick),
+        )
+        Text(
+            text = " • ",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = "u/${post.author}",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clickable(onClick = onUserClick),
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = formatTimeAgo(post.createdUtc),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
 
-                // Vote buttons
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                RoundedCornerShape(20.dp),
-                            ).padding(horizontal = 4.dp),
-                ) {
-                    IconButton(
-                        onClick =
-                            if (votingDisabled) {
-                                { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
-                            } else {
-                                onUpvote
-                            },
-                        enabled = isLoggedIn,
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            imageVector =
-                                if (post.voteState == VoteState.UPVOTED) {
-                                    Icons.Filled.KeyboardArrowUp
-                                } else {
-                                    Icons.Outlined.KeyboardArrowUp
-                                },
-                            contentDescription = "Upvote",
-                            tint =
-                                when {
-                                    votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                    post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                        )
-                    }
+// The post's image, text or link, cut off at a maximum height.
+@Composable
+private fun PostCardPreview(
+    post: Post,
+    nsfwPreviewMode: NsfwPreviewMode,
+) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = POST_CARD_MAX_CONTENT_HEIGHT)
+                .clipToBounds(),
+    ) {
+        Column {
+            // Thumbnail/Preview (for both videos and images)
+            val previewImage = post.preview?.images?.firstOrNull()
+            val galleryUrl =
+                post.galleryData
+                    ?.items
+                    ?.firstOrNull()
+                    ?.url
+            val highResUrl =
+                previewImage?.source?.url
+                    ?: galleryUrl
+                    ?: post.thumbnail?.takeIf { it.startsWith("http") }
+                    ?: post.url.takeIf { post.isImagePost }
+            val lowResUrl =
+                previewImage?.resolutions?.firstOrNull()?.url
+                    ?: post.thumbnail?.takeIf { it.startsWith("http") }
 
-                    Text(
-                        text = formatNumber(post.score),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color =
-                            when {
-                                votingDisabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                                post.voteState == VoteState.UPVOTED -> voteColors.upvoteColor
-                                post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
-                                else -> MaterialTheme.colorScheme.onSurface
-                            },
-                    )
-
-                    IconButton(
-                        onClick =
-                            if (votingDisabled) {
-                                { Toast.makeText(context, post.votingDisabledReason, Toast.LENGTH_SHORT).show() }
-                            } else {
-                                onDownvote
-                            },
-                        enabled = isLoggedIn,
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            imageVector =
-                                if (post.voteState == VoteState.DOWNVOTED) {
-                                    Icons.Filled.KeyboardArrowDown
-                                } else {
-                                    Icons.Outlined.KeyboardArrowDown
-                                },
-                            contentDescription = "Downvote",
-                            tint =
-                                when {
-                                    votingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                                    post.voteState == VoteState.DOWNVOTED -> voteColors.downvoteColor
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                        )
-                    }
-                }
-
-                // Comments
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant,
-                                RoundedCornerShape(20.dp),
-                            ).padding(horizontal = 12.dp, vertical = 6.dp)
-                            .then(
-                                if (commentingDisabled) {
-                                    Modifier.clickable {
-                                        Toast.makeText(context, post.commentingDisabledReason, Toast.LENGTH_SHORT).show()
-                                    }
-                                } else {
-                                    Modifier
-                                },
-                            ),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.ChatBubbleOutline,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint =
-                            if (commentingDisabled) {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = formatNumber(post.numComments),
-                        style = MaterialTheme.typography.labelMedium,
-                        color =
-                            if (commentingDisabled) {
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Open link
-                if (post.isLinkPost) {
-                    IconButton(
-                        onClick = { onLinkClick(post.url) },
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.OpenInNew,
-                            contentDescription = "Open link",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-
-                // Crosspost link
-                if (post.isCrosspost) {
-                    IconButton(
-                        onClick = onCrosspostClick,
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.CallMerge,
-                            contentDescription = "View original post",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-
-                // Save
-                if (isLoggedIn) {
-                    IconButton(
-                        onClick = onSave,
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                            contentDescription = if (post.isSaved) "Unsave" else "Save",
-                            tint =
-                                if (post.isSaved) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                        )
-                    }
-                }
-
-                // More options
-                Box {
-                    IconButton(
-                        onClick = { showMenu = true },
-                        modifier = Modifier.size(32.dp),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "More options",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false },
-                    ) {
-                        if (isLoggedIn) {
-                            DropdownMenuItem(
-                                text = { Text(if (post.isHidden) "Unhide" else "Hide") },
-                                onClick = {
-                                    onHide()
-                                    showMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.VisibilityOff,
-                                        contentDescription = null,
-                                    )
-                                },
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text("Copy comments link") },
-                            onClick = {
-                                val link = "https://www.reddit.com${post.permalink}"
-                                coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) }
-                                showMenu = false
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Link, contentDescription = null)
-                            },
-                        )
-                        post.contentLink?.let { contentLink ->
-                            DropdownMenuItem(
-                                text = { Text("Copy post link") },
-                                onClick = {
-                                    coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", contentLink))) }
-                                    showMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Link, contentDescription = null)
-                                },
-                            )
-                        }
-                        DropdownMenuItem(
-                            text = { Text("Block r/${post.subreddit}") },
-                            onClick = {
-                                onBlockSubreddit()
-                                Toast.makeText(context, "Blocked r/${post.subreddit}", Toast.LENGTH_SHORT).show()
-                                showMenu = false
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Block, contentDescription = null)
-                            },
-                        )
-                    }
-                }
+            if (highResUrl != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                PostPreviewImage(post = post, lowResUrl = lowResUrl, highResUrl = highResUrl, nsfwPreviewMode = nsfwPreviewMode)
             }
+
+            // Self text preview (plain text, no clickable links)
+            val selfText = post.selfText
+            if (post.isTextPost && !selfText.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = selfText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            if (post.isLinkPost) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = post.domain,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
+        }
+    }
+}
+
+// NSFW previews are hidden, blurred or shown depending on the setting.
+@Composable
+private fun PostPreviewImage(
+    post: Post,
+    lowResUrl: String?,
+    highResUrl: String,
+    nsfwPreviewMode: NsfwPreviewMode,
+) {
+    when {
+        !post.isNsfw || nsfwPreviewMode == NsfwPreviewMode.SHOW_PREVIEWS -> PreviewImage(post, lowResUrl, highResUrl)
+        nsfwPreviewMode == NsfwPreviewMode.DO_NOT_PREFETCH -> NsfwBlackBox()
+        else -> NsfwBlurredImage(lowResUrl = lowResUrl, highResUrl = highResUrl)
+    }
+}
+
+// The preview image, marked "1/N" for a gallery.
+@Composable
+private fun PreviewImage(
+    post: Post,
+    lowResUrl: String?,
+    highResUrl: String,
+) {
+    val mediaColors = mediaColors()
+    Box {
+        ProgressiveAsyncImage(
+            lowResUrl = lowResUrl,
+            highResUrl = highResUrl,
+            contentDescription = null,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 300.dp)
+                    .clip(RoundedCornerShape(8.dp)),
+            // Commenting this out for now, but this is where we would add the clickability of the image to
+            // follow the link.
+            // I can't decide if I like it or not.
+            // Maybe this will be configurable in the settings.
+//                .then(
+//                    if (post.isLinkPost) Modifier.clickable { onLinkClick(post.url) }
+//                    else Modifier
+//                ),
+            contentScale = ContentScale.Crop,
+        )
+        val galleryCount = post.galleryData?.items?.size ?: 0
+        if (galleryCount > 1) {
+            Surface(
+                color = mediaColors.overlayBadgeColor,
+                shape = RoundedCornerShape(12.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp),
+            ) {
+                Text(
+                    text = "1/$galleryCount",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = mediaColors.onOverlayColor,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PostCardActionRow(
+    post: Post,
+    isLoggedIn: Boolean,
+    actions: PostActions,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        PostVotePill(post = post, isLoggedIn = isLoggedIn, onUpvote = actions.onUpvote, onDownvote = actions.onDownvote)
+        PostCommentCount(post)
+        Spacer(modifier = Modifier.weight(1f))
+
+        if (post.isLinkPost) {
+            PostActionIcon(Icons.AutoMirrored.Outlined.OpenInNew, "Open link") { actions.onLinkClick(post.url) }
+        }
+        if (post.isCrosspost) {
+            PostActionIcon(Icons.AutoMirrored.Filled.CallMerge, "View original post", actions.onCrosspostClick)
+        }
+        if (isLoggedIn) {
+            IconButton(
+                onClick = actions.onSave,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = if (post.isSaved) "Unsave" else "Save",
+                    tint = if (post.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        PostMoreMenu(post = post, isLoggedIn = isLoggedIn, onHide = actions.onHide, onBlockSubreddit = actions.onBlockSubreddit)
+    }
+}
+
+// Votes need an account, so the arrows are disabled when logged out. When voting is closed they explain why.
+@Composable
+private fun PostVotePill(
+    post: Post,
+    isLoggedIn: Boolean,
+    onUpvote: () -> Unit,
+    onDownvote: () -> Unit,
+) {
+    val context = LocalContext.current
+    val voteOrExplain = { vote: () -> Unit ->
+        if (post.isVotingDisabled) showShortToast(context, post.votingDisabledReason) else vote()
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    RoundedCornerShape(20.dp),
+                ).padding(horizontal = 4.dp),
+    ) {
+        VoteArrowButton(
+            post = post,
+            isUpvote = true,
+            onClick = { voteOrExplain(onUpvote) },
+            enabled = isLoggedIn,
+            modifier = Modifier.size(32.dp),
+        )
+        PostScore(post)
+        VoteArrowButton(
+            post = post,
+            isUpvote = false,
+            onClick = { voteOrExplain(onDownvote) },
+            enabled = isLoggedIn,
+            modifier = Modifier.size(32.dp),
+        )
+    }
+}
+
+// The comment count. When commenting is closed it's dimmed and explains why when tapped.
+@Composable
+private fun PostCommentCount(post: Post) {
+    val context = LocalContext.current
+    val commentingDisabled = post.isCommentingDisabled
+    val color =
+        if (commentingDisabled) {
+            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier
+                .background(
+                    MaterialTheme.colorScheme.surfaceVariant,
+                    RoundedCornerShape(20.dp),
+                ).padding(horizontal = 12.dp, vertical = 6.dp)
+                .then(
+                    if (commentingDisabled) {
+                        Modifier.clickable { showShortToast(context, post.commentingDisabledReason) }
+                    } else {
+                        Modifier
+                    },
+                ),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.ChatBubbleOutline,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = color,
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = formatNumber(post.numComments),
+            style = MaterialTheme.typography.labelMedium,
+            color = color,
+        )
+    }
+}
+
+@Composable
+private fun PostActionIcon(
+    imageVector: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(32.dp),
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun PostMoreMenu(
+    post: Post,
+    isLoggedIn: Boolean,
+    onHide: () -> Unit,
+    onBlockSubreddit: () -> Unit,
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    Box {
+        PostActionIcon(Icons.Default.MoreVert, "More options") { showMenu = true }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+        ) {
+            if (isLoggedIn) {
+                DropdownMenuItem(
+                    text = { Text(if (post.isHidden) "Unhide" else "Hide") },
+                    onClick = {
+                        onHide()
+                        showMenu = false
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.VisibilityOff,
+                            contentDescription = null,
+                        )
+                    },
+                )
+            }
+            CopyLinkMenuItems(post = post, onDone = { showMenu = false })
+            DropdownMenuItem(
+                text = { Text("Block r/${post.subreddit}") },
+                onClick = {
+                    onBlockSubreddit()
+                    showShortToast(context, "Blocked r/${post.subreddit}")
+                    showMenu = false
+                },
+                leadingIcon = {
+                    Icon(Icons.Default.Block, contentDescription = null)
+                },
+            )
         }
     }
 }

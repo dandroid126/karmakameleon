@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,24 +69,32 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
+import com.karmakameleon.android.ui.components.FeedPostItem
+import com.karmakameleon.android.ui.components.LoadMoreNearEnd
+import com.karmakameleon.android.ui.components.PostFeedSettings
+import com.karmakameleon.android.ui.components.PostListCallbacks
 import com.karmakameleon.android.ui.components.ReplyBar
 import com.karmakameleon.android.ui.components.SortBottomSheet
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.formatNumber
 import com.karmakameleon.android.ui.components.formatTimeAgo
+import com.karmakameleon.android.ui.components.rememberPostFeedSettings
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Account
+import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
+import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
 import com.karmakameleon.shared.ui.PagedList
 import com.karmakameleon.shared.ui.profile.ProfileList
 import com.karmakameleon.shared.ui.profile.ProfileTab
+import com.karmakameleon.shared.ui.profile.ProfileUiState
 import com.karmakameleon.shared.ui.profile.ProfileViewModel
 import com.karmakameleon.shared.ui.profile.SavedContentType
 import org.koin.androidx.compose.koinViewModel
@@ -103,459 +112,572 @@ fun ProfileScreen(
     onLinkClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
     userRepository: UserRepository = koinInject(),
+    navigationHandler: NavigationHandler = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val commentState by viewModel.commentViewModel.uiState.collectAsState()
     val currentAccount by userRepository.currentAccount.collectAsState()
-    val context = LocalContext.current
-    val clipboard = LocalClipboard.current
-    val coroutineScope = rememberCoroutineScope()
-    var selectedCommentId by remember { mutableStateOf<String?>(null) }
-    var deleteConfirmCommentId by remember { mutableStateOf<String?>(null) }
 
-    DisposableEffect(Unit) {
-        onDispose { viewModel.clearAllData() }
-    }
-
-    LaunchedEffect(username, currentAccount) {
-        viewModel.clearAllData()
-        when {
-            username == null -> {
-                // Not logged in - show login prompt
-            }
-
-            username == currentAccount?.name -> {
-                viewModel.loadOwnProfile()
-            }
-
-            else -> {
-                viewModel.loadUserProfile(username)
-            }
-        }
-    }
-
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
-            viewModel.clearErrorMessage()
-        }
-    }
+    ProfileLoading(
+        username = username,
+        currentAccountName = currentAccount?.name,
+        errorMessage = uiState.errorMessage,
+        onClear = viewModel::clearAllData,
+        onLoadOwnProfile = { viewModel.loadOwnProfile() },
+        onLoadUserProfile = { viewModel.loadUserProfile(it) },
+        onConsumeError = viewModel::clearErrorMessage,
+    )
 
     Scaffold(
         topBar = {
-            UniversalTopAppBar(
+            ProfileTopBar(
+                uiState = uiState,
+                username = username,
                 currentRoute = currentRoute,
-                excludeProfile = uiState.isOwnProfile,
-                title = {
-                    val titleText =
-                        if (uiState.authUrl != null) {
-                            "Sign in to Reddit"
-                        } else if (uiState.isOwnProfile) {
-                            uiState.account?.name ?: "Profile"
-                        } else {
-                            username.orEmpty()
-                        }
-                    Text(titleText)
-                },
-                navigationIcon = {
-                    if (onBackClick != null) {
-                        IconButton(onClick = onBackClick) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    }
-                },
-                actions = {
-                    if (uiState.authUrl != null) {
-                        IconButton(onClick = viewModel::cancelLogin) {
-                            Icon(Icons.Default.Close, contentDescription = "Cancel sign in")
-                        }
-                    }
-                    if (uiState.isOwnProfile && uiState.isLoggedIn) {
-                        IconButton(onClick = {
-                            clearRedditLoginSession()
-                            viewModel.logout()
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
-                        }
-                    }
+                onBackClick = onBackClick,
+                onCancelLogin = viewModel::cancelLogin,
+                onLogout = {
+                    clearRedditLoginSession()
+                    viewModel.logout()
                 },
             )
         },
         bottomBar = {
-            if (uiState.isLoggedIn && commentState.editingCommentId != null) {
-                ReplyBar(
+            if (uiState.isLoggedIn) {
+                ProfileReplyBar(
+                    isEditing = commentState.editingCommentId != null,
+                    isReplying = commentState.replyingTo != null,
                     replyText = commentState.replyText,
                     onReplyTextChange = viewModel.commentViewModel::setReplyText,
-                    onSubmit = viewModel::submitEdit,
-                    onCancel = viewModel.commentViewModel::cancelEdit,
-                    placeholder = "Edit comment...",
-                )
-            } else if (uiState.isLoggedIn && commentState.replyingTo != null) {
-                ReplyBar(
-                    replyText = commentState.replyText,
-                    onReplyTextChange = viewModel.commentViewModel::setReplyText,
-                    onSubmit = viewModel::submitReply,
-                    onCancel = { viewModel.commentViewModel.setReplyingTo(null) },
+                    onSubmitEdit = viewModel::submitEdit,
+                    onCancelEdit = viewModel.commentViewModel::cancelEdit,
+                    onSubmitReply = viewModel::submitReply,
+                    onCancelReply = { viewModel.commentViewModel.setReplyingTo(null) },
                 )
             }
         },
     ) { padding ->
-        val authUrl = uiState.authUrl
-        if (username == null && authUrl != null) {
-            RedditLoginWebView(
-                authUrl = authUrl,
-                onRedirect = viewModel::handleLoginRedirect,
-                onCancel = viewModel::cancelLogin,
-                modifier = Modifier.padding(padding),
-            )
-            return@Scaffold
-        }
-        val pullToRefreshState = rememberPullToRefreshState()
-        PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
+        ProfileScaffoldBody(
+            uiState = uiState,
+            isLoggedOut = username == null,
+            padding = padding,
+            loginActions = viewModel.loginActions(),
             onRefresh = viewModel::refresh,
-            state = pullToRefreshState,
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-        ) {
-            if (username == null) {
+            actions = viewModel.tabActions(),
+            postCallbacks = viewModel.postCallbacks(onPostClick, onSubredditClick, onLinkClick, navigationHandler),
+            commentCallbacks = viewModel.commentCallbacks(onOpen = onCommentClick),
+        )
+    }
+}
+
+// What signing in asks the view model to do.
+private class LoginActions(
+    val onRedirect: (String) -> Boolean,
+    val onCancel: () -> Unit,
+    val onClientIdChange: (String) -> Unit,
+    val onRedirectUriChange: (String) -> Unit,
+    val onLogin: () -> Unit,
+)
+
+// Reddit's sign-in page while signing in. Otherwise, under pull to refresh: the login prompt when logged out,
+// a spinner while the profile loads, or the profile.
+@Composable
+private fun ProfileScaffoldBody(
+    uiState: ProfileUiState,
+    isLoggedOut: Boolean,
+    padding: PaddingValues,
+    loginActions: LoginActions,
+    onRefresh: () -> Unit,
+    actions: ProfileTabActions,
+    postCallbacks: PostListCallbacks,
+    commentCallbacks: ProfileCommentCallbacks,
+) {
+    val authUrl = uiState.authUrl
+    if (isLoggedOut && authUrl != null) {
+        RedditLoginWebView(
+            authUrl = authUrl,
+            onRedirect = loginActions.onRedirect,
+            onCancel = loginActions.onCancel,
+            modifier = Modifier.padding(padding),
+        )
+        return
+    }
+    PullToRefreshBox(
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = onRefresh,
+        state = rememberPullToRefreshState(),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(padding),
+    ) {
+        when {
+            isLoggedOut -> {
                 LoginPrompt(
                     clientId = uiState.clientId,
-                    onClientIdChange = viewModel::setClientId,
+                    onClientIdChange = loginActions.onClientIdChange,
                     redirectUri = uiState.redirectUri,
-                    onRedirectUriChange = viewModel::setRedirectUri,
+                    onRedirectUriChange = loginActions.onRedirectUriChange,
                     isSigningIn = uiState.isSigningIn,
-                    onLogin = viewModel::initiateLogin,
+                    onLogin = loginActions.onLogin,
                 )
-            } else if (uiState.isLoading && uiState.account == null && uiState.user == null) {
+            }
+
+            uiState.isLoading && uiState.account == null && uiState.user == null -> {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                val displayName = if (uiState.isOwnProfile) uiState.account?.name else uiState.user?.name
-                val iconUrl = if (uiState.isOwnProfile) uiState.account?.iconUrl else uiState.user?.iconUrl
-                val karma = if (uiState.isOwnProfile) uiState.account?.totalKarma else uiState.user?.totalKarma
-                val created = if (uiState.isOwnProfile) uiState.account?.createdUtc else uiState.user?.createdUtc
+            }
 
-                if (displayName != null) {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        UserHeader(
-                            name = displayName,
-                            iconUrl = iconUrl,
-                            karma = karma ?: 0,
-                            created = created ?: 0L,
-                        )
+            else -> {
+                ProfileBody(uiState = uiState, actions = actions, postCallbacks = postCallbacks, commentCallbacks = commentCallbacks)
+            }
+        }
+    }
+}
 
-                        val tabs =
-                            if (uiState.isOwnProfile) {
-                                listOf(
-                                    ProfileTab.POSTS,
-                                    ProfileTab.COMMENTS,
-                                    ProfileTab.SAVED,
-                                    ProfileTab.UPVOTED,
-                                    ProfileTab.DOWNVOTED,
-                                    ProfileTab.ABOUT,
-                                )
-                            } else {
-                                listOf(ProfileTab.POSTS, ProfileTab.COMMENTS, ProfileTab.ABOUT)
-                            }
+private fun ProfileViewModel.loginActions() =
+    LoginActions(
+        onRedirect = ::handleLoginRedirect,
+        onCancel = ::cancelLogin,
+        onClientIdChange = ::setClientId,
+        onRedirectUriChange = ::setRedirectUri,
+        onLogin = ::initiateLogin,
+    )
 
-                        val selectedTabIndex = tabs.indexOf(uiState.selectedTab).coerceAtLeast(0)
+private fun ProfileViewModel.tabActions() =
+    ProfileTabActions(
+        onSelectTab = ::setSelectedTab,
+        onLoadMore = ::loadMore,
+        onSetPostsSort = ::setPostsSort,
+        onSetPostsTimeFilter = ::setPostsTimeFilter,
+        onSetCommentsSort = ::setCommentsSort,
+        onSetCommentsTimeFilter = ::setCommentsTimeFilter,
+        onSetSavedContentType = ::setSavedContentType,
+    )
 
-                        if (tabs.size <= 3) {
-                            PrimaryTabRow(
-                                selectedTabIndex = selectedTabIndex,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                tabs.forEach { tab ->
-                                    Tab(
-                                        selected = uiState.selectedTab == tab,
-                                        onClick = { viewModel.setSelectedTab(tab) },
-                                        text = { Text(tab.displayName) },
-                                    )
-                                }
-                            }
-                        } else {
-                            PrimaryScrollableTabRow(
-                                selectedTabIndex = selectedTabIndex,
-                                edgePadding = 8.dp,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                tabs.forEach { tab ->
-                                    Tab(
-                                        selected = uiState.selectedTab == tab,
-                                        onClick = { viewModel.setSelectedTab(tab) },
-                                        text = { Text(tab.displayName) },
-                                    )
-                                }
-                            }
-                        }
+private fun ProfileViewModel.postCallbacks(
+    onPostClick: (subreddit: String, postId: String) -> Unit,
+    onSubredditClick: (String) -> Unit,
+    onLinkClick: (String) -> Unit,
+    navigationHandler: NavigationHandler,
+) = PostListCallbacks(
+    onPostClick = onPostClick,
+    onSubredditClick = onSubredditClick,
+    onLinkClick = onLinkClick,
+    onCrosspostClick = navigationHandler::handleLink,
+    onVote = ::vote,
+    onSave = ::save,
+)
 
-                        var showSortSheet by remember { mutableStateOf(false) }
-                        val showSortOption =
-                            uiState.selectedTab == ProfileTab.POSTS ||
-                                uiState.selectedTab == ProfileTab.COMMENTS
+private fun ProfileViewModel.commentCallbacks(onOpen: (subreddit: String, postId: String, commentId: String) -> Unit) =
+    ProfileCommentCallbacks(
+        onUpdate = ::updateComment,
+        onReply = { commentViewModel.setReplyingTo(it) },
+        onEdit = commentViewModel::startEditComment,
+        onDelete = ::deleteComment,
+        onSave = ::saveComment,
+        onOpen = onOpen,
+    )
 
-                        if (showSortOption) {
-                            val currentSort =
-                                when (uiState.selectedTab) {
-                                    ProfileTab.POSTS -> uiState.postsSort
-                                    ProfileTab.COMMENTS -> uiState.commentsSort
-                                    else -> PostSort.NEW
-                                }
-                            val currentTimeFilter =
-                                when (uiState.selectedTab) {
-                                    ProfileTab.POSTS -> uiState.postsTimeFilter
-                                    ProfileTab.COMMENTS -> uiState.commentsTimeFilter
-                                    else -> TimeFilter.ALL
-                                }
+// The bar for writing a reply or editing a comment, while one is in progress.
+@Composable
+private fun ProfileReplyBar(
+    isEditing: Boolean,
+    isReplying: Boolean,
+    replyText: String,
+    onReplyTextChange: (String) -> Unit,
+    onSubmitEdit: () -> Unit,
+    onCancelEdit: () -> Unit,
+    onSubmitReply: () -> Unit,
+    onCancelReply: () -> Unit,
+) {
+    if (isEditing) {
+        ReplyBar(
+            replyText = replyText,
+            onReplyTextChange = onReplyTextChange,
+            onSubmit = onSubmitEdit,
+            onCancel = onCancelEdit,
+            placeholder = "Edit comment...",
+        )
+    } else if (isReplying) {
+        ReplyBar(
+            replyText = replyText,
+            onReplyTextChange = onReplyTextChange,
+            onSubmit = onSubmitReply,
+            onCancel = onCancelReply,
+        )
+    }
+}
 
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.End,
-                            ) {
-                                IconButton(onClick = { showSortSheet = true }) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Sort,
-                                        contentDescription = "Sort",
-                                    )
-                                }
-                            }
+// Loads the profile that's asked for, clears it when the screen goes away, and shows errors as toasts.
+@Composable
+private fun ProfileLoading(
+    username: String?,
+    currentAccountName: String?,
+    errorMessage: String?,
+    onClear: () -> Unit,
+    onLoadOwnProfile: () -> Unit,
+    onLoadUserProfile: (String) -> Unit,
+    onConsumeError: () -> Unit,
+) {
+    val context = LocalContext.current
+    val currentOnClear by rememberUpdatedState(onClear)
+    val currentOnLoadOwnProfile by rememberUpdatedState(onLoadOwnProfile)
+    val currentOnLoadUserProfile by rememberUpdatedState(onLoadUserProfile)
+    val currentOnConsumeError by rememberUpdatedState(onConsumeError)
+    DisposableEffect(Unit) {
+        onDispose { currentOnClear() }
+    }
 
-                            if (showSortSheet) {
-                                SortBottomSheet(
-                                    currentSort = currentSort,
-                                    currentTimeFilter = currentTimeFilter,
-                                    onSortSelected = { sort ->
-                                        when (uiState.selectedTab) {
-                                            ProfileTab.POSTS -> {
-                                                viewModel.setPostsSort(sort)
-                                            }
+    LaunchedEffect(username, currentAccountName) {
+        currentOnClear()
+        when (username) {
+            // Not logged in: the login prompt is shown.
+            null -> {}
 
-                                            ProfileTab.COMMENTS -> {
-                                                viewModel.setCommentsSort(sort)
-                                            }
+            currentAccountName -> {
+                currentOnLoadOwnProfile()
+            }
 
-                                            else -> {}
-                                        }
-                                    },
-                                    onTimeFilterSelected = { timeFilter ->
-                                        when (uiState.selectedTab) {
-                                            ProfileTab.POSTS -> {
-                                                viewModel.setPostsTimeFilter(timeFilter)
-                                            }
-
-                                            ProfileTab.COMMENTS -> {
-                                                viewModel.setCommentsTimeFilter(timeFilter)
-                                            }
-
-                                            else -> {}
-                                        }
-                                    },
-                                    onDismiss = { showSortSheet = false },
-                                )
-                            }
-                        }
-
-                        val readPostsRepository: ReadPostsRepository = koinInject()
-                        val settingsRepository: SettingsRepository = koinInject()
-                        val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
-                        val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
-                        val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
-                        val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else NsfwPreviewMode.DO_NOT_PREFETCH
-                        val effectiveNsfwHistoryMode by remember {
-                            derivedStateOf { if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW }
-                        }
-                        val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
-                        val compactFeedEnabled by settingsRepository.compactFeedEnabled.collectAsState()
-                        val navigationHandler: NavigationHandler = koinInject()
-
-                        val postsListState = rememberLazyListState()
-                        val commentsListState = rememberLazyListState()
-                        val savedPostsListState = rememberLazyListState()
-                        val savedCommentsListState = rememberLazyListState()
-                        val upvotedListState = rememberLazyListState()
-                        val downvotedListState = rememberLazyListState()
-
-                        val tab = uiState.selectedTab
-                        LoadMoreNearEnd(postsListState, uiState.posts, active = tab == ProfileTab.POSTS) {
-                            viewModel.loadMore(ProfileList.POSTS)
-                        }
-                        LoadMoreNearEnd(commentsListState, uiState.comments, active = tab == ProfileTab.COMMENTS) {
-                            viewModel.loadMore(ProfileList.COMMENTS)
-                        }
-                        LoadMoreNearEnd(
-                            savedPostsListState,
-                            uiState.savedPosts,
-                            active = tab == ProfileTab.SAVED && uiState.savedContentType == SavedContentType.POSTS,
-                        ) { viewModel.loadMore(ProfileList.SAVED_POSTS) }
-                        LoadMoreNearEnd(
-                            savedCommentsListState,
-                            uiState.savedComments,
-                            active = tab == ProfileTab.SAVED && uiState.savedContentType == SavedContentType.COMMENTS,
-                        ) { viewModel.loadMore(ProfileList.SAVED_COMMENTS) }
-                        LoadMoreNearEnd(upvotedListState, uiState.upvotedPosts, active = tab == ProfileTab.UPVOTED) {
-                            viewModel.loadMore(ProfileList.UPVOTED)
-                        }
-                        LoadMoreNearEnd(downvotedListState, uiState.downvotedPosts, active = tab == ProfileTab.DOWNVOTED) {
-                            viewModel.loadMore(ProfileList.DOWNVOTED)
-                        }
-
-                        when (uiState.selectedTab) {
-                            ProfileTab.ABOUT -> {
-                                if (uiState.isOwnProfile) {
-                                    AboutTab(account = uiState.account)
-                                } else {
-                                    AboutTabForUser(user = uiState.user)
-                                }
-                            }
-
-                            ProfileTab.COMMENTS -> {
-                                ProfileCommentsTab(
-                                    comments = uiState.comments.items,
-                                    isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMore = uiState.comments.isLoadingMore,
-                                    isLoggedIn = uiState.isLoggedIn,
-                                    loggedInUsername = uiState.account?.name,
-                                    listState = commentsListState,
-                                    selectedCommentId = selectedCommentId,
-                                    onSelectComment = { selectedCommentId = it },
-                                    onCommentUpdated = { viewModel.updateComment(it) },
-                                    onReply = { viewModel.commentViewModel.setReplyingTo(it) },
-                                    onEdit = { viewModel.commentViewModel.startEditComment(it) },
-                                    onDelete = { deleteConfirmCommentId = it },
-                                    onSave = { viewModel.saveComment(it) },
-                                    onCommentClick = onCommentClick,
-                                )
-                            }
-
-                            ProfileTab.SAVED -> {
-                                ProfileSavedTab(
-                                    savedContentType = uiState.savedContentType,
-                                    savedPosts = uiState.savedPosts.items,
-                                    savedComments = uiState.savedComments.items,
-                                    isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMorePosts = uiState.savedPosts.isLoadingMore,
-                                    isLoadingMoreComments = uiState.savedComments.isLoadingMore,
-                                    isLoggedIn = uiState.isLoggedIn,
-                                    loggedInUsername = uiState.account?.name,
-                                    savedPostsListState = savedPostsListState,
-                                    savedCommentsListState = savedCommentsListState,
-                                    selectedCommentId = selectedCommentId,
-                                    readPostsRepository = readPostsRepository,
-                                    nsfwHistoryMode = effectiveNsfwHistoryMode,
-                                    nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                                    compactFeed = compactFeedEnabled,
-                                    navigationHandler = navigationHandler,
-                                    onSetSavedContentType = { viewModel.setSavedContentType(it) },
-                                    onPostClick = onPostClick,
-                                    onSubredditClick = onSubredditClick,
-                                    onLinkClick = onLinkClick,
-                                    onVote = { post, dir -> viewModel.vote(post, dir) },
-                                    onSavePost = { viewModel.save(it) },
-                                    onSelectComment = { selectedCommentId = it },
-                                    onCommentUpdated = { viewModel.updateComment(it) },
-                                    onReply = { viewModel.commentViewModel.setReplyingTo(it) },
-                                    onEdit = { viewModel.commentViewModel.startEditComment(it) },
-                                    onDelete = { deleteConfirmCommentId = it },
-                                    onSaveComment = { viewModel.saveComment(it) },
-                                    onCommentClick = onCommentClick,
-                                )
-                            }
-
-                            ProfileTab.POSTS -> {
-                                ProfilePostsTab(
-                                    posts = uiState.posts.items,
-                                    isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMore = uiState.posts.isLoadingMore,
-                                    isLoggedIn = uiState.isLoggedIn,
-                                    listState = postsListState,
-                                    readPostsRepository = readPostsRepository,
-                                    nsfwHistoryMode = effectiveNsfwHistoryMode,
-                                    nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                                    compactFeed = compactFeedEnabled,
-                                    navigationHandler = navigationHandler,
-                                    onPostClick = onPostClick,
-                                    onSubredditClick = onSubredditClick,
-                                    onLinkClick = onLinkClick,
-                                    onVote = { post, dir -> viewModel.vote(post, dir) },
-                                    onSave = { viewModel.save(it) },
-                                )
-                            }
-
-                            ProfileTab.UPVOTED -> {
-                                ProfileUpvotedTab(
-                                    posts = uiState.upvotedPosts.items,
-                                    isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMore = uiState.upvotedPosts.isLoadingMore,
-                                    isLoggedIn = uiState.isLoggedIn,
-                                    listState = upvotedListState,
-                                    readPostsRepository = readPostsRepository,
-                                    nsfwHistoryMode = effectiveNsfwHistoryMode,
-                                    nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                                    compactFeed = compactFeedEnabled,
-                                    navigationHandler = navigationHandler,
-                                    onPostClick = onPostClick,
-                                    onSubredditClick = onSubredditClick,
-                                    onLinkClick = onLinkClick,
-                                    onVote = { post, dir -> viewModel.vote(post, dir) },
-                                    onSave = { viewModel.save(it) },
-                                )
-                            }
-
-                            ProfileTab.DOWNVOTED -> {
-                                ProfileDownvotedTab(
-                                    posts = uiState.downvotedPosts.items,
-                                    isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMore = uiState.downvotedPosts.isLoadingMore,
-                                    isLoggedIn = uiState.isLoggedIn,
-                                    listState = downvotedListState,
-                                    readPostsRepository = readPostsRepository,
-                                    nsfwHistoryMode = effectiveNsfwHistoryMode,
-                                    nsfwPreviewMode = effectiveNsfwPreviewMode,
-                                    spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                                    compactFeed = compactFeedEnabled,
-                                    navigationHandler = navigationHandler,
-                                    onPostClick = onPostClick,
-                                    onSubredditClick = onSubredditClick,
-                                    onLinkClick = onLinkClick,
-                                    onVote = { post, dir -> viewModel.vote(post, dir) },
-                                    onSave = { viewModel.save(it) },
-                                )
-                            }
-                        }
-                    }
-                }
+            else -> {
+                currentOnLoadUserProfile(username)
             }
         }
     }
 
-    if (deleteConfirmCommentId != null) {
-        AlertDialog(
-            onDismissRequest = { deleteConfirmCommentId = null },
-            title = { Text("Delete Comment") },
-            text = { Text("Are you sure you want to delete this comment? This cannot be undone.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    deleteConfirmCommentId?.let { viewModel.deleteComment(it) }
-                    deleteConfirmCommentId = null
-                }) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+    LaunchedEffect(errorMessage) {
+        errorMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            currentOnConsumeError()
+        }
+    }
+}
+
+@Composable
+private fun ProfileTopBar(
+    uiState: ProfileUiState,
+    username: String?,
+    currentRoute: String?,
+    onBackClick: (() -> Unit)?,
+    onCancelLogin: () -> Unit,
+    onLogout: () -> Unit,
+) {
+    UniversalTopAppBar(
+        currentRoute = currentRoute,
+        excludeProfile = uiState.isOwnProfile,
+        title = {
+            val titleText =
+                when {
+                    uiState.authUrl != null -> "Sign in to Reddit"
+                    uiState.isOwnProfile -> uiState.account?.name ?: "Profile"
+                    else -> username.orEmpty()
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleteConfirmCommentId = null }) {
-                    Text("Cancel")
+            Text(titleText)
+        },
+        navigationIcon = {
+            if (onBackClick != null) {
+                IconButton(onClick = onBackClick) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-            },
+            }
+        },
+        actions = {
+            if (uiState.authUrl != null) {
+                IconButton(onClick = onCancelLogin) {
+                    Icon(Icons.Default.Close, contentDescription = "Cancel sign in")
+                }
+            }
+            if (uiState.isOwnProfile && uiState.isLoggedIn) {
+                IconButton(onClick = onLogout) {
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
+                }
+            }
+        },
+    )
+}
+
+// What the tabs and their lists ask the view model to do.
+private data class ProfileTabActions(
+    val onSelectTab: (ProfileTab) -> Unit,
+    val onLoadMore: (ProfileList) -> Unit,
+    val onSetPostsSort: (PostSort) -> Unit,
+    val onSetPostsTimeFilter: (TimeFilter) -> Unit,
+    val onSetCommentsSort: (PostSort) -> Unit,
+    val onSetCommentsTimeFilter: (TimeFilter) -> Unit,
+    val onSetSavedContentType: (SavedContentType) -> Unit,
+)
+
+// The user's header, the tabs, and the selected tab's content.
+@Composable
+private fun ProfileBody(
+    uiState: ProfileUiState,
+    actions: ProfileTabActions,
+    postCallbacks: PostListCallbacks,
+    commentCallbacks: ProfileCommentCallbacks,
+) {
+    val account = uiState.account
+    val user = uiState.user
+    val displayName = if (uiState.isOwnProfile) account?.name else user?.name
+    if (displayName == null) return
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        UserHeader(
+            name = displayName,
+            iconUrl = if (uiState.isOwnProfile) account?.iconUrl else user?.iconUrl,
+            karma = (if (uiState.isOwnProfile) account?.totalKarma else user?.totalKarma) ?: 0,
+            created = (if (uiState.isOwnProfile) account?.createdUtc else user?.createdUtc) ?: 0L,
+        )
+
+        val tabs =
+            if (uiState.isOwnProfile) {
+                listOf(ProfileTab.POSTS, ProfileTab.COMMENTS, ProfileTab.SAVED, ProfileTab.UPVOTED, ProfileTab.DOWNVOTED, ProfileTab.ABOUT)
+            } else {
+                listOf(ProfileTab.POSTS, ProfileTab.COMMENTS, ProfileTab.ABOUT)
+            }
+        ProfileTabRow(tabs = tabs, selectedTab = uiState.selectedTab, onSelectTab = actions.onSelectTab)
+
+        when (uiState.selectedTab) {
+            ProfileTab.POSTS -> {
+                ProfileSortButton(
+                    sort = uiState.postsSort,
+                    timeFilter = uiState.postsTimeFilter,
+                    onSelectSort = actions.onSetPostsSort,
+                    onSelectTimeFilter = actions.onSetPostsTimeFilter,
+                )
+            }
+
+            ProfileTab.COMMENTS -> {
+                ProfileSortButton(
+                    sort = uiState.commentsSort,
+                    timeFilter = uiState.commentsTimeFilter,
+                    onSelectSort = actions.onSetCommentsSort,
+                    onSelectTimeFilter = actions.onSetCommentsTimeFilter,
+                )
+            }
+
+            else -> {}
+        }
+
+        ProfileTabContent(uiState = uiState, actions = actions, postCallbacks = postCallbacks, commentCallbacks = commentCallbacks)
+    }
+}
+
+// Fixed tabs when they fit, scrollable ones for the longer list on your own profile.
+@Composable
+private fun ProfileTabRow(
+    tabs: List<ProfileTab>,
+    selectedTab: ProfileTab,
+    onSelectTab: (ProfileTab) -> Unit,
+) {
+    val selectedTabIndex = tabs.indexOf(selectedTab).coerceAtLeast(0)
+    val tabItems =
+        @Composable {
+            tabs.forEach { tab ->
+                Tab(
+                    selected = selectedTab == tab,
+                    onClick = { onSelectTab(tab) },
+                    text = { Text(tab.displayName) },
+                )
+            }
+        }
+    if (tabs.size <= 3) {
+        PrimaryTabRow(selectedTabIndex = selectedTabIndex, modifier = Modifier.fillMaxWidth(), tabs = tabItems)
+    } else {
+        PrimaryScrollableTabRow(
+            selectedTabIndex = selectedTabIndex,
+            edgePadding = 8.dp,
+            modifier = Modifier.fillMaxWidth(),
+            tabs = tabItems,
         )
     }
+}
+
+@Composable
+private fun ProfileSortButton(
+    sort: PostSort,
+    timeFilter: TimeFilter,
+    onSelectSort: (PostSort) -> Unit,
+    onSelectTimeFilter: (TimeFilter) -> Unit,
+) {
+    var showSortSheet by remember { mutableStateOf(false) }
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        IconButton(onClick = { showSortSheet = true }) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Sort,
+                contentDescription = "Sort",
+            )
+        }
+    }
+
+    if (showSortSheet) {
+        SortBottomSheet(
+            currentSort = sort,
+            currentTimeFilter = timeFilter,
+            onSortSelected = onSelectSort,
+            onTimeFilterSelected = onSelectTimeFilter,
+            onDismiss = { showSortSheet = false },
+        )
+    }
+}
+
+@Composable
+private fun ProfileTabContent(
+    uiState: ProfileUiState,
+    actions: ProfileTabActions,
+    postCallbacks: PostListCallbacks,
+    commentCallbacks: ProfileCommentCallbacks,
+) {
+    val feedSettings = rememberPostFeedSettings()
+    var selectedCommentId by remember { mutableStateOf<String?>(null) }
+    var deleteConfirmCommentId by remember { mutableStateOf<String?>(null) }
+    // One list state per list, so each keeps its scroll position when switching tabs.
+    val listStates = ProfileList.entries.associateWith { rememberLazyListState() }
+    ProfileList.entries.forEach { list ->
+        val pagedList = uiState.pagedList(list)
+        LoadMoreNearEnd(listStates.getValue(list), pagedList.items.size, enabled = uiState.isShowing(list) && pagedList.canLoadMore) {
+            actions.onLoadMore(list)
+        }
+    }
+
+    ProfileSelectedTab(
+        uiState = uiState,
+        listStates = listStates,
+        feedSettings = feedSettings,
+        postCallbacks = postCallbacks,
+        commentListState =
+            ProfileCommentListState(
+                isLoggedIn = uiState.isLoggedIn,
+                loggedInUsername = uiState.account?.name,
+                selectedCommentId = selectedCommentId,
+                onSelectComment = { selectedCommentId = it },
+            ),
+        // Deleting asks first.
+        commentCallbacks = commentCallbacks.copy(onDelete = { deleteConfirmCommentId = it }),
+        onSetSavedContentType = actions.onSetSavedContentType,
+    )
+
+    deleteConfirmCommentId?.let { commentId ->
+        DeleteCommentDialog(
+            onConfirm = {
+                commentCallbacks.onDelete(commentId)
+                deleteConfirmCommentId = null
+            },
+            onDismiss = { deleteConfirmCommentId = null },
+        )
+    }
+}
+
+@Composable
+private fun ProfileSelectedTab(
+    uiState: ProfileUiState,
+    listStates: Map<ProfileList, LazyListState>,
+    feedSettings: PostFeedSettings,
+    postCallbacks: PostListCallbacks,
+    commentListState: ProfileCommentListState,
+    commentCallbacks: ProfileCommentCallbacks,
+    onSetSavedContentType: (SavedContentType) -> Unit,
+) {
+    val postsTab = @Composable { list: ProfileList, pagedList: PagedList<Post>, emptyText: String ->
+        ProfilePostsTab(
+            posts = pagedList.items,
+            isLoadingContent = uiState.isLoadingContent,
+            isLoadingMore = pagedList.isLoadingMore,
+            isLoggedIn = uiState.isLoggedIn,
+            listState = listStates.getValue(list),
+            feedSettings = feedSettings,
+            callbacks = postCallbacks,
+            emptyText = emptyText,
+        )
+    }
+    val commentsTab = @Composable { list: ProfileList, pagedList: PagedList<Comment>, emptyText: String ->
+        ProfileCommentsTab(
+            comments = pagedList.items,
+            isLoadingContent = uiState.isLoadingContent,
+            isLoadingMore = pagedList.isLoadingMore,
+            listState = listStates.getValue(list),
+            state = commentListState,
+            callbacks = commentCallbacks,
+            emptyText = emptyText,
+        )
+    }
+
+    when (uiState.selectedTab) {
+        ProfileTab.ABOUT -> {
+            if (uiState.isOwnProfile) AboutTab(account = uiState.account) else AboutTabForUser(user = uiState.user)
+        }
+
+        ProfileTab.POSTS -> {
+            postsTab(ProfileList.POSTS, uiState.posts, "No posts")
+        }
+
+        ProfileTab.COMMENTS -> {
+            commentsTab(ProfileList.COMMENTS, uiState.comments, "No comments")
+        }
+
+        ProfileTab.SAVED -> {
+            ProfileSavedTab(
+                savedContentType = uiState.savedContentType,
+                onSetSavedContentType = onSetSavedContentType,
+                postsContent = { postsTab(ProfileList.SAVED_POSTS, uiState.savedPosts, "No saved posts") },
+                commentsContent = { commentsTab(ProfileList.SAVED_COMMENTS, uiState.savedComments, "No saved comments") },
+            )
+        }
+
+        ProfileTab.UPVOTED -> {
+            postsTab(ProfileList.UPVOTED, uiState.upvotedPosts, "No upvoted posts")
+        }
+
+        ProfileTab.DOWNVOTED -> {
+            postsTab(ProfileList.DOWNVOTED, uiState.downvotedPosts, "No downvoted posts")
+        }
+    }
+}
+
+private fun ProfileUiState.isShowing(list: ProfileList): Boolean =
+    when (list) {
+        ProfileList.POSTS -> selectedTab == ProfileTab.POSTS
+        ProfileList.COMMENTS -> selectedTab == ProfileTab.COMMENTS
+        ProfileList.SAVED_POSTS -> selectedTab == ProfileTab.SAVED && savedContentType == SavedContentType.POSTS
+        ProfileList.SAVED_COMMENTS -> selectedTab == ProfileTab.SAVED && savedContentType == SavedContentType.COMMENTS
+        ProfileList.UPVOTED -> selectedTab == ProfileTab.UPVOTED
+        ProfileList.DOWNVOTED -> selectedTab == ProfileTab.DOWNVOTED
+    }
+
+private fun ProfileUiState.pagedList(list: ProfileList): PagedList<*> =
+    when (list) {
+        ProfileList.POSTS -> posts
+        ProfileList.COMMENTS -> comments
+        ProfileList.SAVED_POSTS -> savedPosts
+        ProfileList.SAVED_COMMENTS -> savedComments
+        ProfileList.UPVOTED -> upvotedPosts
+        ProfileList.DOWNVOTED -> downvotedPosts
+    }
+
+@Composable
+private fun DeleteCommentDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Comment") },
+        text = { Text("Are you sure you want to delete this comment? This cannot be undone.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Delete", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+    )
 }
 
 @Composable
@@ -747,25 +869,5 @@ private fun AboutTabForUser(user: User?) {
                 }
             }
         }
-    }
-}
-
-// Calls onLoadMore when the list is scrolled to within a few items of its end, while active.
-@Composable
-private fun LoadMoreNearEnd(
-    listState: LazyListState,
-    list: PagedList<*>,
-    active: Boolean,
-    onLoadMore: () -> Unit,
-) {
-    val currentList by rememberUpdatedState(list)
-    val nearEnd by remember(listState) {
-        derivedStateOf {
-            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            lastVisible != null && lastVisible.index >= currentList.items.size - 5
-        }
-    }
-    LaunchedEffect(nearEnd) {
-        if (active && nearEnd && !list.isLoadingMore && list.hasMore) onLoadMore()
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -45,15 +46,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
+import com.karmakameleon.android.ui.components.FeedPostItem
+import com.karmakameleon.android.ui.components.LoadMoreNearEnd
+import com.karmakameleon.android.ui.components.PostFeedSettings
+import com.karmakameleon.android.ui.components.PostListCallbacks
 import com.karmakameleon.android.ui.components.PostListItem
+import com.karmakameleon.android.ui.components.ScrollToTopAfterRefresh
 import com.karmakameleon.android.ui.components.SortBottomSheet
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.formatNumber
+import com.karmakameleon.android.ui.components.loadingMoreItem
 import com.karmakameleon.android.ui.components.rememberCompactPostSelection
+import com.karmakameleon.android.ui.components.rememberPostFeedSettings
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
+import com.karmakameleon.shared.ui.subreddit.SubredditUiState
 import com.karmakameleon.shared.ui.subreddit.SubredditViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -74,140 +83,49 @@ fun SubredditScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
-    val readPostsRepository: ReadPostsRepository = koinInject()
-    val settingsRepository: SettingsRepository = koinInject()
-    val readPostIds by readPostsRepository.readPostIds.collectAsState()
-    val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
-    val nsfwHistoryMode by settingsRepository.nsfwHistoryMode.collectAsState()
-    val nsfwPreviewMode by settingsRepository.nsfwPreviewMode.collectAsState()
-    val effectiveNsfwPreviewMode = if (nsfwEnabled) nsfwPreviewMode else NsfwPreviewMode.DO_NOT_PREFETCH
-    val effectiveNsfwHistoryMode by remember { derivedStateOf { if (nsfwEnabled) nsfwHistoryMode else NsfwHistoryMode.DONT_SAVE_ANY_NSFW } }
-    val spoilerPreviewsEnabled by settingsRepository.spoilerPreviewsEnabled.collectAsState()
-    val compactFeedEnabled by settingsRepository.compactFeedEnabled.collectAsState()
-    val compactSelection = rememberCompactPostSelection()
+    val feedSettings = rememberPostFeedSettings()
     var showSortSheet by remember { mutableStateOf(false) }
-    val pullToRefreshState = rememberPullToRefreshState()
+    // Posts here are all in this subreddit, so tapping their subreddit does nothing and blocking isn't offered.
+    val callbacks =
+        PostListCallbacks(
+            onPostClick = onPostClick,
+            onUserClick = onUserClick,
+            onLinkClick = onLinkClick,
+            onCrosspostClick = navigationHandler::handleLink,
+            onVote = viewModel::vote,
+            onSave = viewModel::save,
+            onHide = viewModel::hide,
+        )
 
-    val shouldLoadMore by remember {
-        derivedStateOf {
-            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            lastVisibleItem != null && lastVisibleItem.index >= uiState.posts.size - 5
-        }
-    }
-
-    LaunchedEffect(shouldLoadMore) {
-        if (shouldLoadMore && !uiState.isLoadingMore && uiState.hasMore) {
-            viewModel.loadMorePosts()
-        }
-    }
-
-    var previousIsRefreshing by remember { mutableStateOf(uiState.isRefreshing) }
-    LaunchedEffect(uiState.isRefreshing) {
-        if (previousIsRefreshing && !uiState.isRefreshing) {
-            listState.animateScrollToItem(0)
-        }
-        previousIsRefreshing = uiState.isRefreshing
-    }
+    LoadMoreNearEnd(listState, uiState.posts.size, enabled = !uiState.isLoadingMore && uiState.hasMore) { viewModel.loadMorePosts() }
+    ScrollToTopAfterRefresh(listState, uiState.isRefreshing)
 
     Scaffold(
         topBar = {
-            UniversalTopAppBar(
+            SubredditTopBar(
+                subredditName = subredditName,
                 currentRoute = currentRoute,
-                title = { Text("r/$subredditName") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showSortSheet = true }) {
-                        Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort")
-                    }
-                },
+                onBackClick = onBackClick,
+                onSortClick = { showSortSheet = true },
             )
         },
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = uiState.isRefreshing,
             onRefresh = { viewModel.loadPosts(forceRefresh = true) },
-            state = pullToRefreshState,
+            state = rememberPullToRefreshState(),
             modifier =
                 Modifier
                     .fillMaxSize()
                     .padding(padding),
         ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                // Subreddit header
-                uiState.subreddit?.let { subreddit ->
-                    item {
-                        SubredditHeader(
-                            subreddit = subreddit,
-                            onSubscribeClick = viewModel::toggleSubscribe,
-                            isLoggedIn = uiState.isLoggedIn,
-                        )
-                    }
-                }
-
-                if (uiState.isLoading && uiState.posts.isEmpty()) {
-                    item {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    }
-                } else {
-                    items(
-                        items = uiState.posts,
-                        key = { it.id },
-                    ) { post ->
-                        PostListItem(
-                            post = post,
-                            compact = compactFeedEnabled,
-                            compactSelection = compactSelection,
-                            onClick = {
-                                readPostsRepository.markAsRead(post, effectiveNsfwHistoryMode)
-                                onPostClick(post.subreddit, post.id)
-                            },
-                            onSubredditClick = {},
-                            onUserClick = { onUserClick(post.author) },
-                            onUpvote = { viewModel.vote(post, if (post.likes == true) 0 else 1) },
-                            onDownvote = { viewModel.vote(post, if (post.likes == false) 0 else -1) },
-                            onSave = { viewModel.save(post) },
-                            onHide = { viewModel.hide(post) },
-                            isLoggedIn = uiState.isLoggedIn,
-                            onLinkClick = onLinkClick,
-                            onCrosspostClick = {
-                                post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
-                            },
-                            isRead = readPostsRepository.isRead(post, effectiveNsfwHistoryMode),
-                            nsfwPreviewMode = effectiveNsfwPreviewMode,
-                            spoilerPreviewsEnabled = spoilerPreviewsEnabled,
-                        )
-                    }
-
-                    if (uiState.isLoadingMore) {
-                        item {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(32.dp))
-                            }
-                        }
-                    }
-                }
-            }
+            SubredditPostList(
+                uiState = uiState,
+                listState = listState,
+                feedSettings = feedSettings,
+                callbacks = callbacks,
+                onSubscribeClick = viewModel::toggleSubscribe,
+            )
         }
     }
 
@@ -219,6 +137,76 @@ fun SubredditScreen(
             onTimeFilterSelected = viewModel::setTimeFilter,
             onDismiss = { showSortSheet = false },
         )
+    }
+}
+
+@Composable
+private fun SubredditTopBar(
+    subredditName: String,
+    currentRoute: String?,
+    onBackClick: () -> Unit,
+    onSortClick: () -> Unit,
+) {
+    UniversalTopAppBar(
+        currentRoute = currentRoute,
+        title = { Text("r/$subredditName") },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+        },
+        actions = {
+            IconButton(onClick = onSortClick) {
+                Icon(Icons.AutoMirrored.Default.Sort, contentDescription = "Sort")
+            }
+        },
+    )
+}
+
+// The subreddit's header, then its posts.
+@Composable
+private fun SubredditPostList(
+    uiState: SubredditUiState,
+    listState: LazyListState,
+    feedSettings: PostFeedSettings,
+    callbacks: PostListCallbacks,
+    onSubscribeClick: () -> Unit,
+) {
+    LazyColumn(
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        uiState.subreddit?.let { subreddit ->
+            item {
+                SubredditHeader(
+                    subreddit = subreddit,
+                    onSubscribeClick = onSubscribeClick,
+                    isLoggedIn = uiState.isLoggedIn,
+                )
+            }
+        }
+
+        if (uiState.isLoading && uiState.posts.isEmpty()) {
+            item {
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        } else {
+            items(
+                items = uiState.posts,
+                key = { it.id },
+            ) { post ->
+                FeedPostItem(post = post, settings = feedSettings, callbacks = callbacks, isLoggedIn = uiState.isLoggedIn)
+            }
+            if (uiState.isLoadingMore) loadingMoreItem()
+        }
     }
 }
 
@@ -249,25 +237,7 @@ private fun SubredditHeader(
                     Spacer(modifier = Modifier.width(16.dp))
                 }
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = subreddit.displayNamePrefixed,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = "${formatNumber(subreddit.subscribers.toInt())} members",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    subreddit.activeUserCount?.let { active ->
-                        Text(
-                            text = "${formatNumber(active)} online",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
+                SubredditNameAndStats(subreddit = subreddit, modifier = Modifier.weight(1f))
 
                 if (isLoggedIn) {
                     Button(
@@ -294,6 +264,32 @@ private fun SubredditHeader(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SubredditNameAndStats(
+    subreddit: com.karmakameleon.shared.domain.model.Subreddit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = subreddit.displayNamePrefixed,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = "${formatNumber(subreddit.subscribers.toInt())} members",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        subreddit.activeUserCount?.let { active ->
+            Text(
+                text = "${formatNumber(active)} online",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
         }
     }
 }
