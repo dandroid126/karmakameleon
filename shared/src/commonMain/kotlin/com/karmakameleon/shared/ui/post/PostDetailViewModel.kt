@@ -8,6 +8,7 @@ import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
+import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.MoreComments
 import com.karmakameleon.shared.domain.model.Post
@@ -33,17 +34,26 @@ data class PostDetailUiState(
     val focusedCommentId: String? = null,
 )
 
+/** The post a detail screen shows, and optionally a comment to open its thread at, with context parent comments. */
+data class PostDetailTarget(
+    val subreddit: String,
+    val postId: String,
+    val commentId: String? = null,
+    val context: Int? = null,
+)
+
 class PostDetailViewModel(
-    private val subreddit: String,
-    private val postId: String,
+    target: PostDetailTarget,
     private val postRepository: PostRepository,
     commentRepository: CommentRepository,
     private val userRepository: UserRepository,
     commentDraftRepository: CommentDraftRepository,
     private val settingsRepository: SettingsRepository,
-    private val commentId: String? = null,
-    private val context: Int? = null,
 ) : ViewModel() {
+    private val subreddit = target.subreddit
+    private val postId = target.postId
+    private val commentId = target.commentId
+    private val context = target.context
     val commentViewModel = CommentViewModel(commentRepository, commentDraftRepository)
 
     private val _uiState =
@@ -245,50 +255,43 @@ class PostDetailViewModel(
     }
 
     fun navigateToParentRoot(commentId: String) {
-        val flatComments =
-            commentViewModel
-                .getFlattenedComments()
-                .filterIsInstance<FlatCommentItem.CommentEntry>()
-                .map { it.comment }
-        var current = flatComments.find { it.id == commentId } ?: return
-        while (true) {
-            val parent = flatComments.find { it.name == current.parentId }
-            if (parent != null) {
-                current = parent
-            } else {
-                break
-            }
-        }
-        if (!current.parentId.startsWith("t1_")) return
+        val loaded = commentViewModel.getFlattenedComments().filterIsInstance<FlatCommentItem.CommentEntry>().map { it.comment }
+        val start = loaded.find { it.id == commentId } ?: return
+        // The top of the loaded thread. When its parent is a comment, the thread was opened partway down.
+        val top = generateSequence(start) { comment -> loaded.find { it.name == comment.parentId } }.last()
+        if (!top.parentId.startsWith("t1_")) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             commentViewModel.clearComments()
-            var parentCommentId = current.parentId.removePrefix("t1_")
-            while (true) {
-                val result =
-                    postRepository.getPostWithComments(
-                        subreddit = subreddit,
-                        postId = postId,
-                        sort = _uiState.value.commentSort,
-                        commentId = parentCommentId,
-                    )
-                val comments = result.getOrNull()?.second ?: break
-                val topComment = comments.filterIsInstance<CommentOrMore.CommentItem>().firstOrNull()?.comment ?: break
-                if (!topComment.parentId.startsWith("t1_")) {
-                    _uiState.update {
-                        it.copy(
-                            focusedCommentId = topComment.id,
-                            post = result.getOrNull()?.first ?: _uiState.value.post,
-                            isLoading = false,
-                        )
-                    }
-                    commentViewModel.setComments(comments)
-                    return@launch
-                }
-                parentCommentId = topComment.parentId.removePrefix("t1_")
+            val thread = loadTopLevelThread(top.parentId.removePrefix("t1_"))
+            if (thread != null) {
+                _uiState.update { it.copy(focusedCommentId = thread.topComment.id, post = thread.post, isLoading = false) }
+                commentViewModel.setComments(thread.comments)
+            } else {
+                _uiState.update { it.copy(isLoading = false) }
+                viewAllComments()
             }
-            _uiState.update { it.copy(isLoading = false) }
-            viewAllComments()
+        }
+    }
+
+    private class LoadedThread(
+        val post: Post,
+        val comments: List<CommentOrMore>,
+        val topComment: Comment,
+    )
+
+    // Loads the thread at commentId, then at its parent, and so on until the thread starts at a top-level comment.
+    // Null if a load fails.
+    private tailrec suspend fun loadTopLevelThread(commentId: String): LoadedThread? {
+        val (post, comments) =
+            postRepository
+                .getPostWithComments(subreddit = subreddit, postId = postId, sort = _uiState.value.commentSort, commentId = commentId)
+                .getOrNull() ?: return null
+        val topComment = comments.filterIsInstance<CommentOrMore.CommentItem>().firstOrNull()?.comment ?: return null
+        return if (topComment.parentId.startsWith("t1_")) {
+            loadTopLevelThread(topComment.parentId.removePrefix("t1_"))
+        } else {
+            LoadedThread(post, comments, topComment)
         }
     }
 

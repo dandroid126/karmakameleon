@@ -48,7 +48,8 @@ class PostDetailViewModelTest {
         commentDraftRepo = CommentDraftRepository(MapSettings())
         userRepo = UserRepository(fakeApi, fakeAuthManager)
         settingsRepo = SettingsRepository(MapSettings())
-        viewModel = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo, settingsRepo)
+        viewModel =
+            PostDetailViewModel(PostDetailTarget("kotlin", "abc123"), postRepo, commentRepo, userRepo, commentDraftRepo, settingsRepo)
     }
 
     @AfterTest
@@ -196,7 +197,8 @@ class PostDetailViewModelTest {
         runTest {
             val post = createTestPost(id = "abc123")
             fakeApi.postWithCommentsResult = post to emptyList()
-            val vm = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo, settingsRepo)
+            val vm =
+                PostDetailViewModel(PostDetailTarget("kotlin", "abc123"), postRepo, commentRepo, userRepo, commentDraftRepo, settingsRepo)
             advanceUntilIdle()
             assertNotNull(vm.uiState.value.post)
 
@@ -214,7 +216,8 @@ class PostDetailViewModelTest {
         runTest {
             val post = createTestPost(id = "abc123")
             fakeApi.postWithCommentsResult = post to emptyList()
-            val vm = PostDetailViewModel("kotlin", "abc123", postRepo, commentRepo, userRepo, commentDraftRepo, settingsRepo)
+            val vm =
+                PostDetailViewModel(PostDetailTarget("kotlin", "abc123"), postRepo, commentRepo, userRepo, commentDraftRepo, settingsRepo)
             advanceUntilIdle()
             assertNotNull(vm.uiState.value.post)
 

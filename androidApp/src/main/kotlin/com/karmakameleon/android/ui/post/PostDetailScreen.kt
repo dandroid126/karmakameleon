@@ -106,6 +106,7 @@ import com.karmakameleon.shared.domain.model.MoreComments
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.VoteState
 import com.karmakameleon.shared.ui.comment.FlatCommentItem
+import com.karmakameleon.shared.ui.post.PostDetailTarget
 import com.karmakameleon.shared.ui.post.PostDetailViewModel
 import com.karmakameleon.shared.util.extractYouTubeVideoId
 import kotlinx.coroutines.flow.drop
@@ -125,7 +126,7 @@ fun PostDetailScreen(
     currentRoute: String? = null,
     onBackClick: () -> Unit,
     onGoToCommentNav: (commentId: String) -> Unit = {},
-    viewModel: PostDetailViewModel = koinViewModel { parametersOf(subreddit, postId, commentId, commentContext) },
+    viewModel: PostDetailViewModel = koinViewModel { parametersOf(PostDetailTarget(subreddit, postId, commentId, commentContext)) },
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val commentState by viewModel.commentViewModel.uiState.collectAsState()
