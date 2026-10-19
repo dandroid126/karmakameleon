@@ -158,54 +158,10 @@ private fun MessageActionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
     ) {
-        IconButton(onClick = actions.onContext, modifier = Modifier.size(36.dp)) {
-            Icon(
-                Icons.AutoMirrored.Filled.OpenInNew,
-                contentDescription = "Context",
-                modifier = Modifier.size(22.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        MessageVoteButton(message, isUpvote = true, enabled = isLoggedIn) { actions.onVote(if (message.likes == true) 0 else 1) }
-        MessageVoteButton(message, isUpvote = false, enabled = isLoggedIn) { actions.onVote(if (message.likes == false) 0 else -1) }
+        ActionIconButton(Icons.AutoMirrored.Filled.OpenInNew, "Context", actions.onContext)
+        VoteArrows(message.likes, enabled = isLoggedIn, onVote = actions.onVote)
         MessageMoreMenu(actions)
-        if (isLoggedIn) {
-            IconButton(onClick = actions.onReply, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Reply,
-                    contentDescription = "Reply",
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun MessageVoteButton(
-    message: Message,
-    isUpvote: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val isCurrentVote = message.likes == isUpvote
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(36.dp)) {
-        Icon(
-            when {
-                isUpvote && isCurrentVote -> Icons.Filled.KeyboardArrowUp
-                isUpvote -> Icons.Outlined.KeyboardArrowUp
-                isCurrentVote -> Icons.Filled.KeyboardArrowDown
-                else -> Icons.Outlined.KeyboardArrowDown
-            },
-            contentDescription = if (isUpvote) "Upvote" else "Downvote",
-            modifier = Modifier.size(24.dp),
-            tint =
-                when {
-                    !isCurrentVote -> MaterialTheme.colorScheme.onSurfaceVariant
-                    isUpvote -> voteColors().upvoteColor
-                    else -> voteColors().downvoteColor
-                },
-        )
+        if (isLoggedIn) ReplyButton(actions.onReply)
     }
 }
 
@@ -220,14 +176,7 @@ private fun MessageMoreMenu(actions: MessageActions) {
             Triple("Mark as unread", Icons.Default.Email, actions.onMarkUnread),
         )
     Box {
-        IconButton(onClick = { showMenu = true }, modifier = Modifier.size(36.dp)) {
-            Icon(
-                Icons.Default.MoreVert,
-                contentDescription = "More",
-                modifier = Modifier.size(22.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        ActionIconButton(Icons.Default.MoreVert, "More", onClick = { showMenu = true })
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
             entries.forEach { (label, icon, action) ->
                 DropdownMenuItem(

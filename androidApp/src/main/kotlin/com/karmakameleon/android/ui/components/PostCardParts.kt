@@ -3,14 +3,18 @@ package com.karmakameleon.android.ui.components
 import android.content.ClipData
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -18,11 +22,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.ui.theme.postFlairColors
 import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.shared.domain.model.Post
@@ -52,35 +61,46 @@ internal fun RowScope.PostFlairChips(post: Post) {
     }
 }
 
-/** An upvote or downvote arrow, filled and colored when that's the post's current vote, dimmed when voting is closed. */
+/**
+ * The post's vote arrows and score on a rounded background. Votes need an account, so the arrows are disabled when
+ * logged out. When voting is closed they explain why.
+ */
 @Composable
-internal fun VoteArrowButton(
+internal fun PostVotePill(
+    post: Post,
+    isLoggedIn: Boolean,
+    onUpvote: () -> Unit,
+    onDownvote: () -> Unit,
+    buttonSize: Dp = 32.dp,
+    scoreStyle: TextStyle = MaterialTheme.typography.labelMedium,
+) {
+    val context = LocalContext.current
+    val voteOrExplain = { vote: () -> Unit ->
+        if (post.isVotingDisabled) showShortToast(context, post.votingDisabledReason) else vote()
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier
+                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
+                .padding(horizontal = 4.dp),
+    ) {
+        PostVoteArrow(post, isUpvote = true, onClick = { voteOrExplain(onUpvote) }, Modifier.size(buttonSize), enabled = isLoggedIn)
+        PostScore(post, style = scoreStyle)
+        PostVoteArrow(post, isUpvote = false, onClick = { voteOrExplain(onDownvote) }, Modifier.size(buttonSize), enabled = isLoggedIn)
+    }
+}
+
+/** A [VoteArrowButton] for a post, dimmed when voting on it is closed. */
+@Composable
+internal fun PostVoteArrow(
     post: Post,
     isUpvote: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val voteColors = voteColors()
-    val isCurrentVote = post.voteState == if (isUpvote) VoteState.UPVOTED else VoteState.DOWNVOTED
-    IconButton(onClick = onClick, enabled = enabled, modifier = modifier) {
-        Icon(
-            imageVector =
-                when {
-                    isUpvote && isCurrentVote -> Icons.Filled.KeyboardArrowUp
-                    isUpvote -> Icons.Outlined.KeyboardArrowUp
-                    isCurrentVote -> Icons.Filled.KeyboardArrowDown
-                    else -> Icons.Outlined.KeyboardArrowDown
-                },
-            contentDescription = if (isUpvote) "Upvote" else "Downvote",
-            tint =
-                when {
-                    post.isVotingDisabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                    isCurrentVote -> if (isUpvote) voteColors.upvoteColor else voteColors.downvoteColor
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                },
-        )
-    }
+    VoteArrowButton(post.likes, isUpvote, onClick, modifier, enabled, isVotingDisabled = post.isVotingDisabled)
 }
 
 /** The post's score, in the color of the current vote. */
@@ -139,4 +159,40 @@ internal fun showShortToast(
     text: String?,
 ) {
     Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
+}
+
+/** The save button, filled in the primary color when the post is saved. */
+@Composable
+internal fun SavePostButton(
+    post: Post,
+    onClick: () -> Unit,
+    unsavedTint: Color,
+    modifier: Modifier = Modifier,
+) {
+    IconButton(onClick = onClick, modifier = modifier) {
+        Icon(
+            imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+            contentDescription = if (post.isSaved) "Unsave" else "Save",
+            tint = if (post.isSaved) MaterialTheme.colorScheme.primary else unsavedTint,
+        )
+    }
+}
+
+/** A menu item that blocks the post's subreddit and confirms it with a toast. */
+@Composable
+internal fun BlockSubredditMenuItem(
+    post: Post,
+    onBlockSubreddit: () -> Unit,
+    onDone: () -> Unit,
+) {
+    val context = LocalContext.current
+    DropdownMenuItem(
+        text = { Text("Block r/${post.subreddit}") },
+        onClick = {
+            onBlockSubreddit()
+            showShortToast(context, "Blocked r/${post.subreddit}")
+            onDone()
+        },
+        leadingIcon = { Icon(Icons.Default.Block, contentDescription = null) },
+    )
 }

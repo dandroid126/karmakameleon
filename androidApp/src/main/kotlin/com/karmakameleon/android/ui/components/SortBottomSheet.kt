@@ -88,20 +88,20 @@ fun SortBottomSheet(
             )
             if (!showTimeFilter) {
                 sortChoices.forEach { choice ->
-                    SortOption(
-                        icon = choice.icon,
+                    SortSheetOption(
                         text = choice.label,
                         selected = currentSort == choice.sort,
-                        showArrow = choice.needsTimeFilter,
                         onClick = {
                             onSelectSort(choice.sort)
                             if (choice.needsTimeFilter) showTimeFilter = true else onDismiss()
                         },
+                        icon = choice.icon,
+                        showArrow = choice.needsTimeFilter,
                     )
                 }
             } else {
                 timeFilterLabels.forEach { (timeFilter, label) ->
-                    TimeFilterOption(
+                    SortSheetOption(
                         text = label,
                         selected = currentTimeFilter == timeFilter,
                         onClick = {
@@ -115,28 +115,19 @@ fun SortBottomSheet(
     }
 }
 
+// A row in the sheet, highlighted when [selected]. A sort that needs a time filter shows an arrow instead of the check.
 @Composable
-private fun SortOption(
-    icon: ImageVector,
+private fun SortSheetOption(
     text: String,
     selected: Boolean,
-    showArrow: Boolean = false,
     onClick: () -> Unit,
+    icon: ImageVector? = null,
+    showArrow: Boolean = false,
 ) {
+    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
     ListItem(
         headlineContent = { Text(text) },
-        leadingContent = {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint =
-                    if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-            )
-        },
+        leadingContent = icon?.let { { Icon(imageVector = it, contentDescription = null, tint = color) } },
         trailingContent =
             if (showArrow) {
                 { Icon(Icons.Default.ChevronRight, contentDescription = null) }
@@ -146,41 +137,6 @@ private fun SortOption(
                 null
             },
         modifier = Modifier.clickable(onClick = onClick),
-        colors =
-            ListItemDefaults.colors(
-                headlineColor =
-                    if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-            ),
-    )
-}
-
-@Composable
-private fun TimeFilterOption(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    ListItem(
-        headlineContent = { Text(text) },
-        trailingContent =
-            if (selected) {
-                { Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary) }
-            } else {
-                null
-            },
-        modifier = Modifier.clickable(onClick = onClick),
-        colors =
-            ListItemDefaults.colors(
-                headlineColor =
-                    if (selected) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-            ),
+        colors = ListItemDefaults.colors(headlineColor = color),
     )
 }

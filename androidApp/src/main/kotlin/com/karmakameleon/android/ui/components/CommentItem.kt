@@ -361,58 +361,12 @@ private fun CommentActionRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
     ) {
         if (isLoggedIn && isOwnComment) {
-            CommentActionIcon(Icons.Default.Edit, "Edit", actions.onEdit)
-            CommentActionIcon(Icons.Default.Delete, "Delete", actions.onDelete, tint = MaterialTheme.colorScheme.error)
+            ActionIconButton(Icons.Default.Edit, "Edit", actions.onEdit)
+            ActionIconButton(Icons.Default.Delete, "Delete", actions.onDelete, tint = MaterialTheme.colorScheme.error)
         }
-        CommentVoteButton(comment, isUpvote = true, enabled = isLoggedIn) { onVote(if (comment.likes == true) 0 else 1) }
-        CommentVoteButton(comment, isUpvote = false, enabled = isLoggedIn) { onVote(if (comment.likes == false) 0 else -1) }
+        VoteArrows(comment.likes, enabled = isLoggedIn, onVote = onVote)
         CommentOverflowMenu(comment = comment, isLoggedIn = isLoggedIn, actions = actions)
-        if (isLoggedIn) {
-            IconButton(onClick = actions.onReply, modifier = Modifier.size(36.dp)) {
-                Icon(Icons.AutoMirrored.Filled.Reply, contentDescription = "Reply", modifier = Modifier.size(22.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun CommentActionIcon(
-    imageVector: ImageVector,
-    contentDescription: String,
-    onClick: () -> Unit,
-    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-) {
-    IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) {
-        Icon(imageVector, contentDescription = contentDescription, modifier = Modifier.size(22.dp), tint = tint)
-    }
-}
-
-@Composable
-private fun CommentVoteButton(
-    comment: Comment,
-    isUpvote: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    val voteColors = voteColors()
-    val isCurrentVote = comment.voteState == if (isUpvote) VoteState.UPVOTED else VoteState.DOWNVOTED
-    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(36.dp)) {
-        Icon(
-            when {
-                isUpvote && isCurrentVote -> Icons.Filled.KeyboardArrowUp
-                isUpvote -> Icons.Outlined.KeyboardArrowUp
-                isCurrentVote -> Icons.Filled.KeyboardArrowDown
-                else -> Icons.Outlined.KeyboardArrowDown
-            },
-            contentDescription = if (isUpvote) "Upvote" else "Downvote",
-            modifier = Modifier.size(24.dp),
-            tint =
-                when {
-                    !isCurrentVote -> MaterialTheme.colorScheme.onSurfaceVariant
-                    isUpvote -> voteColors.upvoteColor
-                    else -> voteColors.downvoteColor
-                },
-        )
+        if (isLoggedIn) ReplyButton(actions.onReply)
     }
 }
 
@@ -429,7 +383,7 @@ private fun CommentOverflowMenu(
         action()
     }
     Box {
-        CommentActionIcon(Icons.Default.MoreVert, "More", onClick = { showContextMenu = true })
+        ActionIconButton(Icons.Default.MoreVert, "More", onClick = { showContextMenu = true })
         DropdownMenu(
             expanded = showContextMenu,
             onDismissRequest = { showContextMenu = false },

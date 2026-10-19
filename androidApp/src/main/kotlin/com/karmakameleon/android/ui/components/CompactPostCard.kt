@@ -196,9 +196,9 @@ private fun CompactVoteColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(44.dp),
     ) {
-        VoteArrowButton(post = post, isUpvote = true, onClick = { voteOrExplain(onUpvote) }, modifier = Modifier.size(28.dp))
+        PostVoteArrow(post = post, isUpvote = true, onClick = { voteOrExplain(onUpvote) }, modifier = Modifier.size(28.dp))
         PostScore(post = post, maxLines = 1)
-        VoteArrowButton(post = post, isUpvote = false, onClick = { voteOrExplain(onDownvote) }, modifier = Modifier.size(28.dp))
+        PostVoteArrow(post = post, isUpvote = false, onClick = { voteOrExplain(onDownvote) }, modifier = Modifier.size(28.dp))
     }
 }
 
@@ -328,13 +328,11 @@ private fun CompactControlBar(
             CompactShareMenu(post = post, iconTint = iconTint)
 
             // Save and hide need an account; dimmed when logged out and explain why when tapped
-            IconButton(onClick = if (isLoggedIn) actions.onSave else ({ showLoginRequired(context) })) {
-                Icon(
-                    imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                    contentDescription = if (post.isSaved) "Unsave" else "Save",
-                    tint = if (post.isSaved) MaterialTheme.colorScheme.primary else accountIconTint,
-                )
-            }
+            SavePostButton(
+                post = post,
+                onClick = if (isLoggedIn) actions.onSave else ({ showLoginRequired(context) }),
+                unsavedTint = accountIconTint,
+            )
 
             IconButton(onClick = if (isLoggedIn) actions.onHide else ({ showLoginRequired(context) })) {
                 Icon(
@@ -406,7 +404,6 @@ private fun CompactMoreMenu(
     onBlockSubreddit: () -> Unit,
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    val context = LocalContext.current
     Box {
         IconButton(onClick = { showMenu = true }) {
             Icon(
@@ -430,17 +427,7 @@ private fun CompactMoreMenu(
                     Icon(Icons.Default.Person, contentDescription = null)
                 },
             )
-            DropdownMenuItem(
-                text = { Text("Block r/${post.subreddit}") },
-                onClick = {
-                    onBlockSubreddit()
-                    showShortToast(context, "Blocked r/${post.subreddit}")
-                    showMenu = false
-                },
-                leadingIcon = {
-                    Icon(Icons.Default.Block, contentDescription = null)
-                },
-            )
+            BlockSubredditMenuItem(post = post, onBlockSubreddit = onBlockSubreddit, onDone = { showMenu = false })
         }
     }
 }
