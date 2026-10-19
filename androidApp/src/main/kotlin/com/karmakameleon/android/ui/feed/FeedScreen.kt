@@ -59,8 +59,8 @@ import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
+import com.karmakameleon.shared.ui.PostListState
 import com.karmakameleon.shared.ui.feed.FeedType
-import com.karmakameleon.shared.ui.feed.FeedUiState
 import com.karmakameleon.shared.ui.feed.FeedViewModel
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -77,12 +77,13 @@ fun FeedScreen(
     navigationHandler: NavigationHandler = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val postListState by viewModel.postList.state.collectAsState()
     val listState = rememberLazyListState()
     var showSortSheet by remember { mutableStateOf(false) }
     val feedSettings = rememberPostFeedSettings()
 
-    LoadMoreNearEnd(listState, uiState.posts.size, enabled = !uiState.isLoadingMore && uiState.hasMore) { viewModel.loadMorePosts() }
-    ScrollToTopAfterRefresh(listState, uiState.isRefreshing)
+    LoadMoreNearEnd(listState, postListState.posts.size, enabled = postListState.canLoadMore) { viewModel.postList.loadMore() }
+    ScrollToTopAfterRefresh(listState, postListState.isRefreshing)
 
     ScrollToTopOnChange(listState, uiState.currentFeedType)
 
@@ -97,8 +98,8 @@ fun FeedScreen(
         },
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
-            onRefresh = { viewModel.loadPosts(forceRefresh = true) },
+            isRefreshing = postListState.isRefreshing,
+            onRefresh = { viewModel.postList.load(forceRefresh = true) },
             state = rememberPullToRefreshState(),
             modifier =
                 Modifier
@@ -106,7 +107,8 @@ fun FeedScreen(
                     .padding(padding),
         ) {
             FeedContent(
-                uiState = uiState,
+                postList = postListState,
+                isLoggedIn = uiState.isLoggedIn,
                 listState = listState,
                 feedSettings = feedSettings,
                 callbacks =
@@ -116,22 +118,22 @@ fun FeedScreen(
                         onUserClick = onUserClick,
                         onLinkClick = onLinkClick,
                         onCrosspostClick = navigationHandler::handleLink,
-                        onVote = viewModel::vote,
-                        onSave = viewModel::save,
-                        onHide = viewModel::hide,
+                        onVote = viewModel.postList::vote,
+                        onSave = viewModel.postList::save,
+                        onHide = viewModel.postList::hide,
                         onBlockSubreddit = viewModel::blockSubreddit,
                     ),
-                onRetry = { viewModel.loadPosts(forceRefresh = true) },
+                onRetry = { viewModel.postList.load(forceRefresh = true) },
             )
         }
     }
 
     if (showSortSheet) {
         SortBottomSheet(
-            currentSort = uiState.currentSort,
-            currentTimeFilter = uiState.currentTimeFilter,
-            onSelectSort = viewModel::setSort,
-            onSelectTimeFilter = viewModel::setTimeFilter,
+            currentSort = postListState.currentSort,
+            currentTimeFilter = postListState.currentTimeFilter,
+            onSelectSort = viewModel.postList::setSort,
+            onSelectTimeFilter = viewModel.postList::setTimeFilter,
             onDismiss = { showSortSheet = false },
         )
     }
@@ -191,26 +193,27 @@ private fun FeedTypeMenu(
 // A spinner or an error while there are no posts yet, otherwise the posts.
 @Composable
 private fun BoxScope.FeedContent(
-    uiState: FeedUiState,
+    postList: PostListState,
+    isLoggedIn: Boolean,
     listState: LazyListState,
     feedSettings: PostFeedSettings,
     callbacks: PostListCallbacks,
     onRetry: () -> Unit,
 ) {
     when {
-        uiState.isLoading && uiState.posts.isEmpty() -> {
+        postList.isLoading && postList.posts.isEmpty() -> {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
             )
         }
 
-        uiState.error != null && uiState.posts.isEmpty() -> {
+        postList.error != null && postList.posts.isEmpty() -> {
             Column(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = uiState.error ?: "Unknown error",
+                    text = postList.error ?: "Unknown error",
                     style = MaterialTheme.typography.bodyLarge,
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -227,12 +230,12 @@ private fun BoxScope.FeedContent(
                 contentPadding = PaddingValues(vertical = 8.dp),
             ) {
                 items(
-                    items = uiState.posts,
+                    items = postList.posts,
                     key = { it.id },
                 ) { post ->
-                    FeedPostItem(post = post, settings = feedSettings, callbacks = callbacks, isLoggedIn = uiState.isLoggedIn)
+                    FeedPostItem(post = post, settings = feedSettings, callbacks = callbacks, isLoggedIn = isLoggedIn)
                 }
-                if (uiState.isLoadingMore) loadingMoreItem()
+                if (postList.isLoadingMore) loadingMoreItem()
             }
         }
     }

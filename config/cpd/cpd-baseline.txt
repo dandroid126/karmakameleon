@@ -1,3 +1,1 @@
 # Duplicated code that existed before the duplication check. Fix entries; don't add new ones.
-177fcebc189bdfa4 41 lines in shared/src/commonMain/kotlin/com/karmakameleon/shared/ui/feed/FeedViewModel.kt:182-222, shared/src/commonMain/kotlin/com/karmakameleon/shared/ui/subreddit/SubredditViewModel.kt:164-204
-50012b3e46329897 19 lines in shared/src/commonMain/kotlin/com/karmakameleon/shared/ui/feed/FeedViewModel.kt:71-89, shared/src/commonMain/kotlin/com/karmakameleon/shared/ui/subreddit/SubredditViewModel.kt:48-65
