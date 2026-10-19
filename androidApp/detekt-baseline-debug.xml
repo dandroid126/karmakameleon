@@ -26,7 +26,6 @@
     <ID>CyclomaticComplexMethod:KarmaKameleonApp.kt:@OptIn(ExperimentalMaterial3Api::class) @Composable fun KarmaKameleonApp</ID>
     <ID>CyclomaticComplexMethod:MarkdownText.kt:@Composable private fun RenderBlock</ID>
     <ID>CyclomaticComplexMethod:MarkdownText.kt:private fun AnnotatedString.Builder.appendInline</ID>
-    <ID>CyclomaticComplexMethod:MediaLongPressMenu.kt:internal suspend fun saveImageToGallery</ID>
     <ID>CyclomaticComplexMethod:MessageItem.kt:@Composable fun MessageItem</ID>
     <ID>CyclomaticComplexMethod:PostCard.kt:@Composable fun PostCard</ID>
     <ID>CyclomaticComplexMethod:PostDetailScreen.kt:@Composable private fun PostHeader</ID>
@@ -117,7 +116,6 @@
     <ID>ParameterNaming:ProfileSavedTab.kt:onCommentUpdated: (Comment) -&gt; Unit</ID>
     <ID>ParameterNaming:SortBottomSheet.kt:onSortSelected: (PostSort) -&gt; Unit</ID>
     <ID>ParameterNaming:SortBottomSheet.kt:onTimeFilterSelected: (TimeFilter) -&gt; Unit</ID>
-    <ID>ReturnCount:InboxNotificationWorker.kt:InboxNotificationWorker$override suspend fun doWork: Result</ID>
     <ID>UnnecessaryLaunchedEffect:FeedScreen.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:InboxScreen.kt:LaunchedEffect</ID>
     <ID>UnnecessaryLaunchedEffect:KarmaKameleonApp.kt:LaunchedEffect</ID>

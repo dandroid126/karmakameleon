@@ -11,7 +11,6 @@
     <ID>ComplexCondition:InlineParser.kt:(text.startsWith("***", i) || text.startsWith("___", i)) &amp;&amp; "***" !in activeDelimiters &amp;&amp; "___" !in activeDelimiters</ID>
     <ID>ComplexCondition:InlineParser.kt:text.startsWith("^", i) &amp;&amp; i + 1 &lt; text.length &amp;&amp; text[i + 1] != '(' &amp;&amp; "^" !in activeDelimiters</ID>
     <ID>CyclomaticComplexMethod:BlockParser.kt:fun parseMarkdownBlocks: List&lt;MarkdownBlock&gt;</ID>
-    <ID>CyclomaticComplexMethod:CommentRepository.kt:CommentRepository$suspend fun vote: Result&lt;Comment&gt;</ID>
     <ID>CyclomaticComplexMethod:InlineParser.kt:private fun parseInlineRecursive: List&lt;MarkdownInline&gt;</ID>
     <ID>CyclomaticComplexMethod:LinkParser.kt:fun parseRedditLink: RedditLink</ID>
     <ID>ForbiddenComment:RedditApi.kt:RedditApi$// TODO: Parse nested replies</ID>
@@ -68,25 +67,10 @@
     <ID>NoNameShadowing:SearchViewModel.kt:SearchViewModel${ it.copy(isLoading = false) }</ID>
     <ID>NoNameShadowing:SubredditViewModel.kt:SubredditViewModel${ it.copy(isLoadingMore = false) }</ID>
     <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$fun findCommentById: Comment?</ID>
-    <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$fun findParentCommentId: String?</ID>
-    <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$fun findRootCommentId: String?</ID>
     <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$fun searchTree: Comment?</ID>
-    <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$fun submitEdit</ID>
-    <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$fun submitEditWithCallback</ID>
     <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$private fun searchReplies: Comment?</ID>
     <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$private fun searchRepliesForName: Comment?</ID>
-    <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$suspend fun submitReplyWithError: String?</ID>
-    <ID>ReturnCount:FlairColor.kt:fun parseFlairColor: Int?</ID>
-    <ID>ReturnCount:InboxPoller.kt:InboxPoller$private suspend fun poll</ID>
-    <ID>ReturnCount:LinkParser.kt:fun parseRedditLink: RedditLink</ID>
-    <ID>ReturnCount:OAuthRedirect.kt:OAuthRedirect.Companion$fun parse: OAuthRedirect?</ID>
-    <ID>ReturnCount:PostDetailViewModel.kt:PostDetailViewModel$fun getReplyParentText: String</ID>
-    <ID>ReturnCount:PostRepository.kt:PostRepository$private fun preserveCachedPreviewData: Post</ID>
-    <ID>ReturnCount:ProfileViewModel.kt:ProfileViewModel$fun handleLoginRedirect: Boolean</ID>
-    <ID>ReturnCount:RedditApi.kt:RedditApi$private fun parseReplies: List&lt;CommentOrMore&gt;</ID>
-    <ID>TooManyFunctions:AuthManager.kt:AuthManager</ID>
     <ID>TooManyFunctions:CommentViewModel.kt:CommentViewModel : ViewModel</ID>
-    <ID>TooManyFunctions:FeedViewModel.kt:FeedViewModel : ViewModel</ID>
     <ID>TooManyFunctions:InboxViewModel.kt:InboxViewModel : ViewModel</ID>
     <ID>TooManyFunctions:PostDetailViewModel.kt:PostDetailViewModel : ViewModel</ID>
     <ID>TooManyFunctions:PostRepository.kt:PostRepository</ID>
