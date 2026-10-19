@@ -260,28 +260,14 @@ fun CommentItem(
                 if (!isHidden) {
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    Box(
-                        modifier =
-                            Modifier.pointerInput(Unit) {
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        awaitPointerEvent(PointerEventPass.Initial)
-                                        onTouchStart()
-                                    }
-                                }
-                            },
-                    ) {
-                        key(selectionVersion) {
-                            SelectionContainer {
-                                MarkdownText(
-                                    markdown = comment.body,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    onTextClick = onSelect,
-                                    renderInlineImages = renderInlineImages,
-                                    onImageClick = onInlineImageClick,
-                                )
-                            }
-                        }
+                    SelectableArea(selectionVersion = selectionVersion, onTouchStart = onTouchStart) {
+                        MarkdownText(
+                            markdown = comment.body,
+                            style = MaterialTheme.typography.bodyMedium,
+                            onTextClick = onSelect,
+                            renderInlineImages = renderInlineImages,
+                            onImageClick = onInlineImageClick,
+                        )
                     }
                 }
 

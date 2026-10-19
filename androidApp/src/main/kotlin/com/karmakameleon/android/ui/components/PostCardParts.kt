@@ -21,6 +21,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import com.karmakameleon.android.ui.theme.postFlairColors
 import com.karmakameleon.android.ui.theme.voteColors
@@ -88,11 +89,12 @@ internal fun PostScore(
     post: Post,
     modifier: Modifier = Modifier,
     maxLines: Int = Int.MAX_VALUE,
+    style: TextStyle = MaterialTheme.typography.labelMedium,
 ) {
     val voteColors = voteColors()
     Text(
         text = formatNumber(post.score),
-        style = MaterialTheme.typography.labelMedium,
+        style = style,
         fontWeight = FontWeight.Bold,
         maxLines = maxLines,
         modifier = modifier,
