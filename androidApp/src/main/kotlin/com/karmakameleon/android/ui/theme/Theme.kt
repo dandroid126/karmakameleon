@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+// The light and dark palettes share some colors on purpose, so the duplication check skips them.
+// CPD-OFF
 private val LightColorScheme =
     lightColorScheme(
         primary = Color(0xFFFF4500), // Reddit orange
@@ -81,6 +83,7 @@ private val DarkColorScheme =
         inverseOnSurface = Color(0xFF2A2A2A),
         inversePrimary = Color(0xFFFFB59E),
     )
+// CPD-ON
 
 data class VoteColors(
     val upvoteColor: Color,

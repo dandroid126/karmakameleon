@@ -87,7 +87,7 @@ val cpdReport =
         description = "Finds duplicated code with PMD's copy-paste detector."
         classpath = cpd
         mainClass = "net.sourceforge.pmd.cli.PmdCli"
-        val minimumTokens = providers.gradleProperty("cpd.minimumTokens").orElse("100")
+        val minimumTokens = providers.gradleProperty("cpd.minimumTokens").orElse("50")
         val report = layout.buildDirectory.file("reports/cpd/cpd.xml")
         val sourceDirs = cpdSourceDirs
         inputs.files(sourceDirs.map { fileTree(it) })
