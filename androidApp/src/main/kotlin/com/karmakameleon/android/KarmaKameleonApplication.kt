@@ -30,6 +30,8 @@ import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 
+private const val IMAGE_DISK_CACHE_BYTES = 512L * 1024 * 1024
+
 class KarmaKameleonApplication :
     Application(),
     SingletonImageLoader.Factory {
@@ -87,11 +89,11 @@ class KarmaKameleonApplication :
                 DiskCache
                     .Builder()
                     .directory(cacheDir.resolve("image_cache").toOkioPath())
-                    .maxSizeBytes(512L * 1024 * 1024)
+                    .maxSizeBytes(IMAGE_DISK_CACHE_BYTES)
                     .build()
             }.crossfade(true)
             .components {
-                if (Build.VERSION.SDK_INT >= 28) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     add(AnimatedImageDecoder.Factory())
                 } else {
                     add(GifDecoder.Factory())

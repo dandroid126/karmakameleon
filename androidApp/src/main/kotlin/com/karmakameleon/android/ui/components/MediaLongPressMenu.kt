@@ -33,10 +33,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-data class MediaMenuItem(
-    val label: String,
-    val onClick: () -> Unit,
-)
+private const val CONNECT_TIMEOUT_MILLIS = 15_000
+private const val IMAGE_READ_TIMEOUT_MILLIS = 15_000
+private const val VIDEO_READ_TIMEOUT_MILLIS = 30_000
 
 @Composable
 fun imageMenuItems(url: String): List<MediaMenuItem> {
@@ -168,8 +167,8 @@ internal suspend fun copyImageToClipboard(
         runSuspendCatching {
             val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
             try {
-                connection.connectTimeout = 15000
-                connection.readTimeout = 15000
+                connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
+                connection.readTimeout = IMAGE_READ_TIMEOUT_MILLIS
                 connection.instanceFollowRedirects = true
                 connection.connect()
                 val bytes = connection.inputStream.use { it.readBytes() }
@@ -242,8 +241,8 @@ internal suspend fun saveImageToGallery(
             if (uri != null) {
                 val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
                 try {
-                    connection.connectTimeout = 15000
-                    connection.readTimeout = 15000
+                    connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
+                    connection.readTimeout = IMAGE_READ_TIMEOUT_MILLIS
                     connection.connect()
                     connection.inputStream.use { input ->
                         context.contentResolver.openOutputStream(uri)?.use { output ->
@@ -309,8 +308,8 @@ internal suspend fun saveVideoToGallery(
             if (uri != null) {
                 val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
                 try {
-                    connection.connectTimeout = 15000
-                    connection.readTimeout = 30000
+                    connection.connectTimeout = CONNECT_TIMEOUT_MILLIS
+                    connection.readTimeout = VIDEO_READ_TIMEOUT_MILLIS
                     connection.connect()
                     connection.inputStream.use { input ->
                         context.contentResolver.openOutputStream(uri)?.use { output ->

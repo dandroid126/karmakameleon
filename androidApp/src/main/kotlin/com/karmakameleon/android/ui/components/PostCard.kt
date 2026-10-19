@@ -69,6 +69,17 @@ import com.karmakameleon.shared.util.flairNeedsDarkText
 import com.karmakameleon.shared.util.parseFlairColor
 import kotlinx.coroutines.launch
 import java.util.Locale
+import kotlin.time.Duration.Companion.days
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
+
+private const val DAYS_PER_WEEK = 7
+private const val DAYS_PER_MONTH = 30
+private const val DAYS_PER_YEAR = 365
+private const val THOUSAND = 1_000
+private const val MILLION = 1_000_000
 
 private val POST_CARD_MAX_CONTENT_HEIGHT = 400.dp
 
@@ -578,23 +589,23 @@ fun RichFlairChip(
 }
 
 fun formatTimeAgo(timestampSeconds: Long): String {
-    val now = System.currentTimeMillis() / 1000
-    val diff = now - timestampSeconds
+    val age = System.currentTimeMillis().milliseconds - timestampSeconds.seconds
+    val days = age.inWholeDays
 
     return when {
-        diff < 60 -> "now"
-        diff < 3600 -> "${diff / 60}m"
-        diff < 86400 -> "${diff / 3600}h"
-        diff < 604800 -> "${diff / 86400}d"
-        diff < 2592000 -> "${diff / 604800}w"
-        diff < 31536000 -> "${diff / 2592000}mo"
-        else -> "${diff / 31536000}y"
+        age < 1.minutes -> "now"
+        age < 1.hours -> "${age.inWholeMinutes}m"
+        age < 1.days -> "${age.inWholeHours}h"
+        days < DAYS_PER_WEEK -> "${days}d"
+        days < DAYS_PER_MONTH -> "${days / DAYS_PER_WEEK}w"
+        days < DAYS_PER_YEAR -> "${days / DAYS_PER_MONTH}mo"
+        else -> "${days / DAYS_PER_YEAR}y"
     }
 }
 
 fun formatNumber(num: Int): String =
     when {
-        num >= 1_000_000 -> String.format(Locale.getDefault(), "%.1fM", num / 1_000_000.0)
-        num >= 1_000 -> String.format(Locale.getDefault(), "%.1fK", num / 1_000.0)
+        num >= MILLION -> String.format(Locale.getDefault(), "%.1fM", num.toDouble() / MILLION)
+        num >= THOUSAND -> String.format(Locale.getDefault(), "%.1fK", num.toDouble() / THOUSAND)
         else -> num.toString()
     }

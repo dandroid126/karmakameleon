@@ -210,14 +210,14 @@ private fun RenderBlockQuote(
     }
 }
 
-private sealed class InlineSegment {
+private sealed interface InlineSegment {
     data class TextRun(
         val inlines: List<MarkdownInline>,
-    ) : InlineSegment()
+    ) : InlineSegment
 
     data class ImageItem(
         val url: String,
-    ) : InlineSegment()
+    ) : InlineSegment
 }
 
 private fun splitInlinesIntoSegments(inlines: List<MarkdownInline>): List<InlineSegment> {
