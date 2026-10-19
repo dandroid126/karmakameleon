@@ -2,6 +2,9 @@ package com.karmakameleon.shared.util.markdown
 
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 
+// A line indented by four spaces is a code block.
+private const val CODE_INDENT = "    "
+
 private val horizontalRuleRegex = Regex("^(-{3,}|\\*{3,}|_{3,})$")
 private val orderedListItemRegex = Regex("^(\\d+)[.)]\\s+(.*)")
 private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
@@ -33,7 +36,7 @@ private fun parseBlockAt(
         isTableStart(lines, i) -> parseTableAt(lines, i)
         line.startsWith("#") -> ParsedBlock(parseHeading(line), i + 1)
         isQuoteLine(line) -> parseQuoteAt(lines, i)
-        isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.substring(4)), i + 1)
+        isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.removePrefix(CODE_INDENT)), i + 1)
         horizontalRuleRegex.matches(line) -> ParsedBlock(MarkdownBlock.HorizontalRule, i + 1)
         isBulletLine(line) -> ParsedBlock(MarkdownBlock.BulletListItem(parseInlineMarkdown("• " + line.substring(2))), i + 1)
         orderedListItemRegex.matches(line) -> ParsedBlock(parseOrderedListItem(line), i + 1)
@@ -44,7 +47,7 @@ private fun parseBlockAt(
 
 private fun isQuoteLine(line: String): Boolean = line.startsWith(">") && !line.startsWith(">!")
 
-private fun isCodeLine(line: String): Boolean = line.startsWith("    ")
+private fun isCodeLine(line: String): Boolean = line.startsWith(CODE_INDENT)
 
 private fun isBulletLine(line: String): Boolean = line.startsWith("- ") || line.startsWith("* ") || line.startsWith("+ ")
 

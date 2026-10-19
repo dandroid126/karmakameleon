@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.seconds
 
 class InboxPoller(
     private val messageRepository: MessageRepository,
@@ -33,7 +34,7 @@ class InboxPoller(
             scope.launch {
                 while (isActive) {
                     poll()
-                    delay(intervalSeconds * 1_000L)
+                    delay(intervalSeconds.seconds)
                 }
             }
     }

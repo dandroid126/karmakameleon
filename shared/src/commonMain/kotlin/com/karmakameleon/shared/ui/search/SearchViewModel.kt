@@ -66,7 +66,7 @@ class SearchViewModel(
         if (query.length >= 2) {
             searchJob =
                 viewModelScope.launch {
-                    delay(300) // debounce
+                    delay(SEARCH_DEBOUNCE_MILLIS)
                     search()
                 }
         } else {
@@ -195,10 +195,14 @@ class SearchViewModel(
                         )
                     }
                 },
-                onFailure = {
+                onFailure = { _ ->
                     _uiState.update { it.copy(isLoading = false) }
                 },
             )
         }
+    }
+
+    companion object {
+        private const val SEARCH_DEBOUNCE_MILLIS = 300L
     }
 }

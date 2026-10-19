@@ -1,38 +1,38 @@
 package com.karmakameleon.shared.domain.markdown
 
-sealed class MarkdownBlock {
+sealed interface MarkdownBlock {
     data class Heading(
         val level: Int,
         val children: List<MarkdownInline>,
-    ) : MarkdownBlock()
+    ) : MarkdownBlock
 
     data class Paragraph(
         val children: List<MarkdownInline>,
-    ) : MarkdownBlock()
+    ) : MarkdownBlock
 
     data class BulletListItem(
         val children: List<MarkdownInline>,
-    ) : MarkdownBlock()
+    ) : MarkdownBlock
 
     data class OrderedListItem(
         val number: Int,
         val children: List<MarkdownInline>,
-    ) : MarkdownBlock()
+    ) : MarkdownBlock
 
     data class BlockQuote(
         val children: List<MarkdownBlock>,
-    ) : MarkdownBlock()
+    ) : MarkdownBlock
 
     data class CodeBlock(
         val text: String,
-    ) : MarkdownBlock()
+    ) : MarkdownBlock
 
     data class Table(
         val header: List<String>,
         val rows: List<List<String>>,
-    ) : MarkdownBlock()
+    ) : MarkdownBlock
 
-    object HorizontalRule : MarkdownBlock()
+    object HorizontalRule : MarkdownBlock
 
-    object BlankLine : MarkdownBlock()
+    object BlankLine : MarkdownBlock
 }

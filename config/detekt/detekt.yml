@@ -9,6 +9,8 @@ style:
   MagicNumber:
     # Compose UI is full of literal sizes and colors.
     ignoreAnnotated: ['Composable']
+    # An enum entry's name already says what its arguments mean, e.g. FIFTEEN_MINUTES("15 minutes", 15L).
+    ignoreEnums: true
   ReturnCount:
     # Early returns for guard clauses (`?: return`, `if (...) return`) keep code flat; count only the other returns.
     excludeGuardClauses: true

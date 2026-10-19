@@ -517,6 +517,10 @@ class ProfileViewModel(
 
     private fun generateState(): String {
         val chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-        return (1..16).map { chars.random() }.joinToString("")
+        return (1..OAUTH_STATE_LENGTH).map { chars.random() }.joinToString("")
+    }
+
+    companion object {
+        private const val OAUTH_STATE_LENGTH = 16
     }
 }

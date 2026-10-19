@@ -175,7 +175,7 @@ class InboxViewModel(
         if (text.isEmpty()) return
         viewModelScope.launch {
             val result = messageRepository.replyToMessage(message, text)
-            result.onSuccess {
+            result.onSuccess { _ ->
                 _uiState.update { it.copy(replyingToMessage = null, replyText = "") }
             }
         }

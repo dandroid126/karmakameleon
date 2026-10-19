@@ -48,35 +48,35 @@ fun extractYouTubeVideoId(url: String): String? {
 
 fun isYouTubeUrl(url: String): Boolean = extractYouTubeVideoId(url) != null
 
-sealed class RedditLink {
+sealed interface RedditLink {
     data class Subreddit(
         val name: String,
-    ) : RedditLink()
+    ) : RedditLink
 
     data class User(
         val name: String,
-    ) : RedditLink()
+    ) : RedditLink
 
     data class Post(
         val subreddit: String,
         val postId: String,
-    ) : RedditLink()
+    ) : RedditLink
 
     data class Comment(
         val subreddit: String,
         val postId: String,
         val commentId: String,
         val context: Int? = null,
-    ) : RedditLink()
+    ) : RedditLink
 
     data class ShareLink(
         val subreddit: String,
         val shareId: String,
-    ) : RedditLink()
+    ) : RedditLink
 
     data class External(
         val url: String,
-    ) : RedditLink()
+    ) : RedditLink
 }
 
 private val redditHostRegex = Regex("^(www\\.|old\\.|new\\.|np\\.)?reddit\\.com$", RegexOption.IGNORE_CASE)
