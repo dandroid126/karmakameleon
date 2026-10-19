@@ -323,57 +323,14 @@ private fun PostCardActionRow(
             PostActionIcon(Icons.AutoMirrored.Filled.CallMerge, "View original post", actions.onCrosspostClick)
         }
         if (isLoggedIn) {
-            IconButton(
+            SavePostButton(
+                post = post,
                 onClick = actions.onSave,
+                unsavedTint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(32.dp),
-            ) {
-                Icon(
-                    imageVector = if (post.isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                    contentDescription = if (post.isSaved) "Unsave" else "Save",
-                    tint = if (post.isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            )
         }
         PostMoreMenu(post = post, isLoggedIn = isLoggedIn, onHide = actions.onHide, onBlockSubreddit = actions.onBlockSubreddit)
-    }
-}
-
-// Votes need an account, so the arrows are disabled when logged out. When voting is closed they explain why.
-@Composable
-private fun PostVotePill(
-    post: Post,
-    isLoggedIn: Boolean,
-    onUpvote: () -> Unit,
-    onDownvote: () -> Unit,
-) {
-    val context = LocalContext.current
-    val voteOrExplain = { vote: () -> Unit ->
-        if (post.isVotingDisabled) showShortToast(context, post.votingDisabledReason) else vote()
-    }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            Modifier
-                .background(
-                    MaterialTheme.colorScheme.surfaceVariant,
-                    RoundedCornerShape(20.dp),
-                ).padding(horizontal = 4.dp),
-    ) {
-        VoteArrowButton(
-            post = post,
-            isUpvote = true,
-            onClick = { voteOrExplain(onUpvote) },
-            enabled = isLoggedIn,
-            modifier = Modifier.size(32.dp),
-        )
-        PostScore(post)
-        VoteArrowButton(
-            post = post,
-            isUpvote = false,
-            onClick = { voteOrExplain(onDownvote) },
-            enabled = isLoggedIn,
-            modifier = Modifier.size(32.dp),
-        )
     }
 }
 
@@ -445,7 +402,6 @@ private fun PostMoreMenu(
     onBlockSubreddit: () -> Unit,
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    val context = LocalContext.current
     Box {
         PostActionIcon(Icons.Default.MoreVert, "More options") { showMenu = true }
 
@@ -469,17 +425,7 @@ private fun PostMoreMenu(
                 )
             }
             CopyLinkMenuItems(post = post, onDone = { showMenu = false })
-            DropdownMenuItem(
-                text = { Text("Block r/${post.subreddit}") },
-                onClick = {
-                    onBlockSubreddit()
-                    showShortToast(context, "Blocked r/${post.subreddit}")
-                    showMenu = false
-                },
-                leadingIcon = {
-                    Icon(Icons.Default.Block, contentDescription = null)
-                },
-            )
+            BlockSubredditMenuItem(post = post, onBlockSubreddit = onBlockSubreddit, onDone = { showMenu = false })
         }
     }
 }

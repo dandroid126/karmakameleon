@@ -19,13 +19,30 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.ui.theme.mediaColors
 import com.karmakameleon.android.ui.theme.postFlairColors
 
+// Shown in place of a post's preview while it's hidden.
+
+@Composable
+fun NsfwBlackBox(modifier: Modifier = Modifier) {
+    HiddenPreviewBox(label = "NSFW", color = postFlairColors().nsfwColor, modifier = modifier)
+}
+
 @Composable
 fun SpoilerBlackBox(modifier: Modifier = Modifier) {
-    val flairColors = postFlairColors()
+    HiddenPreviewBox(label = "Spoiler", color = postFlairColors().spoilerColor, modifier = modifier)
+}
+
+/** A dark box saying why the preview is hidden ([label], in [color]) and that tapping shows it. */
+@Composable
+private fun HiddenPreviewBox(
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier =
             modifier
@@ -39,14 +56,14 @@ fun SpoilerBlackBox(modifier: Modifier = Modifier) {
             Icon(
                 imageVector = Icons.Default.VisibilityOff,
                 contentDescription = null,
-                tint = flairColors.spoilerColor,
+                tint = color,
                 modifier = Modifier.size(32.dp),
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Spoiler",
+                text = label,
                 style = MaterialTheme.typography.titleMedium,
-                color = flairColors.spoilerColor,
+                color = color,
             )
             Text(
                 text = "Tap to view",

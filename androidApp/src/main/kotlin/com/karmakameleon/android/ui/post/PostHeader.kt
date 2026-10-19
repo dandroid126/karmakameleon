@@ -45,11 +45,11 @@ import com.karmakameleon.android.ui.components.FlairChip
 import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
 import com.karmakameleon.android.ui.components.PostScore
+import com.karmakameleon.android.ui.components.PostVotePill
 import com.karmakameleon.android.ui.components.ProgressiveAsyncImage
 import com.karmakameleon.android.ui.components.SelectableArea
 import com.karmakameleon.android.ui.components.SubredditFlairChip
 import com.karmakameleon.android.ui.components.VideoPlayer
-import com.karmakameleon.android.ui.components.VoteArrowButton
 import com.karmakameleon.android.ui.components.YouTubePlayer
 import com.karmakameleon.android.ui.components.formatNumber
 import com.karmakameleon.android.ui.components.formatTimeAgo
@@ -425,7 +425,14 @@ private fun PostHeaderActionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        PostHeaderVotePill(post = post, isLoggedIn = isLoggedIn, onUpvote = actions.onUpvote, onDownvote = actions.onDownvote)
+        PostVotePill(
+            post = post,
+            isLoggedIn = isLoggedIn,
+            onUpvote = actions.onUpvote,
+            onDownvote = actions.onDownvote,
+            buttonSize = 36.dp,
+            scoreStyle = MaterialTheme.typography.labelLarge,
+        )
 
         Text(
             text = "${formatNumber(post.numComments)} comments",
@@ -466,35 +473,5 @@ private fun PostHeaderActionRow(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun PostHeaderVotePill(
-    post: Post,
-    isLoggedIn: Boolean,
-    onUpvote: () -> Unit,
-    onDownvote: () -> Unit,
-) {
-    val context = LocalContext.current
-    val voteOrExplain = { vote: () -> Unit ->
-        if (post.isVotingDisabled) showShortToast(context, post.votingDisabledReason) else vote()
-    }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier =
-            Modifier
-                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(20.dp))
-                .padding(horizontal = 4.dp),
-    ) {
-        VoteArrowButton(post, isUpvote = true, onClick = { voteOrExplain(onUpvote) }, enabled = isLoggedIn, modifier = Modifier.size(36.dp))
-        PostScore(post, style = MaterialTheme.typography.labelLarge)
-        VoteArrowButton(
-            post,
-            isUpvote = false,
-            onClick = { voteOrExplain(onDownvote) },
-            enabled = isLoggedIn,
-            modifier = Modifier.size(36.dp),
-        )
     }
 }
