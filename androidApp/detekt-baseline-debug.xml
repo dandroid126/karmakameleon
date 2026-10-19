@@ -2,27 +2,5 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>AbstractClassCanBeInterface:MarkdownText.kt:InlineSegment$InlineSegment</ID>
-    <ID>ImplicitDefaultLocale:VideoPlayer.kt:"%d:%02d".format(minutes, seconds)</ID>
-    <ID>MagicNumber:KarmaKameleonApplication.kt:KarmaKameleonApplication$1024</ID>
-    <ID>MagicNumber:KarmaKameleonApplication.kt:KarmaKameleonApplication$28</ID>
-    <ID>MagicNumber:KarmaKameleonApplication.kt:KarmaKameleonApplication$512L</ID>
-    <ID>MagicNumber:MediaLongPressMenu.kt:15000</ID>
-    <ID>MagicNumber:MediaLongPressMenu.kt:30000</ID>
-    <ID>MagicNumber:NotificationHelper.kt:NotificationHelper$5</ID>
-    <ID>MagicNumber:NotificationHelper.kt:NotificationHelper$80</ID>
-    <ID>MagicNumber:PostCard.kt:1_000</ID>
-    <ID>MagicNumber:PostCard.kt:1_000.0</ID>
-    <ID>MagicNumber:PostCard.kt:1_000_000</ID>
-    <ID>MagicNumber:PostCard.kt:1_000_000.0</ID>
-    <ID>MagicNumber:PostCard.kt:2592000</ID>
-    <ID>MagicNumber:PostCard.kt:31536000</ID>
-    <ID>MagicNumber:PostCard.kt:3600</ID>
-    <ID>MagicNumber:PostCard.kt:60</ID>
-    <ID>MagicNumber:PostCard.kt:604800</ID>
-    <ID>MagicNumber:PostCard.kt:86400</ID>
-    <ID>MatchingDeclarationName:MediaLongPressMenu.kt:MediaMenuItem</ID>
-    <ID>MatchingDeclarationName:PostListItem.kt:CompactPostSelection</ID>
-    <ID>UseOrEmpty:InboxNotificationWorker.kt:InboxNotificationWorker$prefs.getString(KEY_KNOWN_IDS, "") ?: ""</ID>
   </CurrentIssues>
 </SmellBaseline>

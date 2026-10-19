@@ -23,6 +23,12 @@ object NotificationHelper {
     private const val CHANNEL_DESCRIPTION = "Notifications for new inbox messages"
     private const val SUMMARY_NOTIFICATION_ID = 0
 
+    // How much of a message to show: one message's text and expanded text, and per line when several are grouped.
+    private const val CONTENT_TEXT_MAX_CHARS = 200
+    private const val BIG_TEXT_MAX_CHARS = 500
+    private const val INBOX_LINE_MAX_CHARS = 80
+    private const val MAX_INBOX_LINES = 5
+
     @RequiresApi(Build.VERSION_CODES.O)
     fun createChannel(context: Context) {
         val channel =
@@ -63,19 +69,19 @@ object NotificationHelper {
                     .Builder(context, CHANNEL_ID)
                     .setSmallIcon(drawable.ic_dialog_email)
                     .setContentTitle(buildTitle(message))
-                    .setContentText(message.body.take(200))
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(message.body.take(500)))
+                    .setContentText(message.body.take(CONTENT_TEXT_MAX_CHARS))
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(message.body.take(BIG_TEXT_MAX_CHARS)))
                     .setContentIntent(tapIntent)
                     .setAutoCancel(true)
                     .build()
             notificationManager.notify(message.id.hashCode(), notification)
         } else {
             val inboxStyle = NotificationCompat.InboxStyle()
-            newMessages.take(5).forEach { message ->
-                inboxStyle.addLine("${buildTitle(message)}: ${message.body.take(80)}")
+            newMessages.take(MAX_INBOX_LINES).forEach { message ->
+                inboxStyle.addLine("${buildTitle(message)}: ${message.body.take(INBOX_LINE_MAX_CHARS)}")
             }
-            if (newMessages.size > 5) {
-                inboxStyle.setSummaryText("+${newMessages.size - 5} more")
+            if (newMessages.size > MAX_INBOX_LINES) {
+                inboxStyle.setSummaryText("+${newMessages.size - MAX_INBOX_LINES} more")
             }
             val summary =
                 NotificationCompat

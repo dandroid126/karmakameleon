@@ -31,7 +31,7 @@ class InboxNotificationWorker(
         if (!authManager.isLoggedIn()) return Result.success()
 
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val knownIdsRaw = prefs.getString(KEY_KNOWN_IDS, "") ?: ""
+        val knownIdsRaw = prefs.getString(KEY_KNOWN_IDS, null).orEmpty()
         val isFirstRun = prefs.getBoolean(KEY_FIRST_RUN, true)
 
         val knownIds =
