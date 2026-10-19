@@ -33,8 +33,6 @@
     <ID>NoNameShadowing:InboxViewModel.kt:InboxViewModel${ it.copy(replyingToMessage = null, replyText = "") }</ID>
     <ID>NoNameShadowing:SearchViewModel.kt:SearchViewModel${ it.copy(isLoading = false) }</ID>
     <ID>NoNameShadowing:SubredditViewModel.kt:SubredditViewModel${ it.copy(isLoadingMore = false) }</ID>
-    <ID>UnusedPrivateProperty:FeedViewModel.kt:FeedViewModel$private val subredditRepository: SubredditRepository</ID>
-    <ID>UnusedPrivateProperty:SubredditRepository.kt:SubredditRepository$private val settingsRepository: SettingsRepository</ID>
     <ID>UseOrEmpty:AuthManager.kt:AuthManager$settings.get&lt;String&gt;(KEY_CLIENT_ID) ?: ""</ID>
     <ID>UseOrEmpty:PostDetailViewModel.kt:PostDetailViewModel$commentViewModel.findCommentByName(parentId)?.body ?: ""</ID>
     <ID>UseOrEmpty:RedditApi.kt:RedditApi$listings.getOrNull(1)?.data?.children ?: emptyList()</ID>

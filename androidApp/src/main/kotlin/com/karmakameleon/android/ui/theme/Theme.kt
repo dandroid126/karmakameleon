@@ -103,8 +103,7 @@ data class PostFlairColors(
     val flairLightTextColor: Color,
 )
 
-@Composable
-fun postFlairColors(darkTheme: Boolean = isSystemInDarkTheme()): PostFlairColors =
+private val PostFlairColorValues =
     PostFlairColors(
         nsfwColor = Color(0xFFFF4444),
         spoilerColor = Color(0xFFFFD700),
@@ -112,6 +111,8 @@ fun postFlairColors(darkTheme: Boolean = isSystemInDarkTheme()): PostFlairColors
         flairDarkTextColor = Color.Black,
         flairLightTextColor = Color.White,
     )
+
+fun postFlairColors(): PostFlairColors = PostFlairColorValues
 
 data class CommentColors(
     val depthColors: List<Color>,
@@ -122,8 +123,7 @@ data class CommentColors(
     val ownCommentColor: Color,
 )
 
-@Composable
-fun commentColors(darkTheme: Boolean = isSystemInDarkTheme()): CommentColors =
+private val CommentColorValues =
     CommentColors(
         depthColors =
             listOf(
@@ -141,17 +141,20 @@ fun commentColors(darkTheme: Boolean = isSystemInDarkTheme()): CommentColors =
         ownCommentColor = Color(0xFFFF0000),
     )
 
+fun commentColors(): CommentColors = CommentColorValues
+
 data class MessageColors(
     val selectedBackground: Color,
     val newMessageColor: Color,
 )
 
-@Composable
-fun messageColors(darkTheme: Boolean = isSystemInDarkTheme()): MessageColors =
+private val MessageColorValues =
     MessageColors(
         selectedBackground = Color(0xFF0079D3).copy(alpha = 0.08f),
         newMessageColor = Color(0xFFFF0000),
     )
+
+fun messageColors(): MessageColors = MessageColorValues
 
 // Media UI stays dark in both light and dark mode
 data class MediaColors(
@@ -168,8 +171,7 @@ data class MediaColors(
     val hiddenPreviewHintColor: Color, // "Tap to view" on a hidden preview
 )
 
-@Composable
-fun mediaColors(darkTheme: Boolean = isSystemInDarkTheme()): MediaColors =
+private val MediaColorValues =
     MediaColors(
         loopActiveColor = Color(0xFF4FC3F7),
         mediaBackgroundColor = Color.Black,
@@ -183,6 +185,8 @@ fun mediaColors(darkTheme: Boolean = isSystemInDarkTheme()): MediaColors =
         hiddenPreviewColor = Color.Black,
         hiddenPreviewHintColor = Color.Gray,
     )
+
+fun mediaColors(): MediaColors = MediaColorValues
 
 data class ReadStateColors(
     val readTitleColor: Color,

@@ -6,7 +6,6 @@ import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
-import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.russhwolf.settings.MapSettings
@@ -45,10 +44,6 @@ class SubredditViewModelTest {
         subredditRepo = SubredditRepository(fakeApi, settingsRepo)
         userRepo = UserRepository(fakeApi, fakeAuthManager)
         viewModel = SubredditViewModel("kotlin", subredditRepo, postRepo, userRepo, settingsRepo)
-    }
-
-    private fun emitPostUpdate(post: Post) {
-        // Helper method to emit post updates
     }
 
     @AfterTest

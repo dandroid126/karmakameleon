@@ -6,7 +6,6 @@ import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
-import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
@@ -31,7 +30,6 @@ class FeedViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var postRepo: PostRepository
-    private lateinit var subredditRepo: SubredditRepository
     private lateinit var userRepo: UserRepository
     private lateinit var settingsRepo: SettingsRepository
     private lateinit var viewModel: FeedViewModel
@@ -43,9 +41,8 @@ class FeedViewModelTest {
         fakeApi = FakeRedditApi(fakeAuthManager)
         settingsRepo = SettingsRepository(MapSettings())
         postRepo = PostRepository(fakeApi)
-        subredditRepo = SubredditRepository(fakeApi, settingsRepo)
         userRepo = UserRepository(fakeApi, fakeAuthManager)
-        viewModel = FeedViewModel(postRepo, subredditRepo, userRepo, settingsRepo)
+        viewModel = FeedViewModel(postRepo, userRepo, settingsRepo)
     }
 
     @AfterTest
@@ -478,20 +475,27 @@ class FeedViewModelTest {
     @Test
     fun hide_removesPostFromList() =
         runTest {
+            fakeApi.postsResult =
+                createTestListing(
+                    items =
+                        listOf(
+                            createTestPost(id = "1"),
+                            createTestPost(id = "2"),
+                        ),
+                )
             viewModel.loadPosts()
             advanceUntilIdle()
 
-            val initialCount = viewModel.uiState.value.posts.size
-            val post =
+            viewModel.hide(
                 viewModel.uiState.value.posts
-                    .firstOrNull() ?: return@runTest
-
-            viewModel.hide(post)
+                    .first(),
+            )
             advanceUntilIdle()
 
-            assertFalse(
+            assertEquals(
+                listOf("2"),
                 viewModel.uiState.value.posts
-                    .any { it.id == post.id },
+                    .map { it.id },
             )
         }
 

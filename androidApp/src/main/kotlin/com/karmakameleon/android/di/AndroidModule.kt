@@ -16,7 +16,7 @@ val androidModule =
         single { NavigationHandler() }
         single { GlobalMenuManager() }
         // ViewModels (Android-specific registration using viewModel DSL)
-        viewModel { FeedViewModel(get(), get(), get(), get()) }
+        viewModel { FeedViewModel(get(), get(), get()) }
         viewModel { params -> PostDetailViewModel(params.get(), get(), get(), get(), get(), get()) }
         viewModel { params -> SubredditViewModel(params.get(), get(), get(), get(), get()) }
         viewModel { ProfileViewModel(get(), get(), get(), get()) }

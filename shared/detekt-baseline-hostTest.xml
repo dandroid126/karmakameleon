@@ -2,9 +2,5 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>UnusedParameter:SubredditViewModelTest.kt:SubredditViewModelTest$post: Post</ID>
-    <ID>UnusedPrivateFunction:SubredditViewModelTest.kt:SubredditViewModelTest$private fun emitPostUpdate</ID>
-    <ID>UnusedVariable:FeedViewModelTest.kt:FeedViewModelTest$val initialCount = viewModel.uiState.value.posts.size</ID>
-    <ID>UnusedVariable:PostRepositoryTest.kt:PostRepositoryTest$api</ID>
   </CurrentIssues>
 </SmellBaseline>

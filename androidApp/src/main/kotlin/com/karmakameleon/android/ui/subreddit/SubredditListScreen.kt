@@ -53,7 +53,6 @@ import org.koin.compose.koinInject
 fun SubredditListScreen(
     onSubredditClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    currentRoute: String? = null,
     subredditRepository: SubredditRepository = koinInject(),
     userRepository: UserRepository = koinInject(),
     settingsRepository: SettingsRepository = koinInject(),
@@ -79,7 +78,7 @@ fun SubredditListScreen(
 
     Scaffold(
         modifier = modifier,
-        topBar = { UniversalTopAppBar(currentRoute = currentRoute, title = { Text("Subreddits") }) },
+        topBar = { UniversalTopAppBar(title = { Text("Subreddits") }) },
     ) { padding ->
         Column(
             modifier =

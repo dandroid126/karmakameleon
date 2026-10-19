@@ -410,6 +410,8 @@ class PostRepositoryTest {
     fun enrichSparsePosts_returnsEmptyForNonSparsePosts() =
         runTest {
             val (repo, api) = createRepo()
+            // Returned only if the post is fetched, which it shouldn't be.
+            api.fetchPostsByIdsResult = listOf(createTestPost(id = "p1"))
             val post = createTestPost(id = "p1", postHint = "self", selfText = "text")
             val result = repo.enrichSparsePosts(listOf(post))
             assertTrue(result.isEmpty())

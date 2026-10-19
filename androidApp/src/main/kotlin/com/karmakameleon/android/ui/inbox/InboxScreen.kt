@@ -58,7 +58,6 @@ import org.koin.compose.koinInject
 fun InboxScreen(
     modifier: Modifier = Modifier,
     initialFilter: InboxFilter? = null,
-    currentRoute: String? = null,
     onBackClick: () -> Unit = {},
     viewModel: InboxViewModel = koinViewModel(),
     navigationHandler: NavigationHandler = koinInject(),
@@ -76,7 +75,6 @@ fun InboxScreen(
         modifier = modifier,
         topBar = {
             InboxTopBar(
-                currentRoute = currentRoute,
                 isLoggedIn = uiState.isLoggedIn,
                 currentFilter = uiState.currentFilter,
                 onBackClick = onBackClick,
@@ -155,7 +153,6 @@ private fun postOfContextUrl(contextUrl: String): Pair<String, String>? {
 
 @Composable
 private fun InboxTopBar(
-    currentRoute: String?,
     isLoggedIn: Boolean,
     currentFilter: InboxFilter,
     onBackClick: () -> Unit,
@@ -163,7 +160,6 @@ private fun InboxTopBar(
     onSelectFilter: (InboxFilter) -> Unit,
 ) {
     UniversalTopAppBar(
-        currentRoute = currentRoute,
         excludeInbox = true,
         title = { Text("Inbox") },
         navigationIcon = {
