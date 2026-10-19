@@ -24,16 +24,6 @@ complexity:
     ignoreAnnotated: ['Composable']
     ignoreDefaultParameters: true
   TooManyFunctions:
-    # Splitting a long function into private helpers is what LongMethod asks for, so don't count them against the class.
-    ignorePrivate: true
-    # Detekt's default list plus KMP's host test source set (androidHostTest), which it doesn't know about.
-    excludes:
-      - '**/test/**'
-      - '**/androidTest/**'
-      - '**/commonTest/**'
-      - '**/jvmTest/**'
-      - '**/androidUnitTest/**'
-      - '**/androidInstrumentedTest/**'
-      - '**/androidHostTest/**'
-      - '**/jsTest/**'
-      - '**/iosTest/**'
+    # A function count says little about whether a class does one thing: view models have a function per user action
+    # and the API client one per endpoint. Classes that are genuinely too big are caught by LargeClass.
+    active: false
