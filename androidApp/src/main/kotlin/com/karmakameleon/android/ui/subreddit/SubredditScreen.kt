@@ -62,6 +62,7 @@ import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
+import com.karmakameleon.shared.ui.PostListState
 import com.karmakameleon.shared.ui.subreddit.SubredditUiState
 import com.karmakameleon.shared.ui.subreddit.SubredditViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -81,6 +82,7 @@ fun SubredditScreen(
     navigationHandler: NavigationHandler = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val postListState by viewModel.postList.state.collectAsState()
     val listState = rememberLazyListState()
     val feedSettings = rememberPostFeedSettings()
     var showSortSheet by remember { mutableStateOf(false) }
@@ -91,13 +93,13 @@ fun SubredditScreen(
             onUserClick = onUserClick,
             onLinkClick = onLinkClick,
             onCrosspostClick = navigationHandler::handleLink,
-            onVote = viewModel::vote,
-            onSave = viewModel::save,
-            onHide = viewModel::hide,
+            onVote = viewModel.postList::vote,
+            onSave = viewModel.postList::save,
+            onHide = viewModel.postList::hide,
         )
 
-    LoadMoreNearEnd(listState, uiState.posts.size, enabled = !uiState.isLoadingMore && uiState.hasMore) { viewModel.loadMorePosts() }
-    ScrollToTopAfterRefresh(listState, uiState.isRefreshing)
+    LoadMoreNearEnd(listState, postListState.posts.size, enabled = postListState.canLoadMore) { viewModel.postList.loadMore() }
+    ScrollToTopAfterRefresh(listState, postListState.isRefreshing)
 
     Scaffold(
         modifier = modifier,
@@ -110,8 +112,8 @@ fun SubredditScreen(
         },
     ) { padding ->
         PullToRefreshBox(
-            isRefreshing = uiState.isRefreshing,
-            onRefresh = { viewModel.loadPosts(forceRefresh = true) },
+            isRefreshing = postListState.isRefreshing,
+            onRefresh = { viewModel.postList.load(forceRefresh = true) },
             state = rememberPullToRefreshState(),
             modifier =
                 Modifier
@@ -120,6 +122,7 @@ fun SubredditScreen(
         ) {
             SubredditPostList(
                 uiState = uiState,
+                postList = postListState,
                 listState = listState,
                 feedSettings = feedSettings,
                 callbacks = callbacks,
@@ -130,10 +133,10 @@ fun SubredditScreen(
 
     if (showSortSheet) {
         SortBottomSheet(
-            currentSort = uiState.currentSort,
-            currentTimeFilter = uiState.currentTimeFilter,
-            onSelectSort = viewModel::setSort,
-            onSelectTimeFilter = viewModel::setTimeFilter,
+            currentSort = postListState.currentSort,
+            currentTimeFilter = postListState.currentTimeFilter,
+            onSelectSort = viewModel.postList::setSort,
+            onSelectTimeFilter = viewModel.postList::setTimeFilter,
             onDismiss = { showSortSheet = false },
         )
     }
@@ -164,6 +167,7 @@ private fun SubredditTopBar(
 @Composable
 private fun SubredditPostList(
     uiState: SubredditUiState,
+    postList: PostListState,
     listState: LazyListState,
     feedSettings: PostFeedSettings,
     callbacks: PostListCallbacks,
@@ -183,7 +187,7 @@ private fun SubredditPostList(
             }
         }
 
-        if (uiState.isLoading && uiState.posts.isEmpty()) {
+        if (postList.isLoading && postList.posts.isEmpty()) {
             item {
                 Box(
                     modifier =
@@ -197,12 +201,12 @@ private fun SubredditPostList(
             }
         } else {
             items(
-                items = uiState.posts,
+                items = postList.posts,
                 key = { it.id },
             ) { post ->
                 FeedPostItem(post = post, settings = feedSettings, callbacks = callbacks, isLoggedIn = uiState.isLoggedIn)
             }
-            if (uiState.isLoadingMore) loadingMoreItem()
+            if (postList.isLoadingMore) loadingMoreItem()
         }
     }
 }

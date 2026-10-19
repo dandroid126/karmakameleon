@@ -2,7 +2,5 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
-    <ID>NoNameShadowing:FeedViewModel.kt:FeedViewModel${ it.copy(isLoadingMore = false) }</ID>
-    <ID>NoNameShadowing:SubredditViewModel.kt:SubredditViewModel${ it.copy(isLoadingMore = false) }</ID>
   </CurrentIssues>
 </SmellBaseline>

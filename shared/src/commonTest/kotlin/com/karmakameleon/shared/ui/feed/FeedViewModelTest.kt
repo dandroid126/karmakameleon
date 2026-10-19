@@ -57,13 +57,13 @@ class FeedViewModelTest {
         runTest {
             advanceUntilIdle()
             // Verify initialization completes without error
-            assertNull(viewModel.uiState.value.error)
+            assertNull(viewModel.postList.state.value.error)
         }
 
     @Test
     fun init_setsDefaultState() {
-        assertEquals(PostSort.HOT, viewModel.uiState.value.currentSort)
-        assertEquals(TimeFilter.DAY, viewModel.uiState.value.currentTimeFilter)
+        assertEquals(PostSort.HOT, viewModel.postList.state.value.currentSort)
+        assertEquals(TimeFilter.DAY, viewModel.postList.state.value.currentTimeFilter)
         assertEquals(FeedType.HOME, viewModel.uiState.value.currentFeedType)
         assertNull(viewModel.uiState.value.currentSubreddit)
     }
@@ -73,43 +73,43 @@ class FeedViewModelTest {
     @Test
     fun loadPosts_setsLoadingState() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
-            assertFalse(viewModel.uiState.value.isLoading)
+            assertFalse(viewModel.postList.state.value.isLoading)
         }
 
     @Test
     fun loadPosts_forceRefresh_setsRefreshingState() =
         runTest {
-            viewModel.loadPosts(forceRefresh = true)
+            viewModel.postList.load(forceRefresh = true)
             advanceUntilIdle()
-            assertFalse(viewModel.uiState.value.isRefreshing)
+            assertFalse(viewModel.postList.state.value.isRefreshing)
         }
 
     @Test
     fun loadPosts_preventsMultipleConcurrentLoads() =
         runTest {
-            viewModel.loadPosts()
-            viewModel.loadPosts()
+            viewModel.postList.load()
+            viewModel.postList.load()
             advanceUntilIdle()
-            assertFalse(viewModel.uiState.value.isLoading)
+            assertFalse(viewModel.postList.state.value.isLoading)
         }
 
     @Test
     fun loadPosts_clearsErrorOnNewLoad() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
-            assertEquals(null, viewModel.uiState.value.error)
+            assertEquals(null, viewModel.postList.state.value.error)
         }
 
     @Test
     fun loadPosts_filtersNsfwPostsWhenDisabled() =
         runTest {
             settingsRepo.setNsfwEnabled(false)
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
-            val posts = viewModel.uiState.value.posts
+            val posts = viewModel.postList.state.value.posts
             assertTrue(posts.all { !it.isNsfw })
         }
 
@@ -117,18 +117,18 @@ class FeedViewModelTest {
     fun loadPosts_includesNsfwPostsWhenEnabled() =
         runTest {
             settingsRepo.setNsfwEnabled(true)
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
             // Just verify no error occurs
-            assertNull(viewModel.uiState.value.error)
+            assertNull(viewModel.postList.state.value.error)
         }
 
     @Test
     fun loadPosts_setsAfterAndHasMore() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
-            val state = viewModel.uiState.value
+            val state = viewModel.postList.state.value
             assertNull(state.error)
         }
 
@@ -137,51 +137,51 @@ class FeedViewModelTest {
     @Test
     fun loadMorePosts_appendsToExistingPosts() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
-            val initialCount = viewModel.uiState.value.posts.size
+            val initialCount = viewModel.postList.state.value.posts.size
 
-            viewModel.loadMorePosts()
+            viewModel.postList.loadMore()
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.posts.size >= initialCount)
+            assertTrue(viewModel.postList.state.value.posts.size >= initialCount)
         }
 
     @Test
     fun loadMorePosts_preventsLoadWhenNoMore() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
-            viewModel.loadMorePosts()
+            viewModel.postList.loadMore()
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoadingMore)
+            assertFalse(viewModel.postList.state.value.isLoadingMore)
         }
 
     @Test
     fun loadMorePosts_preventsMultipleConcurrentLoads() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
-            viewModel.loadMorePosts()
-            viewModel.loadMorePosts()
+            viewModel.postList.loadMore()
+            viewModel.postList.loadMore()
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoadingMore)
+            assertFalse(viewModel.postList.state.value.isLoadingMore)
         }
 
     @Test
     fun loadMorePosts_requiresAfterToken() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
-            viewModel.loadMorePosts()
+            viewModel.postList.loadMore()
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoadingMore)
+            assertFalse(viewModel.postList.state.value.isLoadingMore)
         }
 
     // ==================== Sorting ====================
@@ -189,33 +189,33 @@ class FeedViewModelTest {
     @Test
     fun setSort_changesCurrentSort() =
         runTest {
-            viewModel.setSort(PostSort.NEW)
+            viewModel.postList.setSort(PostSort.NEW)
             advanceUntilIdle()
-            assertEquals(PostSort.NEW, viewModel.uiState.value.currentSort)
+            assertEquals(PostSort.NEW, viewModel.postList.state.value.currentSort)
         }
 
     @Test
     fun setSort_clearsPostsAndAfter() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
-            viewModel.setSort(PostSort.TOP)
+            viewModel.postList.setSort(PostSort.TOP)
             advanceUntilIdle()
 
-            assertEquals(PostSort.TOP, viewModel.uiState.value.currentSort)
+            assertEquals(PostSort.TOP, viewModel.postList.state.value.currentSort)
         }
 
     @Test
     fun setSort_preventsDuplicateSort() =
         runTest {
-            viewModel.setSort(PostSort.HOT)
+            viewModel.postList.setSort(PostSort.HOT)
             advanceUntilIdle()
 
-            viewModel.setSort(PostSort.HOT)
+            viewModel.postList.setSort(PostSort.HOT)
             advanceUntilIdle()
 
-            assertEquals(PostSort.HOT, viewModel.uiState.value.currentSort)
+            assertEquals(PostSort.HOT, viewModel.postList.state.value.currentSort)
         }
 
     // ==================== Time Filter ====================
@@ -223,33 +223,33 @@ class FeedViewModelTest {
     @Test
     fun setTimeFilter_changesCurrentTimeFilter() =
         runTest {
-            viewModel.setTimeFilter(TimeFilter.WEEK)
+            viewModel.postList.setTimeFilter(TimeFilter.WEEK)
             advanceUntilIdle()
-            assertEquals(TimeFilter.WEEK, viewModel.uiState.value.currentTimeFilter)
+            assertEquals(TimeFilter.WEEK, viewModel.postList.state.value.currentTimeFilter)
         }
 
     @Test
     fun setTimeFilter_clearsPostsAndAfter() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
-            viewModel.setTimeFilter(TimeFilter.MONTH)
+            viewModel.postList.setTimeFilter(TimeFilter.MONTH)
             advanceUntilIdle()
 
-            assertEquals(TimeFilter.MONTH, viewModel.uiState.value.currentTimeFilter)
+            assertEquals(TimeFilter.MONTH, viewModel.postList.state.value.currentTimeFilter)
         }
 
     @Test
     fun setTimeFilter_preventsDuplicateFilter() =
         runTest {
-            viewModel.setTimeFilter(TimeFilter.DAY)
+            viewModel.postList.setTimeFilter(TimeFilter.DAY)
             advanceUntilIdle()
 
-            viewModel.setTimeFilter(TimeFilter.DAY)
+            viewModel.postList.setTimeFilter(TimeFilter.DAY)
             advanceUntilIdle()
 
-            assertEquals(TimeFilter.DAY, viewModel.uiState.value.currentTimeFilter)
+            assertEquals(TimeFilter.DAY, viewModel.postList.state.value.currentTimeFilter)
         }
 
     // ==================== Subreddit Selection ====================
@@ -265,7 +265,7 @@ class FeedViewModelTest {
     @Test
     fun setSubreddit_clearsPostsAndAfter() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
             viewModel.setSubreddit("programming")
@@ -340,7 +340,7 @@ class FeedViewModelTest {
             viewModel.blockSubreddit("banned")
             advanceUntilIdle()
             // Verify no error occurs
-            assertNull(viewModel.uiState.value.error)
+            assertNull(viewModel.postList.state.value.error)
         }
 
     @Test
@@ -357,10 +357,10 @@ class FeedViewModelTest {
                 )
             settingsRepo.addBlockedSubreddit("banned")
 
-            viewModel.loadPosts(forceRefresh = true)
+            viewModel.postList.load(forceRefresh = true)
             advanceUntilIdle()
 
-            val posts = viewModel.uiState.value.posts
+            val posts = viewModel.postList.state.value.posts
             assertEquals(1, posts.size)
             assertEquals("kept", posts.single().subreddit)
         }
@@ -373,7 +373,7 @@ class FeedViewModelTest {
                     items = listOf(createTestPost(id = "0", subreddit = "kept")),
                     after = "t3_0",
                 )
-            viewModel.loadPosts(forceRefresh = true)
+            viewModel.postList.load(forceRefresh = true)
             advanceUntilIdle()
 
             settingsRepo.addBlockedSubreddit("banned")
@@ -385,10 +385,10 @@ class FeedViewModelTest {
                             createTestPost(id = "2", subreddit = "banned"),
                         ),
                 )
-            viewModel.loadMorePosts()
+            viewModel.postList.loadMore()
             advanceUntilIdle()
 
-            val posts = viewModel.uiState.value.posts
+            val posts = viewModel.postList.state.value.posts
             assertTrue(posts.none { it.subreddit.equals("banned", ignoreCase = true) })
             assertTrue(posts.any { it.id == "1" })
         }
@@ -398,18 +398,18 @@ class FeedViewModelTest {
     @Test
     fun vote_upvote_updatesPost() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
             val post =
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .firstOrNull() ?: return@runTest
-            viewModel.vote(post, 1)
+            viewModel.postList.vote(post, 1)
             advanceUntilIdle()
 
             // Verify post is still in list
             assertTrue(
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .any { it.id == post.id },
             )
         }
@@ -417,17 +417,17 @@ class FeedViewModelTest {
     @Test
     fun vote_downvote_updatesPost() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
             val post =
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .firstOrNull() ?: return@runTest
-            viewModel.vote(post, -1)
+            viewModel.postList.vote(post, -1)
             advanceUntilIdle()
 
             assertTrue(
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .any { it.id == post.id },
             )
         }
@@ -435,17 +435,17 @@ class FeedViewModelTest {
     @Test
     fun vote_clearVote_updatesPost() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
             val post =
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .firstOrNull() ?: return@runTest
-            viewModel.vote(post, 0)
+            viewModel.postList.vote(post, 0)
             advanceUntilIdle()
 
             assertTrue(
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .any { it.id == post.id },
             )
         }
@@ -455,17 +455,17 @@ class FeedViewModelTest {
     @Test
     fun save_savesPost() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
             val post =
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .firstOrNull() ?: return@runTest
-            viewModel.save(post)
+            viewModel.postList.save(post)
             advanceUntilIdle()
 
             assertTrue(
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .any { it.id == post.id },
             )
         }
@@ -483,18 +483,18 @@ class FeedViewModelTest {
                             createTestPost(id = "2"),
                         ),
                 )
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
-            viewModel.hide(
-                viewModel.uiState.value.posts
+            viewModel.postList.hide(
+                viewModel.postList.state.value.posts
                     .first(),
             )
             advanceUntilIdle()
 
             assertEquals(
                 listOf("2"),
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .map { it.id },
             )
         }
@@ -504,8 +504,8 @@ class FeedViewModelTest {
     @Test
     fun clearError_clearsErrorMessage() =
         runTest {
-            viewModel.clearError()
-            assertNull(viewModel.uiState.value.error)
+            viewModel.postList.clearError()
+            assertNull(viewModel.postList.state.value.error)
         }
 
     // ==================== Post Updates ====================
@@ -513,14 +513,14 @@ class FeedViewModelTest {
     @Test
     fun postUpdates_updatesExistingPost() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
             val post =
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .firstOrNull() ?: return@runTest
             assertTrue(
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .any { it.id == post.id },
             )
         }
@@ -528,17 +528,17 @@ class FeedViewModelTest {
     @Test
     fun postUpdates_removesHiddenPost() =
         runTest {
-            viewModel.loadPosts()
+            viewModel.postList.load()
             advanceUntilIdle()
 
             val post =
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .firstOrNull() ?: return@runTest
-            viewModel.hide(post)
+            viewModel.postList.hide(post)
             advanceUntilIdle()
 
             assertFalse(
-                viewModel.uiState.value.posts
+                viewModel.postList.state.value.posts
                     .any { it.id == post.id },
             )
         }
@@ -558,7 +558,7 @@ class FeedViewModelTest {
             settingsRepo.addBlockedSubreddit("banned")
             advanceUntilIdle()
 
-            val posts = viewModel.uiState.value.posts
+            val posts = viewModel.postList.state.value.posts
             assertTrue(posts.all { it.subreddit.lowercase() != "banned" })
         }
 }
