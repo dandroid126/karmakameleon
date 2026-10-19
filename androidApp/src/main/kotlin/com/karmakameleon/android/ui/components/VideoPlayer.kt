@@ -413,12 +413,7 @@ private fun FullscreenVideoDialog(
                     Modifier
                         .align(Alignment.Center)
                         .aspectRatio(state.videoAspectRatio)
-                        .graphicsLayer {
-                            scaleX = zoom.scale
-                            scaleY = zoom.scale
-                            translationX = zoom.offsetX
-                            translationY = zoom.offsetY
-                        },
+                        .zoomedBy(zoom),
             )
             VideoControls(
                 state = state,
@@ -430,24 +425,6 @@ private fun FullscreenVideoDialog(
         }
     }
 }
-
-// How far the fullscreen video is zoomed (1x to 5x) and panned. Panning only applies while zoomed in.
-private data class VideoZoom(
-    val scale: Float = 1f,
-    val offsetX: Float = 0f,
-    val offsetY: Float = 0f,
-) {
-    fun transformed(
-        panX: Float,
-        panY: Float,
-        gestureZoom: Float,
-    ): VideoZoom {
-        val newScale = (scale * gestureZoom).coerceIn(1f, MAX_ZOOM)
-        return if (newScale > 1f) VideoZoom(newScale, offsetX + panX, offsetY + panY) else VideoZoom(newScale)
-    }
-}
-
-private const val MAX_ZOOM = 5f
 
 // Hides the system bars and lets the screen rotate while fullscreen, restoring the orientation afterwards.
 @Composable

@@ -100,7 +100,7 @@ private fun RenderBlock(
             RenderInlineList(
                 inlines = block.children,
                 style = headingStyle(block.level),
-                modifier = headingPadding(block.level),
+                modifier = Modifier.headingPadding(block.level),
                 rendering = rendering,
                 onTextClick = onTextClick,
             )
@@ -167,7 +167,7 @@ private fun headingStyle(level: Int): TextStyle =
 // Space above and below headings of levels 1 to 4; smaller headings get 2.dp.
 private val HEADING_PADDING = listOf(8.dp, 6.dp, 4.dp, 4.dp)
 
-private fun headingPadding(level: Int): Modifier = Modifier.padding(vertical = HEADING_PADDING.getOrElse(level - 1) { 2.dp })
+private fun Modifier.headingPadding(level: Int): Modifier = padding(vertical = HEADING_PADDING.getOrElse(level - 1) { 2.dp })
 
 // A quote: a bar at its left edge, and its blocks in italics.
 @Composable

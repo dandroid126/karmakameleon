@@ -7,27 +7,8 @@
     <ID>AbstractClassCanBeInterface:MarkdownBlock.kt:MarkdownBlock$MarkdownBlock</ID>
     <ID>AbstractClassCanBeInterface:MarkdownInline.kt:MarkdownInline$MarkdownInline</ID>
     <ID>AbstractClassCanBeInterface:RedditApi.kt:CommentOrMore$CommentOrMore</ID>
-    <ID>ComplexCondition:InlineParser.kt:(text.startsWith("**", i) || text.startsWith("__", i)) &amp;&amp; !text.startsWith("***", i) &amp;&amp; !text.startsWith("___", i) &amp;&amp; "**" !in activeDelimiters &amp;&amp; "__" !in activeDelimiters</ID>
-    <ID>ComplexCondition:InlineParser.kt:(text.startsWith("***", i) || text.startsWith("___", i)) &amp;&amp; "***" !in activeDelimiters &amp;&amp; "___" !in activeDelimiters</ID>
-    <ID>ComplexCondition:InlineParser.kt:text.startsWith("^", i) &amp;&amp; i + 1 &lt; text.length &amp;&amp; text[i + 1] != '(' &amp;&amp; "^" !in activeDelimiters</ID>
-    <ID>CyclomaticComplexMethod:BlockParser.kt:fun parseMarkdownBlocks: List&lt;MarkdownBlock&gt;</ID>
-    <ID>CyclomaticComplexMethod:InlineParser.kt:private fun parseInlineRecursive: List&lt;MarkdownInline&gt;</ID>
-    <ID>CyclomaticComplexMethod:LinkParser.kt:fun parseRedditLink: RedditLink</ID>
-    <ID>ForbiddenComment:RedditApi.kt:RedditApi$// TODO: Parse nested replies</ID>
-    <ID>LargeClass:CommentViewModel.kt:CommentViewModel : ViewModel</ID>
-    <ID>LargeClass:ProfileViewModel.kt:ProfileViewModel : ViewModel</ID>
-    <ID>LargeClass:RedditApi.kt:RedditApi</ID>
-    <ID>LongMethod:BlockParser.kt:fun parseMarkdownBlocks: List&lt;MarkdownBlock&gt;</ID>
-    <ID>LongMethod:InlineParser.kt:private fun parseInlineRecursive: List&lt;MarkdownInline&gt;</ID>
-    <ID>LongParameterList:PostDetailViewModel.kt:PostDetailViewModel</ID>
-    <ID>LoopWithTooManyJumpStatements:BlockParser.kt:for</ID>
-    <ID>LoopWithTooManyJumpStatements:InlineParser.kt:while</ID>
-    <ID>LoopWithTooManyJumpStatements:PostDetailViewModel.kt:PostDetailViewModel$while</ID>
     <ID>MagicNumber:AuthManager.kt:AuthManager$30</ID>
-    <ID>MagicNumber:BlockParser.kt:3</ID>
     <ID>MagicNumber:BlockParser.kt:4</ID>
-    <ID>MagicNumber:BlockParser.kt:5</ID>
-    <ID>MagicNumber:BlockParser.kt:6</ID>
     <ID>MagicNumber:FlairColor.kt:0.04045</ID>
     <ID>MagicNumber:FlairColor.kt:0.055</ID>
     <ID>MagicNumber:FlairColor.kt:0xFF</ID>
@@ -39,10 +20,6 @@
     <ID>MagicNumber:HttpClientFactory.kt:15_000</ID>
     <ID>MagicNumber:HttpClientFactory.kt:30_000</ID>
     <ID>MagicNumber:InboxPoller.kt:InboxPoller$1_000L</ID>
-    <ID>MagicNumber:InlineParser.kt:3</ID>
-    <ID>MagicNumber:LinkParser.kt:4</ID>
-    <ID>MagicNumber:LinkParser.kt:5</ID>
-    <ID>MagicNumber:LinkParser.kt:6</ID>
     <ID>MagicNumber:NotificationInterval.kt:NotificationInterval.FIFTEEN_MINUTES$15L</ID>
     <ID>MagicNumber:NotificationInterval.kt:NotificationInterval.ONE_HOUR$60L</ID>
     <ID>MagicNumber:NotificationInterval.kt:NotificationInterval.SIX_HOURS$360L</ID>
@@ -51,41 +28,15 @@
     <ID>MagicNumber:ProfileViewModel.kt:ProfileViewModel$16</ID>
     <ID>MagicNumber:ReadPostsRepository.kt:ReadPostsRepository$3</ID>
     <ID>MagicNumber:RedditApi.kt:RedditApi$100</ID>
-    <ID>MagicNumber:RedditApi.kt:RedditApi$3</ID>
     <ID>MagicNumber:SearchViewModel.kt:SearchViewModel$300</ID>
-    <ID>NestedBlockDepth:CommentViewModel.kt:CommentViewModel$private fun flattenCommentTree: List&lt;FlatCommentItem&gt;</ID>
-    <ID>NestedBlockDepth:InlineParser.kt:private fun parseInlineRecursive: List&lt;MarkdownInline&gt;</ID>
     <ID>NoNameShadowing:FeedViewModel.kt:FeedViewModel${ it.copy(isLoadingMore = false) }</ID>
     <ID>NoNameShadowing:InboxViewModel.kt:InboxViewModel${ it.copy(replyingToMessage = null, replyText = "") }</ID>
-    <ID>NoNameShadowing:ProfileViewModel.kt:ProfileViewModel${ it.copy(isLoadingContent = false) }</ID>
-    <ID>NoNameShadowing:ProfileViewModel.kt:ProfileViewModel${ it.copy(isLoadingMoreComments = false) }</ID>
-    <ID>NoNameShadowing:ProfileViewModel.kt:ProfileViewModel${ it.copy(isLoadingMoreDownvoted = false) }</ID>
-    <ID>NoNameShadowing:ProfileViewModel.kt:ProfileViewModel${ it.copy(isLoadingMorePosts = false) }</ID>
-    <ID>NoNameShadowing:ProfileViewModel.kt:ProfileViewModel${ it.copy(isLoadingMoreSavedComments = false) }</ID>
-    <ID>NoNameShadowing:ProfileViewModel.kt:ProfileViewModel${ it.copy(isLoadingMoreSavedPosts = false) }</ID>
-    <ID>NoNameShadowing:ProfileViewModel.kt:ProfileViewModel${ it.copy(isLoadingMoreUpvoted = false) }</ID>
     <ID>NoNameShadowing:SearchViewModel.kt:SearchViewModel${ it.copy(isLoading = false) }</ID>
     <ID>NoNameShadowing:SubredditViewModel.kt:SubredditViewModel${ it.copy(isLoadingMore = false) }</ID>
-    <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$fun findCommentById: Comment?</ID>
-    <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$fun searchTree: Comment?</ID>
-    <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$private fun searchReplies: Comment?</ID>
-    <ID>ReturnCount:CommentViewModel.kt:CommentViewModel$private fun searchRepliesForName: Comment?</ID>
-    <ID>TooManyFunctions:CommentViewModel.kt:CommentViewModel : ViewModel</ID>
-    <ID>TooManyFunctions:InboxViewModel.kt:InboxViewModel : ViewModel</ID>
-    <ID>TooManyFunctions:PostDetailViewModel.kt:PostDetailViewModel : ViewModel</ID>
-    <ID>TooManyFunctions:PostRepository.kt:PostRepository</ID>
-    <ID>TooManyFunctions:ProfileViewModel.kt:ProfileViewModel : ViewModel</ID>
-    <ID>TooManyFunctions:RedditApi.kt:RedditApi</ID>
-    <ID>TooManyFunctions:SettingsRepository.kt:SettingsRepository</ID>
-    <ID>TooManyFunctions:UserRepository.kt:UserRepository</ID>
     <ID>UnusedPrivateProperty:FeedViewModel.kt:FeedViewModel$private val subredditRepository: SubredditRepository</ID>
     <ID>UnusedPrivateProperty:SubredditRepository.kt:SubredditRepository$private val settingsRepository: SettingsRepository</ID>
     <ID>UseOrEmpty:AuthManager.kt:AuthManager$settings.get&lt;String&gt;(KEY_CLIENT_ID) ?: ""</ID>
     <ID>UseOrEmpty:PostDetailViewModel.kt:PostDetailViewModel$commentViewModel.findCommentByName(parentId)?.body ?: ""</ID>
-    <ID>UseOrEmpty:RedditApi.kt:RedditApi$dto.authorFlairRichtext?.map { rt -&gt; FlairRichtext( type = rt.e, text = rt.t, url = rt.u, ) } ?: emptyList()</ID>
-    <ID>UseOrEmpty:RedditApi.kt:RedditApi$dto.permalink ?: ""</ID>
-    <ID>UseOrEmpty:RedditApi.kt:RedditApi$dto.title ?: ""</ID>
     <ID>UseOrEmpty:RedditApi.kt:RedditApi$listings.getOrNull(1)?.data?.children ?: emptyList()</ID>
-    <ID>UseOrEmpty:RedditApi.kt:RedditApi$moreResponse.json.data?.things?.mapNotNull { thing -&gt; when (thing.kind) { "t1" -&gt; { CommentOrMore.CommentItem(parseComment(thing.data, 0)) } "more" -&gt; { val more = json.decodeFromJsonElement&lt;MoreCommentsDto&gt;(thing.data) CommentOrMore.More(parseMoreComments(more)) } else -&gt; { null } } } ?: emptyList()</ID>
   </CurrentIssues>
 </SmellBaseline>

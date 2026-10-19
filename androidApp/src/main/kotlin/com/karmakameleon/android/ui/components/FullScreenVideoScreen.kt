@@ -16,6 +16,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -29,38 +30,20 @@ import com.karmakameleon.android.ui.theme.mediaColors
 fun FullScreenVideoScreen(
     videoUrl: String,
     onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     BackHandler(onBack = onBackClick)
-
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offsetX by remember { mutableFloatStateOf(0f) }
-    var offsetY by remember { mutableFloatStateOf(0f) }
+    var zoom by remember { mutableStateOf(VideoZoom()) }
 
     Box(
         modifier =
-            Modifier
+            modifier
                 .fillMaxSize()
                 .background(mediaColors().mediaBackgroundColor)
                 .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, zoom, _ ->
-                        val newScale = (scale * zoom).coerceIn(1f, 5f)
-                        scale = newScale
-                        if (newScale > 1f) {
-                            offsetX += pan.x
-                            offsetY += pan.y
-                        } else {
-                            offsetX = 0f
-                            offsetY = 0f
-                        }
-                    }
+                    detectTransformGestures { _, pan, gestureZoom, _ -> zoom = zoom.transformed(pan.x, pan.y, gestureZoom) }
                 }.pointerInput(Unit) {
-                    detectTapGestures(
-                        onDoubleTap = {
-                            scale = 1f
-                            offsetX = 0f
-                            offsetY = 0f
-                        },
-                    )
+                    detectTapGestures(onDoubleTap = { zoom = VideoZoom() })
                 },
     ) {
         VideoPlayer(
@@ -70,12 +53,7 @@ fun FullScreenVideoScreen(
                 Modifier
                     .fillMaxWidth()
                     .align(Alignment.Center)
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                        translationX = offsetX
-                        translationY = offsetY
-                    },
+                    .zoomedBy(zoom),
             menuItems = videoMenuItems(videoUrl),
         )
 

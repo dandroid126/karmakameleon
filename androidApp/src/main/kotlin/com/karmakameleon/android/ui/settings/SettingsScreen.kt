@@ -216,7 +216,13 @@ private fun LazyListScope.blockedSubredditSettings(
     blockedSubreddits: Set<String>,
     onUnblock: (String) -> Unit,
 ) {
-    item { SettingTitle("Blocked Subreddits", "Posts from these subreddits will be hidden from all feeds") }
+    item {
+        SettingTitle(
+            title = "Blocked Subreddits",
+            description = "Posts from these subreddits will be hidden from all feeds",
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+    }
     item {
         if (blockedSubreddits.isEmpty()) {
             Text(
@@ -266,7 +272,7 @@ private fun SettingsDivider() {
 private fun SettingTitle(
     title: String,
     description: String,
-    modifier: Modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
         Text(text = title, style = MaterialTheme.typography.bodyLarge)
@@ -317,7 +323,7 @@ private fun <T> ChoiceSetting(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        SettingTitle(title = title, description = description, modifier = Modifier)
+        SettingTitle(title = title, description = description)
         FlowColumn {
             options.forEach { option ->
                 FilterChip(

@@ -39,44 +39,19 @@ import com.karmakameleon.android.ui.menu.OverflowMenuItem
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
-// Most of the pages people open from posts need JavaScript to work.
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun WebBrowserScreen(
     url: String,
     onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
     globalMenuManager: GlobalMenuManager = koinInject(),
 ) {
-    val context = LocalContext.current
-    val clipboard = LocalClipboard.current
-    val coroutineScope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(true) }
-    var canGoBack by remember { mutableStateOf(false) }
-    var webViewRef: WebView? by remember { mutableStateOf(null) }
-
-    DisposableEffect(url) {
-        globalMenuManager.setScreenItems(
-            listOf(
-                OverflowMenuItem(
-                    title = "Copy Link",
-                    icon = Icons.Default.Link,
-                    onClick = {
-                        coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", url))) }
-                    },
-                ),
-                OverflowMenuItem(
-                    title = "Open in Browser",
-                    icon = Icons.Default.OpenInBrowser,
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
-                    },
-                ),
-            ),
-        )
-        onDispose { globalMenuManager.clearScreenItems() }
-    }
+    var webView: WebView? by remember { mutableStateOf(null) }
+    BrowserMenuItems(url = url, globalMenuManager = globalMenuManager)
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             UniversalTopAppBar(
                 title = { Text(url.take(50)) },
@@ -86,7 +61,7 @@ fun WebBrowserScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { webViewRef?.reload() }) {
+                    IconButton(onClick = { webView?.reload() }) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 },
@@ -100,49 +75,7 @@ fun WebBrowserScreen(
                     .padding(padding)
                     .imePadding(),
         ) {
-            AndroidView(
-                factory = { context ->
-                    WebView(context).apply {
-                        webViewClient =
-                            object : WebViewClient() {
-                                override fun onPageStarted(
-                                    view: WebView?,
-                                    url: String?,
-                                    favicon: android.graphics.Bitmap?,
-                                ) {
-                                    isLoading = true
-                                    canGoBack = view?.canGoBack() ?: false
-                                }
-
-                                override fun onPageFinished(
-                                    view: WebView?,
-                                    url: String?,
-                                ) {
-                                    isLoading = false
-                                    canGoBack = view?.canGoBack() ?: false
-                                }
-                            }
-                        settings.apply {
-                            javaScriptEnabled = true
-                            domStorageEnabled = true
-                        }
-                        val httpsUrl =
-                            if (url.startsWith("http://")) {
-                                url.replace("http://", "https://")
-                            } else {
-                                url
-                            }
-                        loadUrl(httpsUrl)
-                        webViewRef = this
-                    }
-                },
-                onRelease = { webView ->
-                    webView.stopLoading()
-                    webView.destroy()
-                },
-                modifier = Modifier.fillMaxSize(),
-            )
-
+            BrowserWebView(url = url, onLoadingChange = { isLoading = it }, onCreate = { webView = it })
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier =
@@ -153,4 +86,76 @@ fun WebBrowserScreen(
             }
         }
     }
+}
+
+// Adds Copy Link and Open in Browser to the overflow menu while the page is shown.
+@Composable
+private fun BrowserMenuItems(
+    url: String,
+    globalMenuManager: GlobalMenuManager,
+) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
+    DisposableEffect(url) {
+        globalMenuManager.setScreenItems(
+            listOf(
+                OverflowMenuItem(
+                    title = "Copy Link",
+                    icon = Icons.Default.Link,
+                    onClick = { coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", url))) } },
+                ),
+                OverflowMenuItem(
+                    title = "Open in Browser",
+                    icon = Icons.Default.OpenInBrowser,
+                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) },
+                ),
+            ),
+        )
+        onDispose { globalMenuManager.clearScreenItems() }
+    }
+}
+
+// Most of the pages people open from posts need JavaScript to work. http links are upgraded to https.
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+private fun BrowserWebView(
+    url: String,
+    onLoadingChange: (Boolean) -> Unit,
+    onCreate: (WebView) -> Unit,
+) {
+    AndroidView(
+        factory = { context ->
+            WebView(context).apply {
+                webViewClient =
+                    object : WebViewClient() {
+                        override fun onPageStarted(
+                            view: WebView?,
+                            url: String?,
+                            favicon: android.graphics.Bitmap?,
+                        ) {
+                            onLoadingChange(true)
+                        }
+
+                        override fun onPageFinished(
+                            view: WebView?,
+                            url: String?,
+                        ) {
+                            onLoadingChange(false)
+                        }
+                    }
+                settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                }
+                loadUrl(if (url.startsWith("http://")) url.replace("http://", "https://") else url)
+                onCreate(this)
+            }
+        },
+        onRelease = { webView ->
+            webView.stopLoading()
+            webView.destroy()
+        },
+        modifier = Modifier.fillMaxSize(),
+    )
 }

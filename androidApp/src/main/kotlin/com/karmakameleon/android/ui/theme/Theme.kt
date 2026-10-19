@@ -200,34 +200,38 @@ fun KarmaKameleonTheme(
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
+    val ourColors = if (darkTheme) DarkColorScheme else LightColorScheme
     val colorScheme =
-        when {
-            dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-                val context = LocalContext.current
-                val dynamic = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-                dynamic.copy(
-                    // Override dynamic colors with our own
-                    background = if (darkTheme) DarkColorScheme.background else LightColorScheme.background,
-                    onBackground = if (darkTheme) DarkColorScheme.onBackground else LightColorScheme.onBackground,
-                    surface = if (darkTheme) DarkColorScheme.surface else LightColorScheme.surface,
-                    onSurface = if (darkTheme) DarkColorScheme.onSurface else LightColorScheme.onSurface,
-                    surfaceContainer = if (darkTheme) DarkColorScheme.surfaceContainer else LightColorScheme.surfaceContainer,
-                    surfaceContainerHighest =
-                        if (darkTheme) DarkColorScheme.surfaceContainerHighest else LightColorScheme.surfaceContainerHighest,
-                    surfaceVariant = if (darkTheme) DarkColorScheme.surfaceVariant else LightColorScheme.surfaceVariant,
-                    onSurfaceVariant = if (darkTheme) DarkColorScheme.onSurfaceVariant else LightColorScheme.onSurfaceVariant,
-                )
-            }
-
-            darkTheme -> {
-                DarkColorScheme
-            }
-
-            else -> {
-                LightColorScheme
-            }
+        if (dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val context = LocalContext.current
+            val dynamic = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            // The wallpaper's accent colors, on our own backgrounds and surfaces.
+            dynamic.copy(
+                background = ourColors.background,
+                onBackground = ourColors.onBackground,
+                surface = ourColors.surface,
+                onSurface = ourColors.onSurface,
+                surfaceContainer = ourColors.surfaceContainer,
+                surfaceContainerHighest = ourColors.surfaceContainerHighest,
+                surfaceVariant = ourColors.surfaceVariant,
+                onSurfaceVariant = ourColors.onSurfaceVariant,
+            )
+        } else {
+            ourColors
         }
 
+    TransparentSystemBars(darkTheme)
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content,
+    )
+}
+
+// Draws behind transparent status and navigation bars, with icons that contrast with the theme.
+@Composable
+private fun TransparentSystemBars(darkTheme: Boolean) {
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -242,10 +246,4 @@ fun KarmaKameleonTheme(
             WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content,
-    )
 }
