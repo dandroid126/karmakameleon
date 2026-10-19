@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -54,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,6 +83,8 @@ import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
+import com.karmakameleon.shared.ui.PagedList
+import com.karmakameleon.shared.ui.profile.ProfileList
 import com.karmakameleon.shared.ui.profile.ProfileTab
 import com.karmakameleon.shared.ui.profile.ProfileViewModel
 import com.karmakameleon.shared.ui.profile.SavedContentType
@@ -376,114 +380,28 @@ fun ProfileScreen(
                         val upvotedListState = rememberLazyListState()
                         val downvotedListState = rememberLazyListState()
 
-                        val shouldLoadMorePosts by remember {
-                            derivedStateOf {
-                                val lastVisible = postsListState.layoutInfo.visibleItemsInfo.lastOrNull()
-                                lastVisible != null && lastVisible.index >= uiState.posts.size - 5
-                            }
+                        val tab = uiState.selectedTab
+                        LoadMoreNearEnd(postsListState, uiState.posts, active = tab == ProfileTab.POSTS) {
+                            viewModel.loadMore(ProfileList.POSTS)
                         }
-
-                        val shouldLoadMoreComments by remember {
-                            derivedStateOf {
-                                val lastVisible = commentsListState.layoutInfo.visibleItemsInfo.lastOrNull()
-                                lastVisible != null && lastVisible.index >= uiState.comments.size - 5
-                            }
+                        LoadMoreNearEnd(commentsListState, uiState.comments, active = tab == ProfileTab.COMMENTS) {
+                            viewModel.loadMore(ProfileList.COMMENTS)
                         }
-
-                        val shouldLoadMoreSavedPosts by remember {
-                            derivedStateOf {
-                                val lastVisible = savedPostsListState.layoutInfo.visibleItemsInfo.lastOrNull()
-                                lastVisible != null && lastVisible.index >= uiState.savedPosts.size - 5
-                            }
+                        LoadMoreNearEnd(
+                            savedPostsListState,
+                            uiState.savedPosts,
+                            active = tab == ProfileTab.SAVED && uiState.savedContentType == SavedContentType.POSTS,
+                        ) { viewModel.loadMore(ProfileList.SAVED_POSTS) }
+                        LoadMoreNearEnd(
+                            savedCommentsListState,
+                            uiState.savedComments,
+                            active = tab == ProfileTab.SAVED && uiState.savedContentType == SavedContentType.COMMENTS,
+                        ) { viewModel.loadMore(ProfileList.SAVED_COMMENTS) }
+                        LoadMoreNearEnd(upvotedListState, uiState.upvotedPosts, active = tab == ProfileTab.UPVOTED) {
+                            viewModel.loadMore(ProfileList.UPVOTED)
                         }
-
-                        val shouldLoadMoreSavedComments by remember {
-                            derivedStateOf {
-                                val lastVisible = savedCommentsListState.layoutInfo.visibleItemsInfo.lastOrNull()
-                                lastVisible != null && lastVisible.index >= uiState.savedComments.size - 5
-                            }
-                        }
-
-                        val shouldLoadMoreUpvoted by remember {
-                            derivedStateOf {
-                                val lastVisible = upvotedListState.layoutInfo.visibleItemsInfo.lastOrNull()
-                                lastVisible != null && lastVisible.index >= uiState.upvotedPosts.size - 5
-                            }
-                        }
-
-                        val shouldLoadMoreDownvoted by remember {
-                            derivedStateOf {
-                                val lastVisible = downvotedListState.layoutInfo.visibleItemsInfo.lastOrNull()
-                                lastVisible != null && lastVisible.index >= uiState.downvotedPosts.size - 5
-                            }
-                        }
-
-                        LaunchedEffect(shouldLoadMorePosts) {
-                            if (
-                                uiState.selectedTab == ProfileTab.POSTS &&
-                                shouldLoadMorePosts &&
-                                !uiState.isLoadingMorePosts &&
-                                uiState.hasMorePosts
-                            ) {
-                                viewModel.loadMoreUserPosts()
-                            }
-                        }
-
-                        LaunchedEffect(shouldLoadMoreComments) {
-                            if (
-                                uiState.selectedTab == ProfileTab.COMMENTS &&
-                                shouldLoadMoreComments &&
-                                !uiState.isLoadingMoreComments &&
-                                uiState.hasMoreComments
-                            ) {
-                                viewModel.loadMoreUserComments()
-                            }
-                        }
-
-                        LaunchedEffect(shouldLoadMoreSavedPosts) {
-                            if (
-                                uiState.selectedTab == ProfileTab.SAVED &&
-                                uiState.savedContentType == SavedContentType.POSTS &&
-                                shouldLoadMoreSavedPosts &&
-                                !uiState.isLoadingMoreSavedPosts &&
-                                uiState.hasMoreSavedPosts
-                            ) {
-                                viewModel.loadMoreSavedPosts()
-                            }
-                        }
-
-                        LaunchedEffect(shouldLoadMoreSavedComments) {
-                            if (
-                                uiState.selectedTab == ProfileTab.SAVED &&
-                                uiState.savedContentType == SavedContentType.COMMENTS &&
-                                shouldLoadMoreSavedComments &&
-                                !uiState.isLoadingMoreSavedComments &&
-                                uiState.hasMoreSavedComments
-                            ) {
-                                viewModel.loadMoreSavedComments()
-                            }
-                        }
-
-                        LaunchedEffect(shouldLoadMoreUpvoted) {
-                            if (
-                                uiState.selectedTab == ProfileTab.UPVOTED &&
-                                shouldLoadMoreUpvoted &&
-                                !uiState.isLoadingMoreUpvoted &&
-                                uiState.hasMoreUpvoted
-                            ) {
-                                viewModel.loadMoreUpvotedPosts()
-                            }
-                        }
-
-                        LaunchedEffect(shouldLoadMoreDownvoted) {
-                            if (
-                                uiState.selectedTab == ProfileTab.DOWNVOTED &&
-                                shouldLoadMoreDownvoted &&
-                                !uiState.isLoadingMoreDownvoted &&
-                                uiState.hasMoreDownvoted
-                            ) {
-                                viewModel.loadMoreDownvotedPosts()
-                            }
+                        LoadMoreNearEnd(downvotedListState, uiState.downvotedPosts, active = tab == ProfileTab.DOWNVOTED) {
+                            viewModel.loadMore(ProfileList.DOWNVOTED)
                         }
 
                         when (uiState.selectedTab) {
@@ -497,9 +415,9 @@ fun ProfileScreen(
 
                             ProfileTab.COMMENTS -> {
                                 ProfileCommentsTab(
-                                    comments = uiState.comments,
+                                    comments = uiState.comments.items,
                                     isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMore = uiState.isLoadingMoreComments,
+                                    isLoadingMore = uiState.comments.isLoadingMore,
                                     isLoggedIn = uiState.isLoggedIn,
                                     loggedInUsername = uiState.account?.name,
                                     listState = commentsListState,
@@ -517,11 +435,11 @@ fun ProfileScreen(
                             ProfileTab.SAVED -> {
                                 ProfileSavedTab(
                                     savedContentType = uiState.savedContentType,
-                                    savedPosts = uiState.savedPosts,
-                                    savedComments = uiState.savedComments,
+                                    savedPosts = uiState.savedPosts.items,
+                                    savedComments = uiState.savedComments.items,
                                     isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMorePosts = uiState.isLoadingMoreSavedPosts,
-                                    isLoadingMoreComments = uiState.isLoadingMoreSavedComments,
+                                    isLoadingMorePosts = uiState.savedPosts.isLoadingMore,
+                                    isLoadingMoreComments = uiState.savedComments.isLoadingMore,
                                     isLoggedIn = uiState.isLoggedIn,
                                     loggedInUsername = uiState.account?.name,
                                     savedPostsListState = savedPostsListState,
@@ -551,9 +469,9 @@ fun ProfileScreen(
 
                             ProfileTab.POSTS -> {
                                 ProfilePostsTab(
-                                    posts = uiState.posts,
+                                    posts = uiState.posts.items,
                                     isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMore = uiState.isLoadingMorePosts,
+                                    isLoadingMore = uiState.posts.isLoadingMore,
                                     isLoggedIn = uiState.isLoggedIn,
                                     listState = postsListState,
                                     readPostsRepository = readPostsRepository,
@@ -572,9 +490,9 @@ fun ProfileScreen(
 
                             ProfileTab.UPVOTED -> {
                                 ProfileUpvotedTab(
-                                    posts = uiState.upvotedPosts,
+                                    posts = uiState.upvotedPosts.items,
                                     isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMore = uiState.isLoadingMoreUpvoted,
+                                    isLoadingMore = uiState.upvotedPosts.isLoadingMore,
                                     isLoggedIn = uiState.isLoggedIn,
                                     listState = upvotedListState,
                                     readPostsRepository = readPostsRepository,
@@ -593,9 +511,9 @@ fun ProfileScreen(
 
                             ProfileTab.DOWNVOTED -> {
                                 ProfileDownvotedTab(
-                                    posts = uiState.downvotedPosts,
+                                    posts = uiState.downvotedPosts.items,
                                     isLoadingContent = uiState.isLoadingContent,
-                                    isLoadingMore = uiState.isLoadingMoreDownvoted,
+                                    isLoadingMore = uiState.downvotedPosts.isLoadingMore,
                                     isLoggedIn = uiState.isLoggedIn,
                                     listState = downvotedListState,
                                     readPostsRepository = readPostsRepository,
@@ -829,5 +747,25 @@ private fun AboutTabForUser(user: User?) {
                 }
             }
         }
+    }
+}
+
+// Calls onLoadMore when the list is scrolled to within a few items of its end, while active.
+@Composable
+private fun LoadMoreNearEnd(
+    listState: LazyListState,
+    list: PagedList<*>,
+    active: Boolean,
+    onLoadMore: () -> Unit,
+) {
+    val currentList by rememberUpdatedState(list)
+    val nearEnd by remember(listState) {
+        derivedStateOf {
+            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
+            lastVisible != null && lastVisible.index >= currentList.items.size - 5
+        }
+    }
+    LaunchedEffect(nearEnd) {
+        if (active && nearEnd && !list.isLoadingMore && list.hasMore) onLoadMore()
     }
 }

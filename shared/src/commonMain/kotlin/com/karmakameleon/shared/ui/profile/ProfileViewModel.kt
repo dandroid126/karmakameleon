@@ -9,10 +9,12 @@ import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Account
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
+import com.karmakameleon.shared.ui.PagedList
 import com.karmakameleon.shared.ui.comment.CommentViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,27 +25,15 @@ import kotlinx.coroutines.launch
 data class ProfileUiState(
     val account: Account? = null,
     val user: User? = null,
-    val posts: List<Post> = emptyList(),
-    val comments: List<Comment> = emptyList(),
-    val savedPosts: List<Post> = emptyList(),
-    val savedComments: List<Comment> = emptyList(),
-    val upvotedPosts: List<Post> = emptyList(),
-    val downvotedPosts: List<Post> = emptyList(),
+    val posts: PagedList<Post> = PagedList(),
+    val comments: PagedList<Comment> = PagedList(),
+    val savedPosts: PagedList<Post> = PagedList(),
+    val savedComments: PagedList<Comment> = PagedList(),
+    val upvotedPosts: PagedList<Post> = PagedList(),
+    val downvotedPosts: PagedList<Post> = PagedList(),
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val isLoadingContent: Boolean = false,
-    val isLoadingMorePosts: Boolean = false,
-    val isLoadingMoreComments: Boolean = false,
-    val isLoadingMoreSavedPosts: Boolean = false,
-    val isLoadingMoreSavedComments: Boolean = false,
-    val isLoadingMoreUpvoted: Boolean = false,
-    val isLoadingMoreDownvoted: Boolean = false,
-    val hasMorePosts: Boolean = true,
-    val hasMoreComments: Boolean = true,
-    val hasMoreSavedPosts: Boolean = true,
-    val hasMoreSavedComments: Boolean = true,
-    val hasMoreUpvoted: Boolean = true,
-    val hasMoreDownvoted: Boolean = true,
     val error: String? = null,
     val isLoggedIn: Boolean = false,
     val selectedTab: ProfileTab = ProfileTab.POSTS,
@@ -51,12 +41,6 @@ data class ProfileUiState(
     val postsTimeFilter: TimeFilter = TimeFilter.ALL,
     val commentsSort: PostSort = PostSort.NEW,
     val commentsTimeFilter: TimeFilter = TimeFilter.ALL,
-    val postsAfter: String? = null,
-    val commentsAfter: String? = null,
-    val savedPostsAfter: String? = null,
-    val savedCommentsAfter: String? = null,
-    val upvotedAfter: String? = null,
-    val downvotedAfter: String? = null,
     val authUrl: String? = null,
     val isOwnProfile: Boolean = false,
     val errorMessage: String? = null,
@@ -75,6 +59,16 @@ enum class ProfileTab(
     UPVOTED("Upvoted"),
     DOWNVOTED("Downvoted"),
     ABOUT("About"),
+}
+
+/** The profile's paged lists. */
+enum class ProfileList {
+    POSTS,
+    COMMENTS,
+    SAVED_POSTS,
+    SAVED_COMMENTS,
+    UPVOTED,
+    DOWNVOTED,
 }
 
 enum class SavedContentType(
@@ -141,7 +135,7 @@ class ProfileViewModel(
                             isRefreshing = false,
                         )
                     }
-                    loadUserPosts(account.name)
+                    load(userPosts, account.name)
                 },
                 onFailure = { error ->
                     _uiState.update {
@@ -178,7 +172,7 @@ class ProfileViewModel(
                             isRefreshing = false,
                         )
                     }
-                    loadUserPosts(username)
+                    load(userPosts, username)
                 },
                 onFailure = { error ->
                     _uiState.update {
@@ -200,339 +194,105 @@ class ProfileViewModel(
             _uiState.value.user?.name
         }
 
-    private fun loadUserPosts(
+    // How to read one paged list from the state, write it back, and fetch a page of it for a user.
+    private class ListSource<T>(
+        val get: (ProfileUiState) -> PagedList<T>,
+        val set: (ProfileUiState, PagedList<T>) -> ProfileUiState,
+        val fetchPage: suspend (username: String, after: String?) -> Result<Listing<T>>,
+    ) {
+        fun update(
+            state: ProfileUiState,
+            change: (PagedList<T>) -> PagedList<T>,
+        ): ProfileUiState = set(state, change(get(state)))
+    }
+
+    private val userPosts =
+        ListSource({ it.posts }, { state, list -> state.copy(posts = list) }) { username, after ->
+            userRepository.getUserPosts(username, _uiState.value.postsSort, _uiState.value.postsTimeFilter, after)
+        }
+    private val userComments =
+        ListSource({ it.comments }, { state, list -> state.copy(comments = list) }) { username, after ->
+            userRepository.getUserComments(username, _uiState.value.commentsSort, _uiState.value.commentsTimeFilter, after)
+        }
+
+    // The saved, upvoted and downvoted lists are the logged-in account's, so they don't need the username.
+    private val savedPosts =
+        ListSource({ it.savedPosts }, { state, list -> state.copy(savedPosts = list) }) { _, after -> userRepository.getSavedPosts(after) }
+    private val savedComments =
+        ListSource({ it.savedComments }, { state, list -> state.copy(savedComments = list) }) { _, after ->
+            userRepository.getSavedComments(after)
+        }
+    private val upvotedPosts =
+        ListSource({ it.upvotedPosts }, { state, list -> state.copy(upvotedPosts = list) }) { _, after ->
+            userRepository.getUpvotedPosts(after)
+        }
+    private val downvotedPosts =
+        ListSource({ it.downvotedPosts }, { state, list -> state.copy(downvotedPosts = list) }) { _, after ->
+            userRepository.getDownvotedPosts(after)
+        }
+
+    // Loads the first page of a list, replacing what it held.
+    private fun <T> load(
+        source: ListSource<T>,
         username: String,
-        sort: PostSort = _uiState.value.postsSort,
-        timeFilter: TimeFilter = _uiState.value.postsTimeFilter,
         forceRefresh: Boolean = false,
     ) {
         viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoadingContent = true,
-                    posts = if (forceRefresh) emptyList() else it.posts,
-                    hasMorePosts = true,
-                )
+            _uiState.update { state ->
+                source
+                    .update(
+                        state,
+                    ) { it.copy(items = if (forceRefresh) emptyList() else it.items, hasMore = true) }
+                    .copy(isLoadingContent = true)
             }
-            val result = userRepository.getUserPosts(username, sort, timeFilter)
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            posts = listing.items,
-                            postsAfter = listing.after,
-                            hasMorePosts = listing.hasMore,
-                            isLoadingContent = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingContent = false) }
-                },
-            )
+            val result = source.fetchPage(username, null)
+            _uiState.update { state ->
+                val loaded =
+                    result.fold(
+                        onSuccess = { listing ->
+                            source.update(state) { it.copy(items = listing.items, after = listing.after, hasMore = listing.hasMore) }
+                        },
+                        onFailure = { state },
+                    )
+                loaded.copy(isLoadingContent = false)
+            }
         }
     }
 
-    fun loadMoreUserPosts() {
-        val currentState = _uiState.value
-        if (currentState.isLoadingMorePosts || !currentState.hasMorePosts || currentState.postsAfter == null) return
+    fun loadMore(list: ProfileList) {
+        when (list) {
+            ProfileList.POSTS -> loadMore(userPosts)
+            ProfileList.COMMENTS -> loadMore(userComments)
+            ProfileList.SAVED_POSTS -> loadMore(savedPosts)
+            ProfileList.SAVED_COMMENTS -> loadMore(savedComments)
+            ProfileList.UPVOTED -> loadMore(upvotedPosts)
+            ProfileList.DOWNVOTED -> loadMore(downvotedPosts)
+        }
+    }
+
+    // Appends the next page of a list.
+    private fun <T> loadMore(source: ListSource<T>) {
+        val current = source.get(_uiState.value)
+        if (!current.canLoadMore) return
         val username = getUsername() ?: return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMorePosts = true) }
-            val result =
-                userRepository.getUserPosts(
-                    username,
-                    currentState.postsSort,
-                    currentState.postsTimeFilter,
-                    currentState.postsAfter,
-                )
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            posts = it.posts + listing.items,
-                            postsAfter = listing.after,
-                            hasMorePosts = listing.hasMore,
-                            isLoadingMorePosts = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingMorePosts = false) }
-                },
-            )
-        }
-    }
-
-    private fun loadUserComments(
-        username: String,
-        sort: PostSort = _uiState.value.commentsSort,
-        timeFilter: TimeFilter = _uiState.value.commentsTimeFilter,
-        forceRefresh: Boolean = false,
-    ) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoadingContent = true,
-                    comments = if (forceRefresh) emptyList() else it.comments,
-                    hasMoreComments = true,
-                )
+            _uiState.update { state -> source.update(state) { it.copy(isLoadingMore = true) } }
+            val result = source.fetchPage(username, current.after)
+            _uiState.update { state ->
+                source.update(state) { list ->
+                    result.fold(
+                        onSuccess = { listing ->
+                            list.copy(
+                                items = list.items + listing.items,
+                                after = listing.after,
+                                hasMore = listing.hasMore,
+                                isLoadingMore = false,
+                            )
+                        },
+                        onFailure = { list.copy(isLoadingMore = false) },
+                    )
+                }
             }
-            val result = userRepository.getUserComments(username, sort, timeFilter)
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            comments = listing.items,
-                            commentsAfter = listing.after,
-                            hasMoreComments = listing.hasMore,
-                            isLoadingContent = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingContent = false) }
-                },
-            )
-        }
-    }
-
-    fun loadMoreUserComments() {
-        val currentState = _uiState.value
-        if (currentState.isLoadingMoreComments || !currentState.hasMoreComments || currentState.commentsAfter == null) return
-        val username = getUsername() ?: return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMoreComments = true) }
-            val result =
-                userRepository.getUserComments(
-                    username,
-                    currentState.commentsSort,
-                    currentState.commentsTimeFilter,
-                    currentState.commentsAfter,
-                )
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            comments = it.comments + listing.items,
-                            commentsAfter = listing.after,
-                            hasMoreComments = listing.hasMore,
-                            isLoadingMoreComments = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingMoreComments = false) }
-                },
-            )
-        }
-    }
-
-    private fun loadSavedPosts(forceRefresh: Boolean = false) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoadingContent = true,
-                    savedPosts = if (forceRefresh) emptyList() else it.savedPosts,
-                    hasMoreSavedPosts = true,
-                )
-            }
-            val result = userRepository.getSavedPosts()
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            savedPosts = listing.items,
-                            savedPostsAfter = listing.after,
-                            hasMoreSavedPosts = listing.hasMore,
-                            isLoadingContent = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingContent = false) }
-                },
-            )
-        }
-    }
-
-    fun loadMoreSavedPosts() {
-        val currentState = _uiState.value
-        if (currentState.isLoadingMoreSavedPosts || !currentState.hasMoreSavedPosts || currentState.savedPostsAfter == null) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMoreSavedPosts = true) }
-            val result = userRepository.getSavedPosts(currentState.savedPostsAfter)
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            savedPosts = it.savedPosts + listing.items,
-                            savedPostsAfter = listing.after,
-                            hasMoreSavedPosts = listing.hasMore,
-                            isLoadingMoreSavedPosts = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingMoreSavedPosts = false) }
-                },
-            )
-        }
-    }
-
-    private fun loadSavedComments(forceRefresh: Boolean = false) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoadingContent = true,
-                    savedComments = if (forceRefresh) emptyList() else it.savedComments,
-                    hasMoreSavedComments = true,
-                )
-            }
-            val result = userRepository.getSavedComments()
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            savedComments = listing.items,
-                            savedCommentsAfter = listing.after,
-                            hasMoreSavedComments = listing.hasMore,
-                            isLoadingContent = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingContent = false) }
-                },
-            )
-        }
-    }
-
-    fun loadMoreSavedComments() {
-        val currentState = _uiState.value
-        if (currentState.isLoadingMoreSavedComments || !currentState.hasMoreSavedComments || currentState.savedCommentsAfter == null) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMoreSavedComments = true) }
-            val result = userRepository.getSavedComments(currentState.savedCommentsAfter)
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            savedComments = it.savedComments + listing.items,
-                            savedCommentsAfter = listing.after,
-                            hasMoreSavedComments = listing.hasMore,
-                            isLoadingMoreSavedComments = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingMoreSavedComments = false) }
-                },
-            )
-        }
-    }
-
-    private fun loadUpvotedPosts(forceRefresh: Boolean = false) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoadingContent = true,
-                    upvotedPosts = if (forceRefresh) emptyList() else it.upvotedPosts,
-                    hasMoreUpvoted = true,
-                )
-            }
-            val result = userRepository.getUpvotedPosts()
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            upvotedPosts = listing.items,
-                            upvotedAfter = listing.after,
-                            hasMoreUpvoted = listing.hasMore,
-                            isLoadingContent = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingContent = false) }
-                },
-            )
-        }
-    }
-
-    fun loadMoreUpvotedPosts() {
-        val currentState = _uiState.value
-        if (currentState.isLoadingMoreUpvoted || !currentState.hasMoreUpvoted || currentState.upvotedAfter == null) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMoreUpvoted = true) }
-            val result = userRepository.getUpvotedPosts(currentState.upvotedAfter)
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            upvotedPosts = it.upvotedPosts + listing.items,
-                            upvotedAfter = listing.after,
-                            hasMoreUpvoted = listing.hasMore,
-                            isLoadingMoreUpvoted = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingMoreUpvoted = false) }
-                },
-            )
-        }
-    }
-
-    private fun loadDownvotedPosts(forceRefresh: Boolean = false) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoadingContent = true,
-                    downvotedPosts = if (forceRefresh) emptyList() else it.downvotedPosts,
-                    hasMoreDownvoted = true,
-                )
-            }
-            val result = userRepository.getDownvotedPosts()
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            downvotedPosts = listing.items,
-                            downvotedAfter = listing.after,
-                            hasMoreDownvoted = listing.hasMore,
-                            isLoadingContent = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingContent = false) }
-                },
-            )
-        }
-    }
-
-    fun loadMoreDownvotedPosts() {
-        val currentState = _uiState.value
-        if (currentState.isLoadingMoreDownvoted || !currentState.hasMoreDownvoted || currentState.downvotedAfter == null) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMoreDownvoted = true) }
-            val result = userRepository.getDownvotedPosts(currentState.downvotedAfter)
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            downvotedPosts = it.downvotedPosts + listing.items,
-                            downvotedAfter = listing.after,
-                            hasMoreDownvoted = listing.hasMore,
-                            isLoadingMoreDownvoted = false,
-                        )
-                    }
-                },
-                onFailure = {
-                    _uiState.update { it.copy(isLoadingMoreDownvoted = false) }
-                },
-            )
         }
     }
 
@@ -540,53 +300,47 @@ class ProfileViewModel(
         _uiState.update { it.copy(selectedTab = tab) }
         val username = getUsername() ?: return
         when (tab) {
-            ProfileTab.POSTS -> {
-                if (_uiState.value.posts.isEmpty()) loadUserPosts(username)
-            }
-
-            ProfileTab.COMMENTS -> {
-                if (_uiState.value.comments.isEmpty()) loadUserComments(username)
-            }
-
-            ProfileTab.SAVED -> {
-                if (_uiState.value.savedPosts.isEmpty()) loadSavedPosts()
-                if (_uiState.value.savedComments.isEmpty()) loadSavedComments()
-            }
-
-            ProfileTab.UPVOTED -> {
-                if (_uiState.value.upvotedPosts.isEmpty()) loadUpvotedPosts()
-            }
-
-            ProfileTab.DOWNVOTED -> {
-                if (_uiState.value.downvotedPosts.isEmpty()) loadDownvotedPosts()
-            }
-
             ProfileTab.ABOUT -> { /* No loading needed */ }
+
+            else -> {
+                sourcesFor(tab).filter { it.get(_uiState.value).items.isEmpty() }.forEach { load(it, username) }
+            }
         }
     }
+
+    // The lists a tab shows.
+    private fun sourcesFor(tab: ProfileTab): List<ListSource<*>> =
+        when (tab) {
+            ProfileTab.POSTS -> listOf(userPosts)
+            ProfileTab.COMMENTS -> listOf(userComments)
+            ProfileTab.SAVED -> listOf(savedPosts, savedComments)
+            ProfileTab.UPVOTED -> listOf(upvotedPosts)
+            ProfileTab.DOWNVOTED -> listOf(downvotedPosts)
+            ProfileTab.ABOUT -> emptyList()
+        }
 
     fun setPostsSort(sort: PostSort) {
         _uiState.update { it.copy(postsSort = sort) }
         val username = getUsername() ?: return
-        loadUserPosts(username, sort, _uiState.value.postsTimeFilter)
+        load(userPosts, username)
     }
 
     fun setPostsTimeFilter(timeFilter: TimeFilter) {
         _uiState.update { it.copy(postsTimeFilter = timeFilter) }
         val username = getUsername() ?: return
-        loadUserPosts(username, _uiState.value.postsSort, timeFilter)
+        load(userPosts, username)
     }
 
     fun setCommentsSort(sort: PostSort) {
         _uiState.update { it.copy(commentsSort = sort) }
         val username = getUsername() ?: return
-        loadUserComments(username, sort, _uiState.value.commentsTimeFilter)
+        load(userComments, username)
     }
 
     fun setCommentsTimeFilter(timeFilter: TimeFilter) {
         _uiState.update { it.copy(commentsTimeFilter = timeFilter) }
         val username = getUsername() ?: return
-        loadUserComments(username, _uiState.value.commentsSort, timeFilter)
+        load(userComments, username)
     }
 
     fun setSavedContentType(type: SavedContentType) {
@@ -595,30 +349,13 @@ class ProfileViewModel(
 
     fun refresh() {
         val username = getUsername() ?: return
-        when (_uiState.value.selectedTab) {
-            ProfileTab.POSTS -> {
-                loadUserPosts(username, forceRefresh = true)
-            }
-
-            ProfileTab.COMMENTS -> {
-                loadUserComments(username, forceRefresh = true)
-            }
-
-            ProfileTab.SAVED -> {
-                loadSavedPosts(forceRefresh = true)
-                loadSavedComments(forceRefresh = true)
-            }
-
-            ProfileTab.UPVOTED -> {
-                loadUpvotedPosts(forceRefresh = true)
-            }
-
-            ProfileTab.DOWNVOTED -> {
-                loadDownvotedPosts(forceRefresh = true)
-            }
-
+        when (val tab = _uiState.value.selectedTab) {
             ProfileTab.ABOUT -> {
                 if (_uiState.value.isOwnProfile) loadOwnProfile(forceRefresh = true) else loadUserProfile(username, forceRefresh = true)
+            }
+
+            else -> {
+                sourcesFor(tab).forEach { load(it, username, forceRefresh = true) }
             }
         }
     }
@@ -691,50 +428,52 @@ class ProfileViewModel(
     ) {
         viewModelScope.launch {
             val result = postRepository.vote(post, direction)
-            result.onSuccess { updatedPost ->
-                _uiState.update { state ->
-                    state.copy(
-                        posts = state.posts.map { if (it.id == post.id) updatedPost else it },
-                        savedPosts = state.savedPosts.map { if (it.id == post.id) updatedPost else it },
-                        upvotedPosts = state.upvotedPosts.map { if (it.id == post.id) updatedPost else it },
-                        downvotedPosts = state.downvotedPosts.map { if (it.id == post.id) updatedPost else it },
-                    )
-                }
-            }
+            result.onSuccess { updatedPost -> _uiState.update { it.withPost(updatedPost) } }
         }
     }
 
     fun save(post: Post) {
         viewModelScope.launch {
             val result = postRepository.save(post)
-            result.onSuccess { updatedPost ->
-                _uiState.update { state ->
-                    state.copy(
-                        posts = state.posts.map { if (it.id == post.id) updatedPost else it },
-                        savedPosts =
-                            if (updatedPost.isSaved) {
-                                state.savedPosts.map { if (it.id == post.id) updatedPost else it }
-                            } else {
-                                state.savedPosts.filter { it.id != post.id }
-                            },
-                        upvotedPosts = state.upvotedPosts.map { if (it.id == post.id) updatedPost else it },
-                        downvotedPosts = state.downvotedPosts.map { if (it.id == post.id) updatedPost else it },
-                    )
-                }
-            }
+            result.onSuccess { updatedPost -> _uiState.update { it.withPost(updatedPost) } }
         }
+    }
+
+    // Replaces the post in every list that shows it, and drops it from the saved list once it's unsaved.
+    private fun ProfileUiState.withPost(updated: Post): ProfileUiState {
+        fun PagedList<Post>.replaced() = copy(items = items.map { if (it.id == updated.id) updated else it })
+        return copy(
+            posts = posts.replaced(),
+            savedPosts =
+                if (updated.isSaved) {
+                    savedPosts.replaced()
+                } else {
+                    savedPosts.copy(
+                        items =
+                            savedPosts.items.filter {
+                                it.id !=
+                                    updated.id
+                            },
+                    )
+                },
+            upvotedPosts = upvotedPosts.replaced(),
+            downvotedPosts = downvotedPosts.replaced(),
+        )
     }
 
     fun updateComment(updatedComment: Comment) {
         _uiState.update { state ->
             state.copy(
-                comments = state.comments.map { if (it.id == updatedComment.id) updatedComment else it },
+                comments = state.comments.copy(items = state.comments.items.map { if (it.id == updatedComment.id) updatedComment else it }),
                 savedComments =
-                    if (updatedComment.isSaved) {
-                        state.savedComments.map { if (it.id == updatedComment.id) updatedComment else it }
-                    } else {
-                        state.savedComments.filter { it.id != updatedComment.id }
-                    },
+                    state.savedComments.copy(
+                        items =
+                            if (updatedComment.isSaved) {
+                                state.savedComments.items.map { if (it.id == updatedComment.id) updatedComment else it }
+                            } else {
+                                state.savedComments.items.filter { it.id != updatedComment.id }
+                            },
+                    ),
             )
         }
     }
@@ -763,16 +502,18 @@ class ProfileViewModel(
         commentViewModel.deleteCommentWithCallback(comment) {
             _uiState.update { state ->
                 state.copy(
-                    comments = state.comments.filter { it.id != commentId },
-                    savedComments = state.savedComments.filter { it.id != commentId },
+                    comments = state.comments.copy(items = state.comments.items.filter { it.id != commentId }),
+                    savedComments = state.savedComments.copy(items = state.savedComments.items.filter { it.id != commentId }),
                 )
             }
         }
     }
 
     fun findCommentById(commentId: String): Comment? =
-        _uiState.value.comments.find { it.id == commentId }
-            ?: _uiState.value.savedComments.find { it.id == commentId }
+        _uiState.value.comments.items
+            .find { it.id == commentId }
+            ?: _uiState.value.savedComments.items
+                .find { it.id == commentId }
 
     private fun generateState(): String {
         val chars = "abcdefghijklmnopqrstuvwxyz0123456789"
