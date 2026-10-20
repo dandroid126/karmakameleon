@@ -31,8 +31,8 @@ jobs:
           # The open-source cache; the default one is a proprietary Gradle component.
           cache-provider: basic
 
-      - name: Run unit tests and check coverage of the changed lines
-        run: ./gradlew :shared:testAndroidHostTest diffCoverage
+      - name: Run unit tests and check coverage
+        run: ./gradlew :shared:testAndroidHostTest diffCoverage :shared:koverVerify
 
   quality-gate:
     name: Quality Gate
