@@ -12,13 +12,6 @@ data class Listing<T>(
     val hasMore: Boolean get() = after != null
 }
 
-@Serializable
-data class SearchResult(
-    val posts: Listing<Post>,
-    val subreddits: List<Subreddit>,
-    val users: List<User>,
-)
-
 enum class SearchSort(
     val value: String,
 ) {

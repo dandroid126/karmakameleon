@@ -4,6 +4,7 @@ import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
 import com.russhwolf.settings.MapSettings
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -275,5 +276,16 @@ class ReadPostsRepositoryTest {
 
         val repo2 = ReadPostsRepository(settings)
         assertTrue(repo2.isRead("post1"))
+    }
+
+    @Test
+    fun savedEntriesThatCannotBeReadAreSkipped() {
+        val settings = MapSettings()
+        // An old entry with only the ID, a current one, and one that's neither.
+        settings.putString("read_post_ids", "old1,new1|1|0,broken|1")
+
+        val repo = createRepo(settings)
+
+        assertEquals(setOf("old1", "new1"), repo.readPostIds.value)
     }
 }

@@ -224,15 +224,3 @@ private fun inlineGifUrl(match: MatchResult): String {
     val suffix = if ("downsized" in parts.drop(1)) "giphy-downsized.gif" else "giphy.gif"
     return "https://i.giphy.com/${parts[0]}/$suffix"
 }
-
-fun extractImageUrls(text: String): List<String> {
-    val urls = mutableListOf<String>()
-    inlineImagePattern.findAll(text).forEach { urls.add(inlineImageUrl(it)) }
-    inlineGifPattern.findAll(text).forEach { urls.add(inlineGifUrl(it)) }
-    for (match in previewRedditUrlPattern.findAll(text)) {
-        if (urls.none { it == match.value }) {
-            urls.add(match.value)
-        }
-    }
-    return urls
-}

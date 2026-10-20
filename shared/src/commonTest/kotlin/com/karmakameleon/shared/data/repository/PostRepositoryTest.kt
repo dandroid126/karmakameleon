@@ -506,4 +506,35 @@ class PostRepositoryTest {
         val (repo, _) = createRepo()
         assertNull(repo.getCachedPost("nonexistent"))
     }
+
+    @Test
+    fun enrichSparsePosts_cachesTheFilledInPosts() =
+        runTest {
+            val (repo, api) = createRepo()
+            val sparse = createTestPost(id = "p1", url = "https://example.com/article")
+            val enriched = sparse.copy(thumbnail = "https://example.com/thumb.jpg")
+            api.fetchPostsByIdsResult = listOf(enriched)
+
+            assertEquals(listOf(enriched), repo.enrichSparsePosts(listOf(sparse)))
+            assertEquals(enriched, repo.getCachedPost("p1"))
+        }
+
+    @Test
+    fun enrichSparsePosts_skipsPostsThatHaveTheirDetails() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.fetchPostsByIdsResult = listOf(createTestPost(id = "p1"))
+
+            assertEquals(emptyList(), repo.enrichSparsePosts(listOf(createTestPost(id = "p1", thumbnail = "https://example.com/t.jpg"))))
+            assertNull(repo.getCachedPost("p1"))
+        }
+
+    @Test
+    fun enrichSparsePosts_nothingFound() =
+        runTest {
+            val (repo, _) = createRepo()
+
+            assertEquals(emptyList(), repo.enrichSparsePosts(listOf(createTestPost(id = "p1", url = "https://example.com/article"))))
+            assertNull(repo.getCachedPost("p1"))
+        }
 }
