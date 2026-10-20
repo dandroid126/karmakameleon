@@ -81,6 +81,9 @@ fun RedditLoginWebView(
                     settings.apply {
                         javaScriptEnabled = true
                         domStorageEnabled = true
+                        // Web pages don't need the device's files or content:// URIs, like the app's own FileProvider.
+                        allowContentAccess = false
+                        allowFileAccess = false
                         // Reddit's login rejects the WebView user agent ("Something went wrong logging in"),
                         // so present the same Chrome version without the WebView markers.
                         userAgentString =
