@@ -65,26 +65,63 @@ class InboxViewModelTest {
     // ==================== Loading Messages ====================
 
     @Test
-    fun loadMessages_setsLoadingState() =
+    fun loadMessages_loggedOut_doesNotLoad() =
         runTest {
+            fakeApi.inboxResult = createTestListing(items = listOf(createTestMessage(id = "msg1")))
+
             viewModel.loadMessages()
             advanceUntilIdle()
 
+            assertTrue(
+                viewModel.uiState.value.messages
+                    .isEmpty(),
+            )
+        }
+
+    @Test
+    fun loadMessages_replacesMessages() =
+        runTest {
+            logInWithMessages(createTestMessage(id = "msg1"))
+            fakeApi.inboxResult = createTestListing(items = listOf(createTestMessage(id = "msg2")))
+
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("msg2"),
+                viewModel.uiState.value.messages
+                    .map { it.id },
+            )
             assertFalse(viewModel.uiState.value.isLoading)
         }
 
     @Test
-    fun loadMessages_forceRefresh_setsRefreshingState() =
+    fun loadMessages_forceRefresh_replacesMessages() =
         runTest {
+            logInWithMessages(createTestMessage(id = "msg1"))
+            fakeApi.inboxResult = createTestListing(items = listOf(createTestMessage(id = "msg2")))
+
             viewModel.loadMessages(forceRefresh = true)
             advanceUntilIdle()
 
+            assertEquals(
+                listOf("msg2"),
+                viewModel.uiState.value.messages
+                    .map { it.id },
+            )
             assertFalse(viewModel.uiState.value.isRefreshing)
         }
 
     @Test
     fun loadMessages_clearsErrorOnNewLoad() =
         runTest {
+            logInWithMessages(createTestMessage(id = "msg1"))
+            fakeApi.shouldThrow = IllegalStateException("Inbox failed")
+            viewModel.loadMessages()
+            advanceUntilIdle()
+            assertEquals("Inbox failed", viewModel.uiState.value.error)
+
+            fakeApi.shouldThrow = null
             viewModel.loadMessages()
             advanceUntilIdle()
 
@@ -118,7 +155,7 @@ class InboxViewModelTest {
     @Test
     fun selectMessage_togglesSelectedMessageId() =
         runTest {
-            loadMessages(createTestMessage(id = "msg1"))
+            logInWithMessages(createTestMessage(id = "msg1"))
 
             viewModel.selectMessage("msg1")
 
@@ -128,7 +165,7 @@ class InboxViewModelTest {
     @Test
     fun selectMessage_togglesOff() =
         runTest {
-            loadMessages(createTestMessage(id = "msg1"))
+            logInWithMessages(createTestMessage(id = "msg1"))
 
             viewModel.selectMessage("msg1")
             viewModel.selectMessage("msg1")
@@ -141,7 +178,7 @@ class InboxViewModelTest {
     @Test
     fun startReply_setsReplyingToMessage() =
         runTest {
-            loadMessages(createTestMessage(id = "msg1"))
+            logInWithMessages(createTestMessage(id = "msg1"))
             val message =
                 viewModel.uiState.value.messages
                     .first()
@@ -154,7 +191,7 @@ class InboxViewModelTest {
     @Test
     fun cancelReply_clearsReply() =
         runTest {
-            loadMessages(createTestMessage(id = "msg1"))
+            logInWithMessages(createTestMessage(id = "msg1"))
 
             viewModel.startReply(
                 viewModel.uiState.value.messages
@@ -185,7 +222,7 @@ class InboxViewModelTest {
     @Test
     fun markAsRead_updatesMessage() =
         runTest {
-            loadMessages(createTestMessage(id = "msg1", isNew = true), createTestMessage(id = "msg2", isNew = true))
+            logInWithMessages(createTestMessage(id = "msg1", isNew = true), createTestMessage(id = "msg2", isNew = true))
 
             viewModel.markAsRead(
                 viewModel.uiState.value.messages
@@ -203,13 +240,16 @@ class InboxViewModelTest {
     @Test
     fun markAllAsRead_updatesAllMessages() =
         runTest {
-            viewModel.loadMessages()
-            advanceUntilIdle()
+            logInWithMessages(createTestMessage(id = "msg1", isNew = true), createTestMessage(id = "msg2", isNew = true))
 
             viewModel.markAllAsRead()
             advanceUntilIdle()
 
-            assertNull(viewModel.uiState.value.error)
+            assertEquals(
+                listOf(false, false),
+                viewModel.uiState.value.messages
+                    .map { it.isNew },
+            )
         }
 
     // ==================== Voting ====================
@@ -217,7 +257,7 @@ class InboxViewModelTest {
     @Test
     fun voteOnMessage_updatesMessage() =
         runTest {
-            loadMessages(createTestMessage(id = "msg1", likes = null), createTestMessage(id = "msg2", likes = null))
+            logInWithMessages(createTestMessage(id = "msg1", likes = null), createTestMessage(id = "msg2", likes = null))
 
             viewModel.voteOnMessage(
                 viewModel.uiState.value.messages
@@ -234,7 +274,7 @@ class InboxViewModelTest {
         }
 
     // Logs in with [messages] in the inbox. The view model loads the inbox once the user is logged in.
-    private suspend fun TestScope.loadMessages(vararg messages: Message) {
+    private suspend fun TestScope.logInWithMessages(vararg messages: Message) {
         fakeApi.inboxResult = createTestListing(items = messages.toList())
         fakeApi.meResult = createTestUser()
         userRepo.loadCurrentUser()
