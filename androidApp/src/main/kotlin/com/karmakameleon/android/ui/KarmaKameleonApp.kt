@@ -59,7 +59,7 @@ import com.karmakameleon.android.ui.search.SearchScreen
 import com.karmakameleon.android.ui.settings.SettingsScreen
 import com.karmakameleon.android.ui.subreddit.SubredditListScreen
 import com.karmakameleon.android.ui.subreddit.SubredditScreen
-import com.karmakameleon.shared.data.api.RedditApi
+import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.util.extractYouTubeVideoId
@@ -225,14 +225,14 @@ private fun BindNavigation(
     navController: NavController,
     navigationHandler: NavigationHandler = koinInject(),
     globalMenuManager: GlobalMenuManager = koinInject(),
-    redditApi: RedditApi = koinInject(),
+    postRepository: PostRepository = koinInject(),
 ) {
     val coroutineScope = rememberCoroutineScope()
     DisposableEffect(navController) {
         globalMenuManager.bindTo(navController)
         navigationHandler.bindTo(navController) { subreddit, shareId ->
             coroutineScope.launch {
-                redditApi.resolveShareLink(subreddit, shareId)?.let { (resolvedSubreddit, postId) ->
+                postRepository.resolveShareLink(subreddit, shareId)?.let { (resolvedSubreddit, postId) ->
                     navController.openPost(resolvedSubreddit, postId)
                 }
             }

@@ -15,7 +15,7 @@ private const val REQUEST_TIMEOUT_MILLIS = 30_000L
 private const val CONNECT_TIMEOUT_MILLIS = 15_000L
 private const val SOCKET_TIMEOUT_MILLIS = 30_000L
 
-expect fun createHttpClient(): HttpClient
+expect fun createHttpClient(followRedirects: Boolean = true): HttpClient
 
 fun createHttpClientWithConfig(): HttpClient =
     createHttpClient().config {

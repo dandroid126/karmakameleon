@@ -25,6 +25,7 @@ ktlint = "1.8.0"
 detekt = "2.0.0-alpha.6"
 compose-rules = "0.6.8"
 pmd = "7.28.0"
+konsist = "0.18.1"
 jose4j = "0.9.7"
 jdom2 = "2.0.6.1"
 commons-lang3 = "3.21.0"
@@ -112,6 +113,7 @@ compose-rules-detekt = { module = "io.nlopez.compose.rules:detekt", version.ref 
 # Duplication detection (PMD's copy-paste detector)
 pmd-cli = { module = "net.sourceforge.pmd:pmd-cli", version.ref = "pmd" }
 pmd-kotlin = { module = "net.sourceforge.pmd:pmd-kotlin", version.ref = "pmd" }
+konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 
 [bundles]
 # Fixed versions of libraries that the build tooling (mostly AGP) brings in with known vulnerabilities.
@@ -122,6 +124,7 @@ security-fixes = ["bouncycastle-bcprov", "bouncycastle-bcpkix", "bouncycastle-bc
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+kotlinJvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "compose-multiplatform" }
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

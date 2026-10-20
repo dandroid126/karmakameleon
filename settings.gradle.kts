@@ -19,3 +19,4 @@ dependencyResolutionManagement {
 rootProject.name = "KarmaKameleon"
 include(":androidApp")
 include(":shared")
+include(":konsistTest")

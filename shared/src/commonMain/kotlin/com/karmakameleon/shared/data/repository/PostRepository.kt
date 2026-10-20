@@ -68,6 +68,13 @@ class PostRepository(
         }
     }
 
+    // Finds the post a share link (reddit.com/r/<subreddit>/s/<id>) points to, as its subreddit and ID, or null if
+    // it doesn't point to a post.
+    suspend fun resolveShareLink(
+        subreddit: String,
+        shareId: String,
+    ): Pair<String, String>? = redditApi.resolveShareLink(subreddit, shareId)
+
     suspend fun getPostWithComments(
         subreddit: String,
         postId: String,

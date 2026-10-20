@@ -45,6 +45,7 @@ import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.FormDataContent
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.request
@@ -61,7 +62,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -78,9 +78,13 @@ open class RedditApi(
     private val httpClient: HttpClient,
     private val authManager: AuthManager,
     private val settingsRepository: SettingsRepository? = null,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    // Share links are resolved by reading where they redirect to, so this client doesn't follow redirects.
+    createShareLinkClient: () -> HttpClient = { createHttpClient(followRedirects = false) },
 ) {
     private val apiScope = CoroutineScope(ioDispatcher + SupervisorJob())
+
+    private val shareLinkClient by lazy(createShareLinkClient)
 
     private val json =
         Json {
@@ -525,23 +529,11 @@ open class RedditApi(
         shareId: String,
     ): Pair<String, String>? =
         runSuspendCatching {
-            val noRedirectClient =
-                okhttp3.OkHttpClient
-                    .Builder()
-                    .followRedirects(false)
-                    .build()
-            val request =
-                okhttp3.Request
-                    .Builder()
-                    .url("$WWW_URL/r/$subreddit/s/$shareId")
-                    .header("User-Agent", "KK/1.0.0 (Android)")
-                    .build()
-            val locationUrl =
-                withContext(ioDispatcher) {
-                    noRedirectClient.newCall(request).execute().use { response ->
-                        response.header("Location")
-                    }
-                } ?: return null
+            val response =
+                shareLinkClient.get("$WWW_URL/r/$subreddit/s/$shareId") {
+                    header(HttpHeaders.UserAgent, "KK/1.0.0 (Android)")
+                }
+            val locationUrl = response.headers[HttpHeaders.Location] ?: return null
             when (val parsed = parseRedditLink(locationUrl)) {
                 is RedditLink.Post -> Pair(parsed.subreddit, parsed.postId)
                 else -> null
