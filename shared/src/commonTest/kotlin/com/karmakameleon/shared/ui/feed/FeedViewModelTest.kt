@@ -7,12 +7,14 @@ import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
+import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -398,56 +400,58 @@ class FeedViewModelTest {
     @Test
     fun vote_upvote_updatesPost() =
         runTest {
-            viewModel.postList.load()
+            loadPosts(createTestPost(id = "1", score = 100, likes = null))
+
+            viewModel.postList.vote(
+                viewModel.postList.state.value.posts
+                    .first(),
+                1,
+            )
             advanceUntilIdle()
 
             val post =
                 viewModel.postList.state.value.posts
-                    .firstOrNull() ?: return@runTest
-            viewModel.postList.vote(post, 1)
-            advanceUntilIdle()
-
-            // Verify post is still in list
-            assertTrue(
-                viewModel.postList.state.value.posts
-                    .any { it.id == post.id },
-            )
+                    .single()
+            assertEquals(true, post.likes)
+            assertEquals(101, post.score)
         }
 
     @Test
     fun vote_downvote_updatesPost() =
         runTest {
-            viewModel.postList.load()
+            loadPosts(createTestPost(id = "1", score = 100, likes = null))
+
+            viewModel.postList.vote(
+                viewModel.postList.state.value.posts
+                    .first(),
+                -1,
+            )
             advanceUntilIdle()
 
             val post =
                 viewModel.postList.state.value.posts
-                    .firstOrNull() ?: return@runTest
-            viewModel.postList.vote(post, -1)
-            advanceUntilIdle()
-
-            assertTrue(
-                viewModel.postList.state.value.posts
-                    .any { it.id == post.id },
-            )
+                    .single()
+            assertEquals(false, post.likes)
+            assertEquals(99, post.score)
         }
 
     @Test
     fun vote_clearVote_updatesPost() =
         runTest {
-            viewModel.postList.load()
+            loadPosts(createTestPost(id = "1", score = 101, likes = true))
+
+            viewModel.postList.vote(
+                viewModel.postList.state.value.posts
+                    .first(),
+                0,
+            )
             advanceUntilIdle()
 
             val post =
                 viewModel.postList.state.value.posts
-                    .firstOrNull() ?: return@runTest
-            viewModel.postList.vote(post, 0)
-            advanceUntilIdle()
-
-            assertTrue(
-                viewModel.postList.state.value.posts
-                    .any { it.id == post.id },
-            )
+                    .single()
+            assertNull(post.likes)
+            assertEquals(100, post.score)
         }
 
     // ==================== Saving ====================
@@ -455,18 +459,18 @@ class FeedViewModelTest {
     @Test
     fun save_savesPost() =
         runTest {
-            viewModel.postList.load()
-            advanceUntilIdle()
+            loadPosts(createTestPost(id = "1", isSaved = false))
 
-            val post =
+            viewModel.postList.save(
                 viewModel.postList.state.value.posts
-                    .firstOrNull() ?: return@runTest
-            viewModel.postList.save(post)
+                    .first(),
+            )
             advanceUntilIdle()
 
             assertTrue(
                 viewModel.postList.state.value.posts
-                    .any { it.id == post.id },
+                    .single()
+                    .isSaved,
             )
         }
 
@@ -475,16 +479,7 @@ class FeedViewModelTest {
     @Test
     fun hide_removesPostFromList() =
         runTest {
-            fakeApi.postsResult =
-                createTestListing(
-                    items =
-                        listOf(
-                            createTestPost(id = "1"),
-                            createTestPost(id = "2"),
-                        ),
-                )
-            viewModel.postList.load()
-            advanceUntilIdle()
+            loadPosts(createTestPost(id = "1"), createTestPost(id = "2"))
 
             viewModel.postList.hide(
                 viewModel.postList.state.value.posts
@@ -510,36 +505,42 @@ class FeedViewModelTest {
 
     // ==================== Post Updates ====================
 
+    // These change the post through the repository, as another screen would, so only the post updates reach the list.
+
     @Test
     fun postUpdates_updatesExistingPost() =
         runTest {
-            viewModel.postList.load()
+            loadPosts(createTestPost(id = "1", likes = null), createTestPost(id = "2", likes = null))
+
+            postRepo.vote(
+                viewModel.postList.state.value.posts
+                    .first(),
+                1,
+            )
             advanceUntilIdle()
 
-            val post =
+            assertEquals(
+                listOf(true, null),
                 viewModel.postList.state.value.posts
-                    .firstOrNull() ?: return@runTest
-            assertTrue(
-                viewModel.postList.state.value.posts
-                    .any { it.id == post.id },
+                    .map { it.likes },
             )
         }
 
     @Test
     fun postUpdates_removesHiddenPost() =
         runTest {
-            viewModel.postList.load()
+            loadPosts(createTestPost(id = "1"), createTestPost(id = "2"))
+
+            postRepo.hide(
+                viewModel.postList.state.value.posts
+                    .first(),
+            )
             advanceUntilIdle()
 
-            val post =
+            assertEquals(
+                listOf("2"),
                 viewModel.postList.state.value.posts
-                    .firstOrNull() ?: return@runTest
-            viewModel.postList.hide(post)
-            advanceUntilIdle()
-
-            assertFalse(
-                viewModel.postList.state.value.posts
-                    .any { it.id == post.id },
+                    .map { it.id },
             )
         }
 
@@ -561,4 +562,11 @@ class FeedViewModelTest {
             val posts = viewModel.postList.state.value.posts
             assertTrue(posts.all { it.subreddit.lowercase() != "banned" })
         }
+
+    // Loads the post list with [posts], so the tests that act on a post have one.
+    private fun TestScope.loadPosts(vararg posts: Post) {
+        fakeApi.postsResult = createTestListing(items = posts.toList())
+        viewModel.postList.load()
+        advanceUntilIdle()
+    }
 }
