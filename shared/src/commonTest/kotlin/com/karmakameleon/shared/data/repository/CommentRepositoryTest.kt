@@ -76,7 +76,7 @@ class CommentRepositoryTest {
             val result = repo.vote(comment, -1)
             assertTrue(result.isSuccess)
             assertEquals(false, result.getOrThrow().likes)
-            assertEquals(5, result.getOrThrow().score)
+            assertEquals(4, result.getOrThrow().score)
         }
 
     @Test
@@ -89,7 +89,7 @@ class CommentRepositoryTest {
             val result = repo.vote(comment, 1)
             assertTrue(result.isSuccess)
             assertEquals(true, result.getOrThrow().likes)
-            assertEquals(5, result.getOrThrow().score)
+            assertEquals(6, result.getOrThrow().score)
         }
 
     @Test

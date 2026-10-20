@@ -2,7 +2,6 @@ package com.karmakameleon.shared.data.repository
 
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.api.RedditApi
-import com.karmakameleon.shared.domain.model.Account
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Post
@@ -23,8 +22,8 @@ class UserRepository(
     private val authManager: AuthManager,
     scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
 ) {
-    private val _currentAccount = MutableStateFlow<Account?>(null)
-    val currentAccount: StateFlow<Account?> = _currentAccount.asStateFlow()
+    private val _currentAccount = MutableStateFlow<User?>(null)
+    val currentAccount: StateFlow<User?> = _currentAccount.asStateFlow()
 
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn: StateFlow<Boolean> = _isLoggedIn.asStateFlow()
@@ -40,7 +39,7 @@ class UserRepository(
         }
     }
 
-    suspend fun loadCurrentUser(): Result<Account> =
+    suspend fun loadCurrentUser(): Result<User> =
         runSuspendCatching {
             val account = redditApi.getMe() ?: error("Failed to load user")
             _currentAccount.value = account

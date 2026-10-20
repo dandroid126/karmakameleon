@@ -7,7 +7,6 @@ import com.karmakameleon.shared.data.api.OAuthRedirect
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
-import com.karmakameleon.shared.domain.model.Account
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Post
@@ -23,7 +22,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class ProfileUiState(
-    val account: Account? = null,
+    val account: User? = null,
     val user: User? = null,
     val posts: PagedList<Post> = PagedList(),
     val comments: PagedList<Comment> = PagedList(),

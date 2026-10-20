@@ -206,34 +206,6 @@ class PostRepositoryTest {
         }
 
     @Test
-    fun voteComment_switchFromUpToDown() =
-        runTest {
-            val (repo, api) = createRepo()
-            val comment = createTestComment(id = "c1", score = 6, likes = true)
-            api.voteResult = true
-
-            val result = repo.voteComment(comment, -1)
-            assertTrue(result.isSuccess)
-            val updated = result.getOrThrow()
-            assertEquals(false, updated.likes)
-            assertEquals(4, updated.score)
-        }
-
-    @Test
-    fun voteComment_switchFromDownToUp() =
-        runTest {
-            val (repo, api) = createRepo()
-            val comment = createTestComment(id = "c1", score = 4, likes = false)
-            api.voteResult = true
-
-            val result = repo.voteComment(comment, 1)
-            assertTrue(result.isSuccess)
-            val updated = result.getOrThrow()
-            assertEquals(true, updated.likes)
-            assertEquals(6, updated.score)
-        }
-
-    @Test
     fun vote_failureReturnsError() =
         runTest {
             val (repo, api) = createRepo()
@@ -267,21 +239,6 @@ class PostRepositoryTest {
             val result = repo.vote(post, 1)
             assertTrue(result.isFailure)
             assertEquals("you are not allowed to do that", result.exceptionOrNull()?.message)
-        }
-
-    // ==================== voteComment ====================
-
-    @Test
-    fun voteComment_upvoteUpdatesState() =
-        runTest {
-            val (repo, api) = createRepo()
-            val comment = createTestComment(id = "c1", score = 5, likes = null)
-            api.voteResult = true
-
-            val result = repo.voteComment(comment, 1)
-            assertTrue(result.isSuccess)
-            assertEquals(true, result.getOrThrow().likes)
-            assertEquals(6, result.getOrThrow().score)
         }
 
     // ==================== save ====================

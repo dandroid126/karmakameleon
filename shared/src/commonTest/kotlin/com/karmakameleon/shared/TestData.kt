@@ -1,6 +1,5 @@
 package com.karmakameleon.shared
 
-import com.karmakameleon.shared.domain.model.Account
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.FlairRichtext
@@ -264,46 +263,6 @@ fun createTestUser(
     isSuspended = isSuspended,
     isEmployee = isEmployee,
     subreddit = subreddit,
-)
-
-fun createTestAccount(
-    id: String = "acc1",
-    name: String = "testuser",
-    created: Long = 1500000000L,
-    createdUtc: Long = 1500000000L,
-    linkKarma: Int = 1000,
-    commentKarma: Int = 5000,
-    totalKarma: Int = 6000,
-    iconUrl: String? = null,
-    inboxCount: Int = 0,
-    hasMail: Boolean = false,
-    hasModMail: Boolean = false,
-    isGold: Boolean = false,
-    isMod: Boolean = false,
-    numFriends: Int = 0,
-    over18: Boolean = false,
-    prefNightMode: Boolean = false,
-    prefShowNsfw: Boolean = false,
-    prefNoProfanity: Boolean = false,
-) = Account(
-    id = id,
-    name = name,
-    created = created,
-    createdUtc = createdUtc,
-    linkKarma = linkKarma,
-    commentKarma = commentKarma,
-    totalKarma = totalKarma,
-    iconUrl = iconUrl,
-    inboxCount = inboxCount,
-    hasMail = hasMail,
-    hasModMail = hasModMail,
-    isGold = isGold,
-    isMod = isMod,
-    numFriends = numFriends,
-    over18 = over18,
-    prefNightMode = prefNightMode,
-    prefShowNsfw = prefShowNsfw,
-    prefNoProfanity = prefNoProfanity,
 )
 
 fun createTestMessage(

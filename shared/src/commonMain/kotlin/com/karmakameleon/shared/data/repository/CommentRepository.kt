@@ -13,23 +13,9 @@ class CommentRepository(
     ): Result<Comment> =
         runSuspendCatching {
             check(redditApi.vote(comment.name, direction)) { "Vote failed" }
-            val newLikes =
-                when (direction) {
-                    1 -> true
-                    -1 -> false
-                    else -> null
-                }
-            val scoreDiff =
-                when {
-                    comment.likes == true && direction != 1 -> -1
-                    comment.likes == false && direction != -1 -> 1
-                    comment.likes == null && direction == 1 -> 1
-                    comment.likes == null && direction == -1 -> -1
-                    else -> 0
-                }
             comment.copy(
-                likes = newLikes,
-                score = comment.score + scoreDiff,
+                likes = voteToLikes(direction),
+                score = comment.score + direction - likesToVote(comment.likes),
             )
         }
 

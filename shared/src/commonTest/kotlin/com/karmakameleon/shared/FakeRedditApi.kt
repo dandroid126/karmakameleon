@@ -2,7 +2,6 @@ package com.karmakameleon.shared
 
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApi
-import com.karmakameleon.shared.domain.model.Account
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.InboxFilter
@@ -40,7 +39,7 @@ class FakeRedditApi(
     var unsubscribeResult: Boolean = true
     var searchSubredditsResult: List<Subreddit> = emptyList()
     var popularSubredditsResult: Listing<Subreddit> = createTestListing()
-    var meResult: Account? = null
+    var meResult: User? = null
     var userResult: User? = null
     var userPostsResult: Listing<Post> = createTestListing()
     var userCommentsResult: Listing<Comment> = createTestListing()
@@ -133,7 +132,7 @@ class FakeRedditApi(
         limit: Int,
     ): Listing<Subreddit> = throwOrReturn(popularSubredditsResult)
 
-    override suspend fun getMe(): Account? = throwOrReturn(meResult)
+    override suspend fun getMe(): User? = throwOrReturn(meResult)
 
     override suspend fun getUser(username: String): User? = throwOrReturn(userResult)
 

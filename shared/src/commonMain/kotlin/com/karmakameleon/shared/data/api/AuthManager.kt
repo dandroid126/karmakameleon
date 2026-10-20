@@ -15,6 +15,7 @@ import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.HttpHeaders
 import io.ktor.http.Parameters
+import io.ktor.http.ParametersBuilder
 import io.ktor.http.encodeURLParameter
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -111,34 +112,16 @@ open class AuthManager(
         }
     }
 
-    open suspend fun exchangeCodeForToken(code: String): Boolean =
-        runSuspendCatching {
-            val response =
-                httpClient.post("$AUTH_URL/access_token") {
-                    header(HttpHeaders.Authorization, "Basic ${encodeCredentials()}")
-                    setBody(
-                        FormDataContent(
-                            Parameters.build {
-                                append("grant_type", "authorization_code")
-                                append("code", code)
-                                append("redirect_uri", getRedirectUri())
-                            },
-                        ),
-                    )
-                }
-
-            if (response.status.isSuccess()) {
-                val tokenResponse: AccessTokenResponse = response.body()
-                saveToken(tokenResponse)
-                true
-            } else {
-                Napier.e("Failed to exchange code: ${response.status}")
-                false
-            }
-        }.getOrElse { e ->
-            Napier.e("Failed to exchange code for token", e)
-            false
-        }
+    open suspend fun exchangeCodeForToken(code: String): Boolean {
+        val token =
+            requestToken("Failed to exchange code") {
+                append("grant_type", "authorization_code")
+                append("code", code)
+                append("redirect_uri", getRedirectUri())
+            } ?: return false
+        saveToken(token)
+        return true
+    }
 
     open suspend fun getAccessToken(): String? {
         return mutex.withLock {
@@ -163,74 +146,59 @@ open class AuthManager(
         }
     }
 
-    private suspend fun refreshToken(refreshToken: String): Boolean =
-        runSuspendCatching {
-            val response =
-                httpClient.post("$AUTH_URL/access_token") {
-                    header(HttpHeaders.Authorization, "Basic ${encodeCredentials()}")
-                    setBody(
-                        FormDataContent(
-                            Parameters.build {
-                                append("grant_type", "refresh_token")
-                                append("refresh_token", refreshToken)
-                            },
-                        ),
-                    )
-                }
-
-            if (response.status.isSuccess()) {
-                val tokenResponse: AccessTokenResponse = response.body()
-                saveToken(tokenResponse, existingRefreshToken = refreshToken)
-                true
-            } else {
-                Napier.e("Failed to refresh token: ${response.status}")
-                false
-            }
-        }.getOrElse { e ->
-            Napier.e("Failed to refresh token", e)
-            false
-        }
+    private suspend fun refreshToken(refreshToken: String): Boolean {
+        val token =
+            requestToken("Failed to refresh token") {
+                append("grant_type", "refresh_token")
+                append("refresh_token", refreshToken)
+            } ?: return false
+        saveToken(token, existingRefreshToken = refreshToken)
+        return true
+    }
 
     private suspend fun getAnonymousToken(): String? {
         if (getClientId().isEmpty()) {
             Napier.w("No client ID configured, cannot fetch anonymous token")
             return null
         }
-        return runSuspendCatching {
-            val deviceId = getOrCreateDeviceId()
+        val deviceId = getOrCreateDeviceId()
+        val token =
+            requestToken("Failed to get anonymous token") {
+                append("grant_type", "https://oauth.reddit.com/grants/installed_client")
+                append("device_id", deviceId)
+            } ?: return null
+        cachedToken =
+            TokenInfo(
+                accessToken = token.accessToken,
+                refreshToken = null,
+                expiresAt = System.currentTimeMillis() / 1000 + token.expiresIn,
+                scope = token.scope,
+            )
+        return token.accessToken
+    }
+
+    // Asks Reddit's token endpoint for a token with the given grant. Returns null, after logging failureMessage, if Reddit
+    // refuses or the request fails.
+    private suspend fun requestToken(
+        failureMessage: String,
+        grant: ParametersBuilder.() -> Unit,
+    ): AccessTokenResponse? =
+        runSuspendCatching {
             val response =
                 httpClient.post("$AUTH_URL/access_token") {
                     header(HttpHeaders.Authorization, "Basic ${encodeCredentials()}")
-                    setBody(
-                        FormDataContent(
-                            Parameters.build {
-                                append("grant_type", "https://oauth.reddit.com/grants/installed_client")
-                                append("device_id", deviceId)
-                            },
-                        ),
-                    )
+                    setBody(FormDataContent(Parameters.build(grant)))
                 }
-
             if (response.status.isSuccess()) {
-                val tokenResponse: AccessTokenResponse = response.body()
-                val tokenInfo =
-                    TokenInfo(
-                        accessToken = tokenResponse.accessToken,
-                        refreshToken = null,
-                        expiresAt = System.currentTimeMillis() / 1000 + tokenResponse.expiresIn,
-                        scope = tokenResponse.scope,
-                    )
-                cachedToken = tokenInfo
-                tokenResponse.accessToken
+                response.body<AccessTokenResponse>()
             } else {
-                Napier.e("Failed to get anonymous token: ${response.status}")
+                Napier.e("$failureMessage: ${response.status}")
                 null
             }
         }.getOrElse { e ->
-            Napier.e("Failed to get anonymous token", e)
+            Napier.e(failureMessage, e)
             null
         }
-    }
 
     private fun saveToken(
         response: AccessTokenResponse,

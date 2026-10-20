@@ -1,7 +1,3 @@
 # Duplicated code that existed before the duplication check. Fix entries; don't add new ones.
 3a3999908d8ca5bf 9 lines in shared/src/commonMain/kotlin/com/karmakameleon/shared/ui/post/PostDetailViewModel.kt:99-107, shared/src/commonMain/kotlin/com/karmakameleon/shared/ui/post/PostDetailViewModel.kt:121-129
 4aaa28f93d7832a9 13 lines in shared/src/commonMain/kotlin/com/karmakameleon/shared/ui/comment/CommentViewModel.kt:286-298, shared/src/commonMain/kotlin/com/karmakameleon/shared/ui/comment/CommentViewModel.kt:352-364
-544784e5f28b9bdc 9 lines in shared/src/commonMain/kotlin/com/karmakameleon/shared/data/api/RedditParser.kt:493-501, shared/src/commonMain/kotlin/com/karmakameleon/shared/data/api/RedditParser.kt:524-532
-a27c8a2cafbea540 9 lines in shared/src/commonMain/kotlin/com/karmakameleon/shared/data/api/AuthManager.kt:114-122, shared/src/commonMain/kotlin/com/karmakameleon/shared/data/api/AuthManager.kt:166-174
-c32cef3f9b607941 10 lines in shared/src/commonMain/kotlin/com/karmakameleon/shared/data/api/dto/UserDto.kt:7-16, shared/src/commonMain/kotlin/com/karmakameleon/shared/data/api/dto/UserDto.kt:38-47
-cfc26fe90ad40062 13 lines in shared/src/commonMain/kotlin/com/karmakameleon/shared/data/repository/CommentRepository.kt:10-22, shared/src/commonMain/kotlin/com/karmakameleon/shared/data/repository/PostRepository.kt:126-138
