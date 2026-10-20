@@ -63,6 +63,28 @@ class FakeRedditApi(
 
     var shouldThrow: Exception? = null
 
+    // What the code under test asked for, in order.
+    val postWithCommentsRequests = mutableListOf<CommentsRequest>()
+    val moreCommentsRequests = mutableListOf<MoreCommentsRequest>()
+    val submittedComments = mutableListOf<Pair<String, String>>()
+    val editedComments = mutableListOf<Pair<String, String>>()
+    val deletedComments = mutableListOf<String>()
+
+    /** Results for the threads of particular comments, by comment ID. Other requests get [postWithCommentsResult]. */
+    val commentThreadResults = mutableMapOf<String, Pair<Post, List<CommentOrMore>>>()
+
+    data class CommentsRequest(
+        val sort: CommentSort?,
+        val commentId: String?,
+        val context: Int?,
+    )
+
+    data class MoreCommentsRequest(
+        val linkId: String,
+        val children: List<String>,
+        val sort: CommentSort,
+    )
+
     private fun <T> throwOrReturn(value: T): T {
         shouldThrow?.let { throw it }
         return value
@@ -95,13 +117,20 @@ class FakeRedditApi(
         limit: Int,
         commentId: String?,
         context: Int?,
-    ): Pair<Post, List<CommentOrMore>> = throwOrReturn(postWithCommentsResult ?: error("No result configured"))
+    ): Pair<Post, List<CommentOrMore>> {
+        postWithCommentsRequests += CommentsRequest(sort, commentId, context)
+        val result = commentId?.let { commentThreadResults[it] } ?: postWithCommentsResult
+        return throwOrReturn(result ?: error("No result configured"))
+    }
 
     override suspend fun getMoreComments(
         linkId: String,
         children: List<String>,
         sort: CommentSort,
-    ): List<CommentOrMore> = throwOrReturn(moreCommentsResult)
+    ): List<CommentOrMore> {
+        moreCommentsRequests += MoreCommentsRequest(linkId, children, sort)
+        return throwOrReturn(moreCommentsResult)
+    }
 
     override suspend fun vote(
         thingId: String,
@@ -194,14 +223,23 @@ class FakeRedditApi(
     override suspend fun submitComment(
         parentId: String,
         text: String,
-    ): Comment? = throwOrReturn(submitCommentResult)
+    ): Comment? {
+        submittedComments += parentId to text
+        return throwOrReturn(submitCommentResult)
+    }
 
     override suspend fun editComment(
         thingId: String,
         text: String,
-    ): Boolean = throwOrReturn(editCommentResult)
+    ): Boolean {
+        editedComments += thingId to text
+        return throwOrReturn(editCommentResult)
+    }
 
-    override suspend fun deleteComment(thingId: String): Boolean = throwOrReturn(deleteCommentResult)
+    override suspend fun deleteComment(thingId: String): Boolean {
+        deletedComments += thingId
+        return throwOrReturn(deleteCommentResult)
+    }
 
     override suspend fun getInbox(
         filter: InboxFilter,
