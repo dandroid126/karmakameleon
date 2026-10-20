@@ -18,9 +18,14 @@ In code that can suspend, use `runSuspendCatching` (`shared/.../util/RunSuspendC
 - `shared/src/commonMain` only uses multiplatform code. Android and JVM code (`android.*`, `java.*`, OkHttp) goes in `androidMain`. Android is the only target today, so platform code in `commonMain` compiles, but it would break as soon as another platform is added.
 - UI code (screens and view models, in the `ui` packages) gets data through a repository, never from `RedditApi` or Ktor directly.
 
+## WebViews and backup
+
+- Every WebView sets `allowContentAccess = false` and `allowFileAccess = false`. WebViews may enable JavaScript, so never call `addJavascriptInterface`: pages must not be able to call into the app.
+- App data is backed up, except the login tokens (`auth_tokens.xml`) and the WebView's data (`app_webview/`). Anything else that holds tokens or session cookies has to be excluded too, in both `res/xml/data_extraction_rules.xml` and `res/xml/backup_rules.xml`.
+
 ## Rule tests
 
-The rules above are checked by `konsistTest/src/test/kotlin/com/karmakameleon/konsist/ArchitectureTest.kt`, except `catch (e: Exception)`, which Detekt catches. When you add a rule to this file, add a test for it there too.
+The rules above are checked by `konsistTest/src/test/kotlin/com/karmakameleon/konsist/ArchitectureTest.kt` and `BackupRulesTest.kt`, except `catch (e: Exception)`, which Detekt catches. When you add a rule to this file, add a test for it there too.
 
 ## Checks
 

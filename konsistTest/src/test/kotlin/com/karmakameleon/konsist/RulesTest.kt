@@ -77,4 +77,12 @@ class RulesTest {
         assertTrue(Rules.runCatchingCall.containsMatchIn("value.runCatching { parse() }"))
         assertFalse(Rules.runCatchingCall.containsMatchIn("runSuspendCatching { load() }"))
     }
+
+    @Test
+    fun webViewConstruction_matchesOnlyCreatingAWebView() {
+        assertTrue(Rules.webViewConstruction.containsMatchIn("WebView(context).apply {"))
+        assertTrue(Rules.webViewConstruction.containsMatchIn("android.webkit.WebView(context)"))
+        assertFalse(Rules.webViewConstruction.containsMatchIn("RedditLoginWebView(authUrl = url)"))
+        assertFalse(Rules.webViewConstruction.containsMatchIn("var webView: WebView? = null"))
+    }
 }

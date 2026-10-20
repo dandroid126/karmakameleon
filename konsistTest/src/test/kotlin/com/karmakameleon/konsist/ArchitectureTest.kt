@@ -51,6 +51,34 @@ class ArchitectureTest {
             ) { Rules.apiClientUse.containsMatchIn(it.text) }
     }
 
+    // Replaces CodeQL's java/android/websettings-allow-content-access, which can't read our Kotlin (see
+    // .github/codeql/codeql-config.yml). Pages never need the device's files or content:// URIs, like the app's own
+    // FileProvider. Counts the settings per file, so a second WebView in a file needs its own.
+    @Test
+    fun webViewsTurnOffContentAndFileAccess() {
+        productionScope.files
+            .filter { Rules.webViewConstruction.containsMatchIn(it.text) }
+            .assertTrue(
+                strict = true,
+                additionalMessage = "Set allowContentAccess = false and allowFileAccess = false on every WebView.",
+            ) { file ->
+                val webViews = Rules.webViewConstruction.findAll(file.text).count()
+                listOf("allowContentAccess = false", "allowFileAccess = false").all { setting ->
+                    Regex(Regex.escape(setting)).findAll(file.text).count() >= webViews
+                }
+            }
+    }
+
+    // Replaces CodeQL's java/android/websettings-javascript-enabled. The WebViews need JavaScript for the pages they
+    // show, which is only safe while no page can call into the app.
+    @Test
+    fun noJavaScriptInterfaces() {
+        productionScope.files.assertFalse(
+            strict = true,
+            additionalMessage = "Pages in the app's WebViews run JavaScript, so don't give them access to app code.",
+        ) { "addJavascriptInterface" in it.text }
+    }
+
     // Only checks suspend functions. A lambda that suspends, like the block passed to launch, can't be told apart
     // from any other lambda here.
     @Test

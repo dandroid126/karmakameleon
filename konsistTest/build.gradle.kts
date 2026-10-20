@@ -23,6 +23,7 @@ tasks.test {
         .files(
             rootProject.fileTree("androidApp/src") { include("**/*.kt") },
             rootProject.fileTree("shared/src") { include("**/*.kt") },
+            rootProject.fileTree("androidApp/src/main") { include("AndroidManifest.xml", "res/xml/*.xml") },
         ).withPropertyName("checkedSources")
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }

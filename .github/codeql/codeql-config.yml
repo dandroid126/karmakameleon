@@ -1,0 +1,17 @@
+# Rules turned off because they can't read this app's Kotlin correctly. A dismissed alert comes back as a new one
+# whenever the code around it changes, and blocks the PR that touches it, so each of these rules is replaced by a
+# precise test in konsistTest instead (ArchitectureTest and BackupRulesTest). See the CodeQL notes in
+# docs/code-quality-plan.md.
+query-filters:
+  # Flags every read of Compose state holding a WebView, and can't follow the WebView through Kotlin's apply blocks
+  # where its settings are set (#51). Replaced by webViewsTurnOffContentAndFileAccess.
+  - exclude:
+      id: java/android/websettings-allow-content-access
+  # JavaScript is needed by the pages the app shows. It's safe while no page can call into the app (#52). Replaced by
+  # noJavaScriptInterfaces.
+  - exclude:
+      id: java/android/websettings-javascript-enabled
+  # Backup is on so settings and drafts are kept; the rules exclude the login tokens and cookies, which this rule
+  # doesn't read (#53). Replaced by BackupRulesTest.
+  - exclude:
+      id: java/android/backup-enabled
