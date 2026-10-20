@@ -69,3 +69,13 @@ kotlin {
         }
     }
 }
+
+// Keeps shared's line coverage from slipping below 80%, on top of diffCoverage's check of the changed lines. CI has no
+// client ID, so the integration tests don't run there and don't count; run koverVerify without .env to match it.
+kover {
+    reports {
+        verify {
+            rule { minBound(80) }
+        }
+    }
+}
