@@ -147,6 +147,9 @@ private fun BrowserWebView(
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
+                    // Web pages don't need the device's files or content:// URIs, like the app's own FileProvider.
+                    allowContentAccess = false
+                    allowFileAccess = false
                 }
                 loadUrl(if (url.startsWith("http://")) url.replace("http://", "https://") else url)
                 onCreate(this)
