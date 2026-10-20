@@ -124,10 +124,10 @@ REDDIT_CLIENT_ID=your_client_id_here
 ./gradlew :androidApp:installDebug
 
 # Run tests
-./gradlew test
+./gradlew :shared:testAndroidHostTest
 
 # Generate test coverage report
-./gradlew :shared:jacocoTestReport
+./gradlew :shared:koverHtmlReport
 ```
 
 ## Development
@@ -135,13 +135,16 @@ REDDIT_CLIENT_ID=your_client_id_here
 ### Running Tests
 ```bash
 # Run all tests
-./gradlew test
+./gradlew :shared:testAndroidHostTest
 
 # Run specific test class
-./gradlew :shared:testDebugUnitTest --tests "com.karmakameleon.shared.data.repository.PostRepositoryTest"
+./gradlew :shared:testAndroidHostTest --tests "com.karmakameleon.shared.data.repository.PostRepositoryTest"
 
-# Generate coverage report (outputs to shared/build/reports/jacoco/)
-./gradlew :shared:jacocoTestReport
+# Generate coverage report (outputs to shared/build/reports/kover/html/)
+./gradlew :shared:koverHtmlReport
+
+# Check that at least 80% of the lines changed since main are covered, as the PR checks do
+./gradlew diffCoverage
 ```
 
 ### Code Style

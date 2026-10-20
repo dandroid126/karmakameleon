@@ -26,6 +26,7 @@ detekt = "2.0.0-alpha.6"
 compose-rules = "0.6.8"
 pmd = "7.28.0"
 konsist = "0.18.1"
+kover = "0.9.11"
 jose4j = "0.9.7"
 jdom2 = "2.0.6.1"
 commons-lang3 = "3.21.0"
@@ -130,3 +131,4 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "compose-mu
 composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

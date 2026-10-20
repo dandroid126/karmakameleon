@@ -492,3 +492,159 @@ tasks.register<GradleActionsCacheCheckTask>("gradleActionsCacheCheck") {
     workflows.from(fileTree(".github/workflows") { include("*.yml", "*.yaml") })
     projectPath.set(layout.projectDirectory.asFile.path)
 }
+
+// Fails when too few of the lines changed since the branch left main are covered by tests. Only the shared module is
+// measured: the app has no tests yet, so every change to it would fail. A changed line counts if the coverage report
+// has it, which leaves out blank lines, comments and declarations with no code. Uncommitted and untracked files count
+// too, so it can be run before committing.
+abstract class DiffCoverageTask : DefaultTask() {
+    @get:InputFile
+    abstract val report: RegularFileProperty
+
+    // The source directories to measure, relative to the project directory.
+    @get:Input
+    abstract val sourceDirs: ListProperty<String>
+
+    // What the changes are compared with: the point where HEAD branched off it.
+    @get:Input
+    abstract val baseRef: Property<String>
+
+    @get:Input
+    abstract val minimumPercent: Property<Int>
+
+    @get:Internal
+    abstract val projectDir: DirectoryProperty
+
+    @get:Inject
+    abstract val execOperations: ExecOperations
+
+    @TaskAction
+    fun run() {
+        val coverage = readCoverage()
+        val changed = changedLines()
+        val measured =
+            changed.flatMap { (path, lines) ->
+                val fileCoverage = coverage[coverageKey(path)].orEmpty()
+                lines.mapNotNull { line -> fileCoverage[line]?.let { covered -> Triple(path, line, covered) } }
+            }
+        if (measured.isEmpty()) {
+            logger.lifecycle("No changed lines with code in ${sourceDirs.get().joinToString()}, so there's nothing to measure.")
+            return
+        }
+        val covered = measured.count { it.third }
+        val percent = covered * 100.0 / measured.size
+        val summary =
+            "%d of %d changed lines are covered by tests (%.1f%%; at least %d%% is required).".format(
+                covered,
+                measured.size,
+                percent,
+                minimumPercent.get(),
+            )
+        val uncovered =
+            measured
+                .filterNot { it.third }
+                .groupBy({ it.first }, { it.second })
+                .entries
+                .joinToString("\n") { (path, lines) -> "  $path: ${lineRanges(lines)}" }
+        if (percent < minimumPercent.get()) {
+            throw GradleException("$summary Add tests for these lines:\n$uncovered")
+        }
+        logger.lifecycle(summary + if (uncovered.isEmpty()) "" else "\nNot covered:\n$uncovered")
+    }
+
+    // Maps each source file, as "package/path/File.kt", to whether each of its lines with code is covered.
+    private fun readCoverage(): Map<String, Map<Int, Boolean>> {
+        val document =
+            javax.xml.parsers.DocumentBuilderFactory
+                .newInstance()
+                .newDocumentBuilder()
+                .parse(report.get().asFile)
+        val packages = document.getElementsByTagName("package")
+        return (0 until packages.length)
+            .map { packages.item(it) as org.w3c.dom.Element }
+            .flatMap { pkg ->
+                val files = pkg.getElementsByTagName("sourcefile")
+                (0 until files.length).map { index ->
+                    val file = files.item(index) as org.w3c.dom.Element
+                    val lines = file.getElementsByTagName("line")
+                    "${pkg.getAttribute("name")}/${file.getAttribute("name")}" to
+                        (0 until lines.length)
+                            .map { lines.item(it) as org.w3c.dom.Element }
+                            .associate { it.getAttribute("nr").toInt() to (it.getAttribute("ci").toInt() > 0) }
+                }
+            }.toMap()
+    }
+
+    // shared/src/commonMain/kotlin/com/example/File.kt -> com/example/File.kt, the way the report names it.
+    private fun coverageKey(path: String): String = path.substringAfter("/kotlin/")
+
+    // Maps each changed .kt file to its added or changed line numbers.
+    private fun changedLines(): Map<String, List<Int>> {
+        val mergeBase = git("merge-base", "HEAD", baseRef.get()).trim()
+        val diff = git("diff", "--unified=0", "--no-color", "--no-ext-diff", mergeBase, "--", *sourceDirs.get().toTypedArray())
+        val changed = mutableMapOf<String, MutableList<Int>>()
+        var file: String? = null
+        val hunk = Regex("""^@@ -\S+ \+(\d+)(?:,(\d+))? @@""")
+        diff.lineSequence().forEach { line ->
+            when {
+                line.startsWith("+++ ") -> {
+                    file = line.removePrefix("+++ ").removePrefix("b/").takeIf { it.endsWith(".kt") }
+                }
+
+                line.startsWith("@@") && file != null -> {
+                    val match = hunk.find(line) ?: return@forEach
+                    val start = match.groupValues[1].toInt()
+                    val count = match.groupValues[2].ifEmpty { "1" }.toInt()
+                    changed.getOrPut(file!!) { mutableListOf() }.addAll(start until start + count)
+                }
+            }
+        }
+        git("ls-files", "--others", "--exclude-standard", "--", *sourceDirs.get().toTypedArray())
+            .lines()
+            .filter { it.endsWith(".kt") }
+            .forEach { path ->
+                changed[path] =
+                    (
+                        1..projectDir
+                            .file(path)
+                            .get()
+                            .asFile
+                            .readLines()
+                            .size
+                    ).toMutableList()
+            }
+        return changed
+    }
+
+    private fun git(vararg args: String): String {
+        val output = java.io.ByteArrayOutputStream()
+        execOperations.exec {
+            workingDir = projectDir.get().asFile
+            commandLine(listOf("git") + args)
+            standardOutput = output
+        }
+        return output.toString(Charsets.UTF_8)
+    }
+
+    // [3, 4, 5, 9] -> "3-5, 9"
+    private fun lineRanges(lines: List<Int>): String =
+        lines
+            .sorted()
+            .fold(mutableListOf<IntRange>()) { ranges, line ->
+                val last = ranges.lastOrNull()
+                if (last != null && last.last == line - 1) ranges[ranges.lastIndex] = last.first..line else ranges += line..line
+                ranges
+            }.joinToString { if (it.first == it.last) "${it.first}" else "${it.first}-${it.last}" }
+}
+
+tasks.register<DiffCoverageTask>("diffCoverage") {
+    description = "Fails when too few of the shared module's changed lines are covered by tests."
+    group = "verification"
+    dependsOn(":shared:koverXmlReport")
+    report.set(layout.projectDirectory.file("shared/build/reports/kover/report.xml"))
+    sourceDirs.set(listOf("shared/src/commonMain", "shared/src/androidMain"))
+    // CI checks out main as origin/main. -Pcoverage.base=<ref> compares with something else.
+    baseRef.set(providers.gradleProperty("coverage.base").orElse("origin/main"))
+    minimumPercent.set(providers.gradleProperty("coverage.minimumPercent").map { it.toInt() }.orElse(80))
+    projectDir.set(layout.projectDirectory)
+}

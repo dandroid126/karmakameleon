@@ -24,6 +24,6 @@ The rules above are checked by `konsistTest/src/test/kotlin/com/karmakameleon/ko
 
 ## Checks
 
-Before committing, run `./gradlew qualityGate` (the static checks) and `./gradlew :shared:testAndroidHostTest` (the unit tests). The PR checks run the same tasks and must pass before a PR can merge.
+Before committing, run `./gradlew qualityGate` (the static checks) and `./gradlew :shared:testAndroidHostTest diffCoverage` (the unit tests, and a check that at least 80% of the shared module's lines changed since `main` are covered by them). The PR checks run the same tasks and must pass before a PR can merge. `diffCoverage` compares with `origin/main`, so fetch first if it's out of date.
 
 Fix what the checks report instead of adding it to a baseline or suppressing it. When a suppression really is right, put the reason next to it.
