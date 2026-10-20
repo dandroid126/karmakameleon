@@ -13,6 +13,15 @@ All colors go in the color constants file, `androidApp/src/main/kotlin/com/karma
 
 In code that can suspend, use `runSuspendCatching` (`shared/.../util/RunSuspendCatching.kt`) instead of `catch (e: Exception)`, so coroutine cancellation isn't caught. Elsewhere, catch the specific exceptions the code can throw.
 
+## Architecture
+
+- `shared/src/commonMain` only uses multiplatform code. Android and JVM code (`android.*`, `java.*`, OkHttp) goes in `androidMain`. Android is the only target today, so platform code in `commonMain` compiles, but it would break as soon as another platform is added.
+- UI code (screens and view models, in the `ui` packages) gets data through a repository, never from `RedditApi` or Ktor directly.
+
+## Rule tests
+
+The rules above are checked by `konsistTest/src/test/kotlin/com/karmakameleon/konsist/ArchitectureTest.kt`, except `catch (e: Exception)`, which Detekt catches. When you add a rule to this file, add a test for it there too.
+
 ## Checks
 
 Before committing, run `./gradlew qualityGate` (the static checks) and `./gradlew :shared:testAndroidHostTest` (the unit tests). The PR checks run the same tasks and must pass before a PR can merge.

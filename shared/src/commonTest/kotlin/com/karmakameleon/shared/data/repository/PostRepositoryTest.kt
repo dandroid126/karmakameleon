@@ -88,6 +88,17 @@ class PostRepositoryTest {
             assertTrue(result.isFailure)
         }
 
+    // ==================== resolveShareLink ====================
+
+    @Test
+    fun resolveShareLink_returnsThePostFromTheApi() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.resolveShareLinkResult = "Kotlin" to "abc123"
+
+            assertEquals("Kotlin" to "abc123", repo.resolveShareLink("kotlin", "AbCdEf"))
+        }
+
     // ==================== getPostWithComments ====================
 
     @Test

@@ -59,6 +59,7 @@ class FakeRedditApi(
     var markAllMessagesReadResult: Boolean = true
     var submitPostResult: String? = null
     var fetchPostsByIdsResult: List<Post> = emptyList()
+    var resolveShareLinkResult: Pair<String, String>? = null
 
     var shouldThrow: Exception? = null
 
@@ -76,6 +77,11 @@ class FakeRedditApi(
     ): Listing<Post> = throwOrReturn(postsResult)
 
     override suspend fun fetchPostsByIds(fullnames: List<String>): List<Post> = throwOrReturn(fetchPostsByIdsResult)
+
+    override suspend fun resolveShareLink(
+        subreddit: String,
+        shareId: String,
+    ): Pair<String, String>? = throwOrReturn(resolveShareLinkResult)
 
     override suspend fun getPost(
         subreddit: String,
