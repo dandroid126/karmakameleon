@@ -36,19 +36,3 @@ data class SubredditDto(
     @SerialName("user_is_contributor") val userIsContributor: Boolean = false,
     @SerialName("user_is_muted") val userIsMuted: Boolean = false,
 )
-
-@Serializable
-data class SubredditRuleDto(
-    @SerialName("short_name") val shortName: String,
-    val description: String? = null,
-    @SerialName("description_html") val descriptionHtml: String? = null,
-    val priority: Int = 0,
-    @SerialName("violation_reason") val violationReason: String = "",
-    val kind: String = "all",
-)
-
-@Serializable
-data class SubredditRulesResponse(
-    val rules: List<SubredditRuleDto> = emptyList(),
-    @SerialName("site_rules") val siteRules: List<String> = emptyList(),
-)

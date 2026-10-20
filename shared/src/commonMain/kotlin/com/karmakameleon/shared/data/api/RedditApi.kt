@@ -62,7 +62,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -86,14 +85,9 @@ open class RedditApi(
 
     private val shareLinkClient by lazy(createShareLinkClient)
 
-    private val json =
-        Json {
-            ignoreUnknownKeys = true
-            isLenient = true
-            coerceInputValues = true
-        }
+    private val json = RedditParser.json
 
-    private val parser = RedditParser(json, settingsRepository)
+    private val parser = RedditParser(settingsRepository)
 
     companion object {
         const val BASE_URL = "https://oauth.reddit.com"

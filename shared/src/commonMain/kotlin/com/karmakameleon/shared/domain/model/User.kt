@@ -32,18 +32,3 @@ data class UserSubreddit(
     val bannerUrl: String?,
     val isNsfw: Boolean,
 )
-
-@Serializable
-data class Trophy(
-    val name: String,
-    val description: String?,
-    val iconUrl: String?,
-    val awardId: String?,
-)
-
-@Serializable
-data class KarmaBreakdown(
-    val subreddit: String,
-    val linkKarma: Int,
-    val commentKarma: Int,
-)

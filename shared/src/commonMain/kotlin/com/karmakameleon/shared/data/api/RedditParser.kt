@@ -79,9 +79,18 @@ private const val PERCENT_ESCAPE_LENGTH = 3
 
 /** Turns Reddit's JSON into the app's models. */
 internal class RedditParser(
-    private val json: Json,
     private val settingsRepository: SettingsRepository?,
 ) {
+    companion object {
+        /** Reads Reddit's JSON: it has many fields the app doesn't use, and sends null for some that have a default. */
+        val json =
+            Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+                coerceInputValues = true
+            }
+    }
+
     // ==================== Listings ====================
 
     fun postListing(data: ListingData): Listing<Post> = data.toListing("t3") { post(it) }
