@@ -34,4 +34,8 @@ object Rules {
 
     // runCatching catches the CancellationException that stops a cancelled coroutine. runSuspendCatching doesn't.
     val runCatchingCall = Regex("""\brunCatching\b""")
+
+    // Creating a WebView, like WebView(context). Composables whose names end in WebView, like RedditLoginWebView(...),
+    // don't count.
+    val webViewConstruction = Regex("""\bWebView\(""")
 }
