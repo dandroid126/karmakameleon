@@ -1,7 +1,12 @@
 package com.karmakameleon.android.ui.components
 
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 
 private const val MAX_VIDEO_ZOOM = 5f
 
@@ -27,4 +32,15 @@ internal fun Modifier.zoomedBy(zoom: VideoZoom): Modifier =
         scaleY = zoom.scale
         translationX = zoom.offsetX
         translationY = zoom.offsetY
+    }
+
+// Pinch to zoom and pan, double tap to reset. Single taps go to onTap.
+internal fun Modifier.videoZoomGestures(
+    zoom: MutableState<VideoZoom>,
+    onTap: ((Offset) -> Unit)? = null,
+): Modifier =
+    pointerInput(Unit) {
+        detectTransformGestures { _, pan, gestureZoom, _ -> zoom.value = zoom.value.transformed(pan.x, pan.y, gestureZoom) }
+    }.pointerInput(Unit) {
+        detectTapGestures(onTap = onTap, onDoubleTap = { zoom.value = VideoZoom() })
     }

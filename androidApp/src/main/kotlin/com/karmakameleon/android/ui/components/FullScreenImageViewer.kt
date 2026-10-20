@@ -1,6 +1,5 @@
 package com.karmakameleon.android.ui.components
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -11,15 +10,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,32 +43,11 @@ fun FullScreenImageViewer(
     modifier: Modifier = Modifier,
     initialPage: Int = 0,
 ) {
-    BackHandler(onBack = onDismiss)
-
-    Box(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(mediaColors().mediaBackgroundColor),
-    ) {
+    MediaScreen(onClose = onDismiss, modifier = modifier) {
         if (imageUrls.size == 1) {
             ZoomableImage(url = imageUrls[0], modifier = Modifier.fillMaxSize())
         } else {
             ImagePager(imageUrls = imageUrls, initialPage = initialPage)
-        }
-        IconButton(
-            onClick = onDismiss,
-            modifier =
-                Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = mediaColors().onOverlayColor,
-                modifier = Modifier.size(28.dp),
-            )
         }
     }
 }
