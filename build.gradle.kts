@@ -62,6 +62,9 @@ tasks.register("qualityGate") {
         "spotlessCheck",
         "cpdCheck",
         "earlyReturnCheck",
+        "actionlint",
+        "zizmor",
+        "gradleActionsCacheCheck",
         // Detekt with type resolution. The app's debug and release variants have the same code, so one is enough.
         ":androidApp:detektDebug",
         ":shared:detektMainAndroid",
@@ -246,4 +249,242 @@ listOf("cpdCheck" to false, "cpdBaseline" to true).forEach { (name, update) ->
         projectPath.set(layout.projectDirectory.asFile.path)
         updateBaseline.set(update)
     }
+}
+
+// Command-line tools for checking the workflow files, downloaded from their GitHub releases. Each archive is checked
+// against a pinned SHA-256, so nothing has to be installed and every machine runs the same version. Dependabot can't
+// update them: to update one, change its version and take each archive's hash from the `digest` of its assets in
+// `gh api repos/<owner>/<repo>/releases/tags/<tag>`.
+class ReleaseTool(
+    val name: String,
+    val downloadUrl: String,
+    // The archive and its SHA-256 for each platform, keyed like "linux-x86_64".
+    val archives: Map<String, Pair<String, String>>,
+    // Where the executable is in the archive.
+    val executable: String,
+)
+
+val releaseTools =
+    listOf(
+        ReleaseTool(
+            name = "actionlint",
+            downloadUrl = "https://github.com/rhysd/actionlint/releases/download/v1.7.12",
+            archives =
+                mapOf(
+                    "linux-x86_64" to
+                        ("actionlint_1.7.12_linux_amd64.tar.gz" to "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"),
+                    "linux-aarch64" to
+                        ("actionlint_1.7.12_linux_arm64.tar.gz" to "325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6"),
+                    "macos-x86_64" to
+                        ("actionlint_1.7.12_darwin_amd64.tar.gz" to "5b44c3bc2255115c9b69e30efc0fecdf498fdb63c5d58e17084fd5f16324c644"),
+                    "macos-aarch64" to
+                        ("actionlint_1.7.12_darwin_arm64.tar.gz" to "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f"),
+                ),
+            executable = "actionlint",
+        ),
+        // actionlint runs it on the workflows' shell scripts. It's downloaded too, so the results don't depend on
+        // whether it happens to be installed.
+        ReleaseTool(
+            name = "shellcheck",
+            downloadUrl = "https://github.com/koalaman/shellcheck/releases/download/v0.11.0",
+            archives =
+                mapOf(
+                    "linux-x86_64" to
+                        ("shellcheck-v0.11.0.linux.x86_64.tar.gz" to "b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6"),
+                    "linux-aarch64" to
+                        ("shellcheck-v0.11.0.linux.aarch64.tar.gz" to "68a8133197a50beb8803f8d42f9908d1af1c5540d4bb05fdfca8c1fa47decefc"),
+                    "macos-x86_64" to
+                        ("shellcheck-v0.11.0.darwin.x86_64.tar.gz" to "c2c15e08df0e8fbc374c335b230a7ee958c313fa5714817a59aa59f1aa594f51"),
+                    "macos-aarch64" to
+                        ("shellcheck-v0.11.0.darwin.aarch64.tar.gz" to "339b930feb1ea764467013cc1f72d09cd6b869ebf1013296ba9055ab2ffbd26f"),
+                ),
+            executable = "shellcheck-v0.11.0/shellcheck",
+        ),
+        ReleaseTool(
+            name = "zizmor",
+            downloadUrl = "https://github.com/zizmorcore/zizmor/releases/download/v1.30.1",
+            archives =
+                mapOf(
+                    "linux-x86_64" to
+                        ("zizmor-x86_64-unknown-linux-gnu.tar.gz" to "e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a"),
+                    "linux-aarch64" to
+                        ("zizmor-aarch64-unknown-linux-gnu.tar.gz" to "7ff1dce33bdd18fd2a4affe63bdd47efcccca97b2cec1c1863ec26e9e2647540"),
+                    "macos-x86_64" to
+                        ("zizmor-x86_64-apple-darwin.tar.gz" to "10e6b18b11ea07e515a16f0f0518c7b07527bc9977c1fd5698181ce7f3554202"),
+                    "macos-aarch64" to
+                        ("zizmor-aarch64-apple-darwin.tar.gz" to "e28d22b087f9ebb8d99da6e740d348c930f559961c7c3f12badda54f882195a2"),
+                ),
+            executable = "zizmor",
+        ),
+    )
+
+val toolPlatform: String =
+    run {
+        val os = System.getProperty("os.name").lowercase()
+        val arch = System.getProperty("os.arch").lowercase()
+        val osName =
+            when {
+                os.startsWith("linux") -> "linux"
+                os.startsWith("mac") -> "macos"
+                else -> os
+            }
+        val archName =
+            when (arch) {
+                "amd64", "x86_64" -> "x86_64"
+                "aarch64", "arm64" -> "aarch64"
+                else -> arch
+            }
+        "$osName-$archName"
+    }
+
+// Downloads a release archive and fails unless its SHA-256 matches the pinned one.
+abstract class DownloadToolTask : DefaultTask() {
+    @get:Input
+    @get:Optional
+    abstract val url: Property<String>
+
+    @get:Input
+    @get:Optional
+    abstract val sha256: Property<String>
+
+    @get:Input
+    abstract val platform: Property<String>
+
+    @get:OutputFile
+    abstract val archive: RegularFileProperty
+
+    @TaskAction
+    fun run() {
+        val source = url.orNull ?: throw GradleException("$name: there's no download for ${platform.get()}.")
+        val client =
+            java.net.http.HttpClient
+                .newBuilder()
+                .followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
+                .build()
+        val request =
+            java.net.http.HttpRequest
+                .newBuilder(java.net.URI(source))
+                .build()
+        val response =
+            client.send(
+                request,
+                java.net.http.HttpResponse.BodyHandlers
+                    .ofByteArray(),
+            )
+        if (response.statusCode() != 200) {
+            throw GradleException("Downloading $source failed with HTTP ${response.statusCode()}.")
+        }
+        val hash =
+            java.security.MessageDigest
+                .getInstance("SHA-256")
+                .digest(response.body())
+                .joinToString("") { "%02x".format(it) }
+        if (hash != sha256.get()) {
+            throw GradleException("$source has SHA-256 $hash, but ${sha256.get()} is pinned. Don't use it.")
+        }
+        archive.get().asFile.writeBytes(response.body())
+    }
+}
+
+// Maps each tool's name to the path of its executable, once extracted.
+val toolExecutables =
+    releaseTools.associate { tool ->
+        val archive = tool.archives[toolPlatform]
+        val archiveFile = layout.buildDirectory.file("tools/${archive?.first ?: tool.name}")
+        val download =
+            tasks.register<DownloadToolTask>("download${tool.name.replaceFirstChar { it.uppercase() }}") {
+                description = "Downloads ${tool.name}."
+                url.set(archive?.let { "${tool.downloadUrl}/${it.first}" })
+                sha256.set(archive?.second)
+                platform.set(toolPlatform)
+                this.archive.set(archiveFile)
+            }
+        val directory = layout.buildDirectory.dir("tools/${tool.name}")
+        tasks.register<Sync>("extract${tool.name.replaceFirstChar { it.uppercase() }}") {
+            description = "Extracts ${tool.name}."
+            dependsOn(download)
+            from(tarTree(archiveFile))
+            into(directory)
+        }
+        tool.name to
+            directory
+                .get()
+                .file(tool.executable)
+                .asFile.path
+    }
+
+// Finds mistakes in the workflow files, like invalid expressions, unknown action inputs and, through shellcheck,
+// bugs in the shell scripts.
+tasks.register<Exec>("actionlint") {
+    description = "Checks the GitHub Actions workflows for mistakes."
+    group = "verification"
+    dependsOn("extractActionlint", "extractShellcheck")
+    executable = toolExecutables.getValue("actionlint")
+    // No workflow runs Python, and pyflakes would only run if it happened to be installed.
+    args("-shellcheck=${toolExecutables.getValue("shellcheck")}", "-pyflakes=")
+}
+
+// Finds security problems in the workflows and dependabot.yml, like unpinned actions, template injection and
+// leaked credentials. With a token in GH_TOKEN, which CI sets, it also checks that each pinned commit belongs to
+// the action's own repo and that no action has a known vulnerability.
+tasks.register<Exec>("zizmor") {
+    description = "Checks the GitHub Actions workflows for security problems."
+    group = "verification"
+    dependsOn("extractZizmor")
+    executable = toolExecutables.getValue("zizmor")
+    // Without --strict-collection, a workflow it can't parse is skipped with only a warning.
+    args("--quiet", "--strict-collection", ".")
+}
+
+// Fails on a gradle/actions step that doesn't set `cache-provider: basic`. Without it, the action uses its default
+// cache, a proprietary Gradle component covered by Gradle's Terms of Use.
+abstract class GradleActionsCacheCheckTask : DefaultTask() {
+    @get:InputFiles
+    abstract val workflows: ConfigurableFileCollection
+
+    @get:Input
+    abstract val projectPath: Property<String>
+
+    @TaskAction
+    fun run() {
+        val root = projectPath.get().trimEnd('/') + "/"
+        val gradleAction = Regex("""^\s*(- )?uses:\s*gradle/actions/""")
+        val basicCache = Regex("""^\s*cache-provider:\s*basic\s*(#.*)?$""")
+        val found =
+            workflows.files.sorted().flatMap { file ->
+                val lines = file.readLines()
+                lines.indices
+                    .filter { gradleAction.containsMatchIn(lines[it]) }
+                    .filterNot { index -> stepLines(lines, index).any { basicCache.matches(it) } }
+                    .map { "${file.path.removePrefix(root)}:${it + 1}" }
+            }
+        if (found.isNotEmpty()) {
+            throw GradleException(
+                "These gradle/actions steps don't set `cache-provider: basic`, so they'd use the proprietary cache:\n" +
+                    found.joinToString("\n") { "  $it" },
+            )
+        }
+    }
+
+    // The lines of the step that the line at `index` is in: from the line starting with "- " to the next line
+    // that's indented no further than that dash.
+    private fun stepLines(
+        lines: List<String>,
+        index: Int,
+    ): List<String> {
+        val start = (index downTo 0).first { lines[it].trimStart().startsWith("- ") }
+        val indent = lines[start].indexOfFirst { !it.isWhitespace() }
+        val end =
+            (start + 1 until lines.size)
+                .firstOrNull { lines[it].isNotBlank() && lines[it].indexOfFirst { c -> !c.isWhitespace() } <= indent }
+                ?: lines.size
+        return lines.subList(start, end)
+    }
+}
+
+tasks.register<GradleActionsCacheCheckTask>("gradleActionsCacheCheck") {
+    description = "Fails on a gradle/actions step that doesn't use the open-source cache."
+    group = "verification"
+    workflows.from(fileTree(".github/workflows") { include("*.yml", "*.yaml") })
+    projectPath.set(layout.projectDirectory.asFile.path)
 }
