@@ -33,13 +33,6 @@ enum class MessageType {
     MOD_MESSAGE,
 }
 
-@Serializable
-data class Inbox(
-    val messages: List<Message>,
-    val after: String?,
-    val before: String?,
-)
-
 enum class InboxFilter(
     val value: String,
 ) {

@@ -4,6 +4,7 @@ import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestSubreddit
 import com.russhwolf.settings.MapSettings
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -243,5 +244,22 @@ class SubredditRepositoryTest {
 
             val cached = repo.getCachedSubreddit("kotlin")
             assertEquals("kotlin", cached?.displayName)
+        }
+
+    @Test
+    fun sortedSubscribedSubreddits_putsFavoritesFirstThenSortsByName() =
+        runTest {
+            val api = FakeRedditApi()
+            val settingsRepo = SettingsRepository(MapSettings())
+            val repo = SubredditRepository(api, settingsRepo)
+            api.subscribedSubredditsResult =
+                createTestListing(items = listOf("kotlin", "Android", "pics", "Zig").map { createTestSubreddit(displayName = it) })
+            repo.loadSubscribedSubreddits()
+            settingsRepo.toggleFavoriteSubreddit("Zig")
+            settingsRepo.toggleFavoriteSubreddit("pics")
+
+            val sorted = repo.sortedSubscribedSubreddits.first()
+
+            assertEquals(listOf("pics", "Zig", "Android", "kotlin"), sorted.map { it.displayName })
         }
 }

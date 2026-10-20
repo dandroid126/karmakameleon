@@ -337,4 +337,11 @@ class InlineParserTest {
         val img = assertIs<MarkdownInline.Image>(result[0])
         assertTrue(img.url.contains("giphy-downsized.gif"))
     }
+
+    @Test
+    fun bareUrl_previewImageIsShownAsAnImage() {
+        val result = parse("look http://preview.redd.it/abc.png?width=640")
+
+        assertEquals(MarkdownInline.Image("https://preview.redd.it/abc.png?width=640"), result.last())
+    }
 }

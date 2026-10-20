@@ -49,7 +49,7 @@ import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.markdown.MarkdownInline
-import com.karmakameleon.shared.util.markdown.parseMarkdown
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import org.koin.compose.koinInject
 
 @Composable
@@ -62,7 +62,7 @@ fun MarkdownText(
     onImageClick: (String) -> Unit = {},
     navigationHandler: NavigationHandler = koinInject(),
 ) {
-    val blocks = remember(markdown) { parseMarkdown(markdown) }
+    val blocks = remember(markdown) { parseMarkdownBlocks(markdown) }
     val rendering =
         InlineRendering(
             linkColor = MaterialTheme.colorScheme.primary,
