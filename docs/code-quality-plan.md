@@ -55,8 +55,9 @@ The code in this repo is written by AI, and there's too much of it for a human t
 
 ## Phase 3: security and architecture
 
-- [ ] **CodeQL** (java-kotlin, `security-extended` queries) on PRs and on a weekly schedule.
+- [x] **CodeQL** (java-kotlin, `security-extended` queries) on PRs and on a weekly schedule.
   *Value:* data-flow analysis that follows untrusted input (intents, deep links, network responses) to dangerous sinks: injection, unsafe WebView settings, logged secrets, weak crypto. Matters because the app handles Reddit OAuth tokens.
+  *Notes:* `codeql.yml` runs on PRs, on pushes to `main` (so PRs have results to compare with) and every Monday. It's an advanced setup rather than GitHub's default setup, because the default setup analyzes java-kotlin without building, which only covers Java and skips all our Kotlin. Leave the default setup off in the repo settings; the two can't run together. It also analyzes the `actions` language, the workflow files, since that costs nothing extra. CodeQL reads Kotlin by watching the compiler, so the build step builds `:androidApp:assembleDebug` without the build cache or a Gradle daemon and with the Kotlin compiler in Gradle's process; a cached build gives it no code to analyze. CodeQL 2.27 supports Kotlin up to 2.4.20, so check its [supported versions](https://codeql.github.com/docs/codeql-overview/supported-languages-and-frameworks/) before a Kotlin minor upgrade: a Kotlin release it doesn't support yet fails the job.
 - [ ] **zizmor and actionlint** for the workflow files, and pin every action to a commit SHA (Dependabot keeps the SHAs current).
   *Value:* the workflows handle the signing key and a `contents: write` token, which makes them the most attractive target in the repo. These tools catch template injection, overly broad permissions and unpinned actions.
   Also fail when a `gradle/actions` step doesn't set `cache-provider: basic`, so the proprietary cache can't come back unnoticed.
