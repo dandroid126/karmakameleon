@@ -2,7 +2,6 @@ package com.karmakameleon.shared.data.repository
 
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApi
-import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Post
@@ -106,40 +105,14 @@ class PostRepository(
     ): Result<Post> =
         runSuspendCatching {
             check(redditApi.vote(post.name, direction)) { "Vote failed" }
-            val newLikes =
-                when (direction) {
-                    1 -> true
-                    -1 -> false
-                    else -> null
-                }
-            val scoreDiff = direction - likesToVote(post.likes)
             val updatedPost =
                 post.copy(
-                    likes = newLikes,
-                    score = post.score + scoreDiff,
+                    likes = voteToLikes(direction),
+                    score = post.score + direction - likesToVote(post.likes),
                 )
             cachedPosts.update { it + (post.id to updatedPost) }
             _postUpdates.emit(updatedPost)
             updatedPost
-        }
-
-    suspend fun voteComment(
-        comment: Comment,
-        direction: Int,
-    ): Result<Comment> =
-        runSuspendCatching {
-            check(redditApi.vote(comment.name, direction)) { "Vote failed" }
-            val newLikes =
-                when (direction) {
-                    1 -> true
-                    -1 -> false
-                    else -> null
-                }
-            val scoreDiff = direction - likesToVote(comment.likes)
-            comment.copy(
-                likes = newLikes,
-                score = comment.score + scoreDiff,
-            )
         }
 
     suspend fun save(post: Post): Result<Post> =
@@ -194,11 +167,4 @@ class PostRepository(
         }
 
     fun getCachedPost(postId: String): Post? = cachedPosts.value[postId]
-
-    private fun likesToVote(likes: Boolean?): Int =
-        when (likes) {
-            true -> 1
-            false -> -1
-            null -> 0
-        }
 }

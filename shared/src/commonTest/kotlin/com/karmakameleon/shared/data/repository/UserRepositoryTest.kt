@@ -2,7 +2,6 @@ package com.karmakameleon.shared.data.repository
 
 import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
-import com.karmakameleon.shared.createTestAccount
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
@@ -29,7 +28,7 @@ class UserRepositoryTest {
     fun loadCurrentUser_returnsSuccess() =
         runTest {
             val (repo, api, _) = createRepo()
-            val account = createTestAccount(name = "testuser")
+            val account = createTestUser(name = "testuser")
             api.meResult = account
 
             val result = repo.loadCurrentUser()
@@ -41,7 +40,7 @@ class UserRepositoryTest {
     fun loadCurrentUser_updatesCurrentAccount() =
         runTest {
             val (repo, api, _) = createRepo()
-            val account = createTestAccount(name = "testuser")
+            val account = createTestUser(name = "testuser")
             api.meResult = account
 
             repo.loadCurrentUser()
@@ -52,7 +51,7 @@ class UserRepositoryTest {
     fun loadCurrentUser_setsIsLoggedIn() =
         runTest {
             val (repo, api, _) = createRepo()
-            val account = createTestAccount(name = "testuser")
+            val account = createTestUser(name = "testuser")
             api.meResult = account
 
             repo.loadCurrentUser()
@@ -62,7 +61,7 @@ class UserRepositoryTest {
     @Test
     fun loadCurrentUser_isNotOverwrittenByTheFirstLoginStateUpdate() =
         runTest {
-            val api = FakeRedditApi().apply { meResult = createTestAccount(name = "testuser") }
+            val api = FakeRedditApi().apply { meResult = createTestUser(name = "testuser") }
             // The login state collector only runs when this test lets it, so anything it hasn't applied yet comes
             // after loadCurrentUser().
             val repo = UserRepository(api, FakeAuthManager(), backgroundScope)
@@ -179,7 +178,7 @@ class UserRepositoryTest {
     fun getSavedPosts_returnsSuccessWhenLoggedIn() =
         runTest {
             val (repo, api, _) = createRepo()
-            api.meResult = createTestAccount(name = "testuser")
+            api.meResult = createTestUser(name = "testuser")
             repo.loadCurrentUser()
             api.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")))
 
@@ -202,7 +201,7 @@ class UserRepositoryTest {
     fun getSavedComments_returnsSuccessWhenLoggedIn() =
         runTest {
             val (repo, api, _) = createRepo()
-            api.meResult = createTestAccount(name = "testuser")
+            api.meResult = createTestUser(name = "testuser")
             repo.loadCurrentUser()
             api.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")))
 
@@ -225,7 +224,7 @@ class UserRepositoryTest {
     fun getUpvotedPosts_returnsSuccessWhenLoggedIn() =
         runTest {
             val (repo, api, _) = createRepo()
-            api.meResult = createTestAccount(name = "testuser")
+            api.meResult = createTestUser(name = "testuser")
             repo.loadCurrentUser()
             api.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")))
 
@@ -247,7 +246,7 @@ class UserRepositoryTest {
     fun getDownvotedPosts_returnsSuccessWhenLoggedIn() =
         runTest {
             val (repo, api, _) = createRepo()
-            api.meResult = createTestAccount(name = "testuser")
+            api.meResult = createTestUser(name = "testuser")
             repo.loadCurrentUser()
             api.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")))
 
@@ -269,7 +268,7 @@ class UserRepositoryTest {
     fun handleAuthCallback_setsLoggedIn() =
         runTest {
             val (repo, api, _) = createRepo()
-            api.meResult = createTestAccount(name = "testuser")
+            api.meResult = createTestUser(name = "testuser")
 
             val success = repo.handleAuthCallback("auth_code")
             assertTrue(success)
@@ -280,7 +279,7 @@ class UserRepositoryTest {
     fun logout_clearsState() =
         runTest {
             val (repo, api, _) = createRepo()
-            api.meResult = createTestAccount(name = "testuser")
+            api.meResult = createTestUser(name = "testuser")
             repo.loadCurrentUser()
 
             repo.logout()

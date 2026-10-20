@@ -35,28 +35,6 @@ data class UserSubredditDto(
 )
 
 @Serializable
-data class AccountDto(
-    val id: String,
-    val name: String,
-    val created: Double,
-    @SerialName("created_utc") val createdUtc: Double,
-    @SerialName("link_karma") val linkKarma: Int = 0,
-    @SerialName("comment_karma") val commentKarma: Int = 0,
-    @SerialName("total_karma") val totalKarma: Int = 0,
-    @SerialName("icon_img") val iconImg: String? = null,
-    @SerialName("inbox_count") val inboxCount: Int = 0,
-    @SerialName("has_mail") val hasMail: Boolean = false,
-    @SerialName("has_mod_mail") val hasModMail: Boolean = false,
-    @SerialName("is_gold") val isGold: Boolean = false,
-    @SerialName("is_mod") val isMod: Boolean = false,
-    @SerialName("num_friends") val numFriends: Int = 0,
-    @SerialName("over_18") val over18: Boolean = false,
-    @SerialName("pref_nightmode") val prefNightMode: Boolean = false,
-    @SerialName("pref_show_nsfw") val prefShowNsfw: Boolean = false,
-    @SerialName("pref_no_profanity") val prefNoProfanity: Boolean = false,
-)
-
-@Serializable
 data class TrophyDto(
     val name: String,
     val description: String? = null,

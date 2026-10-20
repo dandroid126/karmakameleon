@@ -2,10 +2,10 @@ package com.karmakameleon.shared.ui.profile
 
 import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
-import com.karmakameleon.shared.createTestAccount
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
+import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
@@ -464,7 +464,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreUserPosts_appendsToExistingPosts() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -481,7 +481,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreUserPosts_preventsLoadWhenNoMore() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = null)
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -496,7 +496,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreUserPosts_updatesAfterToken() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -514,7 +514,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreUserComments_appendsToExistingComments() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1")), after = "token1")
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -533,7 +533,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreUserComments_preventsLoadWhenNoMore() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1")), after = null)
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -552,7 +552,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreSavedPosts_appendsToExistingSavedPosts() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")), after = "token1")
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -571,7 +571,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreSavedPosts_preventsLoadWhenNoMore() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")), after = null)
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -590,7 +590,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreSavedComments_appendsToExistingSavedComments() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")), after = "token1")
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -609,7 +609,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreSavedComments_preventsLoadWhenNoMore() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")), after = null)
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -628,7 +628,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreUpvotedPosts_appendsToExistingUpvotedPosts() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")), after = "token1")
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -647,7 +647,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreUpvotedPosts_preventsLoadWhenNoMore() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.upvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "u1")), after = null)
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -666,7 +666,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreDownvotedPosts_appendsToExistingDownvotedPosts() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")), after = "token1")
             viewModel.loadOwnProfile()
             advanceUntilIdle()
@@ -685,7 +685,7 @@ class ProfileViewModelTest {
     @Test
     fun loadMoreDownvotedPosts_preventsLoadWhenNoMore() =
         runTest {
-            fakeApi.meResult = createTestAccount(name = "testuser")
+            fakeApi.meResult = createTestUser(name = "testuser")
             fakeApi.downvotedPostsResult = createTestListing(items = listOf(createTestPost(id = "d1")), after = null)
             viewModel.loadOwnProfile()
             advanceUntilIdle()

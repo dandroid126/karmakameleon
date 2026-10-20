@@ -1,6 +1,5 @@
 package com.karmakameleon.shared.data.api
 
-import com.karmakameleon.shared.data.api.dto.AccountDto
 import com.karmakameleon.shared.data.api.dto.CommentDto
 import com.karmakameleon.shared.data.api.dto.GalleryDataDto
 import com.karmakameleon.shared.data.api.dto.ListingData
@@ -17,7 +16,6 @@ import com.karmakameleon.shared.data.api.dto.ThingData
 import com.karmakameleon.shared.data.api.dto.UserDto
 import com.karmakameleon.shared.data.api.dto.UserSubredditDto
 import com.karmakameleon.shared.data.repository.SettingsRepository
-import com.karmakameleon.shared.domain.model.Account
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.FlairRichtext
@@ -136,8 +134,6 @@ internal class RedditParser(
     fun subreddit(dto: SubredditDto): Subreddit = mapSubreddit(dto)
 
     fun user(dto: UserDto): User = mapUser(dto)
-
-    fun account(dto: AccountDto): Account = mapAccount(dto)
 
     // ==================== Responses to actions ====================
 
@@ -518,28 +514,6 @@ internal class RedditParser(
             iconUrl = dto.iconImg?.let { decodeHtml(it) },
             bannerUrl = dto.bannerImg?.let { decodeHtml(it) },
             isNsfw = dto.over18,
-        )
-
-    private fun mapAccount(dto: AccountDto): Account =
-        Account(
-            id = dto.id,
-            name = dto.name,
-            created = dto.created.toLong(),
-            createdUtc = dto.createdUtc.toLong(),
-            linkKarma = dto.linkKarma,
-            commentKarma = dto.commentKarma,
-            totalKarma = dto.totalKarma,
-            iconUrl = dto.iconImg?.let { decodeHtml(it) },
-            inboxCount = dto.inboxCount,
-            hasMail = dto.hasMail,
-            hasModMail = dto.hasModMail,
-            isGold = dto.isGold,
-            isMod = dto.isMod,
-            numFriends = dto.numFriends,
-            over18 = dto.over18,
-            prefNightMode = dto.prefNightMode,
-            prefShowNsfw = dto.prefShowNsfw,
-            prefNoProfanity = dto.prefNoProfanity,
         )
 
     private fun mapMessage(dto: MessageDto): Message =

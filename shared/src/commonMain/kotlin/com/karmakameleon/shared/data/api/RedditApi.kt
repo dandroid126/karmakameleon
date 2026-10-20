@@ -1,6 +1,5 @@
 package com.karmakameleon.shared.data.api
 
-import com.karmakameleon.shared.data.api.dto.AccountDto
 import com.karmakameleon.shared.data.api.dto.CommentDto
 import com.karmakameleon.shared.data.api.dto.GalleryDataDto
 import com.karmakameleon.shared.data.api.dto.ListingData
@@ -17,7 +16,6 @@ import com.karmakameleon.shared.data.api.dto.ThingData
 import com.karmakameleon.shared.data.api.dto.UserDto
 import com.karmakameleon.shared.data.api.dto.UserSubredditDto
 import com.karmakameleon.shared.data.repository.SettingsRepository
-import com.karmakameleon.shared.domain.model.Account
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.FlairRichtext
@@ -335,7 +333,7 @@ open class RedditApi(
 
     // ==================== User ====================
 
-    open suspend fun getMe(): Account? {
+    open suspend fun getMe(): User? {
         val response =
             authenticatedRequest {
                 method = HttpMethod.Get
@@ -345,7 +343,7 @@ open class RedditApi(
 
         val body = response.bodyAsText() // Always consume body to release connection
         if (!response.status.isSuccess()) return null
-        return parser.account(json.decodeFromString<AccountDto>(body))
+        return parser.user(json.decodeFromString<UserDto>(body))
     }
 
     open suspend fun getUser(username: String): User? = parser.user(getJson<RedditResponse<UserDto>>("/user/$username/about").data)

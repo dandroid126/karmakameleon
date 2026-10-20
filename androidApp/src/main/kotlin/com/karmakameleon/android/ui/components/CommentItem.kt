@@ -55,7 +55,7 @@ import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.theme.commentColors
 import com.karmakameleon.android.ui.theme.voteColors
-import com.karmakameleon.shared.data.repository.PostRepository
+import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.VoteState
 import kotlinx.coroutines.launch
@@ -75,13 +75,13 @@ fun CommentItem(
     isSingleThreadMode: Boolean = false,
     showTopControls: Boolean = true,
     showSubreddit: Boolean = false,
-    postRepository: PostRepository = koinInject(),
+    commentRepository: CommentRepository = koinInject(),
 ) {
     val scope = rememberCoroutineScope()
     val navigationHandler = koinInject<NavigationHandler>()
 
     val vote = { direction: Int ->
-        scope.launch { postRepository.voteComment(comment, direction).onSuccess(actions.onCommentUpdated) }
+        scope.launch { commentRepository.vote(comment, direction).onSuccess(actions.onCommentUpdated) }
     }
 
     val commentColors = commentColors()
