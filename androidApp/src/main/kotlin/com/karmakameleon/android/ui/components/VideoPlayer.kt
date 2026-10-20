@@ -10,8 +10,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,7 +55,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -390,7 +387,7 @@ private fun FullscreenVideoDialog(
     onExitFullscreen: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var zoom by remember { mutableStateOf(VideoZoom()) }
+    val zoom = remember { mutableStateOf(VideoZoom()) }
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
@@ -401,11 +398,7 @@ private fun FullscreenVideoDialog(
                 Modifier
                     .fillMaxSize()
                     .background(mediaColors().mediaBackgroundColor)
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, gestureZoom, _ -> zoom = zoom.transformed(pan.x, pan.y, gestureZoom) }
-                    }.pointerInput(Unit) {
-                        detectTapGestures(onTap = { state.toggleOverlay() }, onDoubleTap = { zoom = VideoZoom() })
-                    },
+                    .videoZoomGestures(zoom, onTap = { state.toggleOverlay() }),
         ) {
             VideoSurface(
                 player = state.player,
@@ -413,7 +406,7 @@ private fun FullscreenVideoDialog(
                     Modifier
                         .align(Alignment.Center)
                         .aspectRatio(state.videoAspectRatio)
-                        .zoomedBy(zoom),
+                        .zoomedBy(zoom.value),
             )
             VideoControls(
                 state = state,
