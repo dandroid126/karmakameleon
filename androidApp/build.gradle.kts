@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.dependencyAnalysis)
 }
 
 android {
@@ -84,10 +85,16 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.compose.runtime.saveable)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.animation)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
 
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.annotation)
+    implementation(libs.androidx.annotation.experimental)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -103,17 +110,19 @@ dependencies {
     implementation(libs.coil.network.ktor)
 
     implementation(libs.napier)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.okio)
 
     implementation(libs.androidx.work.runtime)
 
     implementation(libs.media3.exoplayer)
-    implementation(libs.media3.exoplayer.hls)
-    implementation(libs.media3.ui)
+    // ExoPlayer finds the HLS support at runtime.
+    runtimeOnly(libs.media3.exoplayer.hls)
 
     implementation(libs.android.youtube.player)
 
     detektPlugins(libs.compose.rules.detekt)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugRuntimeOnly(libs.androidx.compose.ui.test.manifest)
 }
