@@ -498,7 +498,8 @@ tasks.register<GradleActionsCacheCheckTask>("gradleActionsCacheCheck") {
 // Fails when too few of the lines changed since the branch left main are covered by tests. Only the shared module is
 // measured: the app has no tests yet, so every change to it would fail. A changed line counts if the coverage report
 // has it, which leaves out blank lines, comments and declarations with no code. Uncommitted and untracked files count
-// too, so it can be run before committing.
+// too, so it can be run before committing. It also reports how many branches on the changed lines are covered, without
+// failing on them yet (#58).
 abstract class DiffCoverageTask : DefaultTask() {
     @get:InputFile
     abstract val report: RegularFileProperty
@@ -520,6 +521,19 @@ abstract class DiffCoverageTask : DefaultTask() {
     @get:Inject
     abstract val execOperations: ExecOperations
 
+    // A line in the coverage report: whether any of its code ran, and how many of its branches did and didn't.
+    private data class LineCoverage(
+        val covered: Boolean,
+        val coveredBranches: Int,
+        val missedBranches: Int,
+    )
+
+    private data class ChangedLine(
+        val path: String,
+        val line: Int,
+        val coverage: LineCoverage,
+    )
+
     @TaskAction
     fun run() {
         val coverage = readCoverage()
@@ -527,13 +541,13 @@ abstract class DiffCoverageTask : DefaultTask() {
         val measured =
             changed.flatMap { (path, lines) ->
                 val fileCoverage = coverage[coverageKey(path)].orEmpty()
-                lines.mapNotNull { line -> fileCoverage[line]?.let { covered -> Triple(path, line, covered) } }
+                lines.mapNotNull { line -> fileCoverage[line]?.let { ChangedLine(path, line, it) } }
             }
         if (measured.isEmpty()) {
             logger.lifecycle("No changed lines with code in ${sourceDirs.get().joinToString()}, so there's nothing to measure.")
             return
         }
-        val covered = measured.count { it.third }
+        val covered = measured.count { it.coverage.covered }
         val percent = covered * 100.0 / measured.size
         val summary =
             "%d of %d changed lines are covered by tests (%.1f%%; at least %d%% is required).".format(
@@ -542,20 +556,40 @@ abstract class DiffCoverageTask : DefaultTask() {
                 percent,
                 minimumPercent.get(),
             )
-        val uncovered =
-            measured
-                .filterNot { it.third }
-                .groupBy({ it.first }, { it.second })
-                .entries
-                .joinToString("\n") { (path, lines) -> "  $path: ${lineRanges(lines)}" }
+        val uncovered = lineList(measured.filterNot { it.coverage.covered })
         if (percent < minimumPercent.get()) {
+            logger.lifecycle(branchReport(measured))
             throw GradleException("$summary Add tests for these lines:\n$uncovered")
         }
         logger.lifecycle(summary + if (uncovered.isEmpty()) "" else "\nNot covered:\n$uncovered")
+        logger.lifecycle(branchReport(measured))
     }
 
-    // Maps each source file, as "package/path/File.kt", to whether each of its lines with code is covered.
-    private fun readCoverage(): Map<String, Map<Int, Boolean>> {
+    // How many branches on the changed lines are covered, and which lines have branches no test took.
+    private fun branchReport(measured: List<ChangedLine>): String {
+        val withBranches = measured.filter { it.coverage.coveredBranches + it.coverage.missedBranches > 0 }
+        if (withBranches.isEmpty()) return "Branches (not required yet): the changed lines have no branches."
+        val covered = withBranches.sumOf { it.coverage.coveredBranches }
+        val total = withBranches.sumOf { it.coverage.coveredBranches + it.coverage.missedBranches }
+        val summary =
+            "Branches (not required yet): %d of %d branches on the changed lines are covered (%.1f%%).".format(
+                covered,
+                total,
+                covered * 100.0 / total,
+            )
+        val partial = lineList(withBranches.filter { it.coverage.missedBranches > 0 })
+        return summary + if (partial.isEmpty()) "" else "\nLines with branches no test took:\n$partial"
+    }
+
+    // The lines grouped by file, like "  path/File.kt: 3-5, 9".
+    private fun lineList(lines: List<ChangedLine>): String =
+        lines
+            .groupBy({ it.path }, { it.line })
+            .entries
+            .joinToString("\n") { (path, numbers) -> "  $path: ${lineRanges(numbers)}" }
+
+    // Maps each source file, as "package/path/File.kt", to the coverage of each of its lines with code.
+    private fun readCoverage(): Map<String, Map<Int, LineCoverage>> {
         val document =
             javax.xml.parsers.DocumentBuilderFactory
                 .newInstance()
@@ -572,7 +606,14 @@ abstract class DiffCoverageTask : DefaultTask() {
                     "${pkg.getAttribute("name")}/${file.getAttribute("name")}" to
                         (0 until lines.length)
                             .map { lines.item(it) as org.w3c.dom.Element }
-                            .associate { it.getAttribute("nr").toInt() to (it.getAttribute("ci").toInt() > 0) }
+                            .associate {
+                                it.getAttribute("nr").toInt() to
+                                    LineCoverage(
+                                        covered = it.getAttribute("ci").toInt() > 0,
+                                        coveredBranches = it.getAttribute("cb").toInt(),
+                                        missedBranches = it.getAttribute("mb").toInt(),
+                                    )
+                            }
                 }
             }.toMap()
     }
