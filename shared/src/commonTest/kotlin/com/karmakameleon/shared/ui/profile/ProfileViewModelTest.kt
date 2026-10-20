@@ -10,12 +10,14 @@ import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
+import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -426,36 +428,37 @@ class ProfileViewModelTest {
     @Test
     fun vote_upvote_updatesPost() =
         runTest {
-            viewModel.loadOwnProfile()
+            loadOwnPosts(createTestPost(id = "p1", score = 100, likes = null))
+
+            viewModel.vote(
+                viewModel.uiState.value.posts.items
+                    .first(),
+                1,
+            )
             advanceUntilIdle()
 
             val post =
                 viewModel.uiState.value.posts.items
-                    .firstOrNull() ?: return@runTest
-            viewModel.vote(post, 1)
-            advanceUntilIdle()
-
-            assertTrue(
-                viewModel.uiState.value.posts.items
-                    .any { it.id == post.id },
-            )
+                    .single()
+            assertEquals(true, post.likes)
+            assertEquals(101, post.score)
         }
 
     @Test
     fun save_savesPost() =
         runTest {
-            viewModel.loadOwnProfile()
-            advanceUntilIdle()
+            loadOwnPosts(createTestPost(id = "p1", isSaved = false))
 
-            val post =
+            viewModel.save(
                 viewModel.uiState.value.posts.items
-                    .firstOrNull() ?: return@runTest
-            viewModel.save(post)
+                    .first(),
+            )
             advanceUntilIdle()
 
             assertTrue(
                 viewModel.uiState.value.posts.items
-                    .any { it.id == post.id },
+                    .single()
+                    .isSaved,
             )
         }
 
@@ -722,4 +725,12 @@ class ProfileViewModelTest {
             )
             assertNull(viewModel.uiState.value.account)
         }
+
+    // Loads the logged-in user's profile with [posts] on its posts tab, so the tests that act on a post have one.
+    private fun TestScope.loadOwnPosts(vararg posts: Post) {
+        fakeApi.meResult = createTestUser(name = "testuser")
+        fakeApi.userPostsResult = createTestListing(items = posts.toList())
+        viewModel.loadOwnProfile()
+        advanceUntilIdle()
+    }
 }

@@ -61,11 +61,48 @@ tasks.register("qualityGate") {
         ":androidApp:lintDebug",
         "spotlessCheck",
         "cpdCheck",
+        "earlyReturnCheck",
         // Detekt with type resolution. The app's debug and release variants have the same code, so one is enough.
         ":androidApp:detektDebug",
         ":shared:detektMainAndroid",
         ":shared:detektHostTestAndroid",
     )
+}
+
+// Fails on unit tests that return when their data is missing, like `posts.firstOrNull() ?: return@runTest`. Such a
+// test passes without checking anything, so use first() and let a missing fixture fail it. The integration tests in
+// androidHostTest return this way on purpose, to skip when no client ID is set, so only commonTest is checked.
+abstract class EarlyReturnCheckTask : DefaultTask() {
+    @get:InputFiles
+    abstract val sources: ConfigurableFileCollection
+
+    @get:Input
+    abstract val projectPath: Property<String>
+
+    @TaskAction
+    fun run() {
+        val pattern = Regex("""\?:\s*return@runTest""")
+        val root = projectPath.get().trimEnd('/') + "/"
+        val found =
+            sources.files.sorted().flatMap { file ->
+                file.readLines().mapIndexedNotNull { index, line ->
+                    "${file.path.removePrefix(root)}:${index + 1}".takeIf { pattern.containsMatchIn(line) }
+                }
+            }
+        if (found.isNotEmpty()) {
+            throw GradleException(
+                "These tests return early instead of failing. Give each test the data it needs and use first() " +
+                    "instead:\n" + found.joinToString("\n") { "  $it" },
+            )
+        }
+    }
+}
+
+tasks.register<EarlyReturnCheckTask>("earlyReturnCheck") {
+    description = "Fails on unit tests that return early instead of failing."
+    group = "verification"
+    sources.from(fileTree("shared/src/commonTest") { include("**/*.kt") })
+    projectPath.set(layout.projectDirectory.asFile.path)
 }
 
 // PMD's copy-paste detector, which finds duplicated Kotlin code.

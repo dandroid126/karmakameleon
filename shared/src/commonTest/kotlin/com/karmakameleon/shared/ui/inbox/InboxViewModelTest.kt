@@ -2,13 +2,18 @@ package com.karmakameleon.shared.ui.inbox
 
 import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
+import com.karmakameleon.shared.createTestListing
+import com.karmakameleon.shared.createTestMessage
+import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.repository.InboxPoller
 import com.karmakameleon.shared.data.repository.MessageRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.InboxFilter
+import com.karmakameleon.shared.domain.model.Message
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -60,26 +65,63 @@ class InboxViewModelTest {
     // ==================== Loading Messages ====================
 
     @Test
-    fun loadMessages_setsLoadingState() =
+    fun loadMessages_loggedOut_doesNotLoad() =
         runTest {
+            fakeApi.inboxResult = createTestListing(items = listOf(createTestMessage(id = "msg1")))
+
             viewModel.loadMessages()
             advanceUntilIdle()
 
+            assertTrue(
+                viewModel.uiState.value.messages
+                    .isEmpty(),
+            )
+        }
+
+    @Test
+    fun loadMessages_replacesMessages() =
+        runTest {
+            logInWithMessages(createTestMessage(id = "msg1"))
+            fakeApi.inboxResult = createTestListing(items = listOf(createTestMessage(id = "msg2")))
+
+            viewModel.loadMessages()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("msg2"),
+                viewModel.uiState.value.messages
+                    .map { it.id },
+            )
             assertFalse(viewModel.uiState.value.isLoading)
         }
 
     @Test
-    fun loadMessages_forceRefresh_setsRefreshingState() =
+    fun loadMessages_forceRefresh_replacesMessages() =
         runTest {
+            logInWithMessages(createTestMessage(id = "msg1"))
+            fakeApi.inboxResult = createTestListing(items = listOf(createTestMessage(id = "msg2")))
+
             viewModel.loadMessages(forceRefresh = true)
             advanceUntilIdle()
 
+            assertEquals(
+                listOf("msg2"),
+                viewModel.uiState.value.messages
+                    .map { it.id },
+            )
             assertFalse(viewModel.uiState.value.isRefreshing)
         }
 
     @Test
     fun loadMessages_clearsErrorOnNewLoad() =
         runTest {
+            logInWithMessages(createTestMessage(id = "msg1"))
+            fakeApi.shouldThrow = IllegalStateException("Inbox failed")
+            viewModel.loadMessages()
+            advanceUntilIdle()
+            assertEquals("Inbox failed", viewModel.uiState.value.error)
+
+            fakeApi.shouldThrow = null
             viewModel.loadMessages()
             advanceUntilIdle()
 
@@ -113,28 +155,20 @@ class InboxViewModelTest {
     @Test
     fun selectMessage_togglesSelectedMessageId() =
         runTest {
-            viewModel.loadMessages()
-            advanceUntilIdle()
+            logInWithMessages(createTestMessage(id = "msg1"))
 
-            val message =
-                viewModel.uiState.value.messages
-                    .firstOrNull() ?: return@runTest
-            viewModel.selectMessage(message.id)
+            viewModel.selectMessage("msg1")
 
-            assertEquals(message.id, viewModel.uiState.value.selectedMessageId)
+            assertEquals("msg1", viewModel.uiState.value.selectedMessageId)
         }
 
     @Test
     fun selectMessage_togglesOff() =
         runTest {
-            viewModel.loadMessages()
-            advanceUntilIdle()
+            logInWithMessages(createTestMessage(id = "msg1"))
 
-            val message =
-                viewModel.uiState.value.messages
-                    .firstOrNull() ?: return@runTest
-            viewModel.selectMessage(message.id)
-            viewModel.selectMessage(message.id)
+            viewModel.selectMessage("msg1")
+            viewModel.selectMessage("msg1")
 
             assertNull(viewModel.uiState.value.selectedMessageId)
         }
@@ -144,12 +178,11 @@ class InboxViewModelTest {
     @Test
     fun startReply_setsReplyingToMessage() =
         runTest {
-            viewModel.loadMessages()
-            advanceUntilIdle()
-
+            logInWithMessages(createTestMessage(id = "msg1"))
             val message =
                 viewModel.uiState.value.messages
-                    .firstOrNull() ?: return@runTest
+                    .first()
+
             viewModel.startReply(message)
 
             assertEquals(message, viewModel.uiState.value.replyingToMessage)
@@ -158,13 +191,12 @@ class InboxViewModelTest {
     @Test
     fun cancelReply_clearsReply() =
         runTest {
-            viewModel.loadMessages()
-            advanceUntilIdle()
+            logInWithMessages(createTestMessage(id = "msg1"))
 
-            val message =
+            viewModel.startReply(
                 viewModel.uiState.value.messages
-                    .firstOrNull() ?: return@runTest
-            viewModel.startReply(message)
+                    .first(),
+            )
             viewModel.cancelReply()
 
             assertNull(viewModel.uiState.value.replyingToMessage)
@@ -190,31 +222,34 @@ class InboxViewModelTest {
     @Test
     fun markAsRead_updatesMessage() =
         runTest {
-            viewModel.loadMessages()
+            logInWithMessages(createTestMessage(id = "msg1", isNew = true), createTestMessage(id = "msg2", isNew = true))
+
+            viewModel.markAsRead(
+                viewModel.uiState.value.messages
+                    .first(),
+            )
             advanceUntilIdle()
 
-            val message =
+            assertEquals(
+                listOf(false, true),
                 viewModel.uiState.value.messages
-                    .firstOrNull() ?: return@runTest
-            viewModel.markAsRead(message)
-            advanceUntilIdle()
-
-            assertTrue(
-                viewModel.uiState.value.messages
-                    .any { it.id == message.id },
+                    .map { it.isNew },
             )
         }
 
     @Test
     fun markAllAsRead_updatesAllMessages() =
         runTest {
-            viewModel.loadMessages()
-            advanceUntilIdle()
+            logInWithMessages(createTestMessage(id = "msg1", isNew = true), createTestMessage(id = "msg2", isNew = true))
 
             viewModel.markAllAsRead()
             advanceUntilIdle()
 
-            assertNull(viewModel.uiState.value.error)
+            assertEquals(
+                listOf(false, false),
+                viewModel.uiState.value.messages
+                    .map { it.isNew },
+            )
         }
 
     // ==================== Voting ====================
@@ -222,18 +257,27 @@ class InboxViewModelTest {
     @Test
     fun voteOnMessage_updatesMessage() =
         runTest {
-            viewModel.loadMessages()
+            logInWithMessages(createTestMessage(id = "msg1", likes = null), createTestMessage(id = "msg2", likes = null))
+
+            viewModel.voteOnMessage(
+                viewModel.uiState.value.messages
+                    .first(),
+                1,
+            )
             advanceUntilIdle()
 
-            val message =
+            assertEquals(
+                listOf(true, null),
                 viewModel.uiState.value.messages
-                    .firstOrNull() ?: return@runTest
-            viewModel.voteOnMessage(message, 1)
-            advanceUntilIdle()
-
-            assertTrue(
-                viewModel.uiState.value.messages
-                    .any { it.id == message.id },
+                    .map { it.likes },
             )
         }
+
+    // Logs in with [messages] in the inbox. The view model loads the inbox once the user is logged in.
+    private suspend fun TestScope.logInWithMessages(vararg messages: Message) {
+        fakeApi.inboxResult = createTestListing(items = messages.toList())
+        fakeApi.meResult = createTestUser()
+        userRepo.loadCurrentUser()
+        advanceUntilIdle()
+    }
 }
