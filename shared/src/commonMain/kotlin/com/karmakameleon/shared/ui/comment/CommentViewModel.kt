@@ -251,64 +251,24 @@ class CommentViewModel(
 
     // ==================== CRUD Operations (Tree-based) ====================
 
-    fun saveComment(comment: Comment) {
-        viewModelScope.launch {
-            val result = commentRepository.save(comment)
-            result.onSuccess { updatedComment ->
-                updateComment(updatedComment)
-            }
-        }
-    }
+    fun saveComment(comment: Comment) = saveCommentWithCallback(comment, ::updateComment)
 
     suspend fun submitReplyWithError(isReplyToPost: Boolean): String? {
-        val parentId = _uiState.value.replyingTo ?: return null
-        val text = _uiState.value.replyText.trim()
-        if (text.isEmpty()) return null
-
-        val result = commentRepository.submitComment(parentId, text)
+        val (parentId, result) = submitReply() ?: return null
         return result.fold(
             onSuccess = { newComment ->
-                deleteDraft(parentId)
-                val adjustedComment = newComment.copy(likes = true, score = 1)
-                _uiState.update { it.copy(replyingTo = null, replyText = "", savedDraftText = null) }
-                addReplyToTree(parentId, adjustedComment, isReplyToPost)
+                addReplyToTree(parentId, newComment, isReplyToPost)
                 null
             },
             onFailure = { error -> error.message },
         )
     }
 
-    fun submitEdit() {
-        val editingId = _uiState.value.editingCommentId ?: return
-        val text = _uiState.value.replyText.trim()
-        if (text.isEmpty()) return
-
-        val comment = findCommentById(editingId) ?: return
-        viewModelScope.launch {
-            val result = commentRepository.editComment(comment, text)
-            result.onSuccess { updatedComment ->
-                deleteDraft(editingId)
-                _uiState.update {
-                    it.copy(
-                        editingCommentId = null,
-                        editingOriginalText = "",
-                        replyText = "",
-                        savedDraftText = null,
-                    )
-                }
-                updateComment(updatedComment)
-            }
-        }
-    }
+    fun submitEdit() = submitEditWithCallback(::findCommentById, ::updateComment)
 
     fun deleteComment(commentId: String) {
         val comment = findCommentById(commentId) ?: return
-        viewModelScope.launch {
-            val result = commentRepository.deleteComment(comment)
-            result.onSuccess {
-                removeComment(commentId)
-            }
-        }
+        deleteCommentWithCallback(comment) { removeComment(commentId) }
     }
 
     // ==================== CRUD Operations (Callback-based for flat lists) ====================
@@ -326,18 +286,8 @@ class CommentViewModel(
     }
 
     fun submitReplyWithCallback(onSuccess: (Comment) -> Unit) {
-        val parentId = _uiState.value.replyingTo ?: return
-        val text = _uiState.value.replyText.trim()
-        if (text.isEmpty()) return
-
         viewModelScope.launch {
-            val result = commentRepository.submitComment(parentId, text)
-            result.onSuccess { newComment ->
-                deleteDraft(parentId)
-                val adjustedComment = newComment.copy(likes = true, score = 1)
-                _uiState.update { it.copy(replyingTo = null, replyText = "", savedDraftText = null) }
-                onSuccess(adjustedComment)
-            }
+            submitReply()?.second?.onSuccess(onSuccess)
         }
     }
 
@@ -377,5 +327,20 @@ class CommentViewModel(
                 onSuccess()
             }
         }
+    }
+
+    // Posts the reply being written and clears it once it's posted. Returns the parent's ID with the new comment, which
+    // starts out upvoted with a score of 1 like Reddit shows it, or null when there's no reply to post.
+    private suspend fun submitReply(): Pair<String, Result<Comment>>? {
+        val parentId = _uiState.value.replyingTo ?: return null
+        val text = _uiState.value.replyText.trim()
+        if (text.isEmpty()) return null
+
+        val result = commentRepository.submitComment(parentId, text).map { it.copy(likes = true, score = 1) }
+        if (result.isSuccess) {
+            deleteDraft(parentId)
+            _uiState.update { it.copy(replyingTo = null, replyText = "", savedDraftText = null) }
+        }
+        return parentId to result
     }
 }
