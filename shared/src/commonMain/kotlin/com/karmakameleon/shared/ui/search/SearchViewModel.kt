@@ -89,8 +89,6 @@ class SearchViewModel(
                 SearchType.SUBREDDIT -> {
                     searchSubreddits(query)
                 }
-
-                SearchType.USER -> {} // Not implemented
             }
         }
     }

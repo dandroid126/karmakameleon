@@ -4,6 +4,8 @@ import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
+import com.karmakameleon.shared.createTestSubreddit
+import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
@@ -18,6 +20,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -58,10 +61,41 @@ class SubredditViewModelTest {
     // ==================== Initialization ====================
 
     @Test
-    fun init_loadsSubredditAndPosts() =
+    fun init_loadsTheSubredditAndItsPosts() =
         runTest {
+            fakeApi.subredditResult = createTestSubreddit(displayName = "Kotlin")
+            fakeApi.postsResult = createTestListing(items = listOf(createTestPost(id = "p1")))
+
+            val viewModel = createViewModel()
             advanceUntilIdle()
-            assertNull(viewModel.postList.state.value.error)
+
+            assertEquals(
+                "Kotlin",
+                viewModel.uiState.value.subreddit
+                    ?.displayName,
+            )
+            assertEquals(
+                listOf("p1"),
+                viewModel.postList.state.value.posts
+                    .map { it.id },
+            )
+            assertEquals("kotlin", fakeApi.postsRequests.last())
+        }
+
+    @Test
+    fun init_withoutTheSubredditStillLoadsPosts() =
+        runTest {
+            fakeApi.postsResult = createTestListing(items = listOf(createTestPost(id = "p1")))
+
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.subreddit)
+            assertEquals(
+                listOf("p1"),
+                viewModel.postList.state.value.posts
+                    .map { it.id },
+            )
         }
 
     @Test
@@ -71,49 +105,54 @@ class SubredditViewModelTest {
         assertFalse(viewModel.postList.state.value.isLoading)
     }
 
-    // ==================== Loading Subreddit ====================
-
-    @Test
-    fun loadSubreddit_loadsSubredditData() =
-        runTest {
-            advanceUntilIdle()
-            // Subreddit should be loaded during init
-            assertNull(viewModel.postList.state.value.error)
-        }
-
     // ==================== Loading Posts ====================
 
     @Test
-    fun loadPosts_setsLoadingState() =
+    fun loadPosts_replacesThePosts() =
         runTest {
-            viewModel.postList.load()
-            advanceUntilIdle()
-            assertFalse(viewModel.postList.state.value.isLoading)
-        }
+            loadPosts(createTestPost(id = "p1"))
+            fakeApi.postsResult = createTestListing(items = listOf(createTestPost(id = "p2")))
 
-    @Test
-    fun loadPosts_forceRefresh_setsRefreshingState() =
-        runTest {
             viewModel.postList.load(forceRefresh = true)
             advanceUntilIdle()
-            assertFalse(viewModel.postList.state.value.isRefreshing)
-        }
 
-    @Test
-    fun loadPosts_preventsMultipleConcurrentLoads() =
-        runTest {
-            viewModel.postList.load()
-            viewModel.postList.load()
-            advanceUntilIdle()
+            assertEquals(
+                listOf("p2"),
+                viewModel.postList.state.value.posts
+                    .map { it.id },
+            )
+            assertFalse(viewModel.postList.state.value.isRefreshing)
             assertFalse(viewModel.postList.state.value.isLoading)
         }
 
     @Test
-    fun loadPosts_clearsErrorOnNewLoad() =
+    fun loadPosts_skipsALoadWhileOneIsRunning() =
         runTest {
+            advanceUntilIdle()
+            fakeApi.postsRequests.clear()
+            fakeApi.responseDelayMillis = 1000
+
+            viewModel.postList.load()
+            runCurrent()
             viewModel.postList.load()
             advanceUntilIdle()
-            assertEquals(null, viewModel.postList.state.value.error)
+
+            assertEquals(1, fakeApi.postsRequests.size)
+        }
+
+    @Test
+    fun loadPosts_clearsTheErrorOnTheNextLoad() =
+        runTest {
+            fakeApi.shouldThrow = Exception("No connection")
+            viewModel.postList.load()
+            advanceUntilIdle()
+            assertEquals("No connection", viewModel.postList.state.value.error)
+
+            fakeApi.shouldThrow = null
+            viewModel.postList.load()
+            advanceUntilIdle()
+
+            assertNull(viewModel.postList.state.value.error)
         }
 
     @Test
@@ -145,6 +184,42 @@ class SubredditViewModelTest {
         }
 
     // ==================== Loading More Posts ====================
+
+    @Test
+    fun loadMorePosts_keepsThePostsWhenTheNextPageFails() =
+        runTest {
+            fakeApi.postsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "t3_p1")
+            viewModel.postList.load()
+            advanceUntilIdle()
+            fakeApi.shouldThrow = Exception("No connection")
+
+            viewModel.postList.loadMore()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("p1"),
+                viewModel.postList.state.value.posts
+                    .map { it.id },
+            )
+            assertFalse(viewModel.postList.state.value.isLoadingMore)
+        }
+
+    @Test
+    fun loadPosts_fillsInPostsSentWithoutTheirDetails() =
+        runTest {
+            // A link post with no preview or thumbnail is sent without its details, so they're fetched by ID.
+            val sparse = createTestPost(id = "p1", url = "https://example.com/article")
+            fakeApi.fetchPostsByIdsResult = listOf(sparse.copy(thumbnail = "https://example.com/thumb.jpg"))
+
+            loadPosts(sparse)
+
+            assertEquals(
+                "https://example.com/thumb.jpg",
+                viewModel.postList.state.value.posts
+                    .single()
+                    .thumbnail,
+            )
+        }
 
     @Test
     fun loadMorePosts_appendsToExistingPosts() =
@@ -255,12 +330,57 @@ class SubredditViewModelTest {
     // ==================== Subscription ====================
 
     @Test
-    fun toggleSubscribe_requiresSubreddit() =
+    fun toggleSubscribe_subscribesAndUnsubscribes() =
         runTest {
+            fakeApi.subredditResult = createTestSubreddit(displayName = "Kotlin", isSubscribed = false)
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
             viewModel.toggleSubscribe()
             advanceUntilIdle()
-            // Should not error if subreddit is null
-            assertNull(viewModel.postList.state.value.error)
+            assertEquals(
+                true,
+                viewModel.uiState.value.subreddit
+                    ?.isSubscribed,
+            )
+
+            viewModel.toggleSubscribe()
+            advanceUntilIdle()
+            assertEquals(
+                false,
+                viewModel.uiState.value.subreddit
+                    ?.isSubscribed,
+            )
+            assertEquals(listOf("sub Kotlin", "unsub Kotlin"), fakeApi.subscriptionChanges)
+        }
+
+    @Test
+    fun toggleSubscribe_keepsTheSubredditWhenItFails() =
+        runTest {
+            fakeApi.subredditResult = createTestSubreddit(displayName = "Kotlin", isSubscribed = false)
+            fakeApi.subscribeResult = false
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.toggleSubscribe()
+            advanceUntilIdle()
+
+            assertEquals(
+                false,
+                viewModel.uiState.value.subreddit
+                    ?.isSubscribed,
+            )
+        }
+
+    @Test
+    fun toggleSubscribe_beforeTheSubredditLoadsDoesNothing() =
+        runTest {
+            advanceUntilIdle()
+
+            viewModel.toggleSubscribe()
+            advanceUntilIdle()
+
+            assertTrue(fakeApi.subscriptionChanges.isEmpty())
         }
 
     // ==================== Voting ====================
@@ -406,11 +526,19 @@ class SubredditViewModelTest {
     // ==================== Login State ====================
 
     @Test
-    fun loginStateChange_updatesIsLoggedIn() =
+    fun loggingIn_updatesIsLoggedIn() =
         runTest {
-            // Verify initial state
+            advanceUntilIdle()
             assertFalse(viewModel.uiState.value.isLoggedIn)
+
+            fakeApi.meResult = createTestUser()
+            userRepo.loadCurrentUser()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.isLoggedIn)
         }
+
+    private fun createViewModel(): SubredditViewModel = SubredditViewModel("kotlin", subredditRepo, postRepo, userRepo, settingsRepo)
 
     // Loads the post list with [posts], so the tests that act on a post have one.
     private fun TestScope.loadPosts(vararg posts: Post) {
