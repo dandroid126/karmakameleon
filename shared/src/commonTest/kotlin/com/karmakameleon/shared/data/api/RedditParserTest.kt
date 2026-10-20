@@ -112,17 +112,28 @@ class RedditParserTest {
         assertEquals(0, profile.subscribers)
         assertEquals(icon, profile.iconUrl)
         assertFalse(profile.isNsfw)
+        // Reddit sends an empty banner_img when there's no banner.
+        assertNull(user.bannerUrl)
+        assertNull(profile.bannerUrl)
     }
 
     @Test
     fun user_usesTheSnoovatarWithoutAnIcon() {
         val dto = json.decodeFromString<RedditResponse<UserDto>>(readFixture("user_about.json")).data
 
-        val user = parser.user(dto.copy(iconImg = null, snoovatarImg = "https://example.com/snoo.png", subreddit = null))
+        // An unset icon_img is an empty string, like the fixture's snoovatar_img.
+        val user = parser.user(dto.copy(iconImg = "", snoovatarImg = "https://example.com/snoo.png", subreddit = null))
 
         assertEquals("https://example.com/snoo.png", user.iconUrl)
         assertNull(user.subreddit)
         assertNull(user.bannerUrl)
+    }
+
+    @Test
+    fun user_withoutAnyIconHasNone() {
+        val dto = json.decodeFromString<RedditResponse<UserDto>>(readFixture("user_about.json")).data
+
+        assertNull(parser.user(dto.copy(iconImg = "")).iconUrl)
     }
 
     // ==================== Messages ====================

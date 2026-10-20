@@ -476,9 +476,8 @@ internal class RedditParser(
             isSubscribed = dto.userIsSubscriber,
             isFavorite = dto.userHasFavorited,
             iconUrl =
-                dto.communityIcon?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) }
-                    ?: dto.iconImg?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) },
-            bannerUrl = dto.bannerImg?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) },
+                imageUrl(dto.communityIcon) ?: imageUrl(dto.iconImg),
+            bannerUrl = imageUrl(dto.bannerImg),
             communityIcon = dto.communityIcon?.let { decodeHtml(it) },
             primaryColor = dto.primaryColor,
             keyColor = dto.keyColor,
@@ -503,8 +502,8 @@ internal class RedditParser(
             linkKarma = dto.linkKarma,
             commentKarma = dto.commentKarma,
             totalKarma = dto.totalKarma,
-            iconUrl = dto.iconImg?.let { decodeHtml(it) } ?: dto.snoovatarImg?.let { decodeHtml(it) },
-            bannerUrl = dto.subreddit?.bannerImg?.let { decodeHtml(it) },
+            iconUrl = imageUrl(dto.iconImg) ?: imageUrl(dto.snoovatarImg),
+            bannerUrl = imageUrl(dto.subreddit?.bannerImg),
             isGold = dto.isGold,
             isMod = dto.isMod,
             isVerified = dto.verified,
@@ -520,8 +519,8 @@ internal class RedditParser(
             title = dto.title.orEmpty(),
             publicDescription = dto.publicDescription,
             subscribers = dto.subscribers,
-            iconUrl = dto.iconImg?.let { decodeHtml(it) },
-            bannerUrl = dto.bannerImg?.let { decodeHtml(it) },
+            iconUrl = imageUrl(dto.iconImg),
+            bannerUrl = imageUrl(dto.bannerImg),
             isNsfw = dto.over18,
         )
 
@@ -600,6 +599,9 @@ internal class RedditParser(
         }
         return sb.toString()
     }
+
+    // Reddit sends an empty string, not null, for an image that isn't set.
+    private fun imageUrl(url: String?): String? = url?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) }
 
     private fun decodeHtml(text: String): String =
         text
