@@ -31,6 +31,7 @@ jose4j = "0.9.7"
 jdom2 = "2.0.6.1"
 commons-lang3 = "3.21.0"
 httpclient = "4.5.14"
+freemarker = "2.3.35"
 
 [libraries]
 # AndroidX
@@ -107,6 +108,7 @@ jose4j = { module = "org.bitbucket.b_c:jose4j", version.ref = "jose4j" }
 jdom2 = { module = "org.jdom:jdom2", version.ref = "jdom2" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
 httpclient = { module = "org.apache.httpcomponents:httpclient", version.ref = "httpclient" }
+freemarker = { module = "org.freemarker:freemarker", version.ref = "freemarker" }
 
 # Static analysis
 compose-rules-detekt = { module = "io.nlopez.compose.rules:detekt", version.ref = "compose-rules" }
@@ -119,7 +121,7 @@ konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 [bundles]
 # Fixed versions of libraries that the build tooling (mostly AGP) brings in with known vulnerabilities.
 # They're required as constraints in build.gradle.kts, so they only raise a version and never add a library.
-security-fixes = ["bouncycastle-bcprov", "bouncycastle-bcpkix", "bouncycastle-bcutil", "jose4j", "jdom2", "commons-lang3", "httpclient"]
+security-fixes = ["bouncycastle-bcprov", "bouncycastle-bcpkix", "bouncycastle-bcutil", "jose4j", "jdom2", "commons-lang3", "httpclient", "freemarker"]
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

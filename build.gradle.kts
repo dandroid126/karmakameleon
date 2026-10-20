@@ -19,6 +19,8 @@ plugins {
     alias(libs.plugins.composeCompiler) apply false
     alias(libs.plugins.spotless)
     alias(libs.plugins.detekt) apply false
+    // On the root classpath, so the security-fixes constraints above also apply to the libraries it brings in.
+    alias(libs.plugins.kover) apply false
 }
 
 // Formats Kotlin with ktlint, using the rules in .editorconfig. Run spotlessApply to fix what it reports.

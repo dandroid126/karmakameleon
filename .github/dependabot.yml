@@ -37,6 +37,7 @@ updates:
           - "org.jdom:jdom2"
           - "org.apache.commons:commons-lang3"
           - "org.apache.httpcomponents:httpclient"
+          - "org.freemarker:freemarker"
 
   - package-ecosystem: "github-actions"
     directory: "/"
