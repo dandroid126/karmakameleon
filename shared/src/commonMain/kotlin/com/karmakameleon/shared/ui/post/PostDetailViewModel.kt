@@ -87,38 +87,24 @@ class PostDetailViewModel(
         loadPostWithComments()
     }
 
-    fun navigateToComment(newCommentId: String) {
-        viewModelScope.launch {
-            _uiState.update { it.copy(focusedCommentId = newCommentId, isLoading = true) }
-            commentViewModel.clearComments()
-            val result =
-                postRepository.getPostWithComments(
-                    subreddit = subreddit,
-                    postId = postId,
-                    sort = _uiState.value.commentSort,
-                    commentId = newCommentId,
-                )
-            result.fold(
-                onSuccess = { (post, comments) ->
-                    _uiState.update { it.copy(post = post, isLoading = false) }
-                    commentViewModel.setComments(comments)
-                },
-                onFailure = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.message ?: "Failed to load comment") }
-                },
-            )
-        }
-    }
+    fun navigateToComment(newCommentId: String) = reloadComments(focusedCommentId = newCommentId, errorMessage = "Failed to load comment")
 
-    fun viewAllComments() {
+    fun viewAllComments() = reloadComments(focusedCommentId = null, errorMessage = "Failed to load comments")
+
+    // Reloads the post and its comments: the thread under focusedCommentId, or all of them when it's null.
+    private fun reloadComments(
+        focusedCommentId: String?,
+        errorMessage: String,
+    ) {
         viewModelScope.launch {
-            _uiState.update { it.copy(focusedCommentId = null, isLoading = true) }
+            _uiState.update { it.copy(focusedCommentId = focusedCommentId, isLoading = true) }
             commentViewModel.clearComments()
             val result =
                 postRepository.getPostWithComments(
                     subreddit = subreddit,
                     postId = postId,
                     sort = _uiState.value.commentSort,
+                    commentId = focusedCommentId,
                 )
             result.fold(
                 onSuccess = { (post, comments) ->
@@ -126,7 +112,7 @@ class PostDetailViewModel(
                     commentViewModel.setComments(comments)
                 },
                 onFailure = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error.message ?: "Failed to load comments") }
+                    _uiState.update { it.copy(isLoading = false, error = error.message ?: errorMessage) }
                 },
             )
         }
