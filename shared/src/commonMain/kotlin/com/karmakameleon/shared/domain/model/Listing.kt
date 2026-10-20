@@ -34,5 +34,4 @@ enum class SearchType(
 ) {
     POST("link"),
     SUBREDDIT("sr"),
-    USER("user"),
 }

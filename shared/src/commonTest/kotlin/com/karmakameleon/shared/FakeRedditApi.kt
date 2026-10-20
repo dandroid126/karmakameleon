@@ -17,6 +17,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.delay
 
 class FakeRedditApi(
     fakeAuthManager: FakeAuthManager = FakeAuthManager(),
@@ -69,6 +70,14 @@ class FakeRedditApi(
     val submittedComments = mutableListOf<Pair<String, String>>()
     val editedComments = mutableListOf<Pair<String, String>>()
     val deletedComments = mutableListOf<String>()
+    val userContentRequests = mutableListOf<UserContentRequest>()
+    val searchRequests = mutableListOf<SearchRequest>()
+    val subredditSearchesIncludingNsfw = mutableListOf<Boolean>()
+    val messagesMarkedUnread = mutableListOf<String>()
+    val blockedUsers = mutableListOf<String>()
+    val inboxRequests = mutableListOf<InboxFilter>()
+    val postsRequests = mutableListOf<String?>()
+    val subscriptionChanges = mutableListOf<String>()
 
     /** Results for the threads of particular comments, by comment ID. Other requests get [postWithCommentsResult]. */
     val commentThreadResults = mutableMapOf<String, Pair<Post, List<CommentOrMore>>>()
@@ -79,11 +88,34 @@ class FakeRedditApi(
         val context: Int?,
     )
 
+    /** A request for one of a user's lists, such as "submitted" or "saved_comments". */
+    data class UserContentRequest(
+        val list: String,
+        val username: String,
+        val sort: PostSort? = null,
+        val timeFilter: TimeFilter? = null,
+        val after: String? = null,
+    )
+
+    data class SearchRequest(
+        val query: String,
+        val sort: SearchSort,
+        val time: TimeFilter,
+        val after: String?,
+    )
+
     data class MoreCommentsRequest(
         val linkId: String,
         val children: List<String>,
         val sort: CommentSort,
     )
+
+    /** How long getPosts, search and getInbox take, so a test can act while one is in flight. */
+    var responseDelayMillis = 0L
+
+    private suspend fun respondLater() {
+        if (responseDelayMillis > 0) delay(responseDelayMillis)
+    }
 
     private fun <T> throwOrReturn(value: T): T {
         shouldThrow?.let { throw it }
@@ -96,7 +128,11 @@ class FakeRedditApi(
         time: TimeFilter?,
         after: String?,
         limit: Int,
-    ): Listing<Post> = throwOrReturn(postsResult)
+    ): Listing<Post> {
+        postsRequests += subreddit
+        respondLater()
+        return throwOrReturn(postsResult)
+    }
 
     override suspend fun fetchPostsByIds(fullnames: List<String>): List<Post> = throwOrReturn(fetchPostsByIdsResult)
 
@@ -152,15 +188,24 @@ class FakeRedditApi(
         limit: Int,
     ): Listing<Subreddit> = throwOrReturn(subscribedSubredditsResult)
 
-    override suspend fun subscribe(subredditName: String): Boolean = throwOrReturn(subscribeResult)
+    override suspend fun subscribe(subredditName: String): Boolean {
+        subscriptionChanges += "sub $subredditName"
+        return throwOrReturn(subscribeResult)
+    }
 
-    override suspend fun unsubscribe(subredditName: String): Boolean = throwOrReturn(unsubscribeResult)
+    override suspend fun unsubscribe(subredditName: String): Boolean {
+        subscriptionChanges += "unsub $subredditName"
+        return throwOrReturn(unsubscribeResult)
+    }
 
     override suspend fun searchSubreddits(
         query: String,
         limit: Int,
         includeOver18: Boolean,
-    ): List<Subreddit> = throwOrReturn(searchSubredditsResult)
+    ): List<Subreddit> {
+        subredditSearchesIncludingNsfw += includeOver18
+        return throwOrReturn(searchSubredditsResult)
+    }
 
     override suspend fun getPopularSubreddits(
         after: String?,
@@ -177,7 +222,10 @@ class FakeRedditApi(
         timeFilter: TimeFilter?,
         after: String?,
         limit: Int,
-    ): Listing<Post> = throwOrReturn(userPostsResult)
+    ): Listing<Post> {
+        userContentRequests += UserContentRequest("submitted", username, sort, timeFilter, after)
+        return throwOrReturn(userPostsResult)
+    }
 
     override suspend fun getUserComments(
         username: String,
@@ -185,31 +233,46 @@ class FakeRedditApi(
         timeFilter: TimeFilter?,
         after: String?,
         limit: Int,
-    ): Listing<Comment> = throwOrReturn(userCommentsResult)
+    ): Listing<Comment> {
+        userContentRequests += UserContentRequest("comments", username, sort, timeFilter, after)
+        return throwOrReturn(userCommentsResult)
+    }
 
     override suspend fun getSavedPosts(
         username: String,
         after: String?,
         limit: Int,
-    ): Listing<Post> = throwOrReturn(savedPostsResult)
+    ): Listing<Post> {
+        userContentRequests += UserContentRequest("saved_posts", username, after = after)
+        return throwOrReturn(savedPostsResult)
+    }
 
     override suspend fun getSavedComments(
         username: String,
         after: String?,
         limit: Int,
-    ): Listing<Comment> = throwOrReturn(savedCommentsResult)
+    ): Listing<Comment> {
+        userContentRequests += UserContentRequest("saved_comments", username, after = after)
+        return throwOrReturn(savedCommentsResult)
+    }
 
     override suspend fun getUpvotedPosts(
         username: String,
         after: String?,
         limit: Int,
-    ): Listing<Post> = throwOrReturn(upvotedPostsResult)
+    ): Listing<Post> {
+        userContentRequests += UserContentRequest("upvoted", username, after = after)
+        return throwOrReturn(upvotedPostsResult)
+    }
 
     override suspend fun getDownvotedPosts(
         username: String,
         after: String?,
         limit: Int,
-    ): Listing<Post> = throwOrReturn(downvotedPostsResult)
+    ): Listing<Post> {
+        userContentRequests += UserContentRequest("downvoted", username, after = after)
+        return throwOrReturn(downvotedPostsResult)
+    }
 
     override suspend fun search(
         query: String,
@@ -218,7 +281,11 @@ class FakeRedditApi(
         time: TimeFilter,
         after: String?,
         limit: Int,
-    ): Listing<Post> = throwOrReturn(searchResult)
+    ): Listing<Post> {
+        searchRequests += SearchRequest(query, sort, time, after)
+        respondLater()
+        return throwOrReturn(searchResult)
+    }
 
     override suspend fun submitComment(
         parentId: String,
@@ -245,7 +312,11 @@ class FakeRedditApi(
         filter: InboxFilter,
         after: String?,
         limit: Int,
-    ): Listing<Message> = throwOrReturn(inboxResult)
+    ): Listing<Message> {
+        inboxRequests += filter
+        respondLater()
+        return throwOrReturn(inboxResult)
+    }
 
     override suspend fun sendMessage(
         to: String,
@@ -255,9 +326,15 @@ class FakeRedditApi(
 
     override suspend fun markMessageRead(thingId: String): Boolean = throwOrReturn(markMessageReadResult)
 
-    override suspend fun markMessageUnread(thingId: String): Boolean = throwOrReturn(markMessageUnreadResult)
+    override suspend fun markMessageUnread(thingId: String): Boolean {
+        messagesMarkedUnread += thingId
+        return throwOrReturn(markMessageUnreadResult)
+    }
 
-    override suspend fun blockUser(username: String): Boolean = throwOrReturn(blockUserResult)
+    override suspend fun blockUser(username: String): Boolean {
+        blockedUsers += username
+        return throwOrReturn(blockUserResult)
+    }
 
     override suspend fun markAllMessagesRead(): Boolean = throwOrReturn(markAllMessagesReadResult)
 

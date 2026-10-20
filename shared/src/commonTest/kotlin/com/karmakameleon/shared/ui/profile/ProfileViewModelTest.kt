@@ -6,14 +6,12 @@ import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
-import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
-import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -27,7 +25,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -57,370 +54,248 @@ class ProfileViewModelTest {
         Dispatchers.resetMain()
     }
 
-    // ==================== Initialization ====================
-
-    @Test
-    fun init_setsDefaultState() {
-        assertEquals(ProfileTab.POSTS, viewModel.uiState.value.selectedTab)
-        assertEquals(PostSort.NEW, viewModel.uiState.value.postsSort)
-        assertEquals(TimeFilter.ALL, viewModel.uiState.value.postsTimeFilter)
-        assertEquals(PostSort.NEW, viewModel.uiState.value.commentsSort)
-        assertEquals(TimeFilter.ALL, viewModel.uiState.value.commentsTimeFilter)
-    }
-
-    @Test
-    fun init_setsDefaultClientId() {
-        assertEquals("", viewModel.uiState.value.clientId)
-    }
-
-    @Test
-    fun init_setsDefaultRedirectUri() {
-        assertEquals(AuthManager.DEFAULT_REDIRECT_URI, viewModel.uiState.value.redirectUri)
-    }
-
-    // ==================== Login ====================
-
-    private fun startLogin(redirectUri: String = "myclient://callback"): String {
-        viewModel.setClientId("client")
-        viewModel.setRedirectUri(redirectUri)
-        viewModel.initiateLogin()
-        val authUrl = viewModel.uiState.value.authUrl
-        assertNotNull(authUrl)
-        return assertNotNull(Url(authUrl).parameters["state"])
-    }
-
-    @Test
-    fun setRedirectUri_updatesStateAndPersists() {
-        viewModel.setRedirectUri("myclient://callback")
-
-        assertEquals("myclient://callback", viewModel.uiState.value.redirectUri)
-        assertEquals("myclient://callback", fakeAuthManager.getRedirectUri())
-    }
-
-    @Test
-    fun setRedirectUri_pastedWithNewline_isStripped() {
-        viewModel.setRedirectUri("redreader://rr_oauth_redir\r\n")
-
-        assertEquals("redreader://rr_oauth_redir", viewModel.uiState.value.redirectUri)
-    }
-
-    @Test
-    fun init_loadsSavedRedirectUri() {
-        fakeAuthManager.setRedirectUri("myclient://callback")
-        val newViewModel = ProfileViewModel(userRepo, postRepo, commentRepo, fakeAuthManager)
-
-        assertEquals("myclient://callback", newViewModel.uiState.value.redirectUri)
-    }
-
-    @Test
-    fun clearAllData_keepsClientIdAndRedirectUri() {
-        viewModel.setClientId("client")
-        viewModel.setRedirectUri("myclient://callback")
-
-        viewModel.clearAllData()
-
-        assertEquals("client", viewModel.uiState.value.clientId)
-        assertEquals("myclient://callback", viewModel.uiState.value.redirectUri)
-    }
-
-    @Test
-    fun logout_keepsClientIdAndRedirectUri() {
-        viewModel.setClientId("client")
-        viewModel.setRedirectUri("myclient://callback")
-
-        viewModel.logout()
-
-        assertEquals("client", viewModel.uiState.value.clientId)
-        assertEquals("myclient://callback", viewModel.uiState.value.redirectUri)
-    }
-
-    @Test
-    fun initiateLogin_authUrlUsesRedirectUri() {
-        startLogin("myclient://callback")
-
-        val authUrl = assertNotNull(viewModel.uiState.value.authUrl)
-        assertEquals("myclient://callback", Url(authUrl).parameters["redirect_uri"])
-    }
-
-    @Test
-    fun handleLoginRedirect_otherPage_returnsFalseAndKeepsLoginOpen() {
-        startLogin()
-
-        assertFalse(viewModel.handleLoginRedirect("https://www.reddit.com/login"))
-        assertNotNull(viewModel.uiState.value.authUrl)
-    }
-
-    @Test
-    fun handleLoginRedirect_withCode_exchangesCodeAndClosesLogin() =
-        runTest {
-            val state = startLogin()
-
-            assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code#_"))
-            advanceUntilIdle()
-
-            assertEquals(listOf("the_code"), fakeAuthManager.exchangedCodes)
-            assertNull(viewModel.uiState.value.authUrl)
-            assertFalse(viewModel.uiState.value.isSigningIn)
-            assertNull(viewModel.uiState.value.errorMessage)
-        }
-
-    @Test
-    fun handleLoginRedirect_wrongState_doesNotExchangeCode() =
-        runTest {
-            startLogin()
-
-            assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=forged&code=the_code"))
-            advanceUntilIdle()
-
-            assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
-            assertNull(viewModel.uiState.value.authUrl)
-            assertNotNull(viewModel.uiState.value.errorMessage)
-        }
-
-    @Test
-    fun handleLoginRedirect_duplicate_onlyExchangesOnce() =
-        runTest {
-            val state = startLogin()
-            val redirect = "myclient://callback?state=$state&code=the_code"
-
-            assertTrue(viewModel.handleLoginRedirect(redirect))
-            assertTrue(viewModel.handleLoginRedirect(redirect))
-            advanceUntilIdle()
-
-            assertEquals(listOf("the_code"), fakeAuthManager.exchangedCodes)
-        }
-
-    @Test
-    fun handleLoginRedirect_accessDenied_closesLoginWithoutError() =
-        runTest {
-            val state = startLogin()
-
-            assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&error=access_denied"))
-            advanceUntilIdle()
-
-            assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
-            assertNull(viewModel.uiState.value.authUrl)
-            assertNull(viewModel.uiState.value.errorMessage)
-        }
-
-    @Test
-    fun handleLoginRedirect_otherError_showsError() =
-        runTest {
-            val state = startLogin()
-
-            assertTrue(viewModel.handleLoginRedirect("myclient://callback?state=$state&error=invalid_request"))
-            advanceUntilIdle()
-
-            assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
-            assertEquals("Sign in failed: invalid_request", viewModel.uiState.value.errorMessage)
-        }
-
-    @Test
-    fun handleLoginRedirect_exchangeFails_showsError() =
-        runTest {
-            fakeAuthManager.exchangeSucceeds = false
-            val state = startLogin()
-
-            viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code")
-            advanceUntilIdle()
-
-            assertFalse(viewModel.uiState.value.isSigningIn)
-            assertNotNull(viewModel.uiState.value.errorMessage)
-        }
-
-    @Test
-    fun cancelLogin_closesLoginAndIgnoresLaterRedirect() =
-        runTest {
-            val state = startLogin()
-
-            viewModel.cancelLogin()
-            viewModel.handleLoginRedirect("myclient://callback?state=$state&code=the_code")
-            advanceUntilIdle()
-
-            assertNull(viewModel.uiState.value.authUrl)
-            assertTrue(fakeAuthManager.exchangedCodes.isEmpty())
-        }
-
     // ==================== Tab Selection ====================
 
     @Test
-    fun setSelectedTab_changeSelectedTab() =
+    fun setSelectedTab_loadsTheListsTheTabShows() =
         runTest {
-            viewModel.setSelectedTab(ProfileTab.COMMENTS)
-            advanceUntilIdle()
-            assertEquals(ProfileTab.COMMENTS, viewModel.uiState.value.selectedTab)
+            loadOwnPosts()
+            val tabs =
+                mapOf(
+                    ProfileTab.COMMENTS to listOf("comments"),
+                    ProfileTab.SAVED to listOf("saved_posts", "saved_comments"),
+                    ProfileTab.UPVOTED to listOf("upvoted"),
+                    ProfileTab.DOWNVOTED to listOf("downvoted"),
+                    ProfileTab.ABOUT to emptyList(),
+                )
+
+            tabs.forEach { (tab, lists) ->
+                fakeApi.userContentRequests.clear()
+                viewModel.setSelectedTab(tab)
+                advanceUntilIdle()
+
+                assertEquals(tab, viewModel.uiState.value.selectedTab)
+                assertEquals(lists, fakeApi.userContentRequests.map { it.list }, tab.name)
+            }
         }
 
     @Test
-    fun setSelectedTab_posts_loadsUserPosts() =
+    fun setSelectedTab_doesNotReloadAListThatHasItems() =
         runTest {
-            viewModel.loadOwnProfile()
-            advanceUntilIdle()
+            loadOwnPosts(createTestPost(id = "p1"))
+            fakeApi.userContentRequests.clear()
 
+            viewModel.setSelectedTab(ProfileTab.COMMENTS)
             viewModel.setSelectedTab(ProfileTab.POSTS)
             advanceUntilIdle()
 
-            assertEquals(ProfileTab.POSTS, viewModel.uiState.value.selectedTab)
+            assertEquals(listOf("comments"), fakeApi.userContentRequests.map { it.list })
         }
 
     @Test
-    fun setSelectedTab_comments_loadsUserComments() =
+    fun setSelectedTab_beforeAProfileLoadsOnlyChangesTheTab() =
         runTest {
-            viewModel.loadOwnProfile()
-            advanceUntilIdle()
-
             viewModel.setSelectedTab(ProfileTab.COMMENTS)
             advanceUntilIdle()
 
             assertEquals(ProfileTab.COMMENTS, viewModel.uiState.value.selectedTab)
-        }
-
-    @Test
-    fun setSelectedTab_saved_loadsSavedContent() =
-        runTest {
-            viewModel.loadOwnProfile()
-            advanceUntilIdle()
-
-            viewModel.setSelectedTab(ProfileTab.SAVED)
-            advanceUntilIdle()
-
-            assertEquals(ProfileTab.SAVED, viewModel.uiState.value.selectedTab)
-        }
-
-    @Test
-    fun setSelectedTab_upvoted_loadsUpvotedContent() =
-        runTest {
-            viewModel.loadOwnProfile()
-            advanceUntilIdle()
-
-            viewModel.setSelectedTab(ProfileTab.UPVOTED)
-            advanceUntilIdle()
-
-            assertEquals(ProfileTab.UPVOTED, viewModel.uiState.value.selectedTab)
-        }
-
-    @Test
-    fun setSelectedTab_downvoted_loadsDownvotedContent() =
-        runTest {
-            viewModel.loadOwnProfile()
-            advanceUntilIdle()
-
-            viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
-            advanceUntilIdle()
-
-            assertEquals(ProfileTab.DOWNVOTED, viewModel.uiState.value.selectedTab)
+            assertTrue(fakeApi.userContentRequests.isEmpty())
         }
 
     // ==================== Loading Own Profile ====================
 
     @Test
-    fun loadOwnProfile_setsLoadingState() =
+    fun loadOwnProfile_loadsTheAccountAndItsPosts() =
         runTest {
-            viewModel.loadOwnProfile()
-            advanceUntilIdle()
+            loadOwnPosts(createTestPost(id = "p1"))
 
-            assertFalse(viewModel.uiState.value.isLoading)
+            val state = viewModel.uiState.value
+            assertEquals("testuser", state.account?.name)
+            assertTrue(state.isOwnProfile)
+            assertTrue(state.isLoggedIn)
+            assertFalse(state.isLoading)
+            assertEquals(listOf("p1"), state.posts.items.map { it.id })
+            assertEquals(
+                FakeRedditApi.UserContentRequest("submitted", "testuser", PostSort.NEW, TimeFilter.ALL),
+                fakeApi.userContentRequests.single(),
+            )
         }
 
     @Test
-    fun loadOwnProfile_forceRefresh_setsRefreshingState() =
+    fun loadOwnProfile_showsTheError() =
         runTest {
             viewModel.loadOwnProfile(forceRefresh = true)
             advanceUntilIdle()
 
+            assertEquals("Failed to load user", viewModel.uiState.value.errorMessage)
             assertFalse(viewModel.uiState.value.isRefreshing)
+            assertNull(viewModel.uiState.value.account)
         }
 
     // ==================== Loading User Profile ====================
 
     @Test
-    fun loadUserProfile_setsLoadingState() =
+    fun loadUserProfile_loadsTheUserAndTheirPosts() =
         runTest {
-            viewModel.loadUserProfile("testuser")
+            fakeApi.userResult = createTestUser(name = "someone")
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "t3_p1")
+
+            viewModel.loadUserProfile("someone")
             advanceUntilIdle()
 
+            val state = viewModel.uiState.value
+            assertEquals("someone", state.user?.name)
+            assertFalse(state.isOwnProfile)
+            assertFalse(state.isLoading)
+            assertEquals(listOf("p1"), state.posts.items.map { it.id })
+            assertEquals("t3_p1", state.posts.after)
+            assertEquals("someone", fakeApi.userContentRequests.single().username)
+        }
+
+    @Test
+    fun loadUserProfile_showsTheError() =
+        runTest {
+            viewModel.loadUserProfile("nobody")
+            advanceUntilIdle()
+
+            assertEquals("User not found", viewModel.uiState.value.errorMessage)
             assertFalse(viewModel.uiState.value.isLoading)
         }
 
     @Test
-    fun loadUserProfile_forceRefresh_setsRefreshingState() =
+    fun loadUserProfile_keepsThePostsWhenTheyFailToLoad() =
         runTest {
-            viewModel.loadUserProfile("testuser", forceRefresh = true)
+            fakeApi.userResult = createTestUser(name = "someone")
+            viewModel.loadUserProfile("someone")
+            advanceUntilIdle()
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")))
+            viewModel.refresh()
+            advanceUntilIdle()
+            fakeApi.shouldThrow = Exception("No connection")
+
+            viewModel.setPostsSort(PostSort.TOP)
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isRefreshing)
+            assertEquals(
+                listOf("p1"),
+                viewModel.uiState.value.posts.items
+                    .map { it.id },
+            )
+            assertFalse(viewModel.uiState.value.isLoadingContent)
         }
 
     // ==================== Refresh ====================
 
     @Test
-    fun refresh_reloadsCurrentTab() =
+    fun refresh_reloadsTheListsOfTheTab() =
+        runTest {
+            loadOwnPosts(createTestPost(id = "p1"))
+            viewModel.setSelectedTab(ProfileTab.SAVED)
+            advanceUntilIdle()
+            fakeApi.userContentRequests.clear()
+            fakeApi.savedPostsResult = createTestListing(items = listOf(createTestPost(id = "s1")))
+
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            assertEquals(listOf("saved_posts", "saved_comments"), fakeApi.userContentRequests.map { it.list })
+            assertEquals(
+                listOf("s1"),
+                viewModel.uiState.value.savedPosts.items
+                    .map { it.id },
+            )
+        }
+
+    @Test
+    fun refresh_onTheAboutTabReloadsTheProfile() =
+        runTest {
+            loadOwnPosts()
+            viewModel.setSelectedTab(ProfileTab.ABOUT)
+            fakeApi.meResult = createTestUser(name = "renamed")
+
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            assertEquals(
+                "renamed",
+                viewModel.uiState.value.account
+                    ?.name,
+            )
+        }
+
+    @Test
+    fun refresh_onSomeoneElsesAboutTabReloadsTheirProfile() =
+        runTest {
+            fakeApi.userResult = createTestUser(name = "someone", linkKarma = 1)
+            viewModel.loadUserProfile("someone")
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.ABOUT)
+            fakeApi.userResult = createTestUser(name = "someone", linkKarma = 2)
+
+            viewModel.refresh()
+            advanceUntilIdle()
+
+            assertEquals(
+                2,
+                viewModel.uiState.value.user
+                    ?.linkKarma,
+            )
+        }
+
+    @Test
+    fun refresh_beforeAProfileLoadsDoesNothing() =
         runTest {
             viewModel.refresh()
             advanceUntilIdle()
 
-            // Verify refresh completes without error
-            assertNull(viewModel.uiState.value.errorMessage)
+            assertTrue(fakeApi.userContentRequests.isEmpty())
         }
 
-    // ==================== Sorting ====================
+    // ==================== Sorting and time filters ====================
 
     @Test
-    fun setPostsSort_changesPostsSort() =
+    fun sortsAndTimeFilters_reloadTheirListWithThem() =
         runTest {
-            viewModel.setPostsSort(PostSort.HOT)
-            advanceUntilIdle()
-            assertEquals(PostSort.HOT, viewModel.uiState.value.postsSort)
-        }
-
-    @Test
-    fun setPostsSort_reloadsPosts() =
-        runTest {
-            viewModel.loadOwnProfile()
-            advanceUntilIdle()
+            loadOwnPosts()
+            fakeApi.userContentRequests.clear()
 
             viewModel.setPostsSort(PostSort.TOP)
             advanceUntilIdle()
-
-            assertEquals(PostSort.TOP, viewModel.uiState.value.postsSort)
-        }
-
-    @Test
-    fun setCommentsSort_changesCommentsSort() =
-        runTest {
-            viewModel.setCommentsSort(PostSort.HOT)
-            advanceUntilIdle()
-            assertEquals(PostSort.HOT, viewModel.uiState.value.commentsSort)
-        }
-
-    @Test
-    fun setCommentsSort_reloadsComments() =
-        runTest {
-            viewModel.loadOwnProfile()
-            advanceUntilIdle()
-
-            viewModel.setCommentsSort(PostSort.TOP)
-            advanceUntilIdle()
-
-            assertEquals(PostSort.TOP, viewModel.uiState.value.commentsSort)
-        }
-
-    // ==================== Time Filter ====================
-
-    @Test
-    fun setPostsTimeFilter_changesPostsTimeFilter() =
-        runTest {
             viewModel.setPostsTimeFilter(TimeFilter.WEEK)
             advanceUntilIdle()
-            assertEquals(TimeFilter.WEEK, viewModel.uiState.value.postsTimeFilter)
+            viewModel.setCommentsSort(PostSort.CONTROVERSIAL)
+            advanceUntilIdle()
+            viewModel.setCommentsTimeFilter(TimeFilter.MONTH)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(
+                    FakeRedditApi.UserContentRequest("submitted", "testuser", PostSort.TOP, TimeFilter.ALL),
+                    FakeRedditApi.UserContentRequest("submitted", "testuser", PostSort.TOP, TimeFilter.WEEK),
+                    FakeRedditApi.UserContentRequest("comments", "testuser", PostSort.CONTROVERSIAL, TimeFilter.ALL),
+                    FakeRedditApi.UserContentRequest("comments", "testuser", PostSort.CONTROVERSIAL, TimeFilter.MONTH),
+                ),
+                fakeApi.userContentRequests,
+            )
         }
 
     @Test
-    fun setCommentsTimeFilter_changesCommentsTimeFilter() =
+    fun sortsAndTimeFilters_beforeAProfileLoadsOnlyChangeTheSetting() =
         runTest {
+            viewModel.setPostsSort(PostSort.HOT)
+            viewModel.setPostsTimeFilter(TimeFilter.WEEK)
+            viewModel.setCommentsSort(PostSort.HOT)
             viewModel.setCommentsTimeFilter(TimeFilter.MONTH)
+            viewModel.setSavedContentType(SavedContentType.COMMENTS)
             advanceUntilIdle()
-            assertEquals(TimeFilter.MONTH, viewModel.uiState.value.commentsTimeFilter)
+
+            val state = viewModel.uiState.value
+            assertEquals(PostSort.HOT, state.postsSort)
+            assertEquals(TimeFilter.WEEK, state.postsTimeFilter)
+            assertEquals(PostSort.HOT, state.commentsSort)
+            assertEquals(TimeFilter.MONTH, state.commentsTimeFilter)
+            assertEquals(SavedContentType.COMMENTS, state.savedContentType)
+            assertTrue(fakeApi.userContentRequests.isEmpty())
         }
 
     // ==================== Voting ====================

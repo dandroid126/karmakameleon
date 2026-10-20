@@ -2,6 +2,10 @@ package com.karmakameleon.shared.ui.search
 
 import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
+import com.karmakameleon.shared.FakeRedditApi.SearchRequest
+import com.karmakameleon.shared.createTestListing
+import com.karmakameleon.shared.createTestPost
+import com.karmakameleon.shared.createTestSubreddit
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
@@ -14,6 +18,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -21,6 +26,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -142,132 +148,229 @@ class SearchViewModelTest {
     // ==================== Search Type ====================
 
     @Test
-    fun setSearchType_changesSearchType() =
+    fun setSearchType_searchesSubreddits() =
         runTest {
-            viewModel.setSearchType(SearchType.SUBREDDIT)
-            advanceUntilIdle()
-            assertEquals(SearchType.SUBREDDIT, viewModel.uiState.value.searchType)
-        }
-
-    @Test
-    fun setSearchType_post_searchesPosts() =
-        runTest {
+            fakeApi.searchSubredditsResult = listOf(createTestSubreddit(displayName = "Kotlin"))
             viewModel.setQuery("kotlin")
             advanceUntilIdle()
 
+            viewModel.setSearchType(SearchType.SUBREDDIT)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("Kotlin"),
+                viewModel.uiState.value.subreddits
+                    .map { it.displayName },
+            )
+            assertTrue(
+                viewModel.uiState.value.posts
+                    .isEmpty(),
+            )
+            assertEquals(listOf(false), fakeApi.subredditSearchesIncludingNsfw)
+        }
+
+    @Test
+    fun setSearchType_subredditsIncludeNsfwOnlyWhenBothSettingsAreOn() =
+        runTest {
+            viewModel.setSearchType(SearchType.SUBREDDIT)
+            viewModel.setQuery("kotlin")
+            settingsRepo.setNsfwSearchEnabled(true)
+            advanceUntilIdle()
+            settingsRepo.setNsfwEnabled(true)
+            viewModel.search()
+            advanceUntilIdle()
+            settingsRepo.setNsfwSearchEnabled(false)
+            viewModel.search()
+            advanceUntilIdle()
+
+            assertEquals(listOf(false, true, false), fakeApi.subredditSearchesIncludingNsfw)
+        }
+
+    @Test
+    fun setSearchType_sameTypeOrShortQueryDoesNotSearch() =
+        runTest {
             viewModel.setSearchType(SearchType.POST)
-            advanceUntilIdle()
-
-            assertEquals(SearchType.POST, viewModel.uiState.value.searchType)
-        }
-
-    @Test
-    fun setSearchType_subreddit_searchesSubreddits() =
-        runTest {
-            viewModel.setQuery("kotlin")
-            advanceUntilIdle()
-
             viewModel.setSearchType(SearchType.SUBREDDIT)
+            viewModel.setSearchType(SearchType.SUBREDDIT)
+            viewModel.setQuery("k")
+            viewModel.search()
             advanceUntilIdle()
 
             assertEquals(SearchType.SUBREDDIT, viewModel.uiState.value.searchType)
+            assertTrue(fakeApi.searchRequests.isEmpty())
+            assertTrue(fakeApi.subredditSearchesIncludingNsfw.isEmpty())
         }
 
-    // ==================== Search Sort ====================
+    // ==================== Results ====================
 
     @Test
-    fun setSearchSort_changesSearchSort() =
+    fun search_leavesOutNsfwPostsUnlessEnabled() =
         runTest {
-            viewModel.setSearchSort(SearchSort.HOT)
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1"), createTestPost(id = "p2", isNsfw = true)))
+
+            viewModel.setQuery("kotlin")
             advanceUntilIdle()
-            assertEquals(SearchSort.HOT, viewModel.uiState.value.searchSort)
+            assertEquals(
+                listOf("p1"),
+                viewModel.uiState.value.posts
+                    .map { it.id },
+            )
+
+            settingsRepo.setNsfwEnabled(true)
+            viewModel.search()
+            advanceUntilIdle()
+            assertEquals(
+                listOf("p1", "p2"),
+                viewModel.uiState.value.posts
+                    .map { it.id },
+            )
         }
 
     @Test
-    fun setSearchSort_triggersNewSearch() =
+    fun search_showsTheError() =
+        runTest {
+            fakeApi.shouldThrow = Exception("No connection")
+
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            assertEquals("No connection", viewModel.uiState.value.error)
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
+
+    @Test
+    fun subredditSearch_showsTheError() =
+        runTest {
+            viewModel.setSearchType(SearchType.SUBREDDIT)
+            fakeApi.shouldThrow = Exception("No connection")
+
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            assertEquals("No connection", viewModel.uiState.value.error)
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
+
+    // ==================== Sort and time filter ====================
+
+    @Test
+    fun setSearchSortAndTimeFilter_searchAgainWithThem() =
         runTest {
             viewModel.setQuery("kotlin")
             advanceUntilIdle()
 
             viewModel.setSearchSort(SearchSort.TOP)
             advanceUntilIdle()
-
-            assertEquals(SearchSort.TOP, viewModel.uiState.value.searchSort)
-        }
-
-    // ==================== Time Filter ====================
-
-    @Test
-    fun setTimeFilter_changesTimeFilter() =
-        runTest {
-            viewModel.setTimeFilter(TimeFilter.WEEK)
+            viewModel.setTimeFilter(TimeFilter.MONTH)
             advanceUntilIdle()
-            assertEquals(TimeFilter.WEEK, viewModel.uiState.value.timeFilter)
-        }
-
-    @Test
-    fun setTimeFilter_triggersNewSearch() =
-        runTest {
-            viewModel.setQuery("kotlin")
-            advanceUntilIdle()
-
+            viewModel.setSearchSort(SearchSort.TOP)
             viewModel.setTimeFilter(TimeFilter.MONTH)
             advanceUntilIdle()
 
-            assertEquals(TimeFilter.MONTH, viewModel.uiState.value.timeFilter)
+            assertEquals(
+                listOf(
+                    SearchRequest("kotlin", SearchSort.RELEVANCE, TimeFilter.ALL, null),
+                    SearchRequest("kotlin", SearchSort.TOP, TimeFilter.ALL, null),
+                    SearchRequest("kotlin", SearchSort.TOP, TimeFilter.MONTH, null),
+                ),
+                fakeApi.searchRequests,
+            )
         }
 
     // ==================== Loading More ====================
 
     @Test
-    fun loadMore_appendsToExistingResults() =
+    fun loadMore_appendsTheNextPage() =
         runTest {
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "t3_p1")
             viewModel.setQuery("kotlin")
             advanceUntilIdle()
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p2"), createTestPost(id = "p3", isNsfw = true)))
 
-            val initialCount = viewModel.uiState.value.posts.size
             viewModel.loadMore()
             advanceUntilIdle()
 
-            assertTrue(viewModel.uiState.value.posts.size >= initialCount)
+            val state = viewModel.uiState.value
+            assertEquals(listOf("p1", "p2"), state.posts.map { it.id })
+            assertNull(state.after)
+            assertFalse(state.hasMore)
+            assertEquals("t3_p1", fakeApi.searchRequests.last().after)
         }
 
     @Test
-    fun loadMore_preventsLoadWhenNoMore() =
+    fun loadMore_keepsNsfwPostsWhenEnabled() =
         runTest {
+            settingsRepo.setNsfwEnabled(true)
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "t3_p1")
             viewModel.setQuery("kotlin")
             advanceUntilIdle()
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p2", isNsfw = true)))
 
             viewModel.loadMore()
             advanceUntilIdle()
 
+            assertEquals(
+                listOf("p1", "p2"),
+                viewModel.uiState.value.posts
+                    .map { it.id },
+            )
+        }
+
+    @Test
+    fun loadMore_keepsThePageWhenTheNextFails() =
+        runTest {
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "t3_p1")
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+            fakeApi.shouldThrow = Exception("No connection")
+
+            viewModel.loadMore()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("p1"),
+                viewModel.uiState.value.posts
+                    .map { it.id },
+            )
             assertFalse(viewModel.uiState.value.isLoading)
         }
 
     @Test
-    fun loadMore_preventsMultipleConcurrentLoads() =
+    fun loadMore_onlyWhenThereIsAnotherPageAndNothingLoading() =
         runTest {
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "t3_p1")
             viewModel.setQuery("kotlin")
             advanceUntilIdle()
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p2")))
+            fakeApi.responseDelayMillis = 1000
 
             viewModel.loadMore()
+            runCurrent()
+            viewModel.loadMore()
+            advanceUntilIdle()
+            // The last page had no after.
             viewModel.loadMore()
             advanceUntilIdle()
 
-            assertFalse(viewModel.uiState.value.isLoading)
+            assertEquals(2, fakeApi.searchRequests.size)
         }
 
     // ==================== Empty Query ====================
 
     @Test
-    fun emptyQuery_clearsResults() =
+    fun shortQuery_clearsResults() =
         runTest {
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1")))
             viewModel.setQuery("kotlin")
             advanceUntilIdle()
 
-            viewModel.setQuery("")
+            viewModel.setQuery("k")
             advanceUntilIdle()
 
-            assertEquals("", viewModel.uiState.value.query)
+            assertTrue(
+                viewModel.uiState.value.posts
+                    .isEmpty(),
+            )
+            assertEquals(1, fakeApi.searchRequests.size)
         }
 }
