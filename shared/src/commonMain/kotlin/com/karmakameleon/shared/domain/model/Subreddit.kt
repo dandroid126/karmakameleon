@@ -39,14 +39,3 @@ data class Subreddit(
     val isPrivate: Boolean get() = subredditType == "private"
     val isRestricted: Boolean get() = subredditType == "restricted"
 }
-
-@Serializable
-data class SubredditRule(
-    val shortName: String,
-    val description: String?,
-    val descriptionHtml: String?,
-    val priority: Int,
-    val violationReason: String,
-    // Link, comment, all
-    val kind: String,
-)

@@ -10,6 +10,7 @@ ktor = "3.6.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 kotlinx-datetime = "0.8.0"
+kotlinx-io = "0.9.1"
 koin = "4.2.2"
 coil = "3.6.3"
 multiplatform-settings = "1.3.0"
@@ -89,6 +90,7 @@ androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref
 
 # Test
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+kotlinx-io-core = { module = "org.jetbrains.kotlinx:kotlinx-io-core", version.ref = "kotlinx-io" }
 ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 multiplatform-settings-test = { module = "com.russhwolf:multiplatform-settings-test", version.ref = "multiplatform-settings-test" }
 
