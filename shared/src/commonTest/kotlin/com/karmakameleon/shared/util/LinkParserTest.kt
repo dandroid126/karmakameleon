@@ -284,4 +284,29 @@ class LinkParserTest {
         val result = parseRedditLink("https://www.reddit.com/")
         assertTrue(result is RedditLink.External)
     }
+
+    @Test
+    fun extractYouTubeVideoId_otherPagesHaveNone() {
+        assertNull(extractYouTubeVideoId("https://www.youtube.com/playlist?list=PL123"))
+        assertNull(extractYouTubeVideoId("https://www.youtube.com/embed/"))
+    }
+
+    @Test
+    fun parseRedditLink_unparseableUrlIsExternal() {
+        val url = "https://www.reddit.com:notaport/r/kotlin"
+
+        assertEquals(RedditLink.External(url), parseRedditLink(url))
+    }
+
+    @Test
+    fun parseRedditLink_otherRedditPagesAreExternal() {
+        val url = "https://www.reddit.com/prefs/apps"
+
+        assertEquals(RedditLink.External(url), parseRedditLink(url))
+    }
+
+    @Test
+    fun parseRedditLink_otherSubredditPagesOpenTheSubreddit() {
+        assertEquals(RedditLink.Subreddit("kotlin"), parseRedditLink("https://www.reddit.com/r/kotlin/wiki/index"))
+    }
 }
