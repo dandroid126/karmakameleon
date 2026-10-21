@@ -73,6 +73,7 @@ class NavigationRule : ExternalResource() {
         NavigationHandler().apply {
             onSubredditClick = { calls += "subreddit $it" }
             onUserClick = { calls += "user $it" }
+            onExternalLinkClick = { calls += "external $it" }
         }
 
     override fun before() {
