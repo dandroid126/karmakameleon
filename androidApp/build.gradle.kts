@@ -142,6 +142,7 @@ dependencies {
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.roborazzi)
     testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.coil.test)
     testImplementation(libs.ktor.client.core)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.ktor.http)
