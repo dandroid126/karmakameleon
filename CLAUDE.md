@@ -32,3 +32,7 @@ The rules above are checked by `konsistTest/src/test/kotlin/com/karmakameleon/ko
 Before committing, run `./gradlew qualityGate` (the static checks) and `./gradlew :shared:testAndroidHostTest diffCoverage :shared:koverVerify` (the unit tests, a check that at least 80% of the shared module's lines changed since `main` are covered by them, and a check that at least 80% of all its lines are). The PR checks run the same tasks and must pass before a PR can merge. With a client ID in `.env`, the integration tests call Reddit and add coverage that CI doesn't get, so move `.env` aside to see CI's numbers. `diffCoverage` compares with `origin/main`, so fetch first if it's out of date.
 
 Fix what the checks report instead of adding it to a baseline or suppressing it. When a suppression really is right, put the reason next to it.
+
+## PR size
+
+Aim for PRs under about 500 changed lines, so the checks' findings and the review stay manageable. When a task looks bigger, propose a split into several PRs before starting. This is a guideline, not a rule: a bigger PR is fine when splitting it wouldn't make it easier to review, like a mechanical change across the codebase (#14 reformatted every file with ktlint). The `PR Size` job in the PR checks warns above 500 lines but doesn't fail.

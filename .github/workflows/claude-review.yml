@@ -1,0 +1,63 @@
+name: Claude Review
+
+# An AI review of each PR, advisory only: it comments but isn't a required check, since a model's review isn't
+# deterministic. It looks for what the static checks can't: logic bugs, poor abstractions and missed reuse.
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: read
+
+# A new push cancels the review of the previous one.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Claude Review
+    # Fork and Dependabot PRs don't get the repo's secrets, and drafts aren't ready for review.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]' &&
+      !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write # To post the review comments.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Review
+        uses: anthropics/claude-code-action@e4a6faad497d33dbc7144135c75e41f82f0bf6c0 # v1.0.255
+        with:
+          # A token for the owner's Claude subscription, from `claude setup-token`.
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # The job's own token instead of the Claude GitHub App, so it can only read the code and comment on the PR.
+          github_token: ${{ github.token }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request. The code in this repo is written by AI, and the PR checks already run ktlint,
+            Detekt, Android Lint, a duplication check, architecture tests for the rules in CLAUDE.md, unit tests and
+            coverage checks. Don't repeat what those catch, like formatting or style. Look for what they can't:
+
+            - Logic bugs: wrong conditions, missed edge cases, race conditions, broken error handling, behavior
+              that doesn't match what the PR says it does.
+            - Poor abstractions and missed reuse: code that duplicates something the repo already has, or that is
+              more complicated than it needs to be.
+            - Tests that run code without really checking it, or that miss the behavior the PR changes.
+            - Anything that goes against CLAUDE.md, including the parts no check covers.
+
+            Read the surrounding code before commenting, so each comment is about a real problem. Use inline
+            comments for specific lines, and say what's wrong and what to do instead. Skip praise and nitpicks.
+            Then post one short summary comment with `gh pr comment`. If you found nothing worth fixing, the summary
+            says so in one line.
+          claude_args: >-
+            --model claude-opus-5-5
+            --allowedTools "Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"

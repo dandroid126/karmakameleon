@@ -94,8 +94,9 @@ The code in this repo is written by AI, and there's too much of it for a human t
 - [x] **PR size check:** warn above about 500 changed lines.
   *Value:* smaller PRs make each checker's findings easier to act on and keep an AI reviewer accurate.
   *Notes:* the `PR Size` job counts the added and deleted lines between the PR's merge commit and `main`, and above 500 it adds a warning annotation. It never fails and isn't required. Renames and moves count only their changed lines, and the Detekt and CPD baselines don't count, so a PR that shrinks a baseline isn't flagged. Of the last 30 PRs, about a quarter would have warned, mostly the test PRs (#62 to #65) and the refactor in #28.
-- [ ] **AI review bot** (Claude Code GitHub Action), advisory only, not a required check.
+- [x] **AI review bot** (Claude Code GitHub Action), advisory only, not a required check.
   *Value:* static tools find patterns; a reviewing model can tell whether the code makes sense and spot logic bugs, poor abstractions and missed reuse. It isn't deterministic, so it doesn't block merges.
+  *Notes:* `claude-review.yml` reviews each PR when it opens and after every push, and a new push cancels a review that's still running. It authenticates with the owner's Claude subscription (the `CLAUDE_CODE_OAUTH_TOKEN` secret, from `claude setup-token`) and posts with the job's own token instead of the Claude GitHub App, so it can only read the code and comment on the PR, as github-actions[bot]. Claude can only read files and run `gh pr comment`, `gh pr diff` and `gh pr view`. Fork PRs, Dependabot PRs and drafts are skipped, since forks and Dependabot don't get the secret. The prompt points it at what the static checks can't find, and at CLAUDE.md, which the action always reads from the base branch, so a PR can't change the review's instructions.
 - [ ] **mobsfscan** (optional; only if Lint and CodeQL leave gaps).
   *Value:* mobile-specific security checks from OWASP MASVS: insecure storage, backup flags, certificate pinning.
 - [ ] **Mutation testing with Pitest** (stretch goal; run weekly or manually, not on every PR).
