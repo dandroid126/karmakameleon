@@ -67,6 +67,31 @@ jobs:
           name: quality-gate-reports
           path: '**/build/reports/'
 
+  # Warns when a PR changes more than MAX_LINES lines. Smaller PRs make each checker's findings easier to act on and
+  # keep a reviewer, human or AI, accurate. It never fails, so split the work when it warns, but it doesn't block.
+  pr-size:
+    name: PR Size
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The checkout is the PR merged into main. Its first parent is the main commit it was merged into.
+          fetch-depth: 2
+
+      - name: Count changed lines
+        env:
+          MAX_LINES: 500
+        run: |
+          # Renamed and moved files count only their changed lines. The baselines don't count, since fixing findings
+          # shrinks them; binary files show "-" and count as 0.
+          lines=$(git diff --numstat -M HEAD^1 HEAD -- . ':(exclude)**/detekt-baseline*.xml' \
+            ':(exclude)config/cpd/cpd-baseline.txt' | awk '{ total += ($1 == "-" ? 0 : $1 + $2) } END { print total + 0 }')
+          echo "This PR changes $lines lines." | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$lines" -gt "$MAX_LINES" ]; then
+            echo "::warning::This PR changes $lines lines, more than $MAX_LINES. Consider splitting it into smaller PRs."
+          fi
+
   build-debug:
     name: Debug Build
     runs-on: ubuntu-latest

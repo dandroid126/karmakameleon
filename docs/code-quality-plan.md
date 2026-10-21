@@ -91,8 +91,9 @@ The code in this repo is written by AI, and there's too much of it for a human t
 - [x] **APK size check:** fail when the release APK grows more than N% compared with `main`.
   *Value:* catches a large library added by accident, or R8 rules that stop shrinking.
   *Notes:* the `APK Size` job in the PR checks fails when the unsigned release APK grows by more than 5% (about 220 KB at 4.47 MB). It compares with `main`'s APK, built in a parallel job from the first parent of the PR's merge commit, so the check adds about a minute, not a second build's worth. 5% catches a big library or R8 shrinking turned off, not ordinary feature work: removing the unused `media3-ui` in #69 saved 892 KB (17%). Release builds of the same commit are the same size to the byte, so there's no noise to allow for. When growth is intended, add the `apk-size-ok` label and re-run the job, which reads the labels when it runs. It runs even when a build fails, because a skipped required check counts as passing. It's CI-only, since it needs a second release build. Found along the way: the Media3 keep rule stops R8 from shrinking any of Media3 (#70).
-- [ ] **PR size check:** warn above about 500 changed lines.
+- [x] **PR size check:** warn above about 500 changed lines.
   *Value:* smaller PRs make each checker's findings easier to act on and keep an AI reviewer accurate.
+  *Notes:* the `PR Size` job counts the added and deleted lines between the PR's merge commit and `main`, and above 500 it adds a warning annotation. It never fails and isn't required. Renames and moves count only their changed lines, and the Detekt and CPD baselines don't count, so a PR that shrinks a baseline isn't flagged. Of the last 30 PRs, about a quarter would have warned, mostly the test PRs (#62 to #65) and the refactor in #28.
 - [ ] **AI review bot** (Claude Code GitHub Action), advisory only, not a required check.
   *Value:* static tools find patterns; a reviewing model can tell whether the code makes sense and spot logic bugs, poor abstractions and missed reuse. It isn't deterministic, so it doesn't block merges.
 - [ ] **mobsfscan** (optional; only if Lint and CodeQL leave gaps).
