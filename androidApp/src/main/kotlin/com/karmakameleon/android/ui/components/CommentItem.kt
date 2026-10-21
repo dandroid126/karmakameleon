@@ -45,6 +45,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -98,9 +100,13 @@ fun CommentItem(
                 .clickable { actions.onSelect() },
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
-            if (comment.depth > 0) DepthBar(color = depthColor)
-
-            Column(modifier = Modifier.weight(1f).padding(vertical = 8.dp, horizontal = 8.dp)) {
+            Column(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .then(if (comment.depth > 0) Modifier.depthBar(depthColor) else Modifier)
+                        .padding(vertical = 8.dp, horizontal = 8.dp),
+            ) {
                 CommentHeader(
                     comment = comment,
                     showControls = isSelected && showTopControls,
@@ -137,17 +143,11 @@ fun CommentItem(
     }
 }
 
-// The thread's depth line at the comment's left edge.
-@Composable
-private fun DepthBar(color: Color) {
-    Box(
-        modifier =
-            Modifier
-                .padding(end = 8.dp)
-                .width(2.dp)
-                .background(color.copy(alpha = 0.5f)),
-    )
-}
+// The thread's depth line at the comment's left edge, as tall as the comment. It's drawn behind the comment because
+// an empty Box in the Row has no height of its own, so the line used to be invisible.
+private fun Modifier.depthBar(color: Color): Modifier =
+    drawBehind { drawRect(color.copy(alpha = 0.5f), size = Size(2.dp.toPx(), size.height)) }
+        .padding(start = 10.dp)
 
 @Composable
 private fun CommentBody(
