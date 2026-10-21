@@ -89,8 +89,7 @@ jobs:
         with:
           # A token for the owner's Claude subscription, from `claude setup-token`.
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          # The job's own token instead of the Claude GitHub App, so it can only read the code, comment on the PR and
-          # resolve review threads.
+          # The job's own token instead of the Claude GitHub App, so it can only read the code and comment on the PR.
           github_token: ${{ github.token }}
           prompt: |
             REPO: ${{ github.repository }}
@@ -172,27 +171,37 @@ jobs:
             }'
           # shellcheck disable=SC2016
           resolve_mutation='mutation($id: ID!) { resolveReviewThread(input: {threadId: $id}) { thread { isResolved } } }'
-          failed=0
           resolved=0
+          skipped=0
           while read -r id; do
             # The IDs were written by the review's AI step, so each one is checked before it's used.
             if ! [[ "$id" =~ ^PRRT_[A-Za-z0-9_-]+$ ]]; then
               echo "::warning::Skipped a line that isn't a review thread ID."
-              failed=1
+              skipped=$((skipped + 1))
               continue
             fi
-            thread=$(gh api graphql -f id="$id" -f query="$thread_query" --jq '.data.node')
+            # A failed call skips this thread instead of ending the step, so the rest are still resolved.
+            if ! thread=$(gh api graphql -f id="$id" -f query="$thread_query" --jq '.data.node'); then
+              echo "::warning::Couldn't look up $id."
+              skipped=$((skipped + 1))
+              continue
+            fi
             repo=$(jq -r '.pullRequest.repository.nameWithOwner // empty' <<< "$thread")
             number=$(jq -r '.pullRequest.number // empty' <<< "$thread")
             author=$(jq -r '.comments.nodes[0].author.login // empty' <<< "$thread")
             if [ "$repo" != "$REPO" ] || [ "$number" != "$PR_NUMBER" ] || [ "$author" != github-actions ]; then
               echo "::warning::Not resolving $id: it isn't a thread the review opened on this PR."
-              failed=1
+              skipped=$((skipped + 1))
               continue
             fi
-            gh api graphql -f id="$id" -f query="$resolve_mutation" >/dev/null
+            if ! gh api graphql -f id="$id" -f query="$resolve_mutation" >/dev/null; then
+              echo "::warning::Couldn't resolve $id."
+              skipped=$((skipped + 1))
+              continue
+            fi
             echo "Resolved $id."
             resolved=$((resolved + 1))
           done < <(sort -u threads-to-resolve/ids.txt)
-          echo "Resolved $resolved review thread(s)." >> "$GITHUB_STEP_SUMMARY"
-          exit "$failed"
+          echo "Resolved $resolved review thread(s), skipped $skipped." >> "$GITHUB_STEP_SUMMARY"
+          # Fails when any thread was skipped, so it shows up on the PR.
+          [ "$skipped" -eq 0 ]
