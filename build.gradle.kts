@@ -86,7 +86,9 @@ dependencyAnalysis {
             "androidx.navigation",
             "io.coil-kt.coil3",
             "io.github.aakira",
+            "io.github.takahirom.roborazzi",
             "io.insert-koin",
+            "org.robolectric",
         ).forEach { group ->
             bundle(group) { includeGroup(group) }
         }
@@ -111,6 +113,7 @@ tasks.register("qualityGate") {
         ":konsistTest:test",
         // Detekt with type resolution. The app's debug and release variants have the same code, so one is enough.
         ":androidApp:detektDebug",
+        ":androidApp:detektDebugUnitTest",
         ":shared:detektMainAndroid",
         ":shared:detektHostTestAndroid",
         ":konsistTest:detektTest",
