@@ -127,9 +127,8 @@ fun PostCard(
 
             if (post.isSpoiler && !spoilerPreviewsEnabled) {
                 Spacer(modifier = Modifier.height(8.dp))
-                SpoilerBlackBox(
-                    modifier = Modifier.clickable { actions.onClick() },
-                )
+                // Tapping it opens the post, like tapping anywhere else on the card.
+                SpoilerBlackBox()
             } else {
                 PostCardPreview(post = post, nsfwPreviewMode = nsfwPreviewMode)
             }
