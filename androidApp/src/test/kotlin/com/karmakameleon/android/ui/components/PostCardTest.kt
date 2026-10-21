@@ -58,10 +58,11 @@ class PostCardTest {
     private fun showPostCard(
         post: Post = testPost(),
         isLoggedIn: Boolean = true,
+        spoilerPreviewsEnabled: Boolean = false,
     ) {
         composeRule.setContent {
             KarmaKameleonTheme(dynamicColor = false) {
-                PostCard(post = post, actions = recorded.actions, isLoggedIn = isLoggedIn)
+                PostCard(post = post, actions = recorded.actions, isLoggedIn = isLoggedIn, spoilerPreviewsEnabled = spoilerPreviewsEnabled)
             }
         }
     }
@@ -177,9 +178,15 @@ class PostCardTest {
     }
 
     @Test
-    fun tappingSpoilerOpensPost() {
+    fun hiddenSpoilerOpensPostWhenTapped() {
         showPostCard(testImagePost().copy(isSpoiler = true))
         composeRule.onNodeWithText("Tap to view").performClick()
         assertCalls("open")
+    }
+
+    @Test
+    fun spoilerPreviewIsShownWhenSpoilerPreviewsAreOn() {
+        showPostCard(testImagePost().copy(isSpoiler = true), spoilerPreviewsEnabled = true)
+        composeRule.onNodeWithText("Tap to view").assertDoesNotExist()
     }
 }
