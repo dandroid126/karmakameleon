@@ -112,7 +112,10 @@ class CommentItemTest {
         composeRule.waitForIdle()
 
         assertEquals(listOf("t1_c1 0"), redditApi.votes)
-        assertEquals(null, recorded.updatedComments.single().likes)
+        val updated = recorded.updatedComments.single()
+        assertEquals(null, updated.likes)
+        // The downvote had taken one point off, so removing it puts the point back.
+        assertEquals(43, updated.score)
     }
 
     @Test
