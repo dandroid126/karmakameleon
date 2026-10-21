@@ -21,6 +21,7 @@ plugins {
     alias(libs.plugins.detekt) apply false
     // On the root classpath, so the security-fixes constraints above also apply to the libraries it brings in.
     alias(libs.plugins.kover) apply false
+    alias(libs.plugins.dependencyAnalysis)
 }
 
 // Formats Kotlin with ktlint, using the rules in .editorconfig. Run spotlessApply to fix what it reports.
@@ -56,6 +57,43 @@ subprojects {
     }
 }
 
+// Finds unused dependencies, dependencies on the wrong configuration (api vs implementation) and code that uses a
+// library it only gets through another one.
+dependencyAnalysis {
+    issues {
+        all {
+            onAny { severity("fail") }
+            onUsedTransitiveDependencies {
+                // kotlin("test") picks the right test framework artifact by itself.
+                exclude("org.jetbrains.kotlin:kotlin-test-junit")
+            }
+        }
+    }
+    structure {
+        // Libraries released as a family of artifacts, where declaring one artifact and using classes from another
+        // in the same family is fine. Compose, for example, splits each library into several artifacts, like ui and
+        // ui-text, and the BOM keeps their versions together.
+        listOf(
+            "androidx.activity",
+            "androidx.compose.animation",
+            "androidx.compose.foundation",
+            "androidx.compose.material",
+            "androidx.compose.runtime",
+            "androidx.compose.ui",
+            "androidx.core",
+            "androidx.lifecycle",
+            "androidx.media3",
+            "androidx.navigation",
+            "io.coil-kt.coil3",
+            "io.github.aakira",
+            "io.insert-koin",
+        ).forEach { group ->
+            bundle(group) { includeGroup(group) }
+        }
+        bundle("kotlinx-serialization") { include("org\\.jetbrains\\.kotlinx:kotlinx-serialization-.*") }
+    }
+}
+
 // Every static check in one task, so they can all be run locally before committing. CI runs it too.
 tasks.register("qualityGate") {
     group = "verification"
@@ -68,6 +106,7 @@ tasks.register("qualityGate") {
         "actionlint",
         "zizmor",
         "gradleActionsCacheCheck",
+        "buildHealth",
         // The architecture tests, which check the code against the rules in CLAUDE.md.
         ":konsistTest:test",
         // Detekt with type resolution. The app's debug and release variants have the same code, so one is enough.

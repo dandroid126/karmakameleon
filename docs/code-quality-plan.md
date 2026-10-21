@@ -85,8 +85,9 @@ The code in this repo is written by AI, and there's too much of it for a human t
 
 - [ ] **Tests for `androidApp`:** Robolectric for UI logic, and screenshot tests (Roborazzi or Paparazzi).
   *Value:* the 49 files in `androidApp` have no tests. Screenshot diffs show exactly what changed visually, without anyone having to look at every UI change in the app (the recent unreadable flair colors are the kind of bug this catches).
-- [ ] **Dependency Analysis Gradle Plugin.**
+- [x] **Dependency Analysis Gradle Plugin.**
   *Value:* finds unused dependencies, `implementation` vs `api` mistakes and transitive dependencies used without being declared. Models add libraries and rarely remove them.
+  *Notes:* `buildHealth` is part of `qualityGate`, and every kind of finding fails it. It's applied to the root and to each module, because applying it to the root alone found nothing. Libraries published as a family of artifacts in one Maven group (Compose, Media3, Coil, Koin and so on) are bundles in the root build file, so using `ui-text` through a declared `ui` is fine. Ktor and multiplatform-settings aren't bundled: bundling them hid an unused artifact and gave wrong `api` advice. `kotlin-test-junit` is excluded because `kotlin("test")` picks it by itself. Fixing the first report removed five unused libraries (`kotlinx-datetime`, `ktor-client-auth`, `multiplatform-settings-coroutines`, `media3-ui`, `ui-tooling-preview`), made the types `shared` exposes `api`, and switched to AndroidX's own multiplatform `lifecycle-viewmodel`. 3.19.2 only claims support for AGP up to 9.3.1 and prints a warning on 9.4.1, but its results were correct.
 - [ ] **APK size check:** fail when the release APK grows more than N% compared with `main`.
   *Value:* catches a large library added by accident, or R8 rules that stop shrinking.
 - [ ] **PR size check:** warn above about 500 changed lines.
@@ -114,3 +115,4 @@ The checkers above would likely flag these too; fix them as separate PRs, or alo
   *Notes:* the collector now starts undispatched, so the current state is applied before the constructor returns, and the scope is a constructor parameter. A regression test forces the bad ordering and fails every time without the fix.
 - [x] 21 view model tests return early (`firstOrNull() ?: return@runTest`) because the fake API returns no data by default, so they pass without asserting anything. Found while fixing #22, after planning; tracked in #34. It's the kind of test mutation testing (Phase 4) is meant to catch, and a coverage gate would count these lines as covered.
   *Notes:* fixed in #47: the tests set up the data they need and use `first()`, so a missing fixture fails the test. `qualityGate`'s `earlyReturnCheck` fails on `?: return@runTest` in `commonTest`, so it can't come back.
+- [ ] Detekt's type resolution for `shared` reports 6 compiler errors as a warning, because it can't match `expect` declarations in `commonMain` with their `actual`s in `androidMain`. The task still passes, so it went unnoticed from #17 until the dependency analysis PR. Tracked in #68.
