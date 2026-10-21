@@ -37,6 +37,9 @@ private const val CONNECT_TIMEOUT_MILLIS = 15_000
 private const val IMAGE_READ_TIMEOUT_MILLIS = 15_000
 private const val VIDEO_READ_TIMEOUT_MILLIS = 30_000
 
+// Video extensions are at most this long, so a longer last part of the URL isn't one.
+private const val MAX_VIDEO_EXTENSION_LENGTH = 5
+
 @Composable
 fun imageMenuItems(url: String): List<MediaMenuItem> {
     val context = LocalContext.current
@@ -59,19 +62,21 @@ fun imageMenuItems(url: String): List<MediaMenuItem> {
 fun videoMenuItems(videoUrl: String): List<MediaMenuItem> {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val ext =
-        videoUrl
-            .substringAfterLast("/")
-            .substringBefore("?")
-            .substringAfterLast(".")
-            .uppercase()
-            .let { if (it.isBlank() || it.length > 5) "MP4" else it }
     return listOf(
-        MediaMenuItem("Save $ext Video") {
+        MediaMenuItem("Save ${videoExtension(videoUrl)} Video") {
             scope.launch { saveVideoToGallery(context, videoUrl) }
         },
     )
 }
+
+// The file extension to name the video by, like "MP4" or "WEBM". MP4 when the URL doesn't have a short one.
+internal fun videoExtension(videoUrl: String): String =
+    videoUrl
+        .substringAfterLast("/")
+        .substringBefore("?")
+        .substringAfterLast(".", missingDelimiterValue = "")
+        .uppercase()
+        .let { if (it.isBlank() || it.length > MAX_VIDEO_EXTENSION_LENGTH) "MP4" else it }
 
 @Composable
 fun gifMenuItems(
@@ -143,7 +148,7 @@ fun LongPressMenuBox(
     }
 }
 
-private fun imageFilenameAndMimeType(url: String): Pair<String, String> {
+internal fun imageFilenameAndMimeType(url: String): Pair<String, String> {
     val filename =
         url.substringAfterLast("/").substringBefore("?").let {
             if (it.contains(".")) it else "$it.jpg"

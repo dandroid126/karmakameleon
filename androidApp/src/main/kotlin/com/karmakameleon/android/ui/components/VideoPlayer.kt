@@ -241,7 +241,7 @@ private fun buildVideoPlayer(
 }
 
 // Reddit videos are played from their HLS playlist, which carries the audio track.
-private fun playbackUrl(videoUrl: String): String {
+internal fun playbackUrl(videoUrl: String): String {
     val cleanUrl = videoUrl.replace(Regex("\\?.*"), "")
     return if (cleanUrl.contains("v.redd.it")) "${cleanUrl.substringBeforeLast("/")}/HLSPlaylist.m3u8" else videoUrl
 }
@@ -541,7 +541,7 @@ private fun VideoSeekBar(
     )
 }
 
-private fun formatDuration(ms: Long): String {
+internal fun formatDuration(ms: Long): String {
     val totalSeconds = ms / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
