@@ -110,3 +110,96 @@ jobs:
 
       - name: Build Release APK
         run: ./gradlew :androidApp:assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-apk-pr
+          path: androidApp/build/outputs/apk/release/androidApp-release-unsigned.apk
+          if-no-files-found: error
+          # Long enough to re-run the size check after adding the apk-size-ok label.
+          retention-days: 7
+
+  # Builds main's release APK for the size check, in parallel with the PR's.
+  build-release-main:
+    name: Release Build (main)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The checkout is the PR merged into main. Its first parent is the main commit it was merged into.
+          fetch-depth: 2
+
+      - name: Check out main
+        run: git checkout --detach HEAD^1
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          java-version: '25'
+          distribution: 'corretto'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
+
+      - name: Build Release APK
+        run: ./gradlew :androidApp:assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-apk-main
+          path: androidApp/build/outputs/apk/release/androidApp-release-unsigned.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  # Fails when the PR grows the release APK by more than MAX_GROWTH_PERCENT, which catches a large library added by
+  # accident or R8 rules that stop shrinking. When the growth is intended, add the apk-size-ok label to the PR and
+  # re-run this job: it reads the labels when it runs, so the builds don't have to run again.
+  apk-size:
+    name: APK Size
+    needs: [build-release, build-release-main]
+    # Runs even when a build failed, so this job fails on the missing APK. Skipped, it would count as passing.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      # To read the PR's labels.
+      pull-requests: read
+    steps:
+      - name: Download APKs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-apk-*
+
+      - name: Compare sizes
+        env:
+          MAX_GROWTH_PERCENT: 5
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          main_size=$(stat -c %s release-apk-main/androidApp-release-unsigned.apk)
+          pr_size=$(stat -c %s release-apk-pr/androidApp-release-unsigned.apk)
+          growth=$(awk -v main="$main_size" -v pr="$pr_size" 'BEGIN { printf "%.2f", (pr - main) * 100 / main }')
+          {
+            echo "| | Release APK |"
+            echo "|---|---|"
+            echo "| main | $main_size bytes |"
+            echo "| This PR | $pr_size bytes |"
+            echo "| Change | $((pr_size - main_size)) bytes ($growth%) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "main: $main_size bytes, this PR: $pr_size bytes, change: $growth%"
+          if awk -v growth="$growth" -v max="$MAX_GROWTH_PERCENT" 'BEGIN { exit !(growth > max) }'; then
+            labels=$(gh api "repos/$GH_REPO/issues/$PR_NUMBER/labels" --jq '.[].name')
+            if grep -qx apk-size-ok <<< "$labels"; then
+              echo "The APK grew by more than $MAX_GROWTH_PERCENT%, but the PR has the apk-size-ok label."
+            else
+              echo "::error::The release APK grew by $growth%, more than $MAX_GROWTH_PERCENT%. Look for a large library" \
+                "or a keep rule that stops R8 from shrinking. If the growth is intended, add the apk-size-ok label" \
+                "to the PR and re-run this job."
+              exit 1
+            fi
+          fi
