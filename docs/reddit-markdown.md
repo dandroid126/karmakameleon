@@ -14,7 +14,7 @@ Reddit's markdown isn't standard markdown. This file lists each rule, what Reddi
 - ❌ The app differs; the issue tracks the fix.
 - ❔ Unverified: what Reddit renders hasn't been checked yet.
 
-When a fix lands, update its row here and add the case to the parser tests and, for anything visible, to `MarkdownTextScreenshotTest`.
+When a fix lands, update its row here and add the case to the parser tests and, for anything visible, to `MarkdownTextScreenshotTest` in `androidApp/src/test/.../ui/components/` (added by #85), whose comment lists the cases it leaves out until they're fixed.
 
 ## Paragraphs and line breaks
 
@@ -25,7 +25,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | A single line break joins the lines | `one`⏎`two` | "one two" | ✅ |
 | Two spaces at the end of a line make a hard break | `one␣␣`⏎`two` | Two lines | ✅ |
 | A backslash at the end of a line makes a hard break (new Reddit only) | `one\`⏎`two` | Two lines | ❌ #83: shows the backslash and joins the lines |
-| A paragraph of only `&nbsp;` makes an empty line | `one` ⏎⏎ `&nbsp;` ⏎⏎ `two` | An empty paragraph between them | ✅ (see HTML entities) |
+| A paragraph of only `&nbsp;` makes an empty line | `one` ⏎⏎ `&nbsp;` ⏎⏎ `two` | An empty paragraph between them | ❌ #83: `decodeHtml` turns `&nbsp;` into a normal space, so the line counts as blank and merges with the blank lines around it |
 
 ## Emphasis
 
@@ -72,7 +72,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Link title in quotes | `[text](https://example.com "title")` | Link to the URL; the title is a tooltip | ❌ #83: the title becomes part of the URL |
 | Link title in parentheses (new Reddit only) | `[text](https://example.com (title))` | As above | ❌ #83: as above, plus a stray `)` |
 | Reference link | `[text][id]` with `[id]: https://…` on its own line | Link; the definition isn't shown | ❌ #83: links to the text, and the definition is shown |
-| Shortcut reference link | `[text]` with `[text]: https://…` | As above | ❌ #83: as above |
+| Shortcut reference link | `[text]` with `[text]: https://…` | As above | ❌ #83: `[text]` is shown as typed, without a link, and the definition is shown with its URL linked |
 | Schemes | `http://`, `https://`, `ftp://`, `mailto:`, `git://`, `steam://`, `irc://`, `ircs://`, `news://`, `mumble://`, `ssh://`, `ts3server://`, `/`, `#` | Link | ✅ for `mailto:`, `steam://` and `/`; ❔ the rest |
 | No scheme | `[a](www.reddit.com)` | Not a working link | ❔ |
 
@@ -137,11 +137,12 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 
 ## HTML entities
 
-Reddit's API escapes `&`, `<` and `>` in bodies, so `RedditParser.decodeHtml` decodes the body before it's parsed. Entities the writer typed, like `&mdash;`, then reach the parser as text.
+Reddit's API escapes `&`, `<` and `>` in bodies, so `RedditParser.decodeHtml` decodes the body before it's parsed. It replaces `&lt;`, `&gt;`, `&amp;`, `&quot;`, `&#39;` and `&nbsp;`, in that order, so an entity the writer typed reaches the parser as text, except `&quot;`, `&#39;` and `&nbsp;`: replacing `&amp;` first turns the API's `&amp;quot;` back into `&quot;`, which is then decoded too.
 
 | Rule | Written | Reddit | App |
 |---|---|---|---|
-| Named entities | `&mdash;`, `&hearts;` | — ♥ (new Reddit decodes them) | ❌ #83: shown as typed |
-| Numeric entities | `&#x2005;`, `&#8203;` | The character | ❌ #83: shown as typed |
-| Non-breaking space | `&nbsp;` | A space that doesn't break | ✅ only because `decodeHtml` maps it (to a normal space) |
+| Named entities | `&mdash;`, `&hearts;` | — ♥ (new Reddit decodes them) | ❌ #83: shown as typed, except `&quot;`, which is decoded |
+| Numeric entities | `&#x2005;`, `&#8203;` | The character | ❌ #83: shown as typed, except `&#39;`, which is decoded |
+| Non-breaking space | `&nbsp;` | A space that doesn't break | ❌ #83: decoded to a normal space, so lines can break there and a line of only `&nbsp;` counts as blank |
 | `<`, `>` and `&` typed as text | `5 > 3 & 2 < 4` | As typed | ✅ |
+| `&lt;`, `&gt;` and `&amp;` typed as entities | `&lt;` | `<` | ❌ #83: shown as typed, since they're replaced before `&amp;` |
