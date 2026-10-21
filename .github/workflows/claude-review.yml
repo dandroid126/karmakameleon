@@ -55,7 +55,7 @@ jobs:
             - Anything that goes against CLAUDE.md, including the parts no check covers.
 
             Earlier pushes to this PR may already have been reviewed. Before commenting, read the earlier review
-            comments with `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments`
+            comments with `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments --paginate`
             and the earlier summary with `gh pr view --comments`. Don't raise a finding again if it has already been
             raised, whether or not it was fixed or resolved.
 
