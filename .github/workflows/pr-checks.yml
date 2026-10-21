@@ -32,7 +32,16 @@ jobs:
           cache-provider: basic
 
       - name: Run unit tests and check coverage
-        run: ./gradlew :shared:testAndroidHostTest diffCoverage :shared:koverVerify
+        # verifyRoborazziDebug runs the app's tests and fails when a screenshot differs from the recorded one.
+        run: ./gradlew :shared:testAndroidHostTest diffCoverage :shared:koverVerify :androidApp:verifyRoborazziDebug
+
+      - name: Upload screenshot differences
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: screenshot-differences
+          path: androidApp/build/outputs/roborazzi/
+          if-no-files-found: ignore
 
   quality-gate:
     name: Quality Gate

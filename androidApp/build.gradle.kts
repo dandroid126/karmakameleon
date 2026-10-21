@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.detekt)
     alias(libs.plugins.dependencyAnalysis)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -65,6 +66,18 @@ android {
         }
     }
 
+    testOptions {
+        unitTests {
+            // Robolectric needs the app's resources, like its theme and strings.
+            isIncludeAndroidResources = true
+            all {
+                // Robolectric's Android 17 runtime sets file descriptors through this JDK-internal package, which
+                // Java blocks unless it's opened.
+                it.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED")
+            }
+        }
+    }
+
     lint {
         warningsAsErrors = true
         // These fail whenever something newer is released, so the same code could pass one day and fail the
@@ -122,6 +135,17 @@ dependencies {
     implementation(libs.android.youtube.player)
 
     detektPlugins(libs.compose.rules.detekt)
+
+    testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.roborazzi)
+    constraints {
+        // The Compose test library brings in Espresso 3.5, which calls InputManager.getInstance(). Android 17
+        // removed it, so tests on Robolectric's Android 17 runtime fail without a newer Espresso.
+        testImplementation(libs.espresso.core)
+    }
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugRuntimeOnly(libs.androidx.compose.ui.test.manifest)

@@ -29,7 +29,9 @@ The rules above are checked by `konsistTest/src/test/kotlin/com/karmakameleon/ko
 
 ## Checks
 
-Before committing, run `./gradlew qualityGate` (the static checks) and `./gradlew :shared:testAndroidHostTest diffCoverage :shared:koverVerify` (the unit tests, a check that at least 80% of the shared module's lines changed since `main` are covered by them, and a check that at least 80% of all its lines are). The PR checks run the same tasks and must pass before a PR can merge. With a client ID in `.env`, the integration tests call Reddit and add coverage that CI doesn't get, so move `.env` aside to see CI's numbers. `diffCoverage` compares with `origin/main`, so fetch first if it's out of date.
+Before committing, run `./gradlew qualityGate` (the static checks) and `./gradlew :shared:testAndroidHostTest diffCoverage :shared:koverVerify :androidApp:verifyRoborazziDebug` (the unit tests, a check that at least 80% of the shared module's lines changed since `main` are covered by them, a check that at least 80% of all its lines are, and the app's tests, which compare screenshots with the recorded ones). The PR checks run the same tasks and must pass before a PR can merge. With a client ID in `.env`, the integration tests call Reddit and add coverage that CI doesn't get, so move `.env` aside to see CI's numbers. `diffCoverage` compares with `origin/main`, so fetch first if it's out of date.
+
+The app's tests run on Robolectric, without an emulator. Screenshot tests save their images in `androidApp/src/test/screenshots/`. When a change to the UI is intended, run `./gradlew :androidApp:recordRoborazziDebug`, look at each changed image, and commit them with the change. When `verifyRoborazziDebug` fails, `androidApp/build/outputs/roborazzi/` has the new image and a comparison for each difference.
 
 Fix what the checks report instead of adding it to a baseline or suppressing it. When a suppression really is right, put the reason next to it.
 
