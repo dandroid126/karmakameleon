@@ -93,6 +93,9 @@ dependencyAnalysis {
             bundle(group) { includeGroup(group) }
         }
         bundle("kotlinx-serialization") { include("org\\.jetbrains\\.kotlinx:kotlinx-serialization-.*") }
+        // Multiplatform Settings and its test library, with their Android artifacts. Not the no-arg artifact, which
+        // shared keeps out of its API.
+        bundle("multiplatform-settings") { include("com\\.russhwolf:multiplatform-settings(-test)?(-android.*)?") }
     }
 }
 

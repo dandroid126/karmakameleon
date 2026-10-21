@@ -144,7 +144,7 @@ private fun InboxViewModel.messageActions(
 )
 
 // A comment's context URL is /r/<subreddit>/comments/<post>/...; returns the subreddit and post.
-private fun postOfContextUrl(contextUrl: String): Pair<String, String>? {
+internal fun postOfContextUrl(contextUrl: String): Pair<String, String>? {
     val parts = contextUrl.substringBefore("?").split("/").filter { it.isNotEmpty() }
     val subreddit = parts.getOrNull(1) ?: return null
     val postId = parts.getOrNull(3) ?: return null

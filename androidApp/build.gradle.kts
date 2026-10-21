@@ -141,6 +141,11 @@ dependencies {
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.roborazzi)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.ktor.client.core)
+    testImplementation(libs.ktor.client.mock)
+    testImplementation(libs.ktor.http)
+    testImplementation(libs.multiplatform.settings.test)
     constraints {
         // The Compose test library brings in Espresso 3.5, which calls InputManager.getInstance(). Android 17
         // removed it, so tests on Robolectric's Android 17 runtime fail without a newer Espresso.
