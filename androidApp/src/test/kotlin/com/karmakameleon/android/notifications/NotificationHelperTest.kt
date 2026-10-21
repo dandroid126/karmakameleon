@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.ComponentName
 import androidx.core.app.NotificationCompat
 import com.karmakameleon.android.MainActivity
+import com.karmakameleon.android.testing.testMessage
 import com.karmakameleon.shared.domain.model.MessageType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue

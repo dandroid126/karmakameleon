@@ -8,6 +8,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.testing.TestListenableWorkerBuilder
 import androidx.work.testing.WorkManagerTestInitHelper
+import com.karmakameleon.android.testing.testMessage
 import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.domain.model.NotificationInterval
 import kotlinx.coroutines.flow.first

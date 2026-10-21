@@ -18,7 +18,7 @@ import org.robolectric.RuntimeEnvironment
 import kotlin.time.Duration.Companion.hours
 
 // Three hours old, so its age reads "3h" whenever the test runs.
-private val threeHoursAgo get() = System.currentTimeMillis() / 1000 - 3.hours.inWholeSeconds
+val threeHoursAgo get() = System.currentTimeMillis() / 1000 - 3.hours.inWholeSeconds
 
 // A text post. Tests change what they need with copy().
 fun testPost(): Post {
