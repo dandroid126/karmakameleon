@@ -14,7 +14,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
 
-// Kept apart from MessageItemTest: a screenshot taken after a test that opened menus sometimes came out blank.
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MessageItemScreenshotTest {
