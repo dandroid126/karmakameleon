@@ -1,5 +1,8 @@
 package com.karmakameleon.android.ui.components
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -89,11 +92,15 @@ class MarkdownTextTest {
     }
 
     @Test
-    fun spoilerTextIsInItsOwnBox() {
-        show("Before >!secret!< after")
-        // The spoiler toggles itself instead of passing the tap on.
-        composeRule.onNodeWithText("secret").performClick()
-        composeRule.onNodeWithText("secret").performClick()
-        assertEquals(emptyList<String>(), calls)
+    fun tappingSpoilerShowsAndHidesIt() {
+        show(">!A secret!<")
+        val spoiler = composeRule.onNodeWithText("A secret")
+        spoiler.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Hidden spoiler"))
+
+        spoiler.performClick()
+        spoiler.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Revealed spoiler"))
+
+        spoiler.performClick()
+        spoiler.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Hidden spoiler"))
     }
 }
