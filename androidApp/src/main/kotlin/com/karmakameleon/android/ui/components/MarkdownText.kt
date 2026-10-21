@@ -32,6 +32,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -322,6 +324,8 @@ private fun SpoilerComponent(
             Modifier
                 .background(if (isRevealed) Color.Transparent else spoilerColor)
                 .clickable { isRevealed = !isRevealed }
+                // Tells screen readers whether the spoiler is showing, since they read the text either way.
+                .semantics { stateDescription = if (isRevealed) "Revealed spoiler" else "Hidden spoiler" }
                 .padding(horizontal = 2.dp),
     ) {
         Text(
