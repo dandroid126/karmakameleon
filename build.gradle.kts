@@ -478,7 +478,8 @@ tasks.register<Exec>("actionlint") {
 
 // Finds security problems in the workflows and dependabot.yml, like unpinned actions, template injection and
 // leaked credentials. With a token in GH_TOKEN, which CI sets, it also checks that each pinned commit belongs to
-// the action's own repo and that no action has a known vulnerability.
+// the action's own repo and that no action has a known vulnerability. Without one it runs offline: run
+// `GH_TOKEN=$(gh auth token) ./gradlew zizmor` to run those checks locally too.
 tasks.register<Exec>("zizmor") {
     description = "Checks the GitHub Actions workflows for security problems."
     group = "verification"
@@ -486,6 +487,13 @@ tasks.register<Exec>("zizmor") {
     executable = toolExecutables.getValue("zizmor")
     // Without --strict-collection, a workflow it can't parse is skipped with only a warning.
     args("--quiet", "--strict-collection", ".")
+    doFirst {
+        // Without a token it goes offline anyway, but asking for it skips the notice that it did.
+        val tokenVariables = listOf("GH_TOKEN", "GITHUB_TOKEN", "ZIZMOR_GITHUB_TOKEN")
+        if (tokenVariables.none { System.getenv(it) != null }) {
+            args("--offline")
+        }
+    }
 }
 
 // Fails on a gradle/actions step that doesn't set `cache-provider: basic`. Without it, the action uses its default
@@ -695,15 +703,14 @@ abstract class DiffCoverageTask : DefaultTask() {
             .lines()
             .filter { it.endsWith(".kt") }
             .forEach { path ->
-                changed[path] =
-                    (
-                        1..projectDir
-                            .file(path)
-                            .get()
-                            .asFile
-                            .readLines()
-                            .size
-                    ).toMutableList()
+                val lineCount =
+                    projectDir
+                        .file(path)
+                        .get()
+                        .asFile
+                        .readLines()
+                        .size
+                changed[path] = (1..lineCount).toMutableList()
             }
         return changed
     }
