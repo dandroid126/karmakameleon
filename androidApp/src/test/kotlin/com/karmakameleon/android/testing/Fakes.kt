@@ -13,7 +13,7 @@ import io.ktor.http.HttpStatusCode
 import java.io.IOException
 
 // No request reaches Reddit: the fakes below answer before anything is sent.
-private fun offlineClient() = HttpClient(MockEngine { respondError(HttpStatusCode.ServiceUnavailable) })
+internal fun offlineClient() = HttpClient(MockEngine { respondError(HttpStatusCode.ServiceUnavailable) })
 
 class FakeRedditApi(
     authManager: AuthManager,
