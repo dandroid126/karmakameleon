@@ -147,6 +147,7 @@ dependencies {
     testImplementation(libs.ktor.client.core)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.ktor.http)
+    testImplementation(libs.kotlinx.serialization.json)
     testImplementation(libs.multiplatform.settings.test)
     constraints {
         // The Compose test library brings in Espresso 3.5, which calls InputManager.getInstance(). Android 17
