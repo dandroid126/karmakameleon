@@ -149,11 +149,11 @@ dependencies {
     testImplementation(libs.ktor.http)
     testImplementation(libs.kotlinx.serialization.json)
     testImplementation(libs.multiplatform.settings.test)
-    constraints {
-        // The Compose test library brings in Espresso 3.5, which calls InputManager.getInstance(). Android 17
-        // removed it, so tests on Robolectric's Android 17 runtime fail without a newer Espresso.
-        testImplementation(libs.espresso.core)
-    }
+    // Types into the reply field, a platform EditText. Also, the Compose test library brings in Espresso 3.5, which
+    // calls InputManager.getInstance(). Android 17 removed it, so tests on Robolectric's Android 17 runtime fail
+    // without a newer Espresso.
+    testImplementation(libs.espresso.core)
+    testImplementation(libs.hamcrest.core)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugRuntimeOnly(libs.androidx.compose.ui.test.manifest)
