@@ -51,6 +51,16 @@ class ArchitectureTest {
             ) { Rules.apiClientUse.containsMatchIn(it.text) }
     }
 
+    // A main source set that only declares sharedTesting, without importing it, fails buildHealth as an unused
+    // dependency instead.
+    @Test
+    fun onlyTestsUseSharedTesting() {
+        productionScope.imports.assertFalse(
+            strict = true,
+            additionalMessage = "sharedTesting holds test helpers, so only tests can use it (see CLAUDE.md).",
+        ) { it.name.startsWith("com.karmakameleon.shared.testing.") }
+    }
+
     // Replaces CodeQL's java/android/websettings-allow-content-access, which can't read our Kotlin (see
     // .github/codeql/codeql-config.yml). Pages never need the device's files or content:// URIs, like the app's own
     // FileProvider. Counts the settings per file, so a second WebView in a file needs its own.
