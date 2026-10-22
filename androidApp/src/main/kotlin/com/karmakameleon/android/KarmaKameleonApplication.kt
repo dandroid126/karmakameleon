@@ -12,11 +12,9 @@ import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import coil3.memory.MemoryCache
 import coil3.request.crossfade
-import com.karmakameleon.android.di.androidModule
+import com.karmakameleon.android.di.appModules
 import com.karmakameleon.android.notifications.NotificationHelper
 import com.karmakameleon.shared.data.repository.InboxPoller
-import com.karmakameleon.shared.di.platformModule
-import com.karmakameleon.shared.di.sharedModule
 import io.github.aakira.napier.DebugAntilog
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.CoroutineScope
@@ -67,11 +65,7 @@ class KarmaKameleonApplication :
         startKoin {
             androidLogger()
             androidContext(this@KarmaKameleonApplication)
-            modules(
-                sharedModule,
-                platformModule(),
-                androidModule,
-            )
+            modules(appModules)
         }
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(foregroundObserver)

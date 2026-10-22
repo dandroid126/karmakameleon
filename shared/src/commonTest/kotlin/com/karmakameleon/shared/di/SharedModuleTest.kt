@@ -1,6 +1,7 @@
 package com.karmakameleon.shared.di
 
 import com.karmakameleon.shared.data.api.AuthManager
+import com.karmakameleon.shared.data.api.HttpClientFactory
 import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
@@ -14,6 +15,8 @@ import com.karmakameleon.shared.data.repository.UserRepository
 import com.russhwolf.settings.MapSettings
 import com.russhwolf.settings.Settings
 import io.ktor.client.HttpClient
+import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respondOk
 import org.koin.core.Koin
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -27,7 +30,7 @@ class SharedModuleTest {
     private val settings = MapSettings()
     private val tokenSettings = MapSettings()
 
-    // The platform's settings need a device, so in-memory ones stand in for them.
+    // The platform's module needs a device, so in-memory settings and a fake engine stand in for it.
     private val app =
         koinApplication {
             allowOverride(true)
@@ -36,6 +39,7 @@ class SharedModuleTest {
                 module {
                     single<Settings> { settings }
                     single<Settings>(TOKEN_SETTINGS) { tokenSettings }
+                    single { HttpClientFactory { HttpClient(MockEngine { respondOk() }) } }
                 },
             )
         }

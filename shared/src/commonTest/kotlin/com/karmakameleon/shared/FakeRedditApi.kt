@@ -25,6 +25,7 @@ class FakeRedditApi(
 ) : RedditApi(
         httpClient = HttpClient(MockEngine { respond("", HttpStatusCode.OK) }),
         authManager = fakeAuthManager,
+        createShareLinkClient = { HttpClient(MockEngine { respond("", HttpStatusCode.OK) }) },
     ) {
     var postsResult: Listing<Post> = createTestListing()
     var postResult: Post? = null

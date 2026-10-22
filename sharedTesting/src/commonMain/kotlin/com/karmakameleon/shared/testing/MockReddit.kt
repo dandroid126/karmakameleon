@@ -43,7 +43,14 @@ class MockReddit {
     fun api(
         settingsRepository: SettingsRepository? = null,
         ioDispatcher: CoroutineDispatcher,
-    ): RedditApi = RedditApi(client(ioDispatcher), authManager, settingsRepository, ioDispatcher)
+    ): RedditApi =
+        RedditApi(
+            client(ioDispatcher),
+            authManager,
+            settingsRepository,
+            ioDispatcher,
+            createShareLinkClient = { client(ioDispatcher) },
+        )
 
     // Runs on the API's dispatcher, so a test dispatcher also waits for the requests made in the background.
     private fun client(dispatcher: CoroutineDispatcher): HttpClient =

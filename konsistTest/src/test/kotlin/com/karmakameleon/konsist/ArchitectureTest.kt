@@ -3,6 +3,7 @@ package com.karmakameleon.konsist
 import com.lemonappdev.konsist.api.KoModifier
 import com.lemonappdev.konsist.api.ext.list.modifierprovider.withModifier
 import com.lemonappdev.konsist.api.ext.list.withPackage
+import com.lemonappdev.konsist.api.provider.modifier.KoModifierProvider
 import com.lemonappdev.konsist.api.verify.assertFalse
 import com.lemonappdev.konsist.api.verify.assertTrue
 import kotlin.test.Test
@@ -87,6 +88,21 @@ class ArchitectureTest {
             strict = true,
             additionalMessage = "Pages in the app's WebViews run JavaScript, so don't give them access to app code.",
         ) { "addJavascriptInterface" in it.text }
+    }
+
+    // Detekt can't match an expect in commonMain with its actual in androidMain (detekt/detekt#9602, see #68): each pair
+    // gives it compiler errors, which it only logs, and its type-aware rules get less accurate.
+    @Test
+    fun noExpectOrActualDeclarations() {
+        productionScope
+            .declarations(includeNested = true)
+            .filterIsInstance<KoModifierProvider>()
+            .assertFalse(
+                strict = true,
+                additionalMessage =
+                    "Don't use expect/actual (see CLAUDE.md). Put the platform code behind an interface in commonMain " +
+                        "and provide it from the platform's Koin module.",
+            ) { it.modifiers.any { modifier -> modifier == KoModifier.EXPECT || modifier == KoModifier.ACTUAL } }
     }
 
     // Only checks suspend functions. A lambda that suspends, like the block passed to launch, can't be told apart

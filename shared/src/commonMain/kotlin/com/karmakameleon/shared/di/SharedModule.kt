@@ -1,6 +1,7 @@
 package com.karmakameleon.shared.di
 
 import com.karmakameleon.shared.data.api.AuthManager
+import com.karmakameleon.shared.data.api.HttpClientFactory
 import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.data.api.createHttpClientWithConfig
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
@@ -13,7 +14,6 @@ import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.russhwolf.settings.Settings
-import org.koin.core.module.Module
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
@@ -22,11 +22,13 @@ val TOKEN_SETTINGS = named("tokenSettings")
 
 val sharedModule =
     module {
-        single { createHttpClientWithConfig() }
+        single { createHttpClientWithConfig(get()) }
         single { Settings() }
         single { AuthManager(get(), get(), get(TOKEN_SETTINGS)) }
         single { SettingsRepository(get()) }
-        single { RedditApi(get(), get(), get()) }
+        single {
+            RedditApi(get(), get(), get(), createShareLinkClient = { get<HttpClientFactory>().create(followRedirects = false) })
+        }
 
         // Repositories
         single { PostRepository(get()) }
@@ -38,5 +40,3 @@ val sharedModule =
         single { ReadPostsRepository(get()) }
         single { CommentDraftRepository(get()) }
     }
-
-expect fun platformModule(): Module
