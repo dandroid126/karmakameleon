@@ -95,6 +95,6 @@ DTO classes (`@Serializable`) mirror Reddit's JSON wire format. Mapping happens 
 
 Use `FakeRedditApi` in `commonTest/.../FakeRedditApi.kt` - subclass of `RedditApi` that overrides methods to return fixtures from `TestData.kt`. For raw HTTP-level tests, use Ktor `MockEngine`.
 
-`FakeAuthManager` provides a no-network AuthManager for tests.
+`FakeAuthManager` provides a no-network AuthManager for tests, and `MockReddit` a fake Reddit server for `RedditApi` tests. Both are in the `sharedTesting` module, with the saved Reddit responses (`sharedTesting/fixtures`, read with `readFixture`), so the app's tests can use them too.
 
 Real-API integration tests live in `shared/src/androidHostTest/.../RedditApiIntegrationTest.kt` and require `.env` with `REDDIT_CLIENT_ID`.

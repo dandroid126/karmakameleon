@@ -5,7 +5,7 @@ import com.karmakameleon.shared.data.api.dto.ThingData
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.FlairRichtext
 import com.karmakameleon.shared.domain.model.MoreComments
-import com.karmakameleon.shared.readFixture
+import com.karmakameleon.shared.testing.readFixture
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive

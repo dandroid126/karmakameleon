@@ -4,7 +4,7 @@ import com.karmakameleon.shared.data.api.dto.RedditResponse
 import com.karmakameleon.shared.data.api.dto.SubredditDto
 import com.karmakameleon.shared.data.api.dto.UserDto
 import com.karmakameleon.shared.domain.model.MessageType
-import com.karmakameleon.shared.readFixture
+import com.karmakameleon.shared.testing.readFixture
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject

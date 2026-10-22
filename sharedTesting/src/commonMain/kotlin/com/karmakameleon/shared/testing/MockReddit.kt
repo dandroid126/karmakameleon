@@ -1,6 +1,6 @@
-package com.karmakameleon.shared.data.api
+package com.karmakameleon.shared.testing
 
-import com.karmakameleon.shared.FakeAuthManager
+import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
@@ -22,7 +22,7 @@ import kotlinx.serialization.json.put
  * A Reddit API server for [RedditApi] tests. It records each request and answers with the response set for its path,
  * or an empty listing.
  */
-internal class MockReddit {
+class MockReddit {
     val requests = mutableListOf<HttpRequestData>()
 
     private val responses = mutableMapOf<String, Pair<HttpStatusCode, String>>()
@@ -66,16 +66,16 @@ internal class MockReddit {
 }
 
 /** The fields of a form a request posted. */
-internal fun HttpRequestData.form(): Parameters = (body as FormDataContent).formData
+fun HttpRequestData.form(): Parameters = (body as FormDataContent).formData
 
 /** A request's query parameters, without raw_json, which every GET has. */
-internal fun HttpRequestData.query(): Map<String, String> =
+fun HttpRequestData.query(): Map<String, String> =
     url.parameters
         .entries()
         .associate { (name, values) -> name to values.single() } - "raw_json"
 
 /** A subreddit as /api/info returns it, with only the fields Reddit always sends. */
-internal fun subredditThing(
+fun subredditThing(
     name: String,
     nsfw: Boolean,
 ): JsonObject =
@@ -98,7 +98,7 @@ internal fun subredditThing(
     }
 
 /** A listing of these things. */
-internal fun listingOf(vararg things: JsonObject): String =
+fun listingOf(vararg things: JsonObject): String =
     buildJsonObject {
         put("kind", "Listing")
         put("data", buildJsonObject { put("children", JsonArray(things.toList())) })

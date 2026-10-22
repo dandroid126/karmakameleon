@@ -1,11 +1,11 @@
 package com.karmakameleon.shared.data.repository
 
-import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
+import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest

@@ -1,6 +1,5 @@
 package com.karmakameleon.shared.ui.profile
 
-import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
@@ -10,6 +9,7 @@ import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

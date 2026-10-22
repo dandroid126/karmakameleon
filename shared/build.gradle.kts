@@ -24,6 +24,8 @@ tasks.withType<Test> {
     envVars.forEach { (key, value) ->
         systemProperty(key, value)
     }
+    // The saved Reddit responses some tests read, so changing one runs them again.
+    inputs.dir(rootProject.file("sharedTesting/fixtures")).withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 kotlin {
@@ -60,11 +62,11 @@ kotlin {
         }
 
         commonTest.dependencies {
+            implementation(project(":sharedTesting"))
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
             implementation(libs.multiplatform.settings.test)
-            implementation(libs.kotlinx.io.core)
         }
 
         androidMain.dependencies {

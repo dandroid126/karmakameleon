@@ -96,7 +96,7 @@ class InboxNotificationWorkerTest {
 
     @Test
     fun doesNothingWhenLoggedOut() {
-        dependencies.authManager.loggedIn = false
+        dependencies.authManager.fakeIsLoggedIn = false
 
         assertEquals(ListenableWorker.Result.success(), runWorker())
 
@@ -133,7 +133,7 @@ class InboxNotificationWorkerTest {
     fun scheduleCancelsWorkWhenLoggedOut() {
         InboxNotificationWorker.schedule(context)
 
-        dependencies.authManager.loggedIn = false
+        dependencies.authManager.fakeIsLoggedIn = false
         InboxNotificationWorker.schedule(context)
 
         assertEquals(WorkInfo.State.CANCELLED, scheduledWork().single().state)

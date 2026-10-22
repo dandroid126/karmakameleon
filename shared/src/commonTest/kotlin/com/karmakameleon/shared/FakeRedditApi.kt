@@ -13,6 +13,7 @@ import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.Subreddit
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
+import com.karmakameleon.shared.testing.FakeAuthManager
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond

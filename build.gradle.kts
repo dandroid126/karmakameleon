@@ -119,6 +119,7 @@ tasks.register("qualityGate") {
         ":androidApp:detektDebugUnitTest",
         ":shared:detektMainAndroid",
         ":shared:detektHostTestAndroid",
+        ":sharedTesting:detektMainAndroid",
         ":konsistTest:detektTest",
     )
 }

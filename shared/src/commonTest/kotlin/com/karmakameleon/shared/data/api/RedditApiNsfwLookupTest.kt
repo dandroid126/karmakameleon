@@ -1,7 +1,11 @@
 package com.karmakameleon.shared.data.api
 
 import com.karmakameleon.shared.data.repository.SettingsRepository
-import com.karmakameleon.shared.readFixture
+import com.karmakameleon.shared.testing.MockReddit
+import com.karmakameleon.shared.testing.listingOf
+import com.karmakameleon.shared.testing.query
+import com.karmakameleon.shared.testing.readFixture
+import com.karmakameleon.shared.testing.subredditThing
 import com.russhwolf.settings.MapSettings
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi

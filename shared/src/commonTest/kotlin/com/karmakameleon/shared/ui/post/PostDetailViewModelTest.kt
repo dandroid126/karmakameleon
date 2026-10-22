@@ -1,6 +1,5 @@
 package com.karmakameleon.shared.ui.post
 
-import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.FakeRedditApi.CommentsRequest
 import com.karmakameleon.shared.FakeRedditApi.MoreCommentsRequest
@@ -17,6 +16,7 @@ import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
+import com.karmakameleon.shared.testing.FakeAuthManager
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

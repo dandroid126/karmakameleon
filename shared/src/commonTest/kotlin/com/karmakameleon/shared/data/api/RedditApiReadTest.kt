@@ -5,7 +5,11 @@ import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.TimeFilter
-import com.karmakameleon.shared.readFixture
+import com.karmakameleon.shared.testing.MockReddit
+import com.karmakameleon.shared.testing.listingOf
+import com.karmakameleon.shared.testing.query
+import com.karmakameleon.shared.testing.readFixture
+import com.karmakameleon.shared.testing.subredditThing
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
