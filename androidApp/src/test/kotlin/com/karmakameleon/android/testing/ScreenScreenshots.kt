@@ -12,9 +12,22 @@ fun ComposeContentTestRule.captureScreen(
     darkTheme: Boolean = false,
     screen: @Composable () -> Unit,
 ) {
+    showScreen(darkTheme, screen)
+    saveScreenshot(name)
+}
+
+/** Shows [screen] at a phone's size, for tests that do something on it before [saveScreenshot]. */
+fun ComposeContentTestRule.showScreen(
+    darkTheme: Boolean = false,
+    screen: @Composable () -> Unit,
+) {
     setContent {
         // Dynamic colors come from the wallpaper, which would make the screenshots depend on the machine.
         KarmaKameleonTheme(darkTheme = darkTheme, dynamicColor = false) { screen() }
     }
+}
+
+/** Saves a screenshot of what's shown as `src/test/screenshots/<name>.png`. */
+fun ComposeContentTestRule.saveScreenshot(name: String) {
     onRoot().captureRoboImage("src/test/screenshots/$name.png")
 }

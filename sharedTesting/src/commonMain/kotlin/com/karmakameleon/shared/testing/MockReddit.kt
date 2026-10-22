@@ -74,10 +74,11 @@ fun HttpRequestData.query(): Map<String, String> =
         .entries()
         .associate { (name, values) -> name to values.single() } - "raw_json"
 
-/** A subreddit as /api/info returns it, with only the fields Reddit always sends. */
+/** A subreddit as /api/info returns it, with only the fields Reddit always sends, plus its member count if given. */
 fun subredditThing(
     name: String,
     nsfw: Boolean,
+    subscribers: Long? = null,
 ): JsonObject =
     buildJsonObject {
         put("kind", "t5")
@@ -93,6 +94,7 @@ fun subredditThing(
                 put("created_utc", 1.0)
                 put("over18", nsfw)
                 put("url", "/r/$name/")
+                subscribers?.let { put("subscribers", it) }
             },
         )
     }
