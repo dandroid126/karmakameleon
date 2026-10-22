@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -58,6 +59,14 @@ class SettingsScreenTest {
         return composeRule.onNodeWithText(text)
     }
 
+    // Fails if any row of the list has this text, whether it's on screen or not: scrolling to a node searches the whole
+    // list, and fails when nothing matches.
+    private fun assertNotInList(text: String) {
+        assertThrows(AssertionError::class.java) {
+            composeRule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText(text))
+        }
+    }
+
     // A switch setting is one node, holding its title, description and state.
     private fun switchFor(title: String): SemanticsNodeInteraction = scrollTo(title).assert(isToggleable())
 
@@ -74,7 +83,7 @@ class SettingsScreenTest {
     @Test
     fun nsfwOptionsOnlyShowWhenNsfwIsOn() {
         showSettings()
-        composeRule.onNodeWithText("Cache NSFW Media").assertDoesNotExist()
+        assertNotInList("Cache NSFW Media")
 
         switchFor("Enable NSFW Content").performClick()
         scrollTo("Prefetch and blur").performClick()
