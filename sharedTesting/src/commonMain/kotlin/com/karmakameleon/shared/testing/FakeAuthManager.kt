@@ -1,4 +1,4 @@
-package com.karmakameleon.shared
+package com.karmakameleon.shared.testing
 
 import com.karmakameleon.shared.data.api.AuthManager
 import com.russhwolf.settings.MapSettings

@@ -1,6 +1,5 @@
 package com.karmakameleon.shared.ui.profile
 
-import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.CommentRepository
@@ -8,6 +7,7 @@ import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
+import com.karmakameleon.shared.testing.FakeAuthManager
 import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

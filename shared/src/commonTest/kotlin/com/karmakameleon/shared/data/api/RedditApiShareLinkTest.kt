@@ -1,6 +1,6 @@
 package com.karmakameleon.shared.data.api
 
-import com.karmakameleon.shared.FakeAuthManager
+import com.karmakameleon.shared.testing.FakeAuthManager
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope

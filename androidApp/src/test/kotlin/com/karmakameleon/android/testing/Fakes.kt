@@ -6,7 +6,6 @@ import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Message
 import com.karmakameleon.shared.domain.model.MessageType
-import com.russhwolf.settings.MapSettings
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respondError
@@ -15,12 +14,6 @@ import java.io.IOException
 
 // No request reaches Reddit: the fakes below answer before anything is sent.
 private fun offlineClient() = HttpClient(MockEngine { respondError(HttpStatusCode.ServiceUnavailable) })
-
-class FakeAuthManager : AuthManager(offlineClient(), MapSettings(), MapSettings()) {
-    var loggedIn = true
-
-    override fun isLoggedIn(): Boolean = loggedIn
-}
 
 class FakeRedditApi(
     authManager: AuthManager,

@@ -5,11 +5,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
-import com.karmakameleon.android.testing.FakeAuthManager
 import com.karmakameleon.android.testing.FakeRedditApi
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.testing.FakeAuthManager
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith

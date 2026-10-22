@@ -136,6 +136,7 @@ dependencies {
 
     detektPlugins(libs.compose.rules.detekt)
 
+    testImplementation(project(":sharedTesting"))
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(platform(libs.androidx.compose.bom))

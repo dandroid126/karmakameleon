@@ -1,6 +1,5 @@
 package com.karmakameleon.shared.ui.search
 
-import com.karmakameleon.shared.FakeAuthManager
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.FakeRedditApi.SearchRequest
 import com.karmakameleon.shared.createTestListing
@@ -12,6 +11,7 @@ import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.SearchType
 import com.karmakameleon.shared.domain.model.TimeFilter
+import com.karmakameleon.shared.testing.FakeAuthManager
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi

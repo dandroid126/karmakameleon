@@ -150,7 +150,7 @@ One VM per screen; each exposes `uiState: StateFlow<XxxUiState>`:
 
 ### Tests
 - Unit: `shared/src/commonTest/kotlin/com/karmakameleon/shared/` - repositories, ViewModels, domain models, LinkParser, markdown.
-- Fakes: `commonTest/.../FakeRedditApi.kt`, `FakeAuthManager.kt`, `TestData.kt`.
+- Fakes: `commonTest/.../FakeRedditApi.kt`, `TestData.kt`; `sharedTesting` (used by shared's and the app's tests) has `FakeAuthManager.kt`, `MockReddit.kt` and the saved Reddit responses in `sharedTesting/fixtures`.
 - Android integration (real API): `shared/src/androidHostTest/.../RedditApiIntegrationTest.kt` - requires `.env` with `REDDIT_CLIENT_ID`.
 
 ## Key conventions (follow existing patterns)

@@ -17,6 +17,7 @@ In code that can suspend, use `runSuspendCatching` (`shared/.../util/RunSuspendC
 
 - `shared/src/commonMain` only uses multiplatform code. Android and JVM code (`android.*`, `java.*`, OkHttp) goes in `androidMain`. Android is the only target today, so platform code in `commonMain` compiles, but it would break as soon as another platform is added.
 - UI code (screens and view models, in the `ui` packages) gets data through a repository, never from `RedditApi` or Ktor directly.
+- Test helpers that both `shared`'s and the app's tests use, like the fake Reddit server (`MockReddit`) and the saved Reddit responses, go in the `sharedTesting` module. Only tests depend on it.
 
 ## WebViews and backup
 
