@@ -33,7 +33,7 @@ jobs:
 
       - name: Run unit tests and check coverage
         # verifyRoborazziDebug runs the app's tests and fails when a screenshot differs from the recorded one.
-        run: ./gradlew :shared:testAndroidHostTest diffCoverage :shared:koverVerify :androidApp:verifyRoborazziDebug
+        run: ./gradlew :shared:testAndroidHostTest diffCoverage :shared:koverVerify :androidApp:verifyRoborazziDebug :androidApp:koverVerifyDebug
 
       - name: Upload screenshot differences
         if: failure()

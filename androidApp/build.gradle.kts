@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.detekt)
     alias(libs.plugins.dependencyAnalysis)
     alias(libs.plugins.roborazzi)
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -157,4 +158,18 @@ dependencies {
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugRuntimeOnly(libs.androidx.compose.ui.test.manifest)
+}
+
+// Keeps the app's line coverage from slipping, on top of diffCoverage's check of the changed lines. The debug tests
+// measure it, since debug and release have the same code. It's lower than shared's 80%: the parts that need a device
+// (the video players, WebViews and fullscreen viewers) are left to the emulator smoke tests, and the navigation in
+// KarmaKameleonApp has no tests yet. Raise it as that changes.
+kover {
+    reports {
+        variant("debug") {
+            verify {
+                rule { minBound(75) }
+            }
+        }
+    }
 }
