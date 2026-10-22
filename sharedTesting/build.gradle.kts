@@ -30,4 +30,7 @@ kotlin {
             implementation(libs.kotlinx.io.core)
         }
     }
+    // The module has no tests of its own, so no compilation uses commonTest, and the Kotlin plugin warns about it on
+    // every build.
+    sourceSets.remove(sourceSets.commonTest.get())
 }
