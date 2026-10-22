@@ -6,18 +6,20 @@ import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
 
-actual fun createHttpClient(followRedirects: Boolean): HttpClient =
-    HttpClient(OkHttp) {
-        // OkHttp follows redirects itself, before Ktor sees the response, so it has to be told too.
-        this.followRedirects = followRedirects
-        engine {
-            config {
-                followRedirects(followRedirects)
-                retryOnConnectionFailure(true)
-                cookieJar(InMemoryCookieJar())
+object OkHttpClientFactory : HttpClientFactory {
+    override fun create(followRedirects: Boolean): HttpClient =
+        HttpClient(OkHttp) {
+            // OkHttp follows redirects itself, before Ktor sees the response, so it has to be told too.
+            this.followRedirects = followRedirects
+            engine {
+                config {
+                    followRedirects(followRedirects)
+                    retryOnConnectionFailure(true)
+                    cookieJar(InMemoryCookieJar())
+                }
             }
         }
-    }
+}
 
 private class InMemoryCookieJar : CookieJar {
     private val cookieStore = mutableMapOf<String, MutableList<Cookie>>()

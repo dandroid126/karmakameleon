@@ -17,7 +17,7 @@ internal fun offlineClient() = HttpClient(MockEngine { respondError(HttpStatusCo
 
 class FakeRedditApi(
     authManager: AuthManager,
-) : RedditApi(offlineClient(), authManager) {
+) : RedditApi(offlineClient(), authManager, createShareLinkClient = ::offlineClient) {
     // Null makes the request fail, like it would without a network.
     var unreadMessages: List<Message>? = emptyList()
     val requestedFilters = mutableListOf<InboxFilter>()

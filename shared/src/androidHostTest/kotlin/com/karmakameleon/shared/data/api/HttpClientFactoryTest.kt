@@ -68,9 +68,9 @@ class HttpClientFactoryTest {
     }
 
     @Test
-    fun followsRedirectsByDefault() =
+    fun followsRedirects() =
         runTest {
-            createHttpClient().use { client ->
+            OkHttpClientFactory.create(followRedirects = true).use { client ->
                 assertEquals("target", client.get("$baseUrl/redirect").bodyAsText())
             }
         }
@@ -79,7 +79,7 @@ class HttpClientFactoryTest {
     fun withoutFollowingRedirects_returnsTheRedirect() =
         runTest {
             // Share links are resolved this way, by reading where they redirect to.
-            createHttpClient(followRedirects = false).use { client ->
+            OkHttpClientFactory.create(followRedirects = false).use { client ->
                 val response = client.get("$baseUrl/redirect")
 
                 assertEquals(HttpStatusCode.Found, response.status)
@@ -90,7 +90,7 @@ class HttpClientFactoryTest {
     @Test
     fun keepsCookiesForLaterRequests() =
         runTest {
-            createHttpClient().use { client ->
+            OkHttpClientFactory.create(followRedirects = true).use { client ->
                 client.get("$baseUrl/set-cookies")
                 assertEquals("session=abc; theme=dark", client.get("$baseUrl/echo-cookies").bodyAsText())
 
@@ -102,9 +102,9 @@ class HttpClientFactoryTest {
     @Test
     fun cookiesAreNotSharedBetweenClients() =
         runTest {
-            createHttpClient().use { it.get("$baseUrl/set-cookies") }
+            OkHttpClientFactory.create(followRedirects = true).use { it.get("$baseUrl/set-cookies") }
 
-            createHttpClient().use { client ->
+            OkHttpClientFactory.create(followRedirects = true).use { client ->
                 assertEquals("", client.get("$baseUrl/echo-cookies").bodyAsText())
             }
         }
@@ -112,7 +112,7 @@ class HttpClientFactoryTest {
     @Test
     fun configuredClient_sendsTheUserAgentAndReadsJson() =
         runTest {
-            createHttpClientWithConfig().use { client ->
+            createHttpClientWithConfig(OkHttpClientFactory).use { client ->
                 assertEquals("KK/1.0.0", client.get("$baseUrl/echo-user-agent").bodyAsText())
                 // Fields the app doesn't know are ignored.
                 assertEquals("a", client.get("$baseUrl/token").body<AccessTokenResponse>().accessToken)

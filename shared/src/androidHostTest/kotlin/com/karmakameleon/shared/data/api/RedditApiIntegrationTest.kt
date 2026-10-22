@@ -64,7 +64,11 @@ class RedditApiIntegrationTest {
         val authManager = AuthManager(httpClient, settings, MapSettings())
         authManager.setClientId(clientId)
 
-        return RedditApi(httpClient, authManager)
+        return RedditApi(
+            httpClient,
+            authManager,
+            createShareLinkClient = { OkHttpClientFactory.create(followRedirects = false) },
+        )
     }
 
     // ==================== Posts ====================
