@@ -34,6 +34,10 @@ import org.koin.core.context.GlobalContext
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 
+// Characters a URL in a route has to keep: a space, a "+" and an escape. Encoding a route's URL the wrong way or
+// decoding it twice changes them.
+private const val ENCODED_CHARACTERS = "a b+c%20d"
+
 @RunWith(RobolectricTestRunner::class)
 class KarmaKameleonAppTest {
     @get:Rule
@@ -205,7 +209,7 @@ class KarmaKameleonAppTest {
     @Test
     fun imageLinkOpensTheViewerWithTheSameUrl() {
         showApp()
-        val url = "https://i.redd.it/a+b%20c.jpg?width=640&s=x"
+        val url = "https://i.redd.it/$ENCODED_CHARACTERS.jpg?width=640&s=x"
         openLink(url)
         assertEquals(DetailScreen.ImageViewer.route, route())
         assertEquals(url, requestedImages.last().toString())
@@ -214,9 +218,12 @@ class KarmaKameleonAppTest {
     @Test
     fun videoLinkOpensItsViewer() {
         showApp()
-        openLink("https://example.com/clip.mp4")
+        val url = "https://example.com/$ENCODED_CHARACTERS.mp4"
+        openLink(url)
         assertEquals(DetailScreen.VideoViewer.route, route())
-        assertEquals("https://example.com/clip.mp4", argument("url"))
+        // The player draws on a TextureView and keeps its URL to itself, so this checks the route's argument, which
+        // would have its space turned into "+" if the route encoded it wrongly.
+        assertEquals(url, argument("url"))
     }
 
     @Test
@@ -230,7 +237,10 @@ class KarmaKameleonAppTest {
     @Test
     fun otherLinksOpenInTheBrowser() {
         showApp()
-        openLink("https://example.com/page")
+        val url = "https://example.com/$ENCODED_CHARACTERS?x=1&y=2"
+        openLink(url)
         assertEquals(DetailScreen.WebBrowser.route, route())
+        // The browser shows its URL as its title.
+        composeRule.onNodeWithText(url).assertExists()
     }
 }
