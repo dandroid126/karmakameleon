@@ -1,5 +1,6 @@
 package com.karmakameleon.android.ui
 
+import android.net.Uri
 import androidx.compose.animation.AnimatedContentScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -38,6 +39,7 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -68,8 +70,6 @@ import com.karmakameleon.shared.util.isVideoUrl
 import com.karmakameleon.shared.util.isYouTubeUrl
 import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
-import java.net.URLEncoder
-import java.nio.charset.StandardCharsets
 
 sealed class Screen(
     val route: String,
@@ -118,17 +118,17 @@ sealed class DetailScreen(
     }
 
     data object WebBrowser : DetailScreen("web/{url}") {
-        fun createRoute(url: String) = "web/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
+        fun createRoute(url: String) = "web/${encodeUrl(url)}"
     }
 
     data object Settings : DetailScreen("settings")
 
     data object ImageViewer : DetailScreen("image/{url}") {
-        fun createRoute(url: String) = "image/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
+        fun createRoute(url: String) = "image/${encodeUrl(url)}"
     }
 
     data object VideoViewer : DetailScreen("video/{url}") {
-        fun createRoute(url: String) = "video/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
+        fun createRoute(url: String) = "video/${encodeUrl(url)}"
     }
 
     data object YouTubeViewer : DetailScreen("youtube/{videoId}") {
@@ -144,8 +144,10 @@ val bottomNavItems =
     )
 
 @Composable
-fun KarmaKameleonApp(modifier: Modifier = Modifier) {
-    val navController = rememberNavController()
+fun KarmaKameleonApp(
+    modifier: Modifier = Modifier,
+    navController: NavHostController = rememberNavController(),
+) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     val currentRoute = currentDestination?.route
@@ -389,8 +391,6 @@ private fun NavGraphBuilder.mediaViewer(
 
 private fun NavBackStackEntry.stringArgument(name: String): String = arguments?.getString(name).orEmpty()
 
-private fun NavBackStackEntry.urlArgument(name: String): String = decodeUrl(stringArgument(name))
-
 private fun NavGraphBuilder.mainTabs(navController: NavController) {
     composable(Screen.Feed.route) {
         FeedScreen(
@@ -498,21 +498,23 @@ private fun NavGraphBuilder.contentScreens(navController: NavController) {
         )
     }
     detailScreen(DetailScreen.WebBrowser.route, listOf(navArgument("url") { type = NavType.StringType })) { backStackEntry ->
-        WebBrowserScreen(url = backStackEntry.urlArgument("url"), onBackClick = { navController.popBackStack() })
+        WebBrowserScreen(url = backStackEntry.stringArgument("url"), onBackClick = { navController.popBackStack() })
     }
 }
 
 private fun NavGraphBuilder.mediaViewers(navController: NavController) {
     val goBack: () -> Unit = { navController.popBackStack() }
-    mediaViewer(DetailScreen.ImageViewer.route, "url") { encodedUrl ->
-        FullScreenImageViewer(imageUrls = listOf(decodeUrl(encodedUrl)), onDismiss = goBack)
+    mediaViewer(DetailScreen.ImageViewer.route, "url") { url ->
+        FullScreenImageViewer(imageUrls = listOf(url), onDismiss = goBack)
     }
-    mediaViewer(DetailScreen.VideoViewer.route, "url") { encodedUrl ->
-        FullScreenVideoScreen(videoUrl = decodeUrl(encodedUrl), onBackClick = goBack)
+    mediaViewer(DetailScreen.VideoViewer.route, "url") { url ->
+        FullScreenVideoScreen(videoUrl = url, onBackClick = goBack)
     }
     mediaViewer(DetailScreen.YouTubeViewer.route, "videoId") { videoId ->
         YouTubeVideoScreen(videoId = videoId, onBackClick = goBack)
     }
 }
 
-private fun decodeUrl(encodedUrl: String): String = java.net.URLDecoder.decode(encodedUrl, StandardCharsets.UTF_8.toString())
+// Navigation decodes a route's arguments itself, so a URL in a route is encoded once here and read back as it is.
+// URLEncoder wouldn't do: it writes spaces as "+", which Navigation leaves alone.
+private fun encodeUrl(url: String): String = Uri.encode(url)
