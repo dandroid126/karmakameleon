@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.notifications.InboxNotificationWorker
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
@@ -290,15 +292,17 @@ private fun SwitchSetting(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val checked by state.collectAsState()
+    // The whole row is the switch, so tapping the title toggles it too and screen readers name the switch.
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
+                .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SettingTitle(title = title, description = description, modifier = Modifier.weight(1f))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
