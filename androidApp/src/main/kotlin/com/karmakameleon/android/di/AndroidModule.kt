@@ -2,6 +2,8 @@ package com.karmakameleon.android.di
 
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.menu.GlobalMenuManager
+import com.karmakameleon.shared.di.platformModule
+import com.karmakameleon.shared.di.sharedModule
 import com.karmakameleon.shared.ui.feed.FeedViewModel
 import com.karmakameleon.shared.ui.inbox.InboxViewModel
 import com.karmakameleon.shared.ui.post.PostDetailViewModel
@@ -23,3 +25,6 @@ val androidModule =
         viewModel { InboxViewModel(get(), get(), get()) }
         viewModel { SearchViewModel(get(), get(), get()) }
     }
+
+// Every module the app starts Koin with.
+val appModules = listOf(sharedModule, platformModule, androidModule)

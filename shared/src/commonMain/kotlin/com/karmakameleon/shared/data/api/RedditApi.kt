@@ -79,7 +79,7 @@ open class RedditApi(
     private val settingsRepository: SettingsRepository? = null,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     // Share links are resolved by reading where they redirect to, so this client doesn't follow redirects.
-    createShareLinkClient: () -> HttpClient = { createHttpClient(followRedirects = false) },
+    createShareLinkClient: () -> HttpClient,
 ) {
     private val apiScope = CoroutineScope(ioDispatcher + SupervisorJob())
 
