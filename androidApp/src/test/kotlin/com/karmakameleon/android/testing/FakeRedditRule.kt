@@ -68,3 +68,6 @@ private fun authManager(loggedIn: Boolean): AuthManager {
 /** A saved Reddit listing with every post three hours old, so screenshots show the same ages whenever they run. */
 fun postListing(fixture: String = "post_listing.json"): String =
     readFixture(fixture).replace(Regex(""""(created(?:_utc)?)": *[0-9.]+""")) { "\"${it.groupValues[1]}\": $threeHoursAgo" }
+
+/** [listing] without a next page. The fake server answers every page of a path alike, so the next page would repeat it. */
+fun lastPage(listing: String): String = listing.replace(Regex(""""after": *"[^"]*""""), "\"after\": null")
