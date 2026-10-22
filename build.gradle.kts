@@ -541,14 +541,14 @@ tasks.register<GradleActionsCacheCheckTask>("gradleActionsCacheCheck") {
     projectPath.set(layout.projectDirectory.asFile.path)
 }
 
-// Fails when too few of the lines changed since the branch left main are covered by tests. Only the shared module is
-// measured: the app has no tests yet, so every change to it would fail. A changed line counts if the coverage report
-// has it, which leaves out blank lines, comments and declarations with no code. Uncommitted and untracked files count
-// too, so it can be run before committing. It also reports how many branches on the changed lines are covered, without
-// failing on them yet (#58).
+// Fails when too few of the lines changed since the branch left main are covered by tests, in the shared module and
+// the app together. A changed line counts if a coverage report has it, which leaves out blank lines, comments and
+// declarations with no code. Uncommitted and untracked files count too, so it can be run before committing. It also
+// reports how many branches on the changed lines are covered, without failing on them yet (#58).
 abstract class DiffCoverageTask : DefaultTask() {
-    @get:InputFile
-    abstract val report: RegularFileProperty
+    // Kover's XML reports, one per module.
+    @get:InputFiles
+    abstract val reports: ConfigurableFileCollection
 
     // The source directories to measure, relative to the project directory.
     @get:Input
@@ -634,13 +634,16 @@ abstract class DiffCoverageTask : DefaultTask() {
             .entries
             .joinToString("\n") { (path, numbers) -> "  $path: ${lineRanges(numbers)}" }
 
-    // Maps each source file, as "package/path/File.kt", to the coverage of each of its lines with code.
-    private fun readCoverage(): Map<String, Map<Int, LineCoverage>> {
+    // Maps each source file, as "package/path/File.kt", to the coverage of each of its lines with code. The modules
+    // have different packages, so their files don't clash.
+    private fun readCoverage(): Map<String, Map<Int, LineCoverage>> = reports.files.map(::readReport).reduce { all, report -> all + report }
+
+    private fun readReport(report: File): Map<String, Map<Int, LineCoverage>> {
         val document =
             javax.xml.parsers.DocumentBuilderFactory
                 .newInstance()
                 .newDocumentBuilder()
-                .parse(report.get().asFile)
+                .parse(report)
         val packages = document.getElementsByTagName("package")
         return (0 until packages.length)
             .map { packages.item(it) as org.w3c.dom.Element }
@@ -664,7 +667,7 @@ abstract class DiffCoverageTask : DefaultTask() {
             }.toMap()
     }
 
-    // shared/src/commonMain/kotlin/com/example/File.kt -> com/example/File.kt, the way the report names it.
+    // shared/src/commonMain/kotlin/com/example/File.kt -> com/example/File.kt, the way the reports name it.
     private fun coverageKey(path: String): String = path.substringAfter("/kotlin/")
 
     // Maps each changed .kt file to its added or changed line numbers.
@@ -727,11 +730,12 @@ abstract class DiffCoverageTask : DefaultTask() {
 }
 
 tasks.register<DiffCoverageTask>("diffCoverage") {
-    description = "Fails when too few of the shared module's changed lines are covered by tests."
+    description = "Fails when too few of the changed lines in the shared module and the app are covered by tests."
     group = "verification"
-    dependsOn(":shared:koverXmlReport")
-    report.set(layout.projectDirectory.file("shared/build/reports/kover/report.xml"))
-    sourceDirs.set(listOf("shared/src/commonMain", "shared/src/androidMain"))
+    dependsOn(":shared:koverXmlReport", ":androidApp:koverXmlReportDebug")
+    reports.from("shared/build/reports/kover/report.xml", "androidApp/build/reports/kover/reportDebug.xml")
+    // The app's debug and release builds have the same code, so the debug tests measure it.
+    sourceDirs.set(listOf("shared/src/commonMain", "shared/src/androidMain", "androidApp/src/main/kotlin"))
     // CI checks out main as origin/main. -Pcoverage.base=<ref> compares with something else.
     baseRef.set(providers.gradleProperty("coverage.base").orElse("origin/main"))
     minimumPercent.set(providers.gradleProperty("coverage.minimumPercent").map { it.toInt() }.orElse(80))
