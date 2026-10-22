@@ -100,14 +100,25 @@ fun testLinkPost(): Post =
 
 /**
  * Serves every image from the app's own Karma Kameleon drawable instead of the network, so screenshots always show the
- * same image.
+ * same image. [requested] lists what the app asked for, usually its URLs.
  */
 class FakeImagesRule : ExternalResource() {
+    val requested = mutableListOf<Any>()
+
     @OptIn(DelicateCoilApi::class)
     override fun before() {
         val context = RuntimeEnvironment.getApplication()
-        val drawable = checkNotNull(ContextCompat.getDrawable(context, R.drawable.karma_kameleon))
-        val engine = FakeImageLoaderEngine.Builder().default(drawable.asImage()).build()
+        val image = checkNotNull(ContextCompat.getDrawable(context, R.drawable.karma_kameleon)).asImage()
+        val engine =
+            FakeImageLoaderEngine
+                .Builder()
+                // Records each request, then lets the default answer it.
+                .intercept({ data ->
+                    requested += data
+                    false
+                }, image)
+                .default(image)
+                .build()
         SingletonImageLoader.setUnsafe(
             ImageLoader
                 .Builder(context)

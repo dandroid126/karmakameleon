@@ -9,16 +9,11 @@ import androidx.compose.ui.test.performClick
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.test.espresso.Espresso.pressBack
-import coil3.ImageLoader
-import coil3.SingletonImageLoader
-import coil3.annotation.DelicateCoilApi
-import coil3.asImage
-import coil3.test.FakeImageLoaderEngine
-import com.karmakameleon.android.R
 import com.karmakameleon.android.data.PendingNotificationAction
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.testing.postListing
+import com.karmakameleon.android.ui.components.FakeImagesRule
 import com.karmakameleon.android.ui.feed.FIRST_POST_TITLE
 import com.karmakameleon.android.ui.profile.OWN_USERNAME
 import com.karmakameleon.android.ui.profile.respondWithProfile
@@ -26,13 +21,11 @@ import com.karmakameleon.android.ui.profile.userAbout
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.core.context.GlobalContext
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 
 // Characters a URL in a route has to keep: a space, a "+" and an escape. Encoding a route's URL the wrong way or
 // decoding it twice changes them.
@@ -44,29 +37,12 @@ class KarmaKameleonAppTest {
     val composeRule = createComposeRule()
 
     @get:Rule
+    val fakeImages = FakeImagesRule()
+
+    @get:Rule
     val fakeReddit = FakeRedditRule()
 
     private lateinit var navController: NavHostController
-
-    // The images the app asked for, so a test can see which URL a viewer got.
-    private val requestedImages = mutableListOf<Any>()
-
-    @OptIn(DelicateCoilApi::class)
-    @Before
-    fun fakeImages() {
-        val context = RuntimeEnvironment.getApplication()
-        val image = checkNotNull(context.getDrawable(R.drawable.karma_kameleon)).asImage()
-        val engine =
-            FakeImageLoaderEngine
-                .Builder()
-                .intercept({ data ->
-                    requestedImages += data
-                    false
-                }, image)
-                .default(image)
-                .build()
-        SingletonImageLoader.setUnsafe(ImageLoader.Builder(context).components { add(engine) }.build())
-    }
 
     private fun showApp(loggedIn: Boolean = true) {
         fakeReddit.loggedIn = loggedIn
@@ -212,7 +188,7 @@ class KarmaKameleonAppTest {
         val url = "https://i.redd.it/$ENCODED_CHARACTERS.jpg?width=640&s=x"
         openLink(url)
         assertEquals(DetailScreen.ImageViewer.route, route())
-        assertEquals(url, requestedImages.last().toString())
+        assertEquals(url, fakeImages.requested.last().toString())
     }
 
     @Test
