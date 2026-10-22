@@ -16,7 +16,12 @@ import com.russhwolf.settings.MapSettings
 import com.russhwolf.settings.Settings
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondOk
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
+import kotlinx.coroutines.test.runTest
 import org.koin.core.Koin
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -30,6 +35,27 @@ class SharedModuleTest {
     private val settings = MapSettings()
     private val tokenSettings = MapSettings()
 
+    // The followRedirects of each client made, in order. A client that follows redirects never shows the share link's
+    // redirect, so only one that doesn't gets it.
+    private val clientsMade = mutableListOf<Boolean>()
+    private val httpClientFactory =
+        HttpClientFactory { followRedirects ->
+            clientsMade += followRedirects
+            HttpClient(
+                MockEngine {
+                    if (followRedirects) {
+                        respondOk()
+                    } else {
+                        respond(
+                            "",
+                            HttpStatusCode.Found,
+                            headersOf(HttpHeaders.Location, "https://www.reddit.com/r/Kotlin/comments/abc123/"),
+                        )
+                    }
+                },
+            ) { this.followRedirects = followRedirects }
+        }
+
     // The platform's module needs a device, so in-memory settings and a fake engine stand in for it.
     private val app =
         koinApplication {
@@ -39,7 +65,7 @@ class SharedModuleTest {
                 module {
                     single<Settings> { settings }
                     single<Settings>(TOKEN_SETTINGS) { tokenSettings }
-                    single { HttpClientFactory { HttpClient(MockEngine { respondOk() }) } }
+                    single { httpClientFactory }
                 },
             )
         }
@@ -88,4 +114,14 @@ class SharedModuleTest {
         assertEquals("my_client", settings.getStringOrNull("client_id"))
         assertFalse(tokenSettings.hasKey("client_id"))
     }
+
+    @Test
+    fun shareLinksUseAClientThatDoesNotFollowRedirects() =
+        runTest {
+            val api = koin.get<RedditApi>()
+
+            assertEquals("Kotlin" to "abc123", api.resolveShareLink("kotlin", "AbCdEf"))
+            // The main client follows redirects, and the share link client, made on first use, doesn't.
+            assertEquals(listOf(true, false), clientsMade)
+        }
 }
