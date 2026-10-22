@@ -1,6 +1,7 @@
 package com.karmakameleon.android.ui.profile
 
 import android.os.Looper
+import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.testing.readFixture
 import kotlinx.coroutines.CoroutineScope
@@ -29,10 +30,12 @@ fun userAbout(username: String): JsonObject {
 }
 
 /**
- * Loads the logged in account, as the app does when it starts, so a profile screen knows which profile is its own.
- * Requests run on the main thread, so this runs it until they're answered.
+ * Loads the logged in account, [OWN_USERNAME], as the app does when it starts, so a profile screen knows which profile
+ * is its own. Requests run on the main thread, so this runs it until they're answered.
  */
-fun loadOwnAccount() {
+fun loadOwnAccount(fakeReddit: FakeRedditRule) {
+    // /api/v1/me returns the user itself, not wrapped in a thing.
+    fakeReddit.reddit.respond("/api/v1/me", userAbout(OWN_USERNAME).getValue("data").toString())
     val userRepository = GlobalContext.get().get<UserRepository>()
     CoroutineScope(Dispatchers.Main).launch { userRepository.loadCurrentUser() }
     shadowOf(Looper.getMainLooper()).idle()

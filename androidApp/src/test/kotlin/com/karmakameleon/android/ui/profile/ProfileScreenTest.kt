@@ -60,11 +60,14 @@ class ProfileScreenTest {
     private fun showOwnProfile() {
         fakeReddit.loggedIn = true
         respondWithProfile(fakeReddit, OWN_USERNAME)
-        loadOwnAccount()
+        loadOwnAccount(fakeReddit)
         showProfile(OWN_USERNAME)
     }
 
+    // Logged in, so the screen knows the profile isn't yours.
     private fun showOtherProfile() {
+        fakeReddit.loggedIn = true
+        loadOwnAccount(fakeReddit)
         respondWithProfile(fakeReddit, "someone")
         showProfile("someone")
     }
@@ -99,6 +102,9 @@ class ProfileScreenTest {
         composeRule.onNodeWithText(FIRST_POST_TITLE).performClick()
         assertEquals(listOf("post pics 1x65iks"), calls)
     }
+
+    // That you can vote and reply on someone else's profile is left out until it's fixed: the profile treats you as
+    // logged out (#87).
 
     @Test
     fun choosingSortReloadsPosts() {
@@ -174,7 +180,6 @@ fun respondWithProfile(
     fakeReddit: FakeRedditRule,
     username: String,
 ) {
-    fakeReddit.reddit.respond("/api/v1/me", userAbout(username).getValue("data").toString())
     fakeReddit.reddit.respond("/user/$username/about", userAbout(username).toString())
     fakeReddit.reddit.respond("/user/$username/submitted", postListing())
     fakeReddit.reddit.respond("/user/$username/comments", lastPage(postListing("user_comments.json")))

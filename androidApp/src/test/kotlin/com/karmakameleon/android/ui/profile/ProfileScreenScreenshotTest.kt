@@ -30,7 +30,7 @@ class ProfileScreenScreenshotTest {
     private fun showOwnProfile(darkTheme: Boolean = false) {
         fakeReddit.loggedIn = true
         respondWithProfile(fakeReddit, OWN_USERNAME)
-        loadOwnAccount()
+        loadOwnAccount(fakeReddit)
         composeRule.showScreen(darkTheme) { ProfileScreen(username = OWN_USERNAME, onPostClick = { _, _ -> }, onSubredditClick = {}) }
     }
 
