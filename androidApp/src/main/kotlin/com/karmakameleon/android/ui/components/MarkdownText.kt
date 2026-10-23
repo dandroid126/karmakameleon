@@ -420,14 +420,21 @@ private fun AnnotatedString.Builder.appendLink(
     spoilers: Spoilers,
 ) {
     val url = link.url
+    // A tap reveals the spoilers in the link's text before it opens the link.
+    val firstSpoiler = spoilers.count
+    var endSpoiler = firstSpoiler
     pushLink(
         LinkAnnotation.Clickable(
             tag = url,
             styles = TextLinkStyles(style = SpanStyle(color = rendering.linkColor)),
-            linkInteractionListener = { rendering.onLinkClick(url) },
+            linkInteractionListener = {
+                val hidden = (firstSpoiler until endSpoiler).filterNot { index -> index in spoilers.revealed }
+                if (hidden.isEmpty()) rendering.onLinkClick(url) else hidden.forEach(spoilers.onReveal)
+            },
         ),
     )
     appendStyled(SpanStyle(color = rendering.linkColor), link.text, rendering, spoilers)
+    endSpoiler = spoilers.count
     pop()
 }
 

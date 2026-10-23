@@ -129,6 +129,19 @@ class MarkdownTextTest {
     }
 
     @Test
+    fun linkWithHiddenSpoilerRevealsItBeforeOpening() {
+        show("Spoils [>!the ending!<](https://www.reddit.com/r/Kotlin)")
+        val text = composeRule.onNodeWithText("Spoils the ending")
+
+        text.performFirstLinkClick(linkTo("reddit.com"))
+        text.assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+        assertEquals(emptyList<String>(), navigation.calls)
+
+        text.performFirstLinkClick(linkTo("reddit.com"))
+        assertEquals(listOf("subreddit Kotlin"), navigation.calls)
+    }
+
+    @Test
     fun linkInHiddenSpoilerRevealsItBeforeOpening() {
         show(">!See [r/Kotlin](https://www.reddit.com/r/Kotlin)!<")
         val text = composeRule.onNodeWithText("See r/Kotlin")

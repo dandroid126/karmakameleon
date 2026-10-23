@@ -117,6 +117,13 @@ class MarkdownTextScreenshotTest {
         capture("markdown_spoiler_mid_line")
     }
 
+    // The spoiler is in the link's text, so the link's color mustn't show the hidden text.
+    @Test
+    fun spoilerInLink() {
+        show("Spoils [>!the ending!<](https://example.com) here")
+        capture("markdown_spoiler_in_link")
+    }
+
     @Test
     fun midLineSpoilerRevealed() {
         show(MID_LINE_SPOILER_MARKDOWN)
