@@ -50,6 +50,8 @@ class MarkdownTextTest {
     private fun linkTo(urlPart: String) =
         { link: AnnotatedString.Range<LinkAnnotation> -> (link.item as LinkAnnotation.Clickable).tag.contains(urlPart) }
 
+    private val isSpoiler = { link: AnnotatedString.Range<LinkAnnotation> -> (link.item as LinkAnnotation.Clickable).tag == "spoiler" }
+
     @Test
     fun tappingLinkOpensIt() {
         show("Ask in [r/Kotlin](https://www.reddit.com/r/Kotlin) or [the docs](https://kotlinlang.org/docs).")
@@ -101,6 +103,29 @@ class MarkdownTextTest {
 
         text.assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
         assertEquals(emptyList<String>(), calls)
+    }
+
+    @Test
+    fun spoilersInOneParagraphAreRevealedOneAtATime() {
+        show("A >!one!< and >!two!<")
+        val text = composeRule.onNodeWithText("A one and two")
+        val hiddenState = SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Hidden spoiler")
+
+        text.performFirstLinkClick(isSpoiler)
+
+        text.assert(hiddenState)
+        val spoilersLeft =
+            text
+                .fetchSemanticsNode()
+                .config[SemanticsProperties.Text]
+                .single()
+                .let { it.getLinkAnnotations(0, it.length) }
+                .filter(isSpoiler)
+        assertEquals(listOf("two"), spoilersLeft.map { "A one and two".substring(it.start, it.end) })
+
+        text.performFirstLinkClick(isSpoiler)
+
+        text.assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
     }
 
     @Test
