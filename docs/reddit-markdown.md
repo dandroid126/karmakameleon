@@ -44,7 +44,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 
 | Rule | Written | Reddit | App |
 |---|---|---|---|
-| Spoiler | `>!secret!<` | Hidden until tapped | ✅ on its own line; ❌ #83: in the middle of a line it breaks the line's layout |
+| Spoiler | `>!secret!<` | Hidden until tapped | ✅ |
 | Superscript of one word | `^word` | Raised "word", up to the next space | ❌ #83: parsed right, but drawn smaller instead of raised |
 | Superscript of several words | `^(two words)` | Raised "two words" | ❌ #83: as above |
 | Superscript of each word | `^and ^be ^reddited` | All three raised | ❌ #83: as above |

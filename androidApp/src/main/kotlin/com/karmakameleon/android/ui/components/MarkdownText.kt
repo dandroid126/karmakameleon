@@ -242,7 +242,7 @@ private fun splitInlinesIntoSegments(inlines: List<MarkdownInline>): List<Inline
     return segments
 }
 
-// Plain text when it can be; otherwise images on lines of their own and spoilers as tappable boxes.
+// One Text when it can be; otherwise images on lines of their own between runs of text.
 @Composable
 private fun RenderInlineList(
     inlines: List<MarkdownInline>,
@@ -251,11 +251,10 @@ private fun RenderInlineList(
     onTextClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
-    val hasSpoilers = inlines.any { containsSpoiler(it) }
     val hasImages = rendering.renderInlineImages && inlines.any { it is MarkdownInline.Image }
 
-    if (!hasSpoilers && !hasImages) {
-        ClickableMarkdownText(text = buildInlines(inlines, rendering), style = style, modifier = modifier, onTextClick = onTextClick)
+    if (!hasImages) {
+        InlineText(inlines = inlines, style = style, rendering = rendering, onTextClick = onTextClick, modifier = modifier)
         return
     }
 
@@ -263,7 +262,7 @@ private fun RenderInlineList(
         for (segment in splitInlinesIntoSegments(inlines)) {
             when (segment) {
                 is InlineSegment.TextRun -> {
-                    RenderInlineSegment(inlines = segment.inlines, style = style, rendering = rendering, onTextClick = onTextClick)
+                    InlineText(inlines = segment.inlines, style = style, rendering = rendering, onTextClick = onTextClick)
                 }
 
                 is InlineSegment.ImageItem -> {
@@ -274,66 +273,41 @@ private fun RenderInlineList(
     }
 }
 
+// Spoilers are part of the text, so a line with one wraps like any other. A tap reveals a spoiler and, like on
+// Reddit, it stays revealed.
 @Composable
-private fun RenderInlineSegment(
+private fun InlineText(
     inlines: List<MarkdownInline>,
     style: TextStyle,
     rendering: InlineRendering,
     onTextClick: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
-    if (inlines.none { containsSpoiler(it) }) {
-        ClickableMarkdownText(text = buildInlines(inlines, rendering), style = style, onTextClick = onTextClick)
-        return
-    }
-
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        for (inline in inlines) {
-            if (inline is MarkdownInline.Spoiler) {
-                SpoilerComponent(children = inline.children, style = style, rendering = rendering)
-            } else {
-                ClickableMarkdownText(text = buildInlines(listOf(inline), rendering), style = style, onTextClick = onTextClick)
-            }
-        }
-    }
+    var revealed by remember(inlines) { mutableStateOf(emptySet<Int>()) }
+    val spoilers =
+        Spoilers(
+            revealed = revealed,
+            hiddenColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            onReveal = { revealed = revealed + it },
+        )
+    val text = buildInlines(inlines, rendering, spoilers)
+    val hasHiddenSpoiler = spoilers.count > revealed.size
+    ClickableMarkdownText(
+        text = text,
+        style = style,
+        // Screen readers read a hidden spoiler's text, so they're told it's meant to be hidden.
+        modifier = if (hasHiddenSpoiler) modifier.semantics { stateDescription = "Hidden spoiler" } else modifier,
+        onTextClick = onTextClick,
+    )
 }
 
-private fun containsSpoiler(inline: MarkdownInline): Boolean =
-    when (inline) {
-        is MarkdownInline.Spoiler -> true
-        is MarkdownInline.Bold -> inline.children.any { containsSpoiler(it) }
-        is MarkdownInline.Italic -> inline.children.any { containsSpoiler(it) }
-        is MarkdownInline.BoldItalic -> inline.children.any { containsSpoiler(it) }
-        is MarkdownInline.Strikethrough -> inline.children.any { containsSpoiler(it) }
-        is MarkdownInline.Superscript -> inline.children.any { containsSpoiler(it) }
-        is MarkdownInline.Link -> inline.text.any { containsSpoiler(it) }
-        else -> false
-    }
-
-@Composable
-private fun SpoilerComponent(
-    children: List<MarkdownInline>,
-    style: TextStyle,
-    rendering: InlineRendering,
+// The spoilers in one Text, numbered in order as the text is built; count is how many there are once it's built.
+private class Spoilers(
+    val revealed: Set<Int>,
+    val hiddenColor: Color,
+    val onReveal: (Int) -> Unit,
 ) {
-    var isRevealed by remember { mutableStateOf(false) }
-    val spoilerColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val textColor = if (isRevealed) MaterialTheme.colorScheme.onSurface else spoilerColor
-
-    Box(
-        modifier =
-            Modifier
-                .background(if (isRevealed) Color.Transparent else spoilerColor)
-                .clickable { isRevealed = !isRevealed }
-                // Tells screen readers whether the spoiler is showing, since they read the text either way.
-                .semantics { stateDescription = if (isRevealed) "Revealed spoiler" else "Hidden spoiler" }
-                .padding(horizontal = 2.dp),
-    ) {
-        Text(
-            text = buildInlines(children, rendering),
-            style = style.copy(color = textColor),
-            modifier = Modifier.padding(2.dp),
-        )
-    }
+    var count = 0
 }
 
 @Composable
@@ -359,12 +333,13 @@ private fun ClickableMarkdownText(
 private fun buildInlines(
     inlines: List<MarkdownInline>,
     rendering: InlineRendering,
-): AnnotatedString = buildAnnotatedString { inlines.forEach { appendInline(it, rendering) } }
+    spoilers: Spoilers,
+): AnnotatedString = buildAnnotatedString { inlines.forEach { appendInline(it, rendering, spoilers) } }
 
-// Spoilers are drawn separately, as SpoilerComponent, so they add nothing here.
 private fun AnnotatedString.Builder.appendInline(
     inline: MarkdownInline,
     rendering: InlineRendering,
+    spoilers: Spoilers,
 ) {
     when (inline) {
         is MarkdownInline.Text -> {
@@ -372,19 +347,19 @@ private fun AnnotatedString.Builder.appendInline(
         }
 
         is MarkdownInline.Bold -> {
-            appendStyled(SpanStyle(fontWeight = FontWeight.Bold), inline.children, rendering)
+            appendStyled(SpanStyle(fontWeight = FontWeight.Bold), inline.children, rendering, spoilers)
         }
 
         is MarkdownInline.Italic -> {
-            appendStyled(SpanStyle(fontStyle = FontStyle.Italic), inline.children, rendering)
+            appendStyled(SpanStyle(fontStyle = FontStyle.Italic), inline.children, rendering, spoilers)
         }
 
         is MarkdownInline.BoldItalic -> {
-            appendStyled(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic), inline.children, rendering)
+            appendStyled(SpanStyle(fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic), inline.children, rendering, spoilers)
         }
 
         is MarkdownInline.Strikethrough -> {
-            appendStyled(SpanStyle(textDecoration = TextDecoration.LineThrough), inline.children, rendering)
+            appendStyled(SpanStyle(textDecoration = TextDecoration.LineThrough), inline.children, rendering, spoilers)
         }
 
         is MarkdownInline.Code -> {
@@ -392,13 +367,15 @@ private fun AnnotatedString.Builder.appendInline(
         }
 
         is MarkdownInline.Superscript -> {
-            appendStyled(SpanStyle(fontSize = rendering.superscriptSize), inline.children, rendering)
+            appendStyled(SpanStyle(fontSize = rendering.superscriptSize), inline.children, rendering, spoilers)
         }
 
-        is MarkdownInline.Spoiler -> {}
+        is MarkdownInline.Spoiler -> {
+            appendSpoiler(inline, rendering, spoilers)
+        }
 
         is MarkdownInline.Link -> {
-            appendLink(inline, rendering)
+            appendLink(inline, rendering, spoilers)
         }
 
         is MarkdownInline.Image -> {
@@ -411,13 +388,36 @@ private fun AnnotatedString.Builder.appendStyled(
     style: SpanStyle,
     children: List<MarkdownInline>,
     rendering: InlineRendering,
+    spoilers: Spoilers,
 ) {
-    withStyle(style) { children.forEach { appendInline(it, rendering) } }
+    withStyle(style) { children.forEach { appendInline(it, rendering, spoilers) } }
 }
+
+// A hidden spoiler is drawn in one color on a background of the same color. Links in it take that color too, and
+// tapping them reveals the spoiler instead of opening them.
+private fun AnnotatedString.Builder.appendSpoiler(
+    spoiler: MarkdownInline.Spoiler,
+    rendering: InlineRendering,
+    spoilers: Spoilers,
+) {
+    val index = spoilers.count++
+    if (index in spoilers.revealed) {
+        spoiler.children.forEach { appendInline(it, rendering, spoilers) }
+        return
+    }
+    val reveal = { spoilers.onReveal(index) }
+    val hidden = rendering.copy(linkColor = spoilers.hiddenColor, onLinkClick = { reveal() }, onImageClick = { reveal() })
+    pushLink(LinkAnnotation.Clickable(tag = SPOILER_TAG, linkInteractionListener = { reveal() }))
+    appendStyled(SpanStyle(color = spoilers.hiddenColor, background = spoilers.hiddenColor), spoiler.children, hidden, spoilers)
+    pop()
+}
+
+private const val SPOILER_TAG = "spoiler"
 
 private fun AnnotatedString.Builder.appendLink(
     link: MarkdownInline.Link,
     rendering: InlineRendering,
+    spoilers: Spoilers,
 ) {
     val url = link.url
     pushLink(
@@ -427,7 +427,7 @@ private fun AnnotatedString.Builder.appendLink(
             linkInteractionListener = { rendering.onLinkClick(url) },
         ),
     )
-    appendStyled(SpanStyle(color = rendering.linkColor), link.text, rendering)
+    appendStyled(SpanStyle(color = rendering.linkColor), link.text, rendering, spoilers)
     pop()
 }
 
@@ -512,11 +512,12 @@ private fun TableRow(
                         .padding(8.dp),
                 contentAlignment = Alignment.TopStart,
             ) {
-                ClickableMarkdownText(
-                    text = buildInlines(cellInlines, rendering),
+                InlineText(
+                    inlines = cellInlines,
                     style = if (isHeader) style.copy(fontWeight = FontWeight.Bold) else style,
-                    modifier = Modifier.wrapContentHeight(),
+                    rendering = rendering,
                     onTextClick = onTextClick,
+                    modifier = Modifier.wrapContentHeight(),
                 )
             }
         }

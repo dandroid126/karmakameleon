@@ -92,15 +92,26 @@ class MarkdownTextTest {
     }
 
     @Test
-    fun tappingSpoilerShowsAndHidesIt() {
-        show(">!A secret!<")
-        val spoiler = composeRule.onNodeWithText("A secret")
-        spoiler.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Hidden spoiler"))
+    fun tappingSpoilerRevealsIt() {
+        show("Before >!a secret!< and after")
+        val text = composeRule.onNodeWithText("Before a secret and after")
+        text.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Hidden spoiler"))
 
-        spoiler.performClick()
-        spoiler.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Revealed spoiler"))
+        text.performFirstLinkClick()
 
-        spoiler.performClick()
-        spoiler.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Hidden spoiler"))
+        text.assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
+        assertEquals(emptyList<String>(), calls)
+    }
+
+    @Test
+    fun linkInHiddenSpoilerRevealsItBeforeOpening() {
+        show(">!See [r/Kotlin](https://www.reddit.com/r/Kotlin)!<")
+        val text = composeRule.onNodeWithText("See r/Kotlin")
+
+        text.performFirstLinkClick(linkTo("reddit.com"))
+        assertEquals(emptyList<String>(), navigation.calls)
+
+        text.performFirstLinkClick(linkTo("reddit.com"))
+        assertEquals(listOf("subreddit Kotlin"), navigation.calls)
     }
 }
