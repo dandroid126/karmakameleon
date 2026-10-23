@@ -49,7 +49,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Superscript of several words | `^(two words)` | Raised "two words" | ✅ |
 | Superscript of each word | `^and ^be ^reddited` | All three raised | ✅ |
 | Superscript inside link text | `[^be ^reddited](https://…)` | A raised link | ✅ |
-| Superscript towers | `^^double`, `2^2^2` | Stacked with no limit on old Reddit; not supported on new Reddit | ✅ stacked as on old Reddit, up to 7 levels; only the first 3 shrink |
+| Superscript towers | `^^double`, `2^2^2` | Stacked with no limit on old Reddit; not supported on new Reddit | ✅ stacked as on old Reddit, up to 3 levels, so a tower stays within its line |
 | Subreddit link | `r/help` or `/r/help` | Link to the subreddit | ✅ |
 | User link | `u/reddit` or `/u/reddit` | Link to the user | ✅ |
 | Image uploaded to Reddit | `![img](id)` | The image, from `preview.redd.it` | ✅ as `https://preview.redd.it/<id>.jpeg` ❔ whether the extension is always right |

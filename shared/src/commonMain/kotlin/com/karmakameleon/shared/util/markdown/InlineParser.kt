@@ -9,9 +9,9 @@ private val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[
 
 fun parseInlineMarkdown(text: String): List<MarkdownInline> = parseInlineRecursive(text, emptySet(), superscriptDepth = 0)
 
-// The most superscripts that nest. It's more than people use outside of jokes, and it keeps the recursion shallow
-// however many carets a comment has.
-private const val MAX_SUPERSCRIPT_DEPTH = 7
+// The most superscripts that nest. Each level is drawn higher without making the line taller, so a deeper tower
+// would draw over the line above. It also keeps the recursion shallow however many carets a comment has.
+private const val MAX_SUPERSCRIPT_DEPTH = 3
 
 private fun parseInlineRecursive(
     text: String,

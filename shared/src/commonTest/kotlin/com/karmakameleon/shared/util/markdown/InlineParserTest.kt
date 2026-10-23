@@ -170,16 +170,16 @@ class InlineParserTest {
     }
 
     @Test
-    fun superscript_nestingStopsAtSevenLevels() {
+    fun superscript_nestingStopsAtThreeLevels() {
         val (depth, inside) = superscriptDepth(parse("^".repeat(10) + "tower"))
-        assertEquals(7, depth)
+        assertEquals(3, depth)
         assertEquals(listOf(MarkdownInline.Text("tower")), inside)
     }
 
     @Test
     fun superscript_parenthesesPastDeepestLevelAreText() {
-        val (depth, inside) = superscriptDepth(parse("^".repeat(7) + "^(word)"))
-        assertEquals(7, depth)
+        val (depth, inside) = superscriptDepth(parse("^".repeat(3) + "^(word)"))
+        assertEquals(3, depth)
         assertEquals(listOf(MarkdownInline.Text("^(word)")), inside)
     }
 
@@ -187,7 +187,7 @@ class InlineParserTest {
     @Test
     fun superscript_manyCaretsDoNotOverflow() {
         val (depth, inside) = superscriptDepth(parse("^".repeat(10_000) + "x"))
-        assertEquals(7, depth)
+        assertEquals(3, depth)
         assertEquals(listOf(MarkdownInline.Text("x")), inside)
     }
 

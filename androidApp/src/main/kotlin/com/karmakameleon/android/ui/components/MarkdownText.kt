@@ -84,13 +84,12 @@ fun MarkdownText(
 }
 
 // How inline elements look and what tapping a link or an image does. When renderInlineImages is off, images are
-// shown as [img] or [gif] links instead. superscriptLevel counts the superscripts around the text being drawn.
+// shown as [img] or [gif] links instead.
 private data class InlineRendering(
     val linkColor: Color,
     val onLinkClick: (String) -> Unit,
     val renderInlineImages: Boolean,
     val onImageClick: (String) -> Unit,
-    val superscriptLevel: Int = 0,
 )
 
 @Composable
@@ -412,8 +411,7 @@ private fun AnnotatedString.Builder.appendInline(
         }
 
         is MarkdownInline.Superscript -> {
-            val style = if (rendering.superscriptLevel < SHRINKING_SUPERSCRIPT_LEVELS) SUPERSCRIPT_STYLE else RAISED_ONLY_STYLE
-            appendStyled(style, inline.children, rendering.copy(superscriptLevel = rendering.superscriptLevel + 1), spoilers)
+            appendStyled(SUPERSCRIPT_STYLE, inline.children, rendering, spoilers)
         }
 
         is MarkdownInline.Spoiler -> {
@@ -430,11 +428,10 @@ private fun AnnotatedString.Builder.appendInline(
     }
 }
 
-// Relative to the text around it, so superscript in a heading stays in proportion. Only the first few levels shrink,
-// so a tall tower keeps climbing without becoming too small to read.
-private val SUPERSCRIPT_STYLE = SpanStyle(fontSize = 0.85.em, baselineShift = BaselineShift.Superscript)
-private val RAISED_ONLY_STYLE = SpanStyle(baselineShift = BaselineShift.Superscript)
-private const val SHRINKING_SUPERSCRIPT_LEVELS = 3
+// Relative to the text around it, so superscript in a heading stays in proportion. Raised by a third of the
+// ascent rather than BaselineShift.Superscript's half: raising doesn't make the line taller, so with a half, three
+// levels reach into the line above.
+private val SUPERSCRIPT_STYLE = SpanStyle(fontSize = 0.85.em, baselineShift = BaselineShift(0.33f))
 
 private fun AnnotatedString.Builder.appendStyled(
     style: SpanStyle,
