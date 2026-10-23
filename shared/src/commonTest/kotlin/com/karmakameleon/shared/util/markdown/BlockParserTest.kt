@@ -96,8 +96,7 @@ class BlockParserTest {
         val result = parse("- item")
         assertEquals(1, result.size)
         val item = assertIs<MarkdownBlock.BulletListItem>(result[0])
-        val text = item.children.filterIsInstance<MarkdownInline.Text>().joinToString("") { it.text }
-        assertTrue(text.contains("item"))
+        assertEquals(listOf(MarkdownInline.Text("item")), item.children)
     }
 
     @Test
@@ -134,6 +133,13 @@ class BlockParserTest {
         assertEquals(1, first.number)
         val second = assertIs<MarkdownBlock.OrderedListItem>(result[1])
         assertEquals(2, second.number)
+    }
+
+    // Like CommonMark, a number longer than 9 digits doesn't start a list item, so it can't overflow an Int.
+    @Test
+    fun orderedList_numberTooLong() {
+        val result = parse("99999999999. x")
+        assertIs<MarkdownBlock.Paragraph>(result.single())
     }
 
     // ==================== Block quote ====================

@@ -6,7 +6,7 @@ import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 private const val CODE_INDENT = "    "
 
 private val horizontalRuleRegex = Regex("^(-{3,}|\\*{3,}|_{3,})$")
-private val orderedListItemRegex = Regex("^(\\d+)[.)]\\s+(.*)")
+private val orderedListItemRegex = Regex("^(\\d{1,9})[.)]\\s+(.*)")
 private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
 
 fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
@@ -38,7 +38,7 @@ private fun parseBlockAt(
         isQuoteLine(line) -> parseQuoteAt(lines, i)
         isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.removePrefix(CODE_INDENT)), i + 1)
         horizontalRuleRegex.matches(line) -> ParsedBlock(MarkdownBlock.HorizontalRule, i + 1)
-        isBulletLine(line) -> ParsedBlock(MarkdownBlock.BulletListItem(parseInlineMarkdown("• " + line.substring(2))), i + 1)
+        isBulletLine(line) -> ParsedBlock(MarkdownBlock.BulletListItem(parseInlineMarkdown(line.substring(2))), i + 1)
         orderedListItemRegex.matches(line) -> ParsedBlock(parseOrderedListItem(line), i + 1)
         line.isNotBlank() -> parseParagraphAt(lines, i)
         else -> parseBlankLinesAt(lines, i)
