@@ -7,14 +7,19 @@ private val inlineGifPattern = Regex("""!\[gif]\(giphy\|([^)]+)\)""")
 private val previewRedditUrlPattern = Regex("""https://preview\.redd\.it/[^\s)]+""")
 private val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[', ']', '(', ')', '#', '-', '.', '+', '|', '/')
 
-fun parseInlineMarkdown(text: String): List<MarkdownInline> = parseInlineRecursive(text, emptySet())
+fun parseInlineMarkdown(text: String): List<MarkdownInline> = parseInlineRecursive(text, emptySet(), superscriptDepth = 0)
+
+// The most superscripts that nest. Each level is drawn higher without making the line taller, so a deeper tower
+// would draw over the line above. It also keeps the recursion shallow however many carets a comment has.
+private const val MAX_SUPERSCRIPT_DEPTH = 3
 
 private fun parseInlineRecursive(
     text: String,
     activeDelimiters: Set<String>,
+    superscriptDepth: Int,
 ): List<MarkdownInline> {
     val result = mutableListOf<MarkdownInline>()
-    val cursor = InlineCursor(text, activeDelimiters)
+    val cursor = InlineCursor(text, activeDelimiters, superscriptDepth)
     var textStart = 0
     while (cursor.i < text.length) {
         val match = inlineMatchers.firstNotNullOfOrNull { matcher -> cursor.matcher() }
@@ -22,7 +27,7 @@ private fun parseInlineRecursive(
             cursor.i++
         } else {
             if (cursor.i > textStart) result.add(MarkdownInline.Text(text.substring(textStart, cursor.i)))
-            result.add(match.node)
+            match.node?.let { result.add(it) }
             cursor.i = match.end
             textStart = cursor.i
         }
@@ -31,17 +36,19 @@ private fun parseInlineRecursive(
     return result
 }
 
-// An inline element found at a position in the text, and the index just after it.
+// An inline element found at a position in the text, and the index just after it. A null node drops the matched
+// text.
 private class InlineMatch(
-    val node: MarkdownInline,
+    val node: MarkdownInline?,
     val end: Int,
 )
 
 // The text being parsed and the position the matchers look at. activeDelimiters holds the delimiters of the spans
-// being parsed, so a span can't nest inside itself.
+// being parsed, so a span can't nest inside itself, and superscriptDepth counts the superscripts around the text.
 private class InlineCursor(
     val text: String,
     val activeDelimiters: Set<String>,
+    val superscriptDepth: Int,
 ) {
     var i = 0
 }
@@ -102,7 +109,7 @@ private fun InlineCursor.matchInlineLink(): InlineMatch? {
     val closeUrlIdx = text.indexOf(")", closeTextIdx + 2).takeIf { it != -1 } ?: return null
     val linkText = text.substring(i + 1, closeTextIdx)
     val url = text.substring(closeTextIdx + 2, closeUrlIdx)
-    return InlineMatch(MarkdownInline.Link(parseInlineRecursive(linkText, activeDelimiters), url), closeUrlIdx + 1)
+    return InlineMatch(MarkdownInline.Link(parseInlineRecursive(linkText, activeDelimiters, superscriptDepth), url), closeUrlIdx + 1)
 }
 
 // Reference link: [text][ref]. References aren't resolved, so the text is used as the URL.
@@ -110,7 +117,8 @@ private fun InlineCursor.matchReferenceLink(): InlineMatch? {
     val closeTextIdx = linkTextEnd(next = '[') ?: return null
     val closeRefIdx = text.indexOf("]", closeTextIdx + 2).takeIf { it != -1 } ?: return null
     val linkText = text.substring(i + 1, closeTextIdx)
-    return InlineMatch(MarkdownInline.Link(parseInlineRecursive(linkText, activeDelimiters), linkText), closeRefIdx + 1)
+    val children = parseInlineRecursive(linkText, activeDelimiters, superscriptDepth)
+    return InlineMatch(MarkdownInline.Link(children, linkText), closeRefIdx + 1)
 }
 
 // The index of the ] that closes link text starting at the cursor, when it's followed by next.
@@ -139,16 +147,23 @@ private fun InlineCursor.matchStrikethrough(): InlineMatch? = matchDelimited("~~
 
 private fun InlineCursor.matchSpoiler(): InlineMatch? = matchDelimited(">!", "!<") { MarkdownInline.Spoiler(it) }
 
-// Superscript: ^(...)
-private fun InlineCursor.matchParenthesizedSuperscript(): InlineMatch? = matchDelimited("^(", ")") { MarkdownInline.Superscript(it) }
+// Superscript: ^(...). Past the deepest superscript, the parentheses stay as text.
+private fun InlineCursor.matchParenthesizedSuperscript(): InlineMatch? {
+    if (superscriptDepth >= MAX_SUPERSCRIPT_DEPTH) return null
+    return matchDelimited("^(", ")", childSuperscriptDepth = superscriptDepth + 1) { MarkdownInline.Superscript(it) }
+}
 
-// Superscript: ^word, up to the next whitespace
+// Superscript: ^word, up to the next whitespace. Like old Reddit, a ^ inside it raises the rest again, so ^^double
+// and 2^2^2 stack up. Past the deepest superscript, the ^ is dropped and the rest isn't raised further. A ^ before
+// whitespace or at the end stays as text.
 private fun InlineCursor.matchWordSuperscript(): InlineMatch? {
-    if (text[i] != '^' || "^" in activeDelimiters) return null
+    if (text[i] != '^') return null
     val next = text.getOrNull(i + 1)
-    if (next == null || next == '(') return null
+    if (next == null || next == '(' || next.isWhitespace()) return null
+    if (superscriptDepth >= MAX_SUPERSCRIPT_DEPTH) return InlineMatch(null, i + 1)
     val end = (i + 1 until text.length).firstOrNull { text[it].isWhitespace() } ?: text.length
-    return InlineMatch(MarkdownInline.Superscript(parseInlineRecursive(text.substring(i + 1, end), activeDelimiters + "^")), end)
+    val children = parseInlineRecursive(text.substring(i + 1, end), activeDelimiters, superscriptDepth + 1)
+    return InlineMatch(MarkdownInline.Superscript(children), end)
 }
 
 // Italic: _..._ or *...* (not __ or **)
@@ -199,12 +214,13 @@ private inline fun InlineCursor.matchDelimited(
     open: String,
     close: String,
     isValidClose: (Int) -> Boolean = { true },
+    childSuperscriptDepth: Int = superscriptDepth,
     node: (List<MarkdownInline>) -> MarkdownInline,
 ): InlineMatch? {
     if (!text.startsWith(open, i) || open in activeDelimiters) return null
     val closeIdx = text.indexOf(close, i + open.length)
     if (closeIdx == -1 || !isValidClose(closeIdx)) return null
-    val children = parseInlineRecursive(text.substring(i + open.length, closeIdx), activeDelimiters + open)
+    val children = parseInlineRecursive(text.substring(i + open.length, closeIdx), activeDelimiters + open, childSuperscriptDepth)
     return InlineMatch(node(children), closeIdx + close.length)
 }
 

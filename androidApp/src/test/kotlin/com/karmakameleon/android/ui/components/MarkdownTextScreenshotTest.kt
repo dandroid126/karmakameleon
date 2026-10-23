@@ -67,10 +67,19 @@ private val listsMarkdown =
     10. Tenth
     """.trimIndent()
 
+private const val SUPERSCRIPT_MARKDOWN =
+    "E = mc^2, ^(two words) up, ^and ^be ^reddited, a [^raised ^link](https://example.com), ^^double and 2^2^2.\n\nA tower past the deepest level: a^b^c^d^e^f^g^h^i^j\n\n## A heading^2"
+
+// A tower on the first line and one in the middle of a wrapped paragraph, so the screenshot shows whether they draw
+// over the text above them.
+private const val SUPERSCRIPT_TOWERS_MARKDOWN =
+    "a^b^c^d^e^f^g^h^i^j starts this paragraph, which goes on long enough to wrap, and then has " +
+        "another tower x^y^z^w^v^u^t^s in the middle of it, so it should still wrap onto a few lines below."
+
 private const val IMAGES_MARKDOWN = "A picture:\n\n![img](https://i.redd.it/cat.jpg)\n\nAnd a GIF: ![gif](giphy|abc123)"
 
-// Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Superscript,
-// nested lists and fenced code are left out until #83 fixes them.
+// Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Nested
+// lists and fenced code are left out until #83 fixes them.
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MarkdownTextScreenshotTest {
@@ -160,6 +169,18 @@ class MarkdownTextScreenshotTest {
     fun listsLargeFont() {
         show(listsMarkdown, fontScale = 1.5f)
         capture("markdown_lists_large_font")
+    }
+
+    @Test
+    fun superscript() {
+        show(SUPERSCRIPT_MARKDOWN)
+        capture("markdown_superscript")
+    }
+
+    @Test
+    fun superscriptTowers() {
+        show(SUPERSCRIPT_TOWERS_MARKDOWN)
+        capture("markdown_superscript_towers")
     }
 
     @Test
