@@ -7,7 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performFirstLinkClick
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
@@ -50,10 +50,13 @@ private val tableMarkdown =
     | Short row |
     """.trimIndent()
 
+private const val MID_LINE_SPOILER_MARKDOWN =
+    "Before >!the secret part, long enough to wrap from one line onto the next,!< and after it the sentence goes on."
+
 private const val IMAGES_MARKDOWN = "A picture:\n\n![img](https://i.redd.it/cat.jpg)\n\nAnd a GIF: ![gif](giphy|abc123)"
 
 // Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Numbered lists,
-// superscript, nested lists, mid-line spoilers and fenced code are left out until #83 fixes them.
+// superscript, nested lists and fenced code are left out until #83 fixes them.
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MarkdownTextScreenshotTest {
@@ -104,8 +107,28 @@ class MarkdownTextScreenshotTest {
     @Test
     fun revealedSpoiler() {
         show(INLINE_MARKDOWN)
-        composeRule.onNodeWithText("A secret").performClick()
+        composeRule.onNodeWithText("A secret").performFirstLinkClick()
         capture("markdown_spoiler_revealed")
+    }
+
+    @Test
+    fun midLineSpoiler() {
+        show(MID_LINE_SPOILER_MARKDOWN)
+        capture("markdown_spoiler_mid_line")
+    }
+
+    // The spoiler is in the link's text, so the link's color mustn't show the hidden text.
+    @Test
+    fun spoilerInLink() {
+        show("Spoils [>!the ending!<](https://example.com) here")
+        capture("markdown_spoiler_in_link")
+    }
+
+    @Test
+    fun midLineSpoilerRevealed() {
+        show(MID_LINE_SPOILER_MARKDOWN)
+        composeRule.onNodeWithText("Before", substring = true).performFirstLinkClick()
+        capture("markdown_spoiler_mid_line_revealed")
     }
 
     @Test
