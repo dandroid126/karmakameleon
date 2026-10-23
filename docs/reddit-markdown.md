@@ -45,11 +45,11 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Rule | Written | Reddit | App |
 |---|---|---|---|
 | Spoiler | `>!secret!<` | Hidden until tapped | ✅ |
-| Superscript of one word | `^word` | Raised "word", up to the next space | ❌ #83: parsed right, but drawn smaller instead of raised |
-| Superscript of several words | `^(two words)` | Raised "two words" | ❌ #83: as above |
-| Superscript of each word | `^and ^be ^reddited` | All three raised | ❌ #83: as above |
-| Superscript inside link text | `[^be ^reddited](https://…)` | A raised link | ❌ #83: as above |
-| Superscript towers | `^^double` | Not supported on new Reddit | ❔ |
+| Superscript of one word | `^word` | Raised "word", up to the next space | ✅ |
+| Superscript of several words | `^(two words)` | Raised "two words" | ✅ |
+| Superscript of each word | `^and ^be ^reddited` | All three raised | ✅ |
+| Superscript inside link text | `[^be ^reddited](https://…)` | A raised link | ✅ |
+| Superscript towers | `^^double`, `2^2^2` | Stacked with no limit on old Reddit; not supported on new Reddit | ✅ stacked as on old Reddit, up to 7 levels; only the first 3 shrink |
 | Subreddit link | `r/help` or `/r/help` | Link to the subreddit | ✅ |
 | User link | `u/reddit` or `/u/reddit` | Link to the user | ✅ |
 | Image uploaded to Reddit | `![img](id)` | The image, from `preview.redd.it` | ✅ as `https://preview.redd.it/<id>.jpeg` ❔ whether the extension is always right |

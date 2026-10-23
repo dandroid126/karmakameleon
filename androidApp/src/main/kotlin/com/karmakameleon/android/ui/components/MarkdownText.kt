@@ -45,11 +45,12 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
@@ -71,7 +72,6 @@ fun MarkdownText(
     val rendering =
         InlineRendering(
             linkColor = MaterialTheme.colorScheme.primary,
-            superscriptSize = MaterialTheme.typography.bodySmall.fontSize,
             onLinkClick = { url -> navigationHandler.handleLink(url) },
             renderInlineImages = renderInlineImages,
             onImageClick = onImageClick,
@@ -84,13 +84,13 @@ fun MarkdownText(
 }
 
 // How inline elements look and what tapping a link or an image does. When renderInlineImages is off, images are
-// shown as [img] or [gif] links instead.
+// shown as [img] or [gif] links instead. superscriptLevel counts the superscripts around the text being drawn.
 private data class InlineRendering(
     val linkColor: Color,
-    val superscriptSize: TextUnit,
     val onLinkClick: (String) -> Unit,
     val renderInlineImages: Boolean,
     val onImageClick: (String) -> Unit,
+    val superscriptLevel: Int = 0,
 )
 
 @Composable
@@ -412,7 +412,8 @@ private fun AnnotatedString.Builder.appendInline(
         }
 
         is MarkdownInline.Superscript -> {
-            appendStyled(SpanStyle(fontSize = rendering.superscriptSize), inline.children, rendering, spoilers)
+            val style = if (rendering.superscriptLevel < SHRINKING_SUPERSCRIPT_LEVELS) SUPERSCRIPT_STYLE else RAISED_ONLY_STYLE
+            appendStyled(style, inline.children, rendering.copy(superscriptLevel = rendering.superscriptLevel + 1), spoilers)
         }
 
         is MarkdownInline.Spoiler -> {
@@ -428,6 +429,12 @@ private fun AnnotatedString.Builder.appendInline(
         }
     }
 }
+
+// Relative to the text around it, so superscript in a heading stays in proportion. Only the first few levels shrink,
+// so a tall tower keeps climbing without becoming too small to read.
+private val SUPERSCRIPT_STYLE = SpanStyle(fontSize = 0.85.em, baselineShift = BaselineShift.Superscript)
+private val RAISED_ONLY_STYLE = SpanStyle(baselineShift = BaselineShift.Superscript)
+private const val SHRINKING_SUPERSCRIPT_LEVELS = 3
 
 private fun AnnotatedString.Builder.appendStyled(
     style: SpanStyle,

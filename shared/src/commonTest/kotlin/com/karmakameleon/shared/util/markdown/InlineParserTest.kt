@@ -140,6 +140,67 @@ class InlineParserTest {
         assertEquals(MarkdownInline.Text(" rest"), result[1])
     }
 
+    @Test
+    fun superscript_doubleCaretNests() {
+        val result = parse("^^double")
+        val outer = assertIs<MarkdownInline.Superscript>(result.single())
+        val inner = assertIs<MarkdownInline.Superscript>(outer.children.single())
+        assertEquals(listOf(MarkdownInline.Text("double")), inner.children)
+    }
+
+    @Test
+    fun superscript_caretInsideWordNests() {
+        val result = parse("2^2^2")
+        assertEquals(MarkdownInline.Text("2"), result[0])
+        val outer = assertIs<MarkdownInline.Superscript>(result[1])
+        assertEquals(MarkdownInline.Text("2"), outer.children[0])
+        val inner = assertIs<MarkdownInline.Superscript>(outer.children[1])
+        assertEquals(listOf(MarkdownInline.Text("2")), inner.children)
+    }
+
+    // Each superscript level wraps the next, so this unwraps them and returns how many there were and what's inside.
+    private fun superscriptDepth(inlines: List<MarkdownInline>): Pair<Int, List<MarkdownInline>> {
+        var depth = 0
+        var children = inlines
+        while (children.size == 1 && children[0] is MarkdownInline.Superscript) {
+            children = (children[0] as MarkdownInline.Superscript).children
+            depth++
+        }
+        return depth to children
+    }
+
+    @Test
+    fun superscript_nestingStopsAtSevenLevels() {
+        val (depth, inside) = superscriptDepth(parse("^".repeat(10) + "tower"))
+        assertEquals(7, depth)
+        assertEquals(listOf(MarkdownInline.Text("tower")), inside)
+    }
+
+    @Test
+    fun superscript_parenthesesPastDeepestLevelAreText() {
+        val (depth, inside) = superscriptDepth(parse("^".repeat(7) + "^(word)"))
+        assertEquals(7, depth)
+        assertEquals(listOf(MarkdownInline.Text("^(word)")), inside)
+    }
+
+    // Comments can be 10,000 characters long, so a comment of carets mustn't overflow the stack.
+    @Test
+    fun superscript_manyCaretsDoNotOverflow() {
+        val (depth, inside) = superscriptDepth(parse("^".repeat(10_000) + "x"))
+        assertEquals(7, depth)
+        assertEquals(listOf(MarkdownInline.Text("x")), inside)
+    }
+
+    @Test
+    fun superscript_caretBeforeSpaceIsText() {
+        assertEquals(listOf(MarkdownInline.Text("a ^ b")), parse("a ^ b"))
+    }
+
+    @Test
+    fun superscript_caretAtEndIsText() {
+        assertEquals(listOf(MarkdownInline.Text("a^")), parse("a^"))
+    }
+
     // ==================== Spoiler ====================
 
     @Test

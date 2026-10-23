@@ -67,10 +67,13 @@ private val listsMarkdown =
     10. Tenth
     """.trimIndent()
 
+private const val SUPERSCRIPT_MARKDOWN =
+    "E = mc^2, ^(two words) up, ^and ^be ^reddited, a [^raised ^link](https://example.com), ^^double and 2^2^2.\n\nA tower past the deepest level: a^b^c^d^e^f^g^h^i^j\n\n## A heading^2"
+
 private const val IMAGES_MARKDOWN = "A picture:\n\n![img](https://i.redd.it/cat.jpg)\n\nAnd a GIF: ![gif](giphy|abc123)"
 
-// Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Superscript,
-// nested lists and fenced code are left out until #83 fixes them.
+// Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Nested
+// lists and fenced code are left out until #83 fixes them.
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MarkdownTextScreenshotTest {
@@ -160,6 +163,12 @@ class MarkdownTextScreenshotTest {
     fun listsLargeFont() {
         show(listsMarkdown, fontScale = 1.5f)
         capture("markdown_lists_large_font")
+    }
+
+    @Test
+    fun superscript() {
+        show(SUPERSCRIPT_MARKDOWN)
+        capture("markdown_superscript")
     }
 
     @Test
