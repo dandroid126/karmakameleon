@@ -6,7 +6,7 @@ import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 private const val CODE_INDENT = "    "
 
 private val horizontalRuleRegex = Regex("^(-{3,}|\\*{3,}|_{3,})$")
-private val orderedListItemRegex = Regex("^(\\d+)[.)]\\s+(.*)")
+private val orderedListItemRegex = Regex("^(\\d{1,9})[.)]\\s+(.*)")
 private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
 
 fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {

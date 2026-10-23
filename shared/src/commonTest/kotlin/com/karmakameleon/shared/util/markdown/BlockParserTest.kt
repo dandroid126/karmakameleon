@@ -135,6 +135,13 @@ class BlockParserTest {
         assertEquals(2, second.number)
     }
 
+    // Like CommonMark, a number longer than 9 digits doesn't start a list item, so it can't overflow an Int.
+    @Test
+    fun orderedList_numberTooLong() {
+        val result = parse("99999999999. x")
+        assertIs<MarkdownBlock.Paragraph>(result.single())
+    }
+
     // ==================== Block quote ====================
 
     @Test

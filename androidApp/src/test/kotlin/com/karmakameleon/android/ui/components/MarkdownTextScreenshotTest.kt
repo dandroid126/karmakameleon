@@ -3,11 +3,14 @@ package com.karmakameleon.android.ui.components
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performFirstLinkClick
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
@@ -84,12 +87,16 @@ class MarkdownTextScreenshotTest {
         markdown: String,
         darkTheme: Boolean = false,
         renderInlineImages: Boolean = true,
+        fontScale: Float = 1f,
     ) {
         composeRule.setContent {
+            val density = Density(LocalDensity.current.density, fontScale)
             // Dynamic colors come from the wallpaper, which would make the screenshots depend on the machine.
             KarmaKameleonTheme(darkTheme = darkTheme, dynamicColor = false) {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    MarkdownText(markdown = markdown, renderInlineImages = renderInlineImages, modifier = Modifier.padding(8.dp))
+                CompositionLocalProvider(LocalDensity provides density) {
+                    Surface(color = MaterialTheme.colorScheme.background) {
+                        MarkdownText(markdown = markdown, renderInlineImages = renderInlineImages, modifier = Modifier.padding(8.dp))
+                    }
                 }
             }
         }
@@ -146,6 +153,13 @@ class MarkdownTextScreenshotTest {
     fun lists() {
         show(listsMarkdown)
         capture("markdown_lists")
+    }
+
+    // The markers' column grows with the font, so 9 and 10 still line up.
+    @Test
+    fun listsLargeFont() {
+        show(listsMarkdown, fontScale = 1.5f)
+        capture("markdown_lists_large_font")
     }
 
     @Test
