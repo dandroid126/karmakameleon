@@ -53,10 +53,21 @@ private val tableMarkdown =
 private const val MID_LINE_SPOILER_MARKDOWN =
     "Before >!the secret part, long enough to wrap from one line onto the next,!< and after it the sentence goes on."
 
+private val listsMarkdown =
+    """
+    - A bullet
+    - A bullet long enough to wrap, so its second line should start under its text, not under the bullet
+
+    1. First
+    2. Second, also long enough to wrap onto a second line under its text
+    9. Ninth
+    10. Tenth
+    """.trimIndent()
+
 private const val IMAGES_MARKDOWN = "A picture:\n\n![img](https://i.redd.it/cat.jpg)\n\nAnd a GIF: ![gif](giphy|abc123)"
 
-// Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Numbered lists,
-// superscript, nested lists and fenced code are left out until #83 fixes them.
+// Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Superscript,
+// nested lists and fenced code are left out until #83 fixes them.
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MarkdownTextScreenshotTest {
@@ -129,6 +140,12 @@ class MarkdownTextScreenshotTest {
         show(MID_LINE_SPOILER_MARKDOWN)
         composeRule.onNodeWithText("Before", substring = true).performFirstLinkClick()
         capture("markdown_spoiler_mid_line_revealed")
+    }
+
+    @Test
+    fun lists() {
+        show(listsMarkdown)
+        capture("markdown_lists")
     }
 
     @Test

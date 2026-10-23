@@ -38,7 +38,7 @@ private fun parseBlockAt(
         isQuoteLine(line) -> parseQuoteAt(lines, i)
         isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.removePrefix(CODE_INDENT)), i + 1)
         horizontalRuleRegex.matches(line) -> ParsedBlock(MarkdownBlock.HorizontalRule, i + 1)
-        isBulletLine(line) -> ParsedBlock(MarkdownBlock.BulletListItem(parseInlineMarkdown("• " + line.substring(2))), i + 1)
+        isBulletLine(line) -> ParsedBlock(MarkdownBlock.BulletListItem(parseInlineMarkdown(line.substring(2))), i + 1)
         orderedListItemRegex.matches(line) -> ParsedBlock(parseOrderedListItem(line), i + 1)
         line.isNotBlank() -> parseParagraphAt(lines, i)
         else -> parseBlankLinesAt(lines, i)

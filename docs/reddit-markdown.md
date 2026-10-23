@@ -90,9 +90,9 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Rule | Written | Reddit | App |
 |---|---|---|---|
 | Bullets | `- item`, `* item` or `+ item` | Bulleted list | ✅ |
-| Numbers with `.` | `1. item` | Numbered list | ❌ #83: the numbers aren't shown |
-| Numbers with `)` (new Reddit only) | `1) item` | Numbered list | ❌ #83: as above |
-| Numbering starts at 1 | `4) item` ⏎ `5) item` | ❔ The guide says lists must start with 1 | Keeps 4 and 5 (not shown, as above) |
+| Numbers with `.` | `1. item` | Numbered list | ✅ |
+| Numbers with `)` (new Reddit only) | `1) item` | Numbered list | ✅ shown as `1.` |
+| Numbering starts at 1 | `4) item` ⏎ `5) item` | ❔ The guide says lists must start with 1 | Keeps 4 and 5 |
 | Bulleted sublist, indented 2 or more spaces | `- a` ⏎ `␣␣- b` | Nested list | ❌ #83: merges into one paragraph |
 | Numbered sublist, indented 3 or more spaces | `1. a` ⏎ `␣␣␣1. b` | Nested list | ❌ #83: as above |
 | Sublist indented 4 spaces | `- a` ⏎ `␣␣␣␣- b` | Nested list | ❌ #83: becomes a code block |

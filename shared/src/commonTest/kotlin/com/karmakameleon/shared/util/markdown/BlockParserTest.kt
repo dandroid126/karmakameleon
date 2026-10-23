@@ -96,8 +96,7 @@ class BlockParserTest {
         val result = parse("- item")
         assertEquals(1, result.size)
         val item = assertIs<MarkdownBlock.BulletListItem>(result[0])
-        val text = item.children.filterIsInstance<MarkdownInline.Text>().joinToString("") { it.text }
-        assertTrue(text.contains("item"))
+        assertEquals(listOf(MarkdownInline.Text("item")), item.children)
     }
 
     @Test

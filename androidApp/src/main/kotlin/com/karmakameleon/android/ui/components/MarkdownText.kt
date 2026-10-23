@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.TextUnit
@@ -113,11 +115,17 @@ private fun RenderBlock(
         }
 
         is MarkdownBlock.BulletListItem -> {
-            RenderInlineList(block.children, style, rendering, onTextClick, Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp))
+            RenderListItem(marker = "•", children = block.children, style = style, rendering = rendering, onTextClick = onTextClick)
         }
 
         is MarkdownBlock.OrderedListItem -> {
-            RenderInlineList(block.children, style, rendering, onTextClick, Modifier.padding(start = 16.dp, top = 2.dp, bottom = 2.dp))
+            RenderListItem(
+                marker = "${block.number}.",
+                children = block.children,
+                style = style,
+                rendering = rendering,
+                onTextClick = onTextClick,
+            )
         }
 
         is MarkdownBlock.BlockQuote -> {
@@ -172,6 +180,29 @@ private val HEADING_PADDING = listOf(8.dp, 6.dp, 4.dp, 4.dp)
 private fun Modifier.headingPadding(level: Int): Modifier = padding(vertical = HEADING_PADDING.getOrElse(level - 1) { 2.dp })
 
 // A quote: a bar at its left edge, and its blocks in italics.
+// The marker has a column of its own, so an item's wrapped lines line up with its text rather than its marker.
+// Markers are right-aligned in a minimum width, so the items of a list up to 99 line up with each other.
+@Composable
+private fun RenderListItem(
+    marker: String,
+    children: List<MarkdownInline>,
+    style: TextStyle,
+    rendering: InlineRendering,
+    onTextClick: (() -> Unit)?,
+) {
+    Row(modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp)) {
+        ClickableMarkdownText(
+            text = AnnotatedString(marker),
+            style = style.copy(textAlign = TextAlign.End),
+            modifier = Modifier.widthIn(min = LIST_MARKER_WIDTH).padding(end = 6.dp),
+            onTextClick = onTextClick,
+        )
+        RenderInlineList(children, style, rendering, onTextClick, Modifier.weight(1f))
+    }
+}
+
+private val LIST_MARKER_WIDTH = 24.dp
+
 @Composable
 private fun RenderBlockQuote(
     block: MarkdownBlock.BlockQuote,
