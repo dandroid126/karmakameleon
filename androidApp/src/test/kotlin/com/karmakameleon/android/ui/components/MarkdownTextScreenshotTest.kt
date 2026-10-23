@@ -51,7 +51,7 @@ private val tableMarkdown =
     """.trimIndent()
 
 private const val MID_LINE_SPOILER_MARKDOWN =
-    "Before >!the secret part!< and after it, a long sentence that should wrap onto a second line normally."
+    "Before >!the secret part, long enough to wrap from one line onto the next,!< and after it the sentence goes on."
 
 private const val IMAGES_MARKDOWN = "A picture:\n\n![img](https://i.redd.it/cat.jpg)\n\nAnd a GIF: ![gif](giphy|abc123)"
 
