@@ -1,7 +1,6 @@
 package com.karmakameleon.android.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -17,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -85,7 +83,7 @@ fun MarkdownText(
 
 // How inline elements look and what tapping a link or an image does. When renderInlineImages is off, images are
 // shown as [img] or [gif] links instead.
-private data class InlineRendering(
+internal data class InlineRendering(
     val linkColor: Color,
     val onLinkClick: (String) -> Unit,
     val renderInlineImages: Boolean,
@@ -320,7 +318,7 @@ private fun RenderInlineList(
 // Spoilers are part of the text, so a line with one wraps like any other. A tap reveals a spoiler and, like on
 // Reddit, it stays revealed.
 @Composable
-private fun InlineText(
+internal fun InlineText(
     inlines: List<MarkdownInline>,
     style: TextStyle,
     rendering: InlineRendering,
@@ -501,83 +499,6 @@ private fun AnnotatedString.Builder.appendImageLink(
     )
     append(if (isGif) "[gif]" else "[img]")
     pop()
-}
-
-// Images aren't shown in table cells.
-@Composable
-private fun RenderTable(
-    table: MarkdownBlock.Table,
-    style: TextStyle,
-    rendering: InlineRendering,
-    onTextClick: (() -> Unit)?,
-) {
-    if (table.header.isEmpty()) return
-    val cellRendering = rendering.copy(renderInlineImages = true, onImageClick = {})
-
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp)
-                .border(TABLE_BORDER_WIDTH, MaterialTheme.colorScheme.outline),
-    ) {
-        (listOf(table.header) + table.rows).forEachIndexed { rowIndex, row ->
-            TableRow(
-                cells = row,
-                columnCount = table.header.size,
-                isHeader = rowIndex == 0,
-                style = style,
-                rendering = cellRendering,
-                onTextClick = onTextClick,
-            )
-        }
-    }
-}
-
-private val TABLE_BORDER_WIDTH = 1.dp
-
-// A row of equal-width cells; rows with fewer cells than the header get empty ones.
-@Composable
-private fun TableRow(
-    cells: List<String>,
-    columnCount: Int,
-    isHeader: Boolean,
-    style: TextStyle,
-    rendering: InlineRendering,
-    onTextClick: (() -> Unit)?,
-) {
-    val borderColor = MaterialTheme.colorScheme.outline
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .height(IntrinsicSize.Max)
-                .border(TABLE_BORDER_WIDTH, borderColor)
-                .background(if (isHeader) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent),
-    ) {
-        repeat(columnCount) { colIndex ->
-            val cellInlines =
-                com.karmakameleon.shared.util.markdown
-                    .parseInlineMarkdown(cells.getOrElse(colIndex) { "" })
-            Box(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .border(TABLE_BORDER_WIDTH, borderColor)
-                        .padding(8.dp),
-                contentAlignment = Alignment.TopStart,
-            ) {
-                InlineText(
-                    inlines = cellInlines,
-                    style = if (isHeader) style.copy(fontWeight = FontWeight.Bold) else style,
-                    rendering = rendering,
-                    onTextClick = onTextClick,
-                    modifier = Modifier.wrapContentHeight(),
-                )
-            }
-        }
-    }
 }
 
 private val aspectRatioCache = mutableMapOf<String, Float>()
