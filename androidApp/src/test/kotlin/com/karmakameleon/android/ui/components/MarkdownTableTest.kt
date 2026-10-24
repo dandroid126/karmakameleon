@@ -1,5 +1,6 @@
 package com.karmakameleon.android.ui.components
 
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -106,6 +107,21 @@ class MarkdownTableTest {
 
         composeRule.onNode(table).performTouchInput { swipeRight() }
         assertEquals(0f, scrollRange().value(), 0f)
+    }
+
+    // The table calls updateMaxOffset while measuring, so a state it read there would make the table measure again,
+    // and reading offset would do that on every scroll frame.
+    @Test
+    fun updatingMaxOffsetReadsNoState() {
+        val scroll = TableScroll()
+        scroll.updateMaxOffset(100)
+        scroll.state.dispatchRawDelta(50f)
+
+        val reads = mutableListOf<Any>()
+        Snapshot.observe(readObserver = { reads += it }) { scroll.updateMaxOffset(20) }
+
+        assertEquals(emptyList<Any>(), reads)
+        assertEquals(20f, scroll.offset, 0f)
     }
 
     // A quote asks for its content's intrinsic height, which the table has to answer without being measured.

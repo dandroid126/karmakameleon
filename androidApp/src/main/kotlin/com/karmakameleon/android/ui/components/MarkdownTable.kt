@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -146,7 +147,7 @@ private fun TableCell(
 
 // How far a wide table is scrolled. maxOffset is set each time the table is measured.
 @Stable
-private class TableScroll {
+internal class TableScroll {
     var offset by mutableFloatStateOf(0f)
         private set
 
@@ -164,9 +165,11 @@ private class TableScroll {
             offset - old
         }
 
+    // Called while measuring. Reading offset there would make every scroll frame measure the whole table again
+    // instead of only moving the cells, so the read isn't tracked.
     fun updateMaxOffset(value: Int) {
         maxOffset = value
-        offset = offset.coerceAtMost(value.toFloat())
+        Snapshot.withoutReadObservation { offset = offset.coerceAtMost(value.toFloat()) }
     }
 }
 
