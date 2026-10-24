@@ -142,6 +142,65 @@ class BlockParserTest {
         assertIs<MarkdownBlock.Paragraph>(result.single())
     }
 
+    private fun bullet(
+        text: String,
+        level: Int = 0,
+    ) = MarkdownBlock.BulletListItem(listOf(MarkdownInline.Text(text)), level)
+
+    private fun numbered(
+        number: Int,
+        text: String,
+        level: Int = 0,
+    ) = MarkdownBlock.OrderedListItem(number, listOf(MarkdownInline.Text(text)), level)
+
+    @Test
+    fun nestedList_fourSpaces() {
+        assertEquals(
+            listOf(bullet("Top"), bullet("Nested item", 1), bullet("Another nested", 1), bullet("Back to top")),
+            parse("- Top\n    - Nested item\n    - Another nested\n- Back to top"),
+        )
+    }
+
+    // Reddit's guide indents unordered sublists by two spaces and ordered ones by three, which is where the text of
+    // the item above starts.
+    @Test
+    fun nestedList_indentedToParentText() {
+        assertEquals(listOf(bullet("a"), bullet("b", 1), bullet("c", 1), bullet("d")), parse("- a\n  - b\n  - c\n- d"))
+        assertEquals(
+            listOf(numbered(1, "a"), numbered(1, "b", 1), numbered(2, "c", 1), numbered(2, "d")),
+            parse("1. a\n   1. b\n   2. c\n2. d"),
+        )
+    }
+
+    // Two spaces don't reach the text of "1. ", so the item isn't nested.
+    @Test
+    fun nestedList_notIndentedEnough() {
+        assertEquals(listOf(numbered(1, "a"), numbered(2, "b")), parse("1. a\n  2. b"))
+    }
+
+    @Test
+    fun nestedList_severalLevels() {
+        assertEquals(
+            listOf(bullet("a"), numbered(1, "b", 1), bullet("c", 2), bullet("d", 1), bullet("e")),
+            parse("- a\n  1. b\n     - c\n  - d\n- e"),
+        )
+    }
+
+    @Test
+    fun list_indentedUpToThreeSpaces() {
+        assertEquals(listOf(bullet("a"), numbered(2, "b")), parse("   - a\n 2. b"))
+    }
+
+    // With four spaces it's code, unless it's nested in the item above.
+    @Test
+    fun list_indentedFourSpacesIsCode() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("- a")), parse("    - a"))
+        assertEquals(
+            listOf(MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("text"))), MarkdownBlock.CodeBlock("- a")),
+            parse("text\n    - a"),
+        )
+    }
+
     // ==================== Block quote ====================
 
     @Test

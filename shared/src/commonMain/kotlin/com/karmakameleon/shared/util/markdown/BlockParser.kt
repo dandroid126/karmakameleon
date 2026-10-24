@@ -6,7 +6,13 @@ import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 private const val CODE_INDENT = "    "
 
 private val horizontalRuleRegex = Regex("^(-{3,}|\\*{3,}|_{3,})$")
-private val orderedListItemRegex = Regex("^(\\d{1,9})[.)]\\s+(.*)")
+
+// A list item: its indent, its marker (-, * or +, or a number followed by . or )), the spaces after the marker and
+// its text.
+private val listItemRegex = Regex("^( *)([-*+]|\\d{1,9}[.)])([ \t]+)(.*)")
+
+// A list can be indented by up to three spaces; with four, it's a code block.
+private const val MAX_LIST_INDENT = 3
 private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
 
 fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
@@ -15,17 +21,20 @@ fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
     var i = 0
     while (i < lines.size) {
         val parsed = parseBlockAt(lines, i)
-        parsed.block?.let { blocks.add(it) }
+        blocks.addAll(parsed.blocks)
         i = parsed.nextIndex
     }
     return blocks
 }
 
-// A parsed block (null when the lines produce none) and the index of the first line after it.
+// The blocks parsed from some lines and the index of the first line after them.
 private class ParsedBlock(
-    val block: MarkdownBlock?,
+    val blocks: List<MarkdownBlock>,
     val nextIndex: Int,
-)
+) {
+    // One block, or none when it's null.
+    constructor(block: MarkdownBlock?, nextIndex: Int) : this(listOfNotNull(block), nextIndex)
+}
 
 private fun parseBlockAt(
     lines: List<String>,
@@ -38,8 +47,7 @@ private fun parseBlockAt(
         isQuoteLine(line) -> parseQuoteAt(lines, i)
         isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.removePrefix(CODE_INDENT)), i + 1)
         horizontalRuleRegex.matches(line) -> ParsedBlock(MarkdownBlock.HorizontalRule, i + 1)
-        isBulletLine(line) -> ParsedBlock(MarkdownBlock.BulletListItem(parseInlineMarkdown(line.substring(2))), i + 1)
-        orderedListItemRegex.matches(line) -> ParsedBlock(parseOrderedListItem(line), i + 1)
+        isListItemLine(line) -> parseListAt(lines, i)
         line.isNotBlank() -> parseParagraphAt(lines, i)
         else -> parseBlankLinesAt(lines, i)
     }
@@ -49,7 +57,10 @@ private fun isQuoteLine(line: String): Boolean = line.startsWith(">") && !line.s
 
 private fun isCodeLine(line: String): Boolean = line.startsWith(CODE_INDENT)
 
-private fun isBulletLine(line: String): Boolean = line.startsWith("- ") || line.startsWith("* ") || line.startsWith("+ ")
+private fun isListItemLine(line: String): Boolean {
+    val match = listItemRegex.matchEntire(line) ?: return false
+    return match.groupValues[1].length <= MAX_LIST_INDENT
+}
 
 // Lines that start a block of their own, so they end a paragraph.
 private fun isSpecialLine(
@@ -61,8 +72,7 @@ private fun isSpecialLine(
         isQuoteLine(line) ||
         isCodeLine(line) ||
         horizontalRuleRegex.matches(line) ||
-        isBulletLine(line) ||
-        orderedListItemRegex.matches(line) ||
+        isListItemLine(line) ||
         isTableStart(lines, i)
 }
 
@@ -89,9 +99,38 @@ private fun parseQuoteAt(
     return ParsedBlock(MarkdownBlock.BlockQuote(parseMarkdownBlocks(quoteText)), end)
 }
 
-private fun parseOrderedListItem(line: String): MarkdownBlock? {
-    val match = orderedListItemRegex.find(line) ?: return null
-    return MarkdownBlock.OrderedListItem(match.groupValues[1].toInt(), parseInlineMarkdown(match.groupValues[2]))
+// Consecutive list items. Like on Reddit, an item indented at least as far as the text of an item above it is nested
+// in that item, so a sublist needs two spaces under "- " and three under "1. ".
+private fun parseListAt(
+    lines: List<String>,
+    i: Int,
+): ParsedBlock {
+    // Where the text starts in each item that the next item could be nested in, outermost first.
+    val textColumns = ArrayDeque<Int>()
+    val items = mutableListOf<MarkdownBlock>()
+    var end = i
+    while (end < lines.size) {
+        items += parseListItem(lines[end], textColumns) ?: break
+        end++
+    }
+    return ParsedBlock(items, end)
+}
+
+// The list item on line, nested in the items whose text columns are given, which it updates. Null when the line
+// isn't an item of the list.
+private fun parseListItem(
+    line: String,
+    textColumns: ArrayDeque<Int>,
+): MarkdownBlock? {
+    val match = listItemRegex.matchEntire(line) ?: return null
+    val (indent, marker, gap) = match.destructured
+    while (textColumns.isNotEmpty() && indent.length < textColumns.last()) textColumns.removeLast()
+    if (textColumns.isEmpty() && indent.length > MAX_LIST_INDENT) return null
+    val level = textColumns.size
+    textColumns.addLast(indent.length + marker.length + gap.length)
+    val children = parseInlineMarkdown(match.groupValues.last())
+    val number = marker.dropLast(1).toIntOrNull()
+    return if (number != null) MarkdownBlock.OrderedListItem(number, children, level) else MarkdownBlock.BulletListItem(children, level)
 }
 
 // Consecutive plain lines form one paragraph. A line ending in two spaces is a line break; otherwise lines are
