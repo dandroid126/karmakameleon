@@ -159,6 +159,17 @@ private val MessageColorValues =
 
 fun messageColors(): MessageColors = MessageColorValues
 
+data class MarkdownColors(
+    val fadeMaskColor: Color, // erases a wide table's edge where it scrolls; only its alpha matters
+)
+
+private val MarkdownColorValues =
+    MarkdownColors(
+        fadeMaskColor = Color.Black,
+    )
+
+fun markdownColors(): MarkdownColors = MarkdownColorValues
+
 // Media UI stays dark in both light and dark mode
 data class MediaColors(
     val loopActiveColor: Color,

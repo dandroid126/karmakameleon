@@ -6,10 +6,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performFirstLinkClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -51,6 +55,31 @@ private val tableMarkdown =
     | **Sealed** classes | 1.0 |
     | Value classes | 1.5 |
     | Short row |
+    """.trimIndent()
+
+// Like a bot's comment in r/hockey, with empty spacer columns and made-up usernames. Too wide for a phone, so it
+// scrolls.
+private val wideTableMarkdown =
+    """
+    |Stat|Count|.|Most Comments (user)|Count|.|Most Commenters (flair)|Count|
+    |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+    |Number of comments|191||/u/example_fan|13||SJS - NHL|35|
+    |Number of unique commenters|72||/u/ExampleViewer|13||OTT - NHL|16|
+    |Average comments per user|2.65||/u/ExampleCommenter|11||None|6|
+    |Number of unique flairs|13||/u/user4|11||MTL - NHL|5|
+    |Number of NHL teams|9||/u/user05|10||EDM - NHL|2|
+    |Average number of words per comment|13.26||/u/example_poster|7||Boston Fleet - PWHL|1|
+    |Dirtiest mouth: /u/example_swearer|2||/u/example_user|7||DAL - NHL|1|
+    """.trimIndent()
+
+// Fits once its text wraps: the long column wraps between words while the short ones stay as narrow as their
+// text. The last note is one word longer than a column may be, so it breaks inside the word.
+private val wrappingTableMarkdown =
+    """
+    | Team | GP | W | Notes |
+    |---|---|---|---|
+    | Sharks | 82 | 41 | A long note that has to wrap onto a few lines to fit beside the other columns |
+    | Senators | 82 | 39 | Pneumonoultramicroscopicsilicovolcanoconiosis |
     """.trimIndent()
 
 private const val MID_LINE_SPOILER_MARKDOWN =
@@ -187,6 +216,27 @@ class MarkdownTextScreenshotTest {
     fun table() {
         show(tableMarkdown)
         capture("markdown_table")
+    }
+
+    @Test
+    fun wideTable() {
+        show(wideTableMarkdown)
+        capture("markdown_table_wide")
+    }
+
+    @Test
+    fun wideTableScrolledToEnd() {
+        show(wideTableMarkdown)
+        composeRule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).performTouchInput {
+            repeat(3) { swipeLeft() }
+        }
+        capture("markdown_table_wide_scrolled_to_end")
+    }
+
+    @Test
+    fun wrappingTable() {
+        show(wrappingTableMarkdown)
+        capture("markdown_table_wrapping")
     }
 
     @Test
