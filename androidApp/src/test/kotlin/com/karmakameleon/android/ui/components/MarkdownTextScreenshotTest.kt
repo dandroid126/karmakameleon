@@ -82,6 +82,9 @@ private val wrappingTableMarkdown =
     | Senators | 82 | 39 | Pneumonoultramicroscopicsilicovolcanoconiosis |
     """.trimIndent()
 
+// Underscores inside words stay as typed, while ones around a word still make emphasis.
+private const val UNDERSCORES_MARKDOWN = "snake_case_names, foo__bar__baz and 1_000_000 stay as typed, but _foo_bar_ and __bold__ don't."
+
 private const val MID_LINE_SPOILER_MARKDOWN =
     "Before >!the secret part, long enough to wrap from one line onto the next,!< and after it the sentence goes on."
 
@@ -174,6 +177,12 @@ class MarkdownTextScreenshotTest {
     fun inlineStyles() {
         show(INLINE_MARKDOWN)
         capture("markdown_inline")
+    }
+
+    @Test
+    fun underscoresInsideWords() {
+        show(UNDERSCORES_MARKDOWN)
+        capture("markdown_underscores")
     }
 
     @Test
