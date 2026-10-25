@@ -480,6 +480,46 @@ class BlockParserTest {
         assertEquals(2, table.rows.size)
     }
 
+    @Test
+    fun table_escapedPipe_staysInCell() {
+        val table = assertIs<MarkdownBlock.Table>(parse("| A | B |\n|---|---|\n| a \\| pipe | ok |").single())
+        assertEquals(listOf(listOf("a | pipe", "ok")), table.rows)
+    }
+
+    @Test
+    fun table_escapedPipe_inHeaderAndWithoutOuterPipes() {
+        val table = assertIs<MarkdownBlock.Table>(parse("x \\| y | z\n--|--\n1 | 2").single())
+        assertEquals(listOf("x | y", "z"), table.header)
+    }
+
+    @Test
+    fun table_escapedPipe_inInlineCode() {
+        val table = assertIs<MarkdownBlock.Table>(parse("| A |\n|---|\n| `a \\| b` |").single())
+        assertEquals(listOf(listOf("`a | b`")), table.rows)
+    }
+
+    // In \\| the backslash is escaped, so the pipe separates cells; the inline parser turns \\ into one backslash.
+    @Test
+    fun table_escapedBackslashBeforePipe_separatesCells() {
+        assertEquals(listOf("C:\\\\", "D"), parseTableRow("| C:\\\\| D |"))
+        assertEquals(listOf("a\\\\|b"), parseTableRow("| a\\\\\\|b |"))
+        assertEquals(listOf("C:\\\\", "D"), parseTableRow("| C:\\\\ | D |"))
+    }
+
+    @Test
+    fun table_lineWithOnlyEscapedPipes_endsTable() {
+        val result = parse("| A |\n|---|\n| 1 |\nuse a \\| b")
+        assertEquals(listOf(listOf("1")), assertIs<MarkdownBlock.Table>(result[0]).rows)
+        assertIs<MarkdownBlock.Paragraph>(result[1])
+    }
+
+    @Test
+    fun table_lineWithOnlyEscapedPipes_doesNotStartTable() {
+        val result = parse("x \\| y\n---")
+        assertIs<MarkdownBlock.Paragraph>(result[0])
+        assertEquals(MarkdownBlock.HorizontalRule, result[1])
+    }
+
     // ==================== Blank lines ====================
 
     @Test
