@@ -48,6 +48,10 @@ private val blocksMarkdown =
 
 private const val INLINE_MARKDOWN = "**Bold**, *italic*, ***both***, ~~struck~~, `code` and a [link](https://example.com).\n\n>!A secret!<"
 
+// The titles are tooltips on Reddit, so only the links' text shows, without a stray parenthesis.
+private const val LINK_TITLES_MARKDOWN =
+    "A [link](https://example.com \"title\"), [another](https://example.com 'title') and [a third](https://example.com (title))."
+
 private val tableMarkdown =
     """
     | Feature | Since |
@@ -201,6 +205,12 @@ class MarkdownTextScreenshotTest {
     fun inlineStyles() {
         show(INLINE_MARKDOWN)
         capture("markdown_inline")
+    }
+
+    @Test
+    fun linkTitles() {
+        show(LINK_TITLES_MARKDOWN)
+        capture("markdown_link_titles")
     }
 
     @Test

@@ -273,6 +273,53 @@ class InlineParserTest {
     }
 
     @Test
+    fun link_titleInDoubleQuotes_isDropped() {
+        val link = assertIs<MarkdownInline.Link>(parse("[Reddit](https://www.reddit.com \"title\")").single())
+        assertEquals("https://www.reddit.com", link.url)
+        assertEquals(listOf(MarkdownInline.Text("Reddit")), link.text)
+    }
+
+    @Test
+    fun link_titleInSingleQuotes_isDropped() {
+        val link = assertIs<MarkdownInline.Link>(parse("[Reddit](https://www.reddit.com 'a \"quoted\" title')").single())
+        assertEquals("https://www.reddit.com", link.url)
+    }
+
+    @Test
+    fun link_titleInParentheses_isDroppedWithItsParenthesis() {
+        val result = parse("[Reddit](https://www.reddit.com (title)) after")
+        val link = assertIs<MarkdownInline.Link>(result[0])
+        assertEquals("https://www.reddit.com", link.url)
+        assertEquals(listOf(MarkdownInline.Text(" after")), result.drop(1))
+    }
+
+    @Test
+    fun link_spacesAroundUrlAndTitle() {
+        val link = assertIs<MarkdownInline.Link>(parse("[a](  https://example.com   \"title\"  )").single())
+        assertEquals("https://example.com", link.url)
+    }
+
+    // A quote in the URL itself isn't a title.
+    @Test
+    fun link_quoteInsideUrl_staysInUrl() {
+        val link = assertIs<MarkdownInline.Link>(parse("[a](https://example.com/it's)").single())
+        assertEquals("https://example.com/it's", link.url)
+    }
+
+    // Without a closing quote it isn't a title, so the link keeps everything up to the ), as before.
+    @Test
+    fun link_unclosedTitle_keepsTextInUrl() {
+        val link = assertIs<MarkdownInline.Link>(parse("[a](https://example.com \"title)").single())
+        assertEquals("https://example.com \"title", link.url)
+    }
+
+    @Test
+    fun link_spaceInUrl_keepsWholeUrl() {
+        val link = assertIs<MarkdownInline.Link>(parse("[a](two words)").single())
+        assertEquals("two words", link.url)
+    }
+
+    @Test
     fun link_refStyle() {
         val result = parse("[text][ref]")
         assertEquals(1, result.size)

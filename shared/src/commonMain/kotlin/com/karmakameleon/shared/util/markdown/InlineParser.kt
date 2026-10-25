@@ -103,13 +103,40 @@ private fun InlineCursor.matchInlineGif(): InlineMatch? {
     return InlineMatch(MarkdownInline.Image(inlineGifUrl(match)), match.range.last + 1)
 }
 
-// Link: [text](url)
+// Link: [text](url), or [text](url "title") with the title in double quotes, single quotes or parentheses. The title
+// is a tooltip on Reddit, so it's dropped.
 private fun InlineCursor.matchInlineLink(): InlineMatch? {
     val closeTextIdx = linkTextEnd(next = '(') ?: return null
-    val closeUrlIdx = text.indexOf(")", closeTextIdx + 2).takeIf { it != -1 } ?: return null
+    val (url, end) = linkDestination(closeTextIdx + 2) ?: return null
     val linkText = text.substring(i + 1, closeTextIdx)
-    val url = text.substring(closeTextIdx + 2, closeUrlIdx)
-    return InlineMatch(MarkdownInline.Link(parseInlineRecursive(linkText, activeDelimiters, superscriptDepth), url), closeUrlIdx + 1)
+    return InlineMatch(MarkdownInline.Link(parseInlineRecursive(linkText, activeDelimiters, superscriptDepth), url), end)
+}
+
+private val linkTitleClosers = mapOf('"' to '"', '\'' to '\'', '(' to ')')
+
+// The URL of a link destination starting at start, and the index just after the ) that closes it. A title after the
+// URL is skipped. When the text up to the ) isn't a URL and a title, all of it is the URL.
+private fun InlineCursor.linkDestination(start: Int): Pair<String, Int>? {
+    var idx = start
+    while (text.getOrNull(idx)?.isWhitespace() == true) idx++
+    val urlStart = idx
+    while (idx < text.length && !text[idx].isWhitespace() && text[idx] != ')') idx++
+    val urlEnd = idx
+    while (text.getOrNull(idx)?.isWhitespace() == true) idx++
+    // A title needs space before it, so a quote or ( in the URL itself isn't taken for one.
+    val closer = linkTitleClosers[text.getOrNull(idx)]
+    if (closer != null && idx > urlEnd) {
+        val titleEnd = text.indexOf(closer, idx + 1)
+        idx = if (titleEnd == -1) text.length else titleEnd + 1
+        while (text.getOrNull(idx)?.isWhitespace() == true) idx++
+    }
+    return if (text.getOrNull(idx) == ')') text.substring(urlStart, urlEnd) to idx + 1 else wholeLinkDestination(start)
+}
+
+// All the text from start to the next ) as the URL, and the index just after the ). Null without a ).
+private fun InlineCursor.wholeLinkDestination(start: Int): Pair<String, Int>? {
+    val closeIdx = text.indexOf(')', start)
+    return if (closeIdx == -1) null else text.substring(start, closeIdx) to closeIdx + 1
 }
 
 // Reference link: [text][ref]. References aren't resolved, so the text is used as the URL.
