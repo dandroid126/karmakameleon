@@ -38,6 +38,13 @@ updates:
           - "org.apache.commons:commons-lang3"
           - "org.apache.httpcomponents:httpclient"
           - "org.freemarker:freemarker"
+    ignore:
+      # Espresso and JUnit 4 are built against Hamcrest 1.3 and bring in hamcrest-library 1.3. Hamcrest 3 replaces
+      # their classes with incompatible ones, so tests through Espresso fail with NoSuchMethodError (#103). We only
+      # declare hamcrest-core because buildHealth wants the transitive dependency declared. Move to Hamcrest 3 when
+      # Espresso and JUnit do.
+      - dependency-name: "org.hamcrest:hamcrest-core"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
