@@ -18,8 +18,6 @@ private val listItemRegex = Regex("^( *)([-*+]|\\d{1,9}[.)])([ \t]+)(.*)")
 // A list can be indented by up to three spaces; with four, it's a code block.
 private const val MAX_LIST_INDENT = 3
 
-// A pipe that isn't escaped with a backslash.
-private val cellSeparatorRegex = Regex("""(?<!\\)\|""")
 private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
 
 fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
@@ -214,7 +212,7 @@ internal fun isTableStart(
     if (index + 1 >= lines.size) return false
     val currentLine = lines[index]
     val nextLine = lines[index + 1]
-    return currentLine.contains("|") && tableSeparatorRegex.matches(nextLine)
+    return hasCellSeparator(currentLine) && tableSeparatorRegex.matches(nextLine)
 }
 
 internal fun findTableEnd(
@@ -222,7 +220,7 @@ internal fun findTableEnd(
     startIndex: Int,
 ): Int {
     var i = startIndex + 2
-    while (i < lines.size && lines[i].contains("|")) {
+    while (i < lines.size && hasCellSeparator(lines[i])) {
         i++
     }
     return i
@@ -238,11 +236,35 @@ private fun parseTable(tableLines: List<String>): MarkdownBlock.Table {
     return MarkdownBlock.Table(header, rows)
 }
 
-// Leading and trailing pipes are optional, so an empty first or last cell isn't a cell. An escaped pipe, \|, is a |
-// in the cell, even inside inline code.
+// Leading and trailing pipes are optional, so an empty first or last cell isn't a cell.
 internal fun parseTableRow(line: String): List<String> {
-    val parts = line.split(cellSeparatorRegex).map { it.trim().replace("\\|", "|") }
+    val parts = splitCells(line).map { it.trim() }
     return parts.filterIndexed { i, cell -> cell.isNotEmpty() || (i != 0 && i != parts.lastIndex) }
+}
+
+// Whether the line has a pipe that isn't escaped, so it can be a table row.
+private fun hasCellSeparator(line: String): Boolean = splitCells(line).size > 1
+
+// The line split at pipes that aren't escaped. A backslash escapes the character after it, so \| is a | in the cell,
+// even inside inline code, while in \\| the backslash is escaped and the pipe separates cells.
+private fun splitCells(line: String): List<String> {
+    val cells = mutableListOf<String>()
+    val cell = StringBuilder()
+    var i = 0
+    while (i < line.length) {
+        val c = line[i]
+        val next = line.getOrNull(i + 1)
+        if (c == '\\' && next != null) {
+            // Only the backslash before a pipe is dropped; the inline parser handles the other escapes.
+            if (next != '|') cell.append(c)
+            cell.append(next)
+            i += 2
+        } else {
+            if (c == '|') cells += cell.toString().also { cell.clear() } else cell.append(c)
+            i++
+        }
+    }
+    return cells + cell.toString()
 }
 
 private fun isTableSeparator(line: String): Boolean = tableSeparatorRegex.matches(line)
