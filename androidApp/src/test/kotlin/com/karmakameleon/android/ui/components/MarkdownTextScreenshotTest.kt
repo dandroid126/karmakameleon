@@ -85,6 +85,22 @@ private val wrappingTableMarkdown =
 // Underscores inside words stay as typed, while ones around a word still make emphasis.
 private const val UNDERSCORES_MARKDOWN = "snake_case_names, foo__bar__baz and 1_000_000 stay as typed, but _foo_bar_ and __bold__ don't."
 
+// Line breaks and indents are kept, markdown inside isn't parsed, and a longer fence holds a shorter one.
+private val fencedCodeMarkdown =
+    """
+    Some code:
+    ```kotlin
+    fun main() {
+        println("**not bold**")
+    }
+    ```
+    ~~~~
+    ```
+    A fence inside tildes
+    ```
+    ~~~~
+    """.trimIndent()
+
 private const val MID_LINE_SPOILER_MARKDOWN =
     "Before >!the secret part, long enough to wrap from one line onto the next,!< and after it the sentence goes on."
 
@@ -126,8 +142,7 @@ private const val SUPERSCRIPT_TOWERS_MARKDOWN =
 
 private const val IMAGES_MARKDOWN = "A picture:\n\n![img](https://i.redd.it/cat.jpg)\n\nAnd a GIF: ![gif](giphy|abc123)"
 
-// Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Fenced code
-// is left out until #83 fixes it.
+// Only markdown that renders correctly today, so no screenshot records a bug as the expected look.
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MarkdownTextScreenshotTest {
@@ -183,6 +198,12 @@ class MarkdownTextScreenshotTest {
     fun underscoresInsideWords() {
         show(UNDERSCORES_MARKDOWN)
         capture("markdown_underscores")
+    }
+
+    @Test
+    fun fencedCode() {
+        show(fencedCodeMarkdown)
+        capture("markdown_code_fenced")
     }
 
     @Test

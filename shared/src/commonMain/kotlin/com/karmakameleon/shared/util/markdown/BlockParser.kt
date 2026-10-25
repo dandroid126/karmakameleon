@@ -5,6 +5,10 @@ import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 // A line indented by four spaces is a code block.
 private const val CODE_INDENT = "    "
 
+// A code fence: up to three spaces, then three or more backticks or tildes, then an info string such as a language,
+// which is ignored. A backtick fence's info string can't contain a backtick, so ```code``` on one line is inline code.
+private val codeFenceRegex = Regex("^( {0,3})(`{3,}(?=[^`]*$)|~{3,})(.*)")
+
 private val horizontalRuleRegex = Regex("^(-{3,}|\\*{3,}|_{3,})$")
 
 // A list item: its indent, its marker (-, * or +, or a number followed by . or )), the spaces after the marker and
@@ -41,7 +45,9 @@ private fun parseBlockAt(
     i: Int,
 ): ParsedBlock {
     val line = lines[i]
+    val codeFence = codeFenceRegex.matchEntire(line)
     return when {
+        codeFence != null -> parseFencedCodeAt(lines, i, codeFence)
         isTableStart(lines, i) -> parseTableAt(lines, i)
         line.startsWith("#") -> ParsedBlock(parseHeading(line), i + 1)
         isQuoteLine(line) -> parseQuoteAt(lines, i)
@@ -57,6 +63,8 @@ private fun isQuoteLine(line: String): Boolean = line.startsWith(">") && !line.s
 
 private fun isCodeLine(line: String): Boolean = line.startsWith(CODE_INDENT)
 
+private fun isCodeFence(line: String): Boolean = codeFenceRegex.matches(line)
+
 private fun isListItemLine(line: String): Boolean {
     val match = listItemRegex.matchEntire(line) ?: return false
     return match.groupValues[1].length <= MAX_LIST_INDENT
@@ -71,6 +79,7 @@ private fun isSpecialLine(
     return line.startsWith("#") ||
         isQuoteLine(line) ||
         isCodeLine(line) ||
+        isCodeFence(line) ||
         horizontalRuleRegex.matches(line) ||
         isListItemLine(line) ||
         isTableStart(lines, i)
@@ -83,6 +92,23 @@ private fun parseTableAt(
     val tableEnd = findTableEnd(lines, i)
     return ParsedBlock(parseTable(lines.subList(i, tableEnd)), tableEnd)
 }
+
+// The lines between an opening fence and a closing one, kept as typed. The closing fence uses the same character, at
+// least as many times, so a longer fence can hold a shorter one. Without one, the code runs to the end of the text.
+// Each line loses up to as many leading spaces as the opening fence is indented by.
+private fun parseFencedCodeAt(
+    lines: List<String>,
+    i: Int,
+    codeFence: MatchResult,
+): ParsedBlock {
+    val (indent, fence) = codeFence.destructured
+    val closingFence = Regex("^ {0,3}${fence[0]}{${fence.length},}[ \t]*$")
+    val end = (i + 1 until lines.size).firstOrNull { closingFence.matches(lines[it]) } ?: lines.size
+    val code = lines.subList(i + 1, end).joinToString("\n") { it.dropLeadingSpaces(indent.length) }
+    return ParsedBlock(MarkdownBlock.CodeBlock(code), minOf(end + 1, lines.size))
+}
+
+private fun String.dropLeadingSpaces(max: Int): String = drop(take(max).takeWhile { it == ' ' }.length)
 
 // Up to six #s set the level; any more are part of the text.
 private fun parseHeading(line: String): MarkdownBlock.Heading {
