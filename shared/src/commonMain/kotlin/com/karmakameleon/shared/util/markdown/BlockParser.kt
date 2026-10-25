@@ -99,8 +99,8 @@ private fun parseQuoteAt(
     return ParsedBlock(MarkdownBlock.BlockQuote(parseMarkdownBlocks(quoteText)), end)
 }
 
-// Consecutive list items. Like on Reddit, an item indented at least as far as the text of an item above it is nested
-// in that item, so a sublist needs two spaces under "- " and three under "1. ".
+// Consecutive list items, which blank lines can separate. Like on Reddit, an item indented at least as far as the
+// text of an item above it is nested in that item, so a sublist needs two spaces under "- " and three under "1. ".
 private fun parseListAt(
     lines: List<String>,
     i: Int,
@@ -109,9 +109,15 @@ private fun parseListAt(
     val textColumns = ArrayDeque<Int>()
     val items = mutableListOf<MarkdownBlock>()
     var end = i
-    while (end < lines.size) {
-        items += parseListItem(lines[end], textColumns) ?: break
-        end++
+    var next = i
+    var item = parseListItem(lines[i], textColumns)
+    while (item != null) {
+        if (next > end) items += MarkdownBlock.BlankLine
+        items += item
+        end = next + 1
+        // Blank lines between items keep the list going, so a sublist after one is still nested.
+        next = (end until lines.size).firstOrNull { lines[it].isNotBlank() } ?: lines.size
+        item = lines.getOrNull(next)?.let { parseListItem(it, textColumns) }
     }
     return ParsedBlock(items, end)
 }

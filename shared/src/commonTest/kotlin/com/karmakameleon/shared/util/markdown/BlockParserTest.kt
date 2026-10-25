@@ -186,6 +186,24 @@ class BlockParserTest {
         )
     }
 
+    // A blank line between an item and its sublist keeps the nesting, and stays as a blank line.
+    @Test
+    fun nestedList_afterBlankLine() {
+        val expected = listOf(bullet("a"), MarkdownBlock.BlankLine, bullet("b", 1), MarkdownBlock.BlankLine, bullet("c"))
+        assertEquals(expected, parse("- a\n\n  - b\n\n- c"))
+        assertEquals(expected, parse("- a\n\n    - b\n\n- c"))
+    }
+
+    // A line after the blank lines that isn't an item ends the list there, and trailing blank lines are dropped.
+    @Test
+    fun list_endsBeforeBlankLines() {
+        assertEquals(
+            listOf(bullet("a"), MarkdownBlock.BlankLine, MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("after")))),
+            parse("- a\n\nafter"),
+        )
+        assertEquals(listOf(bullet("a")), parse("- a\n\n"))
+    }
+
     @Test
     fun list_indentedUpToThreeSpaces() {
         assertEquals(listOf(bullet("a"), numbered(2, "b")), parse("   - a\n 2. b"))
