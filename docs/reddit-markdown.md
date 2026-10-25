@@ -114,9 +114,9 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Inline code | `` `code` `` | Code; no markdown inside | ✅ |
 | Inline code with more backticks | ``` ``a ` b`` ``` | Code "a ` b" | ❌ #83: splits into the wrong pieces |
 | Code block, indented 4 spaces | `␣␣␣␣code` | Code block | ✅ |
-| Fenced with backticks (new Reddit only) | ```` ``` ```` ⏎ code ⏎ ```` ``` ```` | Code block | ❌ #83: inline code on one line |
-| Fenced with tildes (new Reddit only) | `~~~` ⏎ code ⏎ `~~~` | Code block | ❌ #83: strikethrough |
-| Longer fence around a shorter one | ```` ```` ```` around ```` ``` ```` | Code block containing the inner fence | ❌ #83: breaks apart |
+| Fenced with backticks (new Reddit only) | ```` ``` ```` ⏎ code ⏎ ```` ``` ```` | Code block | ✅ |
+| Fenced with tildes (new Reddit only) | `~~~` ⏎ code ⏎ `~~~` | Code block | ✅ |
+| Longer fence around a shorter one | ```` ```` ```` around ```` ``` ```` | Code block containing the inner fence | ✅ |
 
 ## Tables
 

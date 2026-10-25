@@ -348,6 +348,72 @@ class BlockParserTest {
         assertEquals("code here", code.text)
     }
 
+    @Test
+    fun fencedCode_backticks_keepsLinesAndIndent() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("fenced code\n  indented line")), parse("```\nfenced code\n  indented line\n```"))
+    }
+
+    @Test
+    fun fencedCode_tildes() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("code")), parse("~~~\ncode\n~~~"))
+    }
+
+    @Test
+    fun fencedCode_noMarkdownInside() {
+        val result = parse("```\n# not a heading\n- not a list\n\n**not bold**\n```")
+        assertEquals(listOf(MarkdownBlock.CodeBlock("# not a heading\n- not a list\n\n**not bold**")), result)
+    }
+
+    @Test
+    fun fencedCode_infoStringIgnored() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("val x = 1")), parse("```kotlin\nval x = 1\n```"))
+    }
+
+    @Test
+    fun fencedCode_longerFenceHoldsShorterOne() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("```\ninner\n```")), parse("````\n```\ninner\n```\n````"))
+    }
+
+    @Test
+    fun fencedCode_otherCharacterDoesNotClose() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("~~~\nstill code")), parse("```\n~~~\nstill code\n```"))
+    }
+
+    @Test
+    fun fencedCode_withoutClose_runsToEnd() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("code\n\nmore")), parse("```\ncode\n\nmore"))
+    }
+
+    @Test
+    fun fencedCode_indentedFence_dropsThatIndentFromLines() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("a\n b\nc")), parse("  ```\n  a\n   b\nc\n  ```"))
+    }
+
+    @Test
+    fun fencedCode_interruptsParagraph_andTextFollows() {
+        val result = parse("before\n```\ncode\n```\nafter")
+        assertEquals(
+            listOf(
+                MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("before"))),
+                MarkdownBlock.CodeBlock("code"),
+                MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("after"))),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun fencedCode_inQuote() {
+        val quote = assertIs<MarkdownBlock.BlockQuote>(parse("> ```\n> a\n>   b\n> ```").single())
+        assertEquals(listOf(MarkdownBlock.CodeBlock("a\n  b")), quote.children)
+    }
+
+    // A backtick fence's info string can't hold a backtick, so this is inline code, which the inline parser handles.
+    @Test
+    fun backticksOnOneLine_areNotAFence() {
+        assertIs<MarkdownBlock.Paragraph>(parse("```code```").single())
+    }
+
     // ==================== Horizontal rule ====================
 
     @Test
