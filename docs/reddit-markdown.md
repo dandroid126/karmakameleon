@@ -93,9 +93,9 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Numbers with `.` | `1. item` | Numbered list | ✅ |
 | Numbers with `)` (new Reddit only) | `1) item` | Numbered list | ✅ shown as `1.` |
 | Numbering starts at 1 | `4) item` ⏎ `5) item` | ❔ The guide says lists must start with 1 | Keeps 4 and 5 |
-| Bulleted sublist, indented 2 or more spaces | `- a` ⏎ `␣␣- b` | Nested list | ❌ #83: merges into one paragraph |
-| Numbered sublist, indented 3 or more spaces | `1. a` ⏎ `␣␣␣1. b` | Nested list | ❌ #83: as above |
-| Sublist indented 4 spaces | `- a` ⏎ `␣␣␣␣- b` | Nested list | ❌ #83: becomes a code block |
+| Bulleted sublist, indented 2 or more spaces | `- a` ⏎ `␣␣- b` | Nested list | ✅ |
+| Numbered sublist, indented 3 or more spaces | `1. a` ⏎ `␣␣␣1. b` | Nested list | ✅ |
+| Sublist indented 4 spaces | `- a` ⏎ `␣␣␣␣- b` | Nested list | ✅ |
 | Paragraphs, quotes and other blocks inside a list item | Indented under the item | Part of the item | ❔ |
 
 ## Blockquotes

@@ -113,12 +113,20 @@ private fun RenderBlock(
         }
 
         is MarkdownBlock.BulletListItem -> {
-            RenderListItem(marker = "•", children = block.children, style = style, rendering = rendering, onTextClick = onTextClick)
+            RenderListItem(
+                marker = BULLETS[block.level % BULLETS.size],
+                level = block.level,
+                children = block.children,
+                style = style,
+                rendering = rendering,
+                onTextClick = onTextClick,
+            )
         }
 
         is MarkdownBlock.OrderedListItem -> {
             RenderListItem(
                 marker = "${block.number}.",
+                level = block.level,
                 children = block.children,
                 style = style,
                 rendering = rendering,
@@ -131,15 +139,7 @@ private fun RenderBlock(
         }
 
         is MarkdownBlock.CodeBlock -> {
-            Text(
-                text = block.text,
-                style = style.copy(fontFamily = FontFamily.Monospace),
-                modifier =
-                    Modifier
-                        .padding(top = 2.dp, bottom = 2.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(8.dp),
-            )
+            RenderCodeBlock(block, style)
         }
 
         is MarkdownBlock.Table -> {
@@ -161,6 +161,22 @@ private fun RenderBlock(
 }
 
 @Composable
+private fun RenderCodeBlock(
+    block: MarkdownBlock.CodeBlock,
+    style: TextStyle,
+) {
+    Text(
+        text = block.text,
+        style = style.copy(fontFamily = FontFamily.Monospace),
+        modifier =
+            Modifier
+                .padding(top = 2.dp, bottom = 2.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(8.dp),
+    )
+}
+
+@Composable
 @ReadOnlyComposable
 private fun headingStyle(level: Int): TextStyle =
     when (level) {
@@ -179,10 +195,12 @@ private fun Modifier.headingPadding(level: Int): Modifier = padding(vertical = H
 
 // The marker has a column of its own, so an item's wrapped lines line up with its text rather than its marker.
 // Markers are right-aligned in the width of "99." in the item's style, so the items of a list up to 99 line up with
-// each other at any font size.
+// each other at any font size. A nested item is indented by one marker column for each level, so its marker sits
+// under the text of the item it's nested in.
 @Composable
 private fun RenderListItem(
     marker: String,
+    level: Int,
     children: List<MarkdownInline>,
     style: TextStyle,
     rendering: InlineRendering,
@@ -199,7 +217,8 @@ private fun RenderListItem(
                     .toDp()
             }
         }
-    Row(modifier = Modifier.padding(start = 4.dp, top = 2.dp, bottom = 2.dp)) {
+    val indent = (markerWidth + LIST_MARKER_GAP) * level
+    Row(modifier = Modifier.padding(start = 4.dp + indent, top = 2.dp, bottom = 2.dp)) {
         ClickableMarkdownText(
             text = AnnotatedString(marker),
             style = style.copy(textAlign = TextAlign.End),
@@ -211,6 +230,9 @@ private fun RenderListItem(
 }
 
 private const val WIDEST_MARKER = "99."
+
+// Bullets for each level of nesting, like a browser's: a disc, a circle, then a square, and again from the disc.
+private val BULLETS = listOf("•", "◦", "▪")
 private val LIST_MARKER_GAP = 6.dp
 
 // A quote: a bar at its left edge, and its blocks in italics.

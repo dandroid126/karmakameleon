@@ -96,6 +96,22 @@ private val listsMarkdown =
     10. Tenth
     """.trimIndent()
 
+private val nestedListsMarkdown =
+    """
+    - Top
+        - Nested four spaces in
+        - A nested item long enough to wrap, so its second line should start under its own text
+            - Third level
+                - Fourth level
+    - Back to top
+
+    1. First
+       1. Nested three spaces in
+       2. Second nested
+          - A bullet in a numbered list
+    2. Second
+    """.trimIndent()
+
 private const val SUPERSCRIPT_MARKDOWN =
     "E = mc^2, ^(two words) up, ^and ^be ^reddited, a [^raised ^link](https://example.com), ^^double and 2^2^2.\n\nA tower past the deepest level: a^b^c^d^e^f^g^h^i^j\n\n## A heading^2"
 
@@ -107,8 +123,8 @@ private const val SUPERSCRIPT_TOWERS_MARKDOWN =
 
 private const val IMAGES_MARKDOWN = "A picture:\n\n![img](https://i.redd.it/cat.jpg)\n\nAnd a GIF: ![gif](giphy|abc123)"
 
-// Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Nested
-// lists and fenced code are left out until #83 fixes them.
+// Only markdown that renders correctly today, so no screenshot records a bug as the expected look. Fenced code
+// is left out until #83 fixes it.
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MarkdownTextScreenshotTest {
@@ -191,6 +207,12 @@ class MarkdownTextScreenshotTest {
     fun lists() {
         show(listsMarkdown)
         capture("markdown_lists")
+    }
+
+    @Test
+    fun nestedLists() {
+        show(nestedListsMarkdown)
+        capture("markdown_lists_nested")
     }
 
     // The markers' column grows with the font, so 9 and 10 still line up.
