@@ -17,6 +17,9 @@ private val listItemRegex = Regex("^( *)([-*+]|\\d{1,9}[.)])([ \t]+)(.*)")
 
 // A list can be indented by up to three spaces; with four, it's a code block.
 private const val MAX_LIST_INDENT = 3
+
+// A pipe that isn't escaped with a backslash.
+private val cellSeparatorRegex = Regex("""(?<!\\)\|""")
 private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
 
 fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
@@ -235,9 +238,10 @@ private fun parseTable(tableLines: List<String>): MarkdownBlock.Table {
     return MarkdownBlock.Table(header, rows)
 }
 
-// Leading and trailing pipes are optional, so an empty first or last cell isn't a cell.
+// Leading and trailing pipes are optional, so an empty first or last cell isn't a cell. An escaped pipe, \|, is a |
+// in the cell, even inside inline code.
 internal fun parseTableRow(line: String): List<String> {
-    val parts = line.split("|").map { it.trim() }
+    val parts = line.split(cellSeparatorRegex).map { it.trim().replace("\\|", "|") }
     return parts.filterIndexed { i, cell -> cell.isNotEmpty() || (i != 0 && i != parts.lastIndex) }
 }
 

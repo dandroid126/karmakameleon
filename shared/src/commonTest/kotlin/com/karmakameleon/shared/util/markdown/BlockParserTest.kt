@@ -480,6 +480,24 @@ class BlockParserTest {
         assertEquals(2, table.rows.size)
     }
 
+    @Test
+    fun table_escapedPipe_staysInCell() {
+        val table = assertIs<MarkdownBlock.Table>(parse("| A | B |\n|---|---|\n| a \\| pipe | ok |").single())
+        assertEquals(listOf(listOf("a | pipe", "ok")), table.rows)
+    }
+
+    @Test
+    fun table_escapedPipe_inHeaderAndWithoutOuterPipes() {
+        val table = assertIs<MarkdownBlock.Table>(parse("x \\| y | z\n--|--\n1 | 2").single())
+        assertEquals(listOf("x | y", "z"), table.header)
+    }
+
+    @Test
+    fun table_escapedPipe_inInlineCode() {
+        val table = assertIs<MarkdownBlock.Table>(parse("| A |\n|---|\n| `a \\| b` |").single())
+        assertEquals(listOf(listOf("`a | b`")), table.rows)
+    }
+
     // ==================== Blank lines ====================
 
     @Test

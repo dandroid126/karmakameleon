@@ -125,7 +125,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Table | `\| a \| b \|` ⏎ `\|---\|---\|` ⏎ `\| 1 \| 2 \|` | Table with a bold header row | ✅ |
 | Without outer pipes | `a \| b` ⏎ `--\|--` ⏎ `1 \| 2` | Table | ✅ |
 | Alignment | `:--` left, `--:` right, `:-:` centered | Aligned columns | ❌ #83: always left |
-| Escaped pipe in a cell | `\| a \\\| b \|` | "a \| b" in one cell | ❌ #83: splits the cell |
+| Escaped pipe in a cell | `\| a \\\| b \|` | "a \| b" in one cell | ✅ |
 | A row with fewer cells | `\| only \|` | Empty cells | ✅ |
 | Images in cells | `![img](…)` in a cell | ❔ | Not shown |
 

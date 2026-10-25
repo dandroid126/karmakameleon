@@ -57,6 +57,15 @@ private val tableMarkdown =
     | Short row |
     """.trimIndent()
 
+// Escaped pipes are text in their cells, inside inline code too.
+private val escapedPipeTableMarkdown =
+    """
+    | Operator | Means |
+    |---|---|
+    | `a \| b` | a or b |
+    | x \|\| y | x or y |
+    """.trimIndent()
+
 // Like a bot's comment in r/hockey, with empty spacer columns and made-up usernames. Too wide for a phone, so it
 // scrolls.
 private val wideTableMarkdown =
@@ -268,6 +277,12 @@ class MarkdownTextScreenshotTest {
     fun table() {
         show(tableMarkdown)
         capture("markdown_table")
+    }
+
+    @Test
+    fun tableWithEscapedPipes() {
+        show(escapedPipeTableMarkdown)
+        capture("markdown_table_escaped_pipes")
     }
 
     @Test
