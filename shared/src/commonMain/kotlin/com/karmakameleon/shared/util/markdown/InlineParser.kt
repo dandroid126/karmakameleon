@@ -210,6 +210,9 @@ private fun InlineCursor.matchRedditReference(): InlineMatch? {
 
 // A span between an opening and closing delimiter, with its content parsed recursively. Fails when the delimiter
 // is already open around this text, there's no closing delimiter, or the first one found isn't a valid close.
+// Like Reddit, underscores inside a word are text: a run of them can't open a span after a letter or digit, and the
+// close is the first one whose run isn't followed by a letter or digit, so snake_case_names stays as typed and
+// _foo_bar_ is italic.
 private inline fun InlineCursor.matchDelimited(
     open: String,
     close: String,
@@ -218,10 +221,29 @@ private inline fun InlineCursor.matchDelimited(
     node: (List<MarkdownInline>) -> MarkdownInline,
 ): InlineMatch? {
     if (!text.startsWith(open, i) || open in activeDelimiters) return null
-    val closeIdx = text.indexOf(close, i + open.length)
+    val underscores = open.all { it == '_' }
+    if (underscores && isWordCharBeforeUnderscores(i)) return null
+    var closeIdx = text.indexOf(close, i + open.length)
+    while (underscores && closeIdx != -1 && isWordCharAfterUnderscores(closeIdx + close.length)) {
+        closeIdx = text.indexOf(close, closeIdx + 1)
+    }
     if (closeIdx == -1 || !isValidClose(closeIdx)) return null
     val children = parseInlineRecursive(text.substring(i + open.length, closeIdx), activeDelimiters + open, childSuperscriptDepth)
     return InlineMatch(node(children), closeIdx + close.length)
+}
+
+// Whether a letter or digit comes before the underscores that end just before index.
+private fun InlineCursor.isWordCharBeforeUnderscores(index: Int): Boolean {
+    var before = index - 1
+    while (text.getOrNull(before) == '_') before--
+    return text.getOrNull(before)?.isLetterOrDigit() == true
+}
+
+// Whether a letter or digit comes after the underscores that start at index.
+private fun InlineCursor.isWordCharAfterUnderscores(index: Int): Boolean {
+    var after = index
+    while (text.getOrNull(after) == '_') after++
+    return text.getOrNull(after)?.isLetterOrDigit() == true
 }
 
 // The end of a subreddit or user name starting at start.

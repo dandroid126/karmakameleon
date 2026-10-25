@@ -86,6 +86,56 @@ class InlineParserTest {
         assertEquals(listOf(MarkdownInline.Text("bolditalic")), bi.children)
     }
 
+    // ==================== Underscores inside words ====================
+
+    @Test
+    fun underscoresInsideWord_stayText() {
+        assertEquals(listOf(MarkdownInline.Text("snake_case_names")), parse("snake_case_names"))
+        assertEquals(listOf(MarkdownInline.Text("foo__bar__baz")), parse("foo__bar__baz"))
+        assertEquals(listOf(MarkdownInline.Text("foo___bar___baz")), parse("foo___bar___baz"))
+        // The second underscore of a run inside a word is inside the word too.
+        assertEquals(listOf(MarkdownInline.Text("foo__bar__baz and _")), parse("foo__bar__baz and _"))
+    }
+
+    @Test
+    fun underscoreAfterDigit_staysText() {
+        assertEquals(listOf(MarkdownInline.Text("1_000_000")), parse("1_000_000"))
+    }
+
+    @Test
+    fun italicUnderscores_skipUnderscoreInsideWord() {
+        val italic = assertIs<MarkdownInline.Italic>(parse("_foo_bar_").single())
+        assertEquals(listOf(MarkdownInline.Text("foo_bar")), italic.children)
+    }
+
+    @Test
+    fun boldUnderscores_skipUnderscoresInsideWord() {
+        val bold = assertIs<MarkdownInline.Bold>(parse("__foo__bar__").single())
+        assertEquals(listOf(MarkdownInline.Text("foo__bar")), bold.children)
+    }
+
+    @Test
+    fun italicUnderscores_afterPunctuation() {
+        val result = parse("(_italic_), done")
+        assertEquals(MarkdownInline.Text("("), result[0])
+        assertIs<MarkdownInline.Italic>(result[1])
+        assertEquals(MarkdownInline.Text("), done"), result[2])
+    }
+
+    @Test
+    fun italicUnderscores_withoutCloseOutsideWord_staysText() {
+        assertEquals(listOf(MarkdownInline.Text("_snake_case")), parse("_snake_case"))
+    }
+
+    @Test
+    fun asterisksInsideWord_stillEmphasize() {
+        val result = parse("vul*pu*ta**te**")
+        assertEquals(MarkdownInline.Text("vul"), result[0])
+        assertIs<MarkdownInline.Italic>(result[1])
+        assertEquals(MarkdownInline.Text("ta"), result[2])
+        assertIs<MarkdownInline.Bold>(result[3])
+    }
+
     // ==================== Strikethrough ====================
 
     @Test

@@ -36,7 +36,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Bold italics | `***both***` or `___both___` | ***both*** | ✅ |
 | Strikethrough | `~~struck~~` | ~~struck~~ | ✅ |
 | Emphasis inside a word works with `*` | `vul*pu*ta**te**` | vul*pu*ta**te** | ✅ |
-| …but not with `_` | `snake_case_names` | snake_case_names | ❌ #83: "case" becomes italic |
+| …but not with `_` | `snake_case_names` | snake_case_names | ✅ |
 | Nested emphasis (new Reddit only) | `_this is __really__ important_` | *this is **really** important* | ❌ #83: the outer underscores stay as text |
 | Escapes | `\*not italic\*`, `\- not a list` | The characters as typed | ✅ |
 
