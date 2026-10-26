@@ -389,7 +389,9 @@ class InlineParserTest {
     @Test
     fun angleAutolink_httpUpgradedAndOtherSchemes() {
         assertEquals("https://example.com", assertIs<MarkdownInline.Link>(parse("<http://example.com>").single()).url)
-        assertEquals("mailto:me@example.com", assertIs<MarkdownInline.Link>(parse("<mailto:me@example.com>").single()).url)
+        val mailto = assertIs<MarkdownInline.Link>(parse("<mailto:me@example.com>").single())
+        assertEquals("mailto:me@example.com", mailto.url)
+        assertEquals(listOf(MarkdownInline.Text("me@example.com")), mailto.text)
         assertEquals("steam://run/440", assertIs<MarkdownInline.Link>(parse("<steam://run/440>").single()).url)
     }
 
@@ -406,6 +408,7 @@ class InlineParserTest {
     fun angleAutolink_notAUrl_staysText() {
         assertEquals(listOf(MarkdownInline.Text("<foo://bar>")), parse("<foo://bar>"))
         assertEquals(listOf(MarkdownInline.Text("<me@example>")), parse("<me@example>"))
+        assertEquals(listOf(MarkdownInline.Text("<foo://bar@x.com>")), parse("<foo://bar@x.com>"))
         assertEquals(
             listOf(
                 MarkdownInline.Text("<"),

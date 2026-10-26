@@ -10,8 +10,9 @@ private val whitespacePattern = Regex("""\s+""")
 // <url> with a scheme Reddit links, or <mailto:…>. Inside the brackets the URL can't have spaces or brackets.
 private val angleAutolinkPattern = Regex("""<((?:https?|ftp|git|steam|ircs?|news|mumble|ssh|ts3server)://[^\s<>]+|mailto:[^\s<>]+)>""")
 
-// <me@example.com>, which links to mailto:me@example.com.
-private val angleEmailAutolinkPattern = Regex("""<([^\s<>@]+@[^\s<>@]+\.[^\s<>@]+)>""")
+// <me@example.com>, which links to mailto:me@example.com. Like on Reddit, the address can only have letters, digits,
+// ".", "-", "_" and "+", so <foo://bar@x.com> isn't one.
+private val angleEmailAutolinkPattern = Regex("""<([\w.+-]+@[\w-]+(?:\.[\w-]+)+)>""")
 private val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[', ']', '(', ')', '#', '-', '.', '+', '|', '/')
 
 // references holds the URLs of reference links, by their normalized label (see normalizeLinkLabel).
@@ -256,18 +257,24 @@ private fun InlineCursor.matchBareUrl(): InlineMatch? {
     return InlineMatch(urlNode(text.substring(i, end)), end)
 }
 
-// Autolink: <https://example.com>, shown without the brackets.
+// Autolink: <https://example.com>, shown without the brackets. Like on Reddit, <mailto:…> shows only the address.
 private fun InlineCursor.matchAngleAutolink(): InlineMatch? {
     val match = angleAutolinkPattern.matchAt(text, i) ?: return null
-    return InlineMatch(urlNode(match.groupValues[1]), match.range.last + 1)
+    val url = match.groupValues[1]
+    val node = if (url.startsWith(MAILTO)) mailtoLink(url.removePrefix(MAILTO)) else urlNode(url)
+    return InlineMatch(node, match.range.last + 1)
 }
 
 // Email autolink: <me@example.com>, shown without the brackets.
 private fun InlineCursor.matchAngleEmailAutolink(): InlineMatch? {
     val match = angleEmailAutolinkPattern.matchAt(text, i) ?: return null
-    val address = match.groupValues[1]
-    return InlineMatch(MarkdownInline.Link(listOf(MarkdownInline.Text(address)), "mailto:$address"), match.range.last + 1)
+    return InlineMatch(mailtoLink(match.groupValues[1]), match.range.last + 1)
 }
+
+private const val MAILTO = "mailto:"
+
+// A link that shows an email address and opens it as mailto:.
+private fun mailtoLink(address: String): MarkdownInline = MarkdownInline.Link(listOf(MarkdownInline.Text(address)), MAILTO + address)
 
 // A URL typed in the text, as a link that shows it, opened as https when it's http. A preview.redd.it image is shown.
 private fun urlNode(url: String): MarkdownInline {
