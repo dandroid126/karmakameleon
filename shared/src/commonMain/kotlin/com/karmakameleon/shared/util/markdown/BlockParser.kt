@@ -12,6 +12,10 @@ private val codeFenceRegex = Regex("^( {0,3})(`{3,}(?=[^`]*$)|~{3,})(.*)")
 
 private val horizontalRuleRegex = Regex("^(-{3,}|\\*{3,}|_{3,})$")
 
+// A line of =s under a paragraph makes it a level 1 heading, and one of -s a level 2 heading. It can be indented by up
+// to three spaces, and any length counts.
+private val headingUnderlineRegex = Regex("^ {0,3}(=+|-+)[ \t]*$")
+
 // A list item: its indent, its marker (-, * or +, or a number followed by . or )), the spaces after the marker and
 // its text.
 private val listItemRegex = Regex("^( *)([-*+]|\\d{1,9}[.)])([ \t]+)(.*)")
@@ -51,7 +55,7 @@ private fun parseBlocks(
     val blocks = mutableListOf<MarkdownBlock>()
     var i = 0
     while (i < lines.size) {
-        val parsed = parseBlockAt(lines, i, references)
+        val parsed = parseBlockAt(lines, i, references, blocks.lastOrNull())
         blocks.addAll(parsed.blocks)
         i = parsed.nextIndex
     }
@@ -71,6 +75,7 @@ private fun parseBlockAt(
     lines: List<String>,
     i: Int,
     references: LinkReferences,
+    previous: MarkdownBlock?,
 ): ParsedBlock {
     val line = lines[i]
     val codeFence = codeFenceRegex.matchEntire(line)
@@ -82,7 +87,7 @@ private fun parseBlockAt(
         isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.removePrefix(CODE_INDENT)), i + 1)
         horizontalRuleRegex.matches(line) -> ParsedBlock(MarkdownBlock.HorizontalRule, i + 1)
         isListItemLine(line) -> parseListAt(lines, i, references)
-        line.isNotBlank() && !linkDefinitionRegex.matches(line) -> parseParagraphAt(lines, i, references)
+        line.isNotBlank() && !linkDefinitionRegex.matches(line) -> parseParagraphAt(lines, i, references, previous)
         else -> parseBlankLinesAt(lines, i, references)
     }
 }
@@ -203,14 +208,27 @@ private fun parseListItem(
 
 // Consecutive plain lines form one paragraph. A line ending in two spaces is a line break; otherwise lines are
 // joined with a space. As in CommonMark, a link definition can't interrupt a paragraph, so one on the paragraph's
-// next line is text.
+// next line is text. With a heading underline after it, the paragraph is a heading instead, even when the underline is
+// --- and would otherwise be a horizontal rule.
+//
+// Right after a list item or quote, with no blank line between, Reddit continues the item or quote with the paragraph
+// (a lazy continuation), and an underline can't continue one, so --- is a rule and === is text. Lazy continuation isn't
+// supported yet (#83), but the underline is still left out there, so it doesn't show a heading Reddit doesn't.
 private fun parseParagraphAt(
     lines: List<String>,
     i: Int,
     references: LinkReferences,
+    previous: MarkdownBlock?,
 ): ParsedBlock {
+    val canHaveUnderline =
+        previous !is MarkdownBlock.BulletListItem && previous !is MarkdownBlock.OrderedListItem && previous !is MarkdownBlock.BlockQuote
     var end = i + 1
-    while (end < lines.size && lines[end].isNotBlank() && !isSpecialLine(lines, end)) end++
+    var underline: MatchResult? = null
+    while (end < lines.size && lines[end].isNotBlank()) {
+        underline = if (canHaveUnderline) headingUnderlineRegex.matchEntire(lines[end]) else null
+        if (underline != null || isSpecialLine(lines, end)) break
+        end++
+    }
     val paragraphLines = lines.subList(i, end)
     val merged =
         buildString {
@@ -219,7 +237,10 @@ private fun parseParagraphAt(
                 append(l.trimEnd())
             }
         }
-    return ParsedBlock(MarkdownBlock.Paragraph(references.inlines(merged)), end)
+    val children = references.inlines(merged)
+    if (underline == null) return ParsedBlock(MarkdownBlock.Paragraph(children), end)
+    val level = if (underline.groupValues[1][0] == '=') 1 else 2
+    return ParsedBlock(MarkdownBlock.Heading(level, children), end + 1)
 }
 
 // Consecutive blank lines collapse into one BlankLine, and leading and trailing ones are dropped. Link definitions

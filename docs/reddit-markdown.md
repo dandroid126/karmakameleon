@@ -86,8 +86,8 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 |---|---|---|---|
 | Six levels | `# H1` to `###### H6` | Headings | ✅ (level 6 is underlined in the app; Reddit italicizes it) |
 | No space after `#` | `#hashtag` | ❔ Old Reddit makes a heading; new Reddit may not | Heading |
-| Underlined level 1 | `Heading` ⏎ `===` | Level 1 heading | ❌ #83: becomes the paragraph "Heading ===" |
-| Underlined level 2 | `Heading` ⏎ `---` | Level 2 heading | ❌ #83: a paragraph and a horizontal rule |
+| Underlined level 1 | `Heading` ⏎ `===` | Level 1 heading | ✅ (any number of `=`; the whole paragraph above becomes the heading) |
+| Underlined level 2 | `Heading` ⏎ `---` | Level 2 heading | ✅ (any number of `-`; with a blank line above, `---` is a horizontal rule) |
 
 ## Lists
 

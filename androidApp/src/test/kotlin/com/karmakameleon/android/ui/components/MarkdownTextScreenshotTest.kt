@@ -66,6 +66,16 @@ private val referenceLinksMarkdown =
     | Also in [a cell] |
     """.trimIndent()
 
+// Headings like "# Heading 1" and "## Heading 2", and --- under text isn't a horizontal rule.
+private val underlinedHeadingsMarkdown =
+    """
+    Heading 1
+    ===
+    Heading 2
+    ---
+    Text under them.
+    """.trimIndent()
+
 // Shown without the angle brackets.
 private const val AUTOLINKS_MARKDOWN = "Read <https://www.reddit.com/wiki/markdown> or mail <mod@example.com>."
 
@@ -240,6 +250,12 @@ class MarkdownTextScreenshotTest {
     fun angleAutolinks() {
         show(AUTOLINKS_MARKDOWN)
         capture("markdown_autolinks")
+    }
+
+    @Test
+    fun underlinedHeadings() {
+        show(underlinedHeadingsMarkdown)
+        capture("markdown_underlined_headings")
     }
 
     @Test
