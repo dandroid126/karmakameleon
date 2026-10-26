@@ -311,7 +311,9 @@ private fun InlineCursor.matchRedditReference(): InlineMatch? {
 }
 
 // A span between an opening and closing delimiter, with its content parsed recursively. Fails when the delimiter
-// is already open around this text, there's no closing delimiter, or the first one found isn't a valid close.
+// is already open around this text or there's no valid closing delimiter. A run of delimiter characters that isn't
+// a valid close is skipped whole, so _this is __really__ important_ is italic with bold inside, and a nested span
+// with the same character doesn't end the outer one.
 // Like Reddit, underscores inside a word are text: a run of them can't open a span after a letter or digit, and the
 // close is the first one whose run isn't followed by a letter or digit, so snake_case_names stays as typed and
 // _foo_bar_ is italic.
@@ -326,13 +328,21 @@ private inline fun InlineCursor.matchDelimited(
     val underscores = open.all { it == '_' }
     if (underscores && isWordCharBeforeUnderscores(i)) return null
     var closeIdx = text.indexOf(close, i + open.length)
-    while (underscores && closeIdx != -1 && isWordCharAfterUnderscores(closeIdx + close.length)) {
-        closeIdx = text.indexOf(close, closeIdx + 1)
+    while (closeIdx != -1) {
+        closeIdx =
+            when {
+                !isValidClose(closeIdx) -> text.indexOf(close, delimiterRunEnd(closeIdx))
+                underscores && isWordCharAfterUnderscores(closeIdx + close.length) -> text.indexOf(close, closeIdx + 1)
+                else -> break
+            }
     }
-    if (closeIdx == -1 || !isValidClose(closeIdx)) return null
+    if (closeIdx == -1) return null
     val children = parseNested(text.substring(i + open.length, closeIdx), activeDelimiters + open, childSuperscriptDepth)
     return InlineMatch(node(children), closeIdx + close.length)
 }
+
+// The index just after the run of the character at start.
+private fun InlineCursor.delimiterRunEnd(start: Int): Int = (start until text.length).firstOrNull { text[it] != text[start] } ?: text.length
 
 // Whether a letter or digit comes before the underscores that end just before index.
 private fun InlineCursor.isWordCharBeforeUnderscores(index: Int): Boolean {
