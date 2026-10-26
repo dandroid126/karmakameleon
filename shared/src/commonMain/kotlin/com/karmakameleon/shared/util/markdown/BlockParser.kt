@@ -395,15 +395,24 @@ private fun parseParagraphAt(
     return ParsedBlock(MarkdownBlock.Heading(level, children), end + 1)
 }
 
-// A line ending in two spaces is a line break; otherwise lines are joined with a space. Leading spaces of the lines
+// A line ending in two spaces or a backslash is a line break, and the backslash is dropped; otherwise lines are joined
+// with a space. A backslash on the last line stays, and so does an escaped one (\\). Leading spaces of the lines
 // after the first are dropped.
 private fun joinParagraphLines(lines: List<String>): String =
     buildString {
         lines.forEachIndexed { idx, line ->
-            if (idx > 0) append(if (lines[idx - 1].endsWith("  ")) "\n" else " ")
-            append(if (idx > 0) line.trim() else line.trimEnd())
+            val text = if (idx > 0) line.trim() else line.trimEnd()
+            when {
+                idx == lines.lastIndex -> append(text)
+                endsWithBreakingBackslash(line) -> append(text.dropLast(1)).append('\n')
+                line.endsWith("  ") -> append(text).append('\n')
+                else -> append(text).append(' ')
+            }
         }
     }
+
+// Whether the line ends in a backslash that isn't escaped by the one before it.
+private fun endsWithBreakingBackslash(line: String): Boolean = line.takeLastWhile { it == '\\' }.length % 2 == 1
 
 // Consecutive blank lines collapse into one BlankLine, and leading and trailing ones are dropped. Link definitions
 // among them aren't shown, so they're collected and count as blank, except that definitions alone, with no blank

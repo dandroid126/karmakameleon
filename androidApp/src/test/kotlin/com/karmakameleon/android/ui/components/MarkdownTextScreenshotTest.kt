@@ -93,6 +93,9 @@ private const val AUTOLINKS_MARKDOWN = "Read <https://www.reddit.com/wiki/markdo
 // Code between longer runs of backticks can contain shorter ones.
 private const val BACKTICK_CODE_MARKDOWN = "Code with ``this ` backtick`` and ``` `` two ```, then ``unclosed."
 
+// A backslash at the end of a line breaks it, like two spaces; an escaped one (\\) joins the lines.
+private const val BACKSLASH_BREAK_MARKDOWN = "Line one\\\nline two  \nline three\\\\\nstill line three"
+
 private val tableMarkdown =
     """
     | Feature | Since |
@@ -270,6 +273,12 @@ class MarkdownTextScreenshotTest {
     fun codeWithBackticks() {
         show(BACKTICK_CODE_MARKDOWN)
         capture("markdown_code_backticks")
+    }
+
+    @Test
+    fun backslashLineBreaks() {
+        show(BACKSLASH_BREAK_MARKDOWN)
+        capture("markdown_backslash_breaks")
     }
 
     @Test
