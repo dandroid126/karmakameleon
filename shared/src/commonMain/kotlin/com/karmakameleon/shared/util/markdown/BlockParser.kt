@@ -48,14 +48,16 @@ private class LinkReferences(
     fun inlines(text: String): List<MarkdownInline> = parseInlineMarkdown(text, known)
 }
 
+// lazyLines are the indexes of a quote's lines that continue its paragraph without a > (see parseQuoteAt).
 private fun parseBlocks(
     lines: List<String>,
     references: LinkReferences,
+    lazyLines: Set<Int> = emptySet(),
 ): List<MarkdownBlock> {
     val blocks = mutableListOf<MarkdownBlock>()
     var i = 0
     while (i < lines.size) {
-        val parsed = parseBlockAt(lines, i, references, blocks.lastOrNull())
+        val parsed = parseBlockAt(lines, i, references, lazyLines)
         blocks.addAll(parsed.blocks)
         i = parsed.nextIndex
     }
@@ -75,19 +77,19 @@ private fun parseBlockAt(
     lines: List<String>,
     i: Int,
     references: LinkReferences,
-    previous: MarkdownBlock?,
+    lazyLines: Set<Int>,
 ): ParsedBlock {
     val line = lines[i]
     val codeFence = codeFenceRegex.matchEntire(line)
     return when {
         codeFence != null -> parseFencedCodeAt(lines, i, codeFence)
-        isTableStart(lines, i) -> parseTableAt(lines, i, references)
+        isTableStart(lines, i, lazyLines) -> parseTableAt(lines, i, references)
         line.startsWith("#") -> ParsedBlock(parseHeading(line, references), i + 1)
         isQuoteLine(line) -> parseQuoteAt(lines, i, references)
         isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.removePrefix(CODE_INDENT)), i + 1)
         horizontalRuleRegex.matches(line) -> ParsedBlock(MarkdownBlock.HorizontalRule, i + 1)
         isListItemLine(line) -> parseListAt(lines, i, references)
-        line.isNotBlank() && !linkDefinitionRegex.matches(line) -> parseParagraphAt(lines, i, references, previous)
+        line.isNotBlank() && !linkDefinitionRegex.matches(line) -> parseParagraphAt(lines, i, references, lazyLines)
         else -> parseBlankLinesAt(lines, i, references)
     }
 }
@@ -107,6 +109,7 @@ private fun isListItemLine(line: String): Boolean {
 private fun isSpecialLine(
     lines: List<String>,
     i: Int,
+    lazyLines: Set<Int> = emptySet(),
 ): Boolean {
     val line = lines[i]
     return line.startsWith("#") ||
@@ -115,8 +118,14 @@ private fun isSpecialLine(
         isCodeFence(line) ||
         horizontalRuleRegex.matches(line) ||
         isListItemLine(line) ||
-        isTableStart(lines, i)
+        isTableStart(lines, i, lazyLines)
 }
+
+// Whether the line continues the paragraph above it rather than starting a block of its own.
+private fun isParagraphContinuation(
+    lines: List<String>,
+    i: Int,
+): Boolean = lines[i].isNotBlank() && !isSpecialLine(lines, i)
 
 private fun parseTableAt(
     lines: List<String>,
@@ -154,18 +163,57 @@ private fun parseHeading(
 }
 
 // Definitions inside a quote can be used anywhere, so the quote's text shares the references of the text around it.
+// A line without a > continues the quote when the quote ends with a paragraph that the line continues (a lazy
+// continuation), so "> one\ntwo" is one quoted paragraph. A lazy line is only paragraph text, so it can't underline a
+// heading or be a table's separator row.
 private fun parseQuoteAt(
     lines: List<String>,
     i: Int,
     references: LinkReferences,
 ): ParsedBlock {
-    val end = findBlockEnd(lines, i) { isQuoteLine(it) }
-    val quoteLines = lines.subList(i, end).map { it.removePrefix(">").removePrefix(" ") }
-    return ParsedBlock(MarkdownBlock.BlockQuote(parseBlocks(quoteLines, references)), end)
+    val quoteLines = mutableListOf<String>()
+    val lazyLines = mutableSetOf<Int>()
+    var end = i
+    while (end < lines.size) {
+        if (isQuoteLine(lines[end])) {
+            quoteLines += lines[end].removePrefix(">").removePrefix(" ")
+        } else if (continuesQuote(lines, end, quoteLines, lazyLines, references)) {
+            lazyLines += quoteLines.size
+            quoteLines += lines[end]
+        } else {
+            break
+        }
+        end++
+    }
+    return ParsedBlock(MarkdownBlock.BlockQuote(parseBlocks(quoteLines, references, lazyLines)), end)
 }
+
+// Whether lines[i] lazily continues a quote whose lines so far are quoteLines.
+private fun continuesQuote(
+    lines: List<String>,
+    i: Int,
+    quoteLines: List<String>,
+    lazyLines: Set<Int>,
+    references: LinkReferences,
+): Boolean {
+    // A spoiler's >! marks a spoiler of its own rather than quoted text, so it stays out of the quote, as before.
+    if (!isParagraphContinuation(lines, i) || lines[i].startsWith(">!") || quoteLines.last().isBlank()) return false
+    // A lazy line is paragraph text, so the paragraph is still open after one.
+    if (quoteLines.lastIndex in lazyLines) return true
+    // Parsed with references of their own, so the definitions in the quote are only collected once.
+    return endsWithParagraph(parseBlocks(quoteLines, LinkReferences(known = references.known), lazyLines))
+}
+
+private fun endsWithParagraph(blocks: List<MarkdownBlock>): Boolean =
+    when (val last = blocks.lastOrNull()) {
+        is MarkdownBlock.Paragraph, is MarkdownBlock.BulletListItem, is MarkdownBlock.OrderedListItem -> true
+        is MarkdownBlock.BlockQuote -> endsWithParagraph(last.children)
+        else -> false
+    }
 
 // Consecutive list items, which blank lines can separate. Like on Reddit, an item indented at least as far as the
 // text of an item above it is nested in that item, so a sublist needs two spaces under "- " and three under "1. ".
+// Lines after an item that aren't blocks of their own continue its text, indented or not.
 private fun parseListAt(
     lines: List<String>,
     i: Int,
@@ -176,72 +224,68 @@ private fun parseListAt(
     val items = mutableListOf<MarkdownBlock>()
     var end = i
     var next = i
-    var item = parseListItem(lines[i], textColumns, references)
-    while (item != null) {
+    while (next < lines.size) {
+        var itemEnd = next + 1
+        while (itemEnd < lines.size && isParagraphContinuation(lines, itemEnd) && !listItemRegex.matches(lines[itemEnd])) itemEnd++
+        val item = parseListItem(lines.subList(next, itemEnd), textColumns, references) ?: break
         if (next > end) items += MarkdownBlock.BlankLine
         items += item
-        end = next + 1
+        end = itemEnd
         // Blank lines between items keep the list going, so a sublist after one is still nested.
         next = (end until lines.size).firstOrNull { lines[it].isNotBlank() } ?: lines.size
-        item = lines.getOrNull(next)?.let { parseListItem(it, textColumns, references) }
     }
     return ParsedBlock(items, end)
 }
 
-// The list item on line, nested in the items whose text columns are given, which it updates. Null when the line
-// isn't an item of the list.
+// The list item on the first of itemLines, with the rest continuing its text, nested in the items whose text columns
+// are given, which it updates. Null when the line isn't an item of the list.
 private fun parseListItem(
-    line: String,
+    itemLines: List<String>,
     textColumns: ArrayDeque<Int>,
     references: LinkReferences,
 ): MarkdownBlock? {
-    val match = listItemRegex.matchEntire(line) ?: return null
+    val match = listItemRegex.matchEntire(itemLines.first()) ?: return null
     val (indent, marker, gap) = match.destructured
     while (textColumns.isNotEmpty() && indent.length < textColumns.last()) textColumns.removeLast()
     if (textColumns.isEmpty() && indent.length > MAX_LIST_INDENT) return null
     val level = textColumns.size
     textColumns.addLast(indent.length + marker.length + gap.length)
-    val children = references.inlines(match.groupValues.last())
+    val children = references.inlines(joinParagraphLines(listOf(match.groupValues.last()) + itemLines.drop(1)))
     val number = marker.dropLast(1).toIntOrNull()
     return if (number != null) MarkdownBlock.OrderedListItem(number, children, level) else MarkdownBlock.BulletListItem(children, level)
 }
 
-// Consecutive plain lines form one paragraph. A line ending in two spaces is a line break; otherwise lines are
-// joined with a space. As in CommonMark, a link definition can't interrupt a paragraph, so one on the paragraph's
-// next line is text. With a heading underline after it, the paragraph is a heading instead, even when the underline is
-// --- and would otherwise be a horizontal rule.
-//
-// Right after a list item or quote, with no blank line between, Reddit continues the item or quote with the paragraph
-// (a lazy continuation), and an underline can't continue one, so --- is a rule and === is text. Lazy continuation isn't
-// supported yet (#83), but the underline is still left out there, so it doesn't show a heading Reddit doesn't.
+// Consecutive plain lines form one paragraph. As in CommonMark, a link definition can't interrupt a paragraph, so one
+// on the paragraph's next line is text. With a heading underline after it, the paragraph is a heading instead, even
+// when the underline is --- and would otherwise be a horizontal rule.
 private fun parseParagraphAt(
     lines: List<String>,
     i: Int,
     references: LinkReferences,
-    previous: MarkdownBlock?,
+    lazyLines: Set<Int>,
 ): ParsedBlock {
-    val canHaveUnderline =
-        previous !is MarkdownBlock.BulletListItem && previous !is MarkdownBlock.OrderedListItem && previous !is MarkdownBlock.BlockQuote
     var end = i + 1
     var underline: MatchResult? = null
     while (end < lines.size && lines[end].isNotBlank()) {
-        underline = if (canHaveUnderline) headingUnderlineRegex.matchEntire(lines[end]) else null
-        if (underline != null || isSpecialLine(lines, end)) break
+        underline = if (end in lazyLines) null else headingUnderlineRegex.matchEntire(lines[end])
+        if (underline != null || isSpecialLine(lines, end, lazyLines)) break
         end++
     }
-    val paragraphLines = lines.subList(i, end)
-    val merged =
-        buildString {
-            paragraphLines.forEachIndexed { idx, l ->
-                if (idx > 0) append(if (paragraphLines[idx - 1].endsWith("  ")) "\n" else " ")
-                append(l.trimEnd())
-            }
-        }
-    val children = references.inlines(merged)
+    val children = references.inlines(joinParagraphLines(lines.subList(i, end)))
     if (underline == null) return ParsedBlock(MarkdownBlock.Paragraph(children), end)
     val level = if (underline.groupValues[1][0] == '=') 1 else 2
     return ParsedBlock(MarkdownBlock.Heading(level, children), end + 1)
 }
+
+// A line ending in two spaces is a line break; otherwise lines are joined with a space. Leading spaces of the lines
+// after the first are dropped.
+private fun joinParagraphLines(lines: List<String>): String =
+    buildString {
+        lines.forEachIndexed { idx, line ->
+            if (idx > 0) append(if (lines[idx - 1].endsWith("  ")) "\n" else " ")
+            append(if (idx > 0) line.trim() else line.trimEnd())
+        }
+    }
 
 // Consecutive blank lines collapse into one BlankLine, and leading and trailing ones are dropped. Link definitions
 // among them aren't shown, so they're collected and count as blank, except that definitions alone, with no blank
@@ -269,22 +313,13 @@ private fun parseBlankLinesAt(
     return ParsedBlock(if (hasBlankLine && i > 0 && end < lines.size) MarkdownBlock.BlankLine else null, end)
 }
 
-// The index of the first line after start that doesn't match.
-private inline fun findBlockEnd(
-    lines: List<String>,
-    start: Int,
-    matches: (String) -> Boolean,
-): Int {
-    var end = start + 1
-    while (end < lines.size && matches(lines[end])) end++
-    return end
-}
-
+// A lazy line can't be the separator row.
 internal fun isTableStart(
     lines: List<String>,
     index: Int,
+    lazyLines: Set<Int> = emptySet(),
 ): Boolean {
-    if (index + 1 >= lines.size) return false
+    if (index + 1 >= lines.size || index + 1 in lazyLines) return false
     val currentLine = lines[index]
     val nextLine = lines[index + 1]
     return hasCellSeparator(currentLine) && tableSeparatorRegex.matches(nextLine)

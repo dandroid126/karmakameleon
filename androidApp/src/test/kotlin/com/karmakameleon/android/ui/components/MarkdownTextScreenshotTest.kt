@@ -76,6 +76,17 @@ private val underlinedHeadingsMarkdown =
     Text under them.
     """.trimIndent()
 
+// The lines without a > or a marker continue the quote and the item.
+private val lazyContinuationMarkdown =
+    """
+    > A quote that goes on
+    without a marker.
+
+    - An item that goes on
+    on the next line.
+    - Another item
+    """.trimIndent()
+
 // Shown without the angle brackets.
 private const val AUTOLINKS_MARKDOWN = "Read <https://www.reddit.com/wiki/markdown> or mail <mod@example.com>."
 
@@ -256,6 +267,12 @@ class MarkdownTextScreenshotTest {
     fun underlinedHeadings() {
         show(underlinedHeadingsMarkdown)
         capture("markdown_underlined_headings")
+    }
+
+    @Test
+    fun lazyContinuation() {
+        show(lazyContinuationMarkdown)
+        capture("markdown_lazy_continuation")
     }
 
     @Test
