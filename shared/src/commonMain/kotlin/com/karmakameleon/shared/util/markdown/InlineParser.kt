@@ -201,13 +201,21 @@ private fun InlineCursor.matchBoldItalic(): InlineMatch? {
     return matchDelimited(delim, delim) { MarkdownInline.BoldItalic(it) }
 }
 
-// Bold: ** or __ (not *** or ___)
+// Bold: ** or __ (not *** or ___). It can also open with the first two characters of a *** run that isn't bold
+// italics, when the third opens an italic that closes inside the bold, so ***really* important** is bold with italic
+// inside.
 private fun InlineCursor.matchBold(): InlineMatch? {
     if ("**" in activeDelimiters || "__" in activeDelimiters) return null
-    val delim = listOf("**", "__").firstOrNull { text.startsWith(it, i) && !text.startsWith(it + it[0], i) } ?: return null
-    return matchDelimited(delim, delim, isValidClose = { !text.startsWith(delim + delim[0], it) }) {
-        MarkdownInline.Bold(it)
-    }
+    val delim = listOf("**", "__").firstOrNull { text.startsWith(it, i) } ?: return null
+    val runLength = delimiterRunEnd(i) - i
+    if (runLength > BOLD_ITALIC_RUN_LENGTH) return null
+    var startsWithItalic = false
+    val match =
+        matchDelimited(delim, delim, isValidClose = { !text.startsWith(delim + delim[0], it) }) {
+            startsWithItalic = it.firstOrNull() is MarkdownInline.Italic
+            MarkdownInline.Bold(it)
+        }
+    return match?.takeIf { runLength == delim.length || startsWithItalic }
 }
 
 private fun InlineCursor.matchStrikethrough(): InlineMatch? = matchDelimited("~~", "~~") { MarkdownInline.Strikethrough(it) }
@@ -236,14 +244,19 @@ private fun InlineCursor.matchWordSuperscript(): InlineMatch? {
 private const val BOLD_ITALIC_RUN_LENGTH = 3
 
 // Italic: _..._ or *...* (not __ or **). It can also open with the first character of a *** run that isn't bold
-// italics, so ***really** important* is italic with bold inside.
+// italics, when the other two open a bold that closes inside the italic, so ***really** important* is italic with
+// bold inside.
 private fun InlineCursor.matchItalic(): InlineMatch? {
     val delim = listOf("_", "*").firstOrNull { text.startsWith(it, i) } ?: return null
     val runLength = delimiterRunEnd(i) - i
     if (runLength != 1 && runLength != BOLD_ITALIC_RUN_LENGTH) return null
-    return matchDelimited(delim, delim, isValidClose = { !text.startsWith(delim + delim, it) }) {
-        MarkdownInline.Italic(it)
-    }
+    var startsWithBold = false
+    val match =
+        matchDelimited(delim, delim, isValidClose = { !text.startsWith(delim + delim, it) }) {
+            startsWithBold = it.firstOrNull() is MarkdownInline.Bold
+            MarkdownInline.Italic(it)
+        }
+    return match?.takeIf { runLength == 1 || startsWithBold }
 }
 
 // Inline code: `...`, or ``...`` and longer runs, which can contain shorter runs of backticks (no parsing inside). As
@@ -335,35 +348,59 @@ private inline fun InlineCursor.matchDelimited(
     return InlineMatch(node(children), closeIdx + close.length)
 }
 
-// The index of the delimiter that closes a span whose content starts at start, or -1. A run of delimiter characters
-// that isn't a valid close is skipped whole, so _this is __really__ important_ is italic with bold inside. When such
-// a run opens a nested span, a later run that's as long as it plus the close ends both spans, and the close is that
-// run's last characters, so in *this is **really***, *** ends the bold and the italic.
+// The index of the delimiter that closes a span whose content starts at start, or -1. For bold and italic, a run of
+// delimiter characters that isn't a valid close is skipped whole, so _this is __really__ important_ is italic with
+// bold inside. When such a run opens a nested span, a later run that's as long as it plus the close ends both spans,
+// and the close is that run's last characters, so in *this is **really***, *** ends the bold and the italic, and in
+// **this is *really***, the italic and the bold.
 private inline fun InlineCursor.findClose(
     start: Int,
     close: String,
     underscores: Boolean,
     isValidClose: (Int) -> Boolean,
 ): Int {
-    var idx = text.indexOf(close, start)
+    val emphasis = close[0] == '*' || close[0] == '_'
+    var idx = text.indexOf(close[0], start)
     // The length of the run that opened a nested span, while that span is open.
     var innerRun = 0
     var closeIdx = -1
     while (idx != -1 && closeIdx == -1) {
         val runEnd = delimiterRunEnd(idx)
         val runLength = runEnd - idx
-        val closesInner = innerRun > 0 && !text[idx - 1].isWhitespace()
+        val closesInner = closesNestedSpan(idx, innerRun)
         var next = runEnd
         when {
-            isValidClose(idx) -> if (canEndSpan(idx + close.length, underscores)) closeIdx = idx else next = idx + 1
-            closesInner && runLength == innerRun + close.length && canEndSpan(runEnd, underscores) -> closeIdx = runEnd - close.length
-            closesInner && runLength == innerRun -> innerRun = 0
-            opensNestedSpan(idx, runEnd) -> innerRun = runLength
+            text.startsWith(close, idx) && isValidClose(idx) -> {
+                if (canEndSpan(idx + close.length, underscores)) closeIdx = idx else next = idx + 1
+            }
+
+            !emphasis -> {
+                next = idx + 1
+            }
+
+            closesInner && runLength == innerRun + close.length && canEndSpan(runEnd, underscores) -> {
+                closeIdx = runEnd - close.length
+            }
+
+            closesInner && runLength == innerRun -> {
+                innerRun = 0
+            }
+
+            opensNestedSpan(idx, runEnd) -> {
+                innerRun = runLength
+            }
         }
-        idx = text.indexOf(close, next)
+        idx = text.indexOf(close[0], next)
     }
     return closeIdx
 }
+
+// Whether the run of delimiter characters at start can close a nested span opened by a run of innerRun characters:
+// one is open and the run doesn't follow whitespace.
+private fun InlineCursor.closesNestedSpan(
+    start: Int,
+    innerRun: Int,
+): Boolean = innerRun > 0 && !text[start - 1].isWhitespace()
 
 // Whether a span can end just before end. One in underscores can't end before a letter or digit.
 private fun InlineCursor.canEndSpan(

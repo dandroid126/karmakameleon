@@ -151,9 +151,11 @@ private val wrappingTableMarkdown =
 // Underscores inside words stay as typed, while ones around a word still make emphasis.
 private const val UNDERSCORES_MARKDOWN = "snake_case_names, foo__bar__baz and 1_000_000 stay as typed, but _foo_bar_ and __bold__ don't."
 
-// Italic throughout, with bold inside, made with the same character, also when they open or close together.
+// Italic with bold inside and bold with italic inside, made with the same character, also when they open or close
+// together.
 private const val NESTED_EMPHASIS_MARKDOWN =
-    "_this is __really__ important_ and *so is **this** one*, *and **this***, and ***this** too*"
+    "_this is __really__ important_ and *so is **this** one*, *and **this***, and ***this** too*.\n\n" +
+        "**Bold with *italic***, and ***italic* in bold**."
 
 // Line breaks and indents are kept, markdown inside isn't parsed, and a longer fence holds a shorter one.
 private val fencedCodeMarkdown =
