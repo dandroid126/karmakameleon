@@ -25,7 +25,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | A single line break joins the lines | `one`⏎`two` | "one two" | ✅ |
 | Two spaces at the end of a line make a hard break | `one␣␣`⏎`two` | Two lines | ✅ |
 | A backslash at the end of a line makes a hard break (new Reddit only) | `one\`⏎`two` | Two lines | ✅ |
-| A paragraph of only `&nbsp;` makes an empty line | `one` ⏎⏎ `&nbsp;` ⏎⏎ `two` | An empty paragraph between them | ❌ #83: `decodeHtml` turns `&nbsp;` into a normal space, so the line counts as blank and merges with the blank lines around it |
+| A paragraph of only `&nbsp;` makes an empty line | `one` ⏎⏎ `&nbsp;` ⏎⏎ `two` | An empty paragraph between them | ✅ |
 
 ## Emphasis
 
@@ -143,12 +143,12 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 
 ## HTML entities
 
-Reddit's API escapes `&`, `<` and `>` in bodies, so `RedditParser.decodeHtml` decodes the body before it's parsed. It replaces `&lt;`, `&gt;`, `&amp;`, `&quot;`, `&#39;` and `&nbsp;`, in that order, so an entity the writer typed reaches the parser as text, except `&quot;`, `&#39;` and `&nbsp;`: replacing `&amp;` first turns the API's `&amp;quot;` back into `&quot;`, which is then decoded too.
+The app asks the API for `raw_json=1`, so bodies arrive as typed, without HTML escaping. The inline parser decodes entities outside code, as new Reddit does: HTML 4's named entities and `&apos;`, and numeric ones. The decoded characters are text, not markdown. Entities in code stay as typed. Link URLs (inline, reference and bare) are decoded too, so `?a=1&amp;b=2` opens `?a=1&b=2`, and so is the feed's plain-text preview of a post.
 
 | Rule | Written | Reddit | App |
 |---|---|---|---|
-| Named entities | `&mdash;`, `&hearts;` | — ♥ (new Reddit decodes them) | ❌ #83: shown as typed, except `&quot;`, which is decoded |
-| Numeric entities | `&#x2005;`, `&#8203;` | The character | ❌ #83: shown as typed, except `&#39;`, which is decoded |
-| Non-breaking space | `&nbsp;` | A space that doesn't break | ❌ #83: decoded to a normal space, so lines can break there and a line of only `&nbsp;` counts as blank |
+| Named entities | `&mdash;`, `&hearts;` | — ♥ (new Reddit decodes them) | ✅ HTML 4's names; the rarer HTML5-only names stay as typed |
+| Numeric entities | `&#x2005;`, `&#8203;` | The character | ✅ |
+| Non-breaking space | `&nbsp;` | A space that doesn't break | ✅ |
 | `<`, `>` and `&` typed as text | `5 > 3 & 2 < 4` | As typed | ✅ |
-| `&lt;`, `&gt;` and `&amp;` typed as entities | `&lt;` | `<` | ❌ #83: shown as typed, since they're replaced before `&amp;` |
+| `&lt;`, `&gt;` and `&amp;` typed as entities | `&lt;` | `<` | ✅ |

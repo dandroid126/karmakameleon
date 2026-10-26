@@ -172,6 +172,17 @@ class RedditParserTest {
     }
 
     @Test
+    fun messageListing_decodesHtmlEntitiesInTheBodyOnce() {
+        val data = listing("message_listing.json")
+        val reply = data.children.first()
+        val changed = reply.copy(data = reply.data.jsonObject.with("body" to JsonPrimitive("a &amp;lt; b &mdash;&nbsp;c")))
+
+        val message = parser.messageListing(data.copy(children = listOf(changed))).items.single()
+
+        assertEquals("a &lt; b \u2014\u00A0c", message.body)
+    }
+
+    @Test
     fun messageListing_modMessageFields() {
         val message = parser.messageListing(listing("message_listing.json")).items.last()
 

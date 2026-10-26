@@ -177,6 +177,14 @@ class RedditParserCommentTest {
     }
 
     @Test
+    fun comment_keepsTheBodyAsTyped() {
+        val body = "Tom &amp; Jerry &lt;3 &nbsp; & <b>"
+        val data = thing("user_comments.json", "phx2cm1").with("body" to JsonPrimitive(body))
+
+        assertEquals(body, parser.comment(data).body)
+    }
+
+    @Test
     fun commentListing_readsAUsersComments() {
         val comments = parser.commentListing(listing("user_comments.json"))
 

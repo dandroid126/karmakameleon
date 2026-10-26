@@ -66,6 +66,7 @@ import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.VoteState
 import com.karmakameleon.shared.util.flairNeedsDarkText
+import com.karmakameleon.shared.util.markdown.decodeHtmlEntities
 import com.karmakameleon.shared.util.parseFlairColor
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -211,12 +212,12 @@ private fun PostCardPreview(
                 PostPreviewImage(post = post, lowResUrl = lowResUrl, highResUrl = highResUrl, nsfwPreviewMode = nsfwPreviewMode)
             }
 
-            // Self text preview (plain text, no clickable links)
+            // Self text preview (plain text, no clickable links), with entities like &amp; shown as their characters
             val selfText = post.selfText
             if (post.isTextPost && !selfText.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = selfText,
+                    text = remember(selfText) { decodeHtmlEntities(selfText) },
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 6,
                     overflow = TextOverflow.Ellipsis,
