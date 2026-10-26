@@ -68,7 +68,9 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Link | `[text](https://example.com)` | Link | ✅ |
 | Bare `http://` and `https://` URLs are linked | `see https://www.reddit.com` | Link | ✅ (`http` is opened as `https`) |
 | Other bare URLs aren't | `www.example.com` | Plain text | ✅ |
-| Autolink in angle brackets | `<https://www.reddit.com/>` | Link without the brackets | ❌ #83: keeps `<` as text and puts `>` into the URL |
+| Autolink in angle brackets | `<https://www.reddit.com/>` | Link without the brackets | ✅ for the schemes below |
+| Email autolink | `<me@example.com>` | Link to `mailto:me@example.com` without the brackets | ✅ |
+| Escaped autolink | `\<https://www.reddit.com/>` | ❔ | "<" and a bare URL that takes the `>` into the URL |
 | Link title in quotes | `[text](https://example.com "title")` or `'title'` | Link to the URL; the title is a tooltip | ✅ (the title isn't shown) |
 | Link title in parentheses (new Reddit only) | `[text](https://example.com (title))` | As above | ✅ (the title isn't shown) |
 | Reference link | `[text][id]` with `[id]: https://…` on its own line | Link; the definition isn't shown | ✅ (labels ignore case and spacing; the first definition of a label wins) |

@@ -373,6 +373,49 @@ class InlineParserTest {
         assertEquals("https://example.com", link.url)
     }
 
+    @Test
+    fun angleAutolink_dropsBrackets() {
+        val result = parse("see <https://www.reddit.com/> now")
+        assertEquals(
+            listOf(
+                MarkdownInline.Text("see "),
+                MarkdownInline.Link(listOf(MarkdownInline.Text("https://www.reddit.com/")), "https://www.reddit.com/"),
+                MarkdownInline.Text(" now"),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun angleAutolink_httpUpgradedAndOtherSchemes() {
+        assertEquals("https://example.com", assertIs<MarkdownInline.Link>(parse("<http://example.com>").single()).url)
+        assertEquals("mailto:me@example.com", assertIs<MarkdownInline.Link>(parse("<mailto:me@example.com>").single()).url)
+        assertEquals("steam://run/440", assertIs<MarkdownInline.Link>(parse("<steam://run/440>").single()).url)
+    }
+
+    @Test
+    fun angleAutolink_email_linksToMailto() {
+        val link = assertIs<MarkdownInline.Link>(parse("<me@example.com>").single())
+        assertEquals("mailto:me@example.com", link.url)
+        assertEquals(listOf(MarkdownInline.Text("me@example.com")), link.text)
+    }
+
+    // Other schemes, or a space inside the brackets, aren't autolinks, so the brackets stay as text. A URL after the
+    // bracket is still a bare URL.
+    @Test
+    fun angleAutolink_notAUrl_staysText() {
+        assertEquals(listOf(MarkdownInline.Text("<foo://bar>")), parse("<foo://bar>"))
+        assertEquals(listOf(MarkdownInline.Text("<me@example>")), parse("<me@example>"))
+        assertEquals(
+            listOf(
+                MarkdownInline.Text("<"),
+                MarkdownInline.Link(listOf(MarkdownInline.Text("https://a")), "https://a"),
+                MarkdownInline.Text(" b>"),
+            ),
+            parse("<https://a b>"),
+        )
+    }
+
     // ==================== Reddit references ====================
 
     @Test
