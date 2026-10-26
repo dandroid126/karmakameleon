@@ -124,6 +124,25 @@ class BlockParserTest {
     }
 
     @Test
+    fun underline_afterLazyLineOfListItemOrQuote_isNotHeading() {
+        // On Reddit, "more" continues the item or quote, and an underline can't, so --- is a rule and === is text.
+        val more = MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("more")))
+        val item = MarkdownBlock.BulletListItem(listOf(MarkdownInline.Text("item")), 0)
+        assertEquals(listOf(item, more, MarkdownBlock.HorizontalRule), parse("- item\nmore\n---"))
+        val numbered = MarkdownBlock.OrderedListItem(1, listOf(MarkdownInline.Text("item")), 0)
+        assertEquals(listOf(numbered, more, MarkdownBlock.HorizontalRule), parse("1. item\nmore\n---"))
+        val quote = MarkdownBlock.BlockQuote(listOf(MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("quote")))))
+        assertEquals(listOf(quote, more, MarkdownBlock.HorizontalRule), parse("> quote\nmore\n---"))
+        assertEquals(listOf(quote, MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("more ===")))), parse("> quote\nmore\n==="))
+    }
+
+    @Test
+    fun underlinedHeading_afterBlankLineBelowListItem() {
+        val result = parse("- item\n\nHeading\n---")
+        assertEquals(MarkdownBlock.Heading(2, listOf(MarkdownInline.Text("Heading"))), result.last())
+    }
+
+    @Test
     fun underlinedHeading_inQuote() {
         val result = parse("> Quoted\n> ===")
         assertEquals(
