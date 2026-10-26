@@ -90,6 +90,9 @@ private val lazyContinuationMarkdown =
 // Shown without the angle brackets.
 private const val AUTOLINKS_MARKDOWN = "Read <https://www.reddit.com/wiki/markdown> or mail <mod@example.com>."
 
+// Code between longer runs of backticks can contain shorter ones.
+private const val BACKTICK_CODE_MARKDOWN = "Code with ``this ` backtick`` and ``` `` two ```, then ``unclosed."
+
 private val tableMarkdown =
     """
     | Feature | Since |
@@ -261,6 +264,12 @@ class MarkdownTextScreenshotTest {
     fun angleAutolinks() {
         show(AUTOLINKS_MARKDOWN)
         capture("markdown_autolinks")
+    }
+
+    @Test
+    fun codeWithBackticks() {
+        show(BACKTICK_CODE_MARKDOWN)
+        capture("markdown_code_backticks")
     }
 
     @Test

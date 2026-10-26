@@ -242,13 +242,27 @@ private fun InlineCursor.matchItalic(): InlineMatch? {
     }
 }
 
-// Inline code: `...` (no parsing inside)
+// Inline code: `...`, or ``...`` and longer runs, which can contain shorter runs of backticks (no parsing inside). As
+// in CommonMark, the code ends at the next run of exactly as many backticks; without one, the opening run is text. A
+// line break inside is a space, and when the code starts and ends with a space, one is dropped from each end, so
+// `` `a` `` is the code "`a`".
 private fun InlineCursor.matchCode(): InlineMatch? {
-    if (text[i] != '`' || "`" in activeDelimiters) return null
-    val closeIdx = text.indexOf("`", i + 1)
-    if (closeIdx == -1) return null
-    return InlineMatch(MarkdownInline.Code(text.substring(i + 1, closeIdx)), closeIdx + 1)
+    if (text[i] != '`') return null
+    val openEnd = backtickRunEnd(i)
+    val runLength = openEnd - i
+    var closeIdx = text.indexOf('`', openEnd)
+    while (closeIdx != -1 && backtickRunEnd(closeIdx) - closeIdx != runLength) {
+        closeIdx = text.indexOf('`', backtickRunEnd(closeIdx))
+    }
+    if (closeIdx == -1) return InlineMatch(MarkdownInline.Text(text.substring(i, openEnd)), openEnd)
+    var code = text.substring(openEnd, closeIdx).replace('\n', ' ')
+    if (code.startsWith(' ') && code.endsWith(' ') && code.isNotBlank()) {
+        code = code.substring(1, code.length - 1)
+    }
+    return InlineMatch(MarkdownInline.Code(code), closeIdx + runLength)
 }
+
+private fun InlineCursor.backtickRunEnd(start: Int): Int = (start until text.length).firstOrNull { text[it] != '`' } ?: text.length
 
 // Bare URL: https:// or http://, shown as an image when it's a preview.redd.it image
 private fun InlineCursor.matchBareUrl(): InlineMatch? {
