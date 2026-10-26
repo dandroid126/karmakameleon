@@ -520,6 +520,80 @@ class BlockParserTest {
         assertEquals(MarkdownBlock.HorizontalRule, result[1])
     }
 
+    // ==================== Link definitions ====================
+
+    @Test
+    fun linkDefinition_laterInText_isUsedAndHidden() {
+        val md =
+            "Read [cursus lectus][cl] or [Lorem ipsum].\n\n" +
+                "[cl]: https://example.com/cl\n[lorem ipsum]: <https://example.com/li> \"Title\""
+        val paragraph = assertIs<MarkdownBlock.Paragraph>(parse(md).single())
+        val links = paragraph.children.filterIsInstance<MarkdownInline.Link>()
+        assertEquals(listOf("https://example.com/cl", "https://example.com/li"), links.map { it.url })
+    }
+
+    @Test
+    fun linkDefinition_firstOneWins() {
+        val paragraph = assertIs<MarkdownBlock.Paragraph>(parse("[a]\n\n[a]: https://one.example\n[A]: https://two.example").first())
+        assertEquals("https://one.example", assertIs<MarkdownInline.Link>(paragraph.children.single()).url)
+    }
+
+    // Definitions between paragraphs leave one blank line, at the end they're dropped, and alone they add no space.
+    @Test
+    fun linkDefinition_countsAsBlankLine() {
+        val result = parse("one\n\n[a]: https://example.com\n\ntwo\n[a]: https://example.com")
+        assertEquals(3, result.size)
+        assertIs<MarkdownBlock.BlankLine>(result[1])
+        assertEquals(listOf<MarkdownBlock>(MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("one")))), parse("one\n\n[a]: /x\n"))
+        assertEquals(listOf<MarkdownBlock>(MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("two")))), parse("[a]: /x\ntwo"))
+    }
+
+    // Like trailing ones, definitions at the start leave no gap, in a quote too.
+    @Test
+    fun linkDefinition_atStart_addsNoBlankLine() {
+        val two = MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("two")))
+        assertEquals(listOf<MarkdownBlock>(two), parse("[a]: /x\n\ntwo"))
+        assertEquals(listOf<MarkdownBlock>(MarkdownBlock.BlockQuote(listOf(two))), parse("> [a]: /x\n>\n> two"))
+    }
+
+    @Test
+    fun linkDefinition_underParagraphLine_isText() {
+        val paragraph = assertIs<MarkdownBlock.Paragraph>(parse("text\n[a]: https://example.com").single())
+        assertEquals("text [a]: ", (paragraph.children[0] as MarkdownInline.Text).text)
+    }
+
+    @Test
+    fun linkDefinition_inQuote_isUsedOutside() {
+        val result = parse("[a]\n\n> [a]: https://example.com")
+        val paragraph = assertIs<MarkdownBlock.Paragraph>(result[0])
+        assertEquals("https://example.com", assertIs<MarkdownInline.Link>(paragraph.children.single()).url)
+        assertEquals(MarkdownBlock.BlockQuote(emptyList()), result[2])
+    }
+
+    @Test
+    fun linkDefinition_usedInListsHeadingsAndTables() {
+        val result = parse("# [a]\n- [a]\n\n| [a] |\n|---|\n\n[a]: https://example.com")
+        val headingLink = assertIs<MarkdownBlock.Heading>(result[0]).children.single()
+        val itemLink = assertIs<MarkdownBlock.BulletListItem>(result[1]).children.single()
+        assertEquals("https://example.com", assertIs<MarkdownInline.Link>(headingLink).url)
+        assertEquals("https://example.com", assertIs<MarkdownInline.Link>(itemLink).url)
+        assertEquals(mapOf("a" to "https://example.com"), assertIs<MarkdownBlock.Table>(result[3]).references)
+    }
+
+    @Test
+    fun linkDefinition_inCode_isCode() {
+        val result = parse("    [a]: https://example.com\n```\n[b]: https://example.com\n```\n[a] [b]")
+        assertEquals(MarkdownBlock.CodeBlock("[a]: https://example.com"), result[0])
+        assertEquals(MarkdownBlock.CodeBlock("[b]: https://example.com"), result[1])
+        assertEquals(MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("[a] [b]"))), result[2])
+    }
+
+    @Test
+    fun linkDefinition_withTextAfterUrl_isText() {
+        val paragraph = assertIs<MarkdownBlock.Paragraph>(parse("[a]: https://example.com more words").single())
+        assertEquals(MarkdownInline.Text("[a]: "), paragraph.children[0])
+    }
+
     // ==================== Blank lines ====================
 
     @Test

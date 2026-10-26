@@ -319,12 +319,42 @@ class InlineParserTest {
         assertEquals("two words", link.url)
     }
 
+    private val references = mapOf("ref" to "https://example.com/ref", "cursus lectus" to "https://example.com/cl")
+
     @Test
-    fun link_refStyle() {
-        val result = parse("[text][ref]")
-        assertEquals(1, result.size)
-        val link = assertIs<MarkdownInline.Link>(result[0])
-        assertEquals("text", link.url)
+    fun referenceLink_full_usesDefinitionUrl() {
+        val link = assertIs<MarkdownInline.Link>(parseInlineMarkdown("[*text*][ref]", references).single())
+        assertEquals("https://example.com/ref", link.url)
+        assertEquals(listOf(MarkdownInline.Italic(listOf(MarkdownInline.Text("text")))), link.text)
+    }
+
+    @Test
+    fun referenceLink_collapsedAndShortcut_useTextAsLabel() {
+        val result = parseInlineMarkdown("[Cursus  Lectus][] and [ref].", references)
+        assertEquals(
+            listOf(
+                MarkdownInline.Link(listOf(MarkdownInline.Text("Cursus  Lectus")), "https://example.com/cl"),
+                MarkdownInline.Text(" and "),
+                MarkdownInline.Link(listOf(MarkdownInline.Text("ref")), "https://example.com/ref"),
+                MarkdownInline.Text("."),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun referenceLink_labelIgnoresCaseAndSpacing() {
+        val link = assertIs<MarkdownInline.Link>(parseInlineMarkdown("[text][ CURSUS\tlectus ]", references).single())
+        assertEquals("https://example.com/cl", link.url)
+    }
+
+    @Test
+    fun referenceLink_undefined_staysText() {
+        assertEquals(
+            listOf(MarkdownInline.Text("[text][missing] and [missing]")),
+            parseInlineMarkdown("[text][missing] and [missing]", references),
+        )
+        assertEquals(listOf(MarkdownInline.Text("[text][ref]")), parse("[text][ref]"))
     }
 
     @Test

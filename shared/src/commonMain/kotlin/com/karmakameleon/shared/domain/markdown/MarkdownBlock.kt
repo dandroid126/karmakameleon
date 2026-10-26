@@ -30,9 +30,12 @@ sealed interface MarkdownBlock {
         val text: String,
     ) : MarkdownBlock
 
+    // The cells are parsed when they're shown, with references holding the URLs that reference links in them use,
+    // by normalized label.
     data class Table(
         val header: List<String>,
         val rows: List<List<String>>,
+        val references: Map<String, String> = emptyMap(),
     ) : MarkdownBlock
 
     object HorizontalRule : MarkdownBlock

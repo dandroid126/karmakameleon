@@ -64,6 +64,19 @@ class MarkdownTextTest {
     }
 
     @Test
+    fun referenceLinkOpensItsDefinitionUrl() {
+        show(
+            "Ask in [the subreddit][kt].\n\n| Docs |\n|---|\n| [The docs] |\n\n" +
+                "[kt]: https://www.reddit.com/r/Kotlin\n[the docs]: https://kotlinlang.org/docs",
+        )
+
+        composeRule.onNodeWithText("Ask in", substring = true).performFirstLinkClick(linkTo("reddit.com"))
+        composeRule.onNodeWithText("The docs").performFirstLinkClick(linkTo("kotlinlang"))
+
+        assertEquals(listOf("subreddit Kotlin", "external https://kotlinlang.org/docs"), navigation.calls)
+    }
+
+    @Test
     fun linkWithTitleOpensOnlyItsUrl() {
         show("Ask in [r/Kotlin](https://www.reddit.com/r/Kotlin \"The subreddit\") or [the docs](https://kotlinlang.org/docs (Docs)).")
 

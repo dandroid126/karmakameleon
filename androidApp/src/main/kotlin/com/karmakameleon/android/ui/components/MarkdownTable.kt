@@ -79,6 +79,7 @@ internal fun RenderTable(
                 repeat(columnCount) { colIndex ->
                     TableCell(
                         text = row.getOrElse(colIndex) { "" },
+                        references = table.references,
                         isHeader = rowIndex == 0,
                         style = style,
                         rendering = cellRendering,
@@ -123,12 +124,13 @@ private const val SCROLLING_COLUMN_MAX_SHARE = 0.6f
 @Composable
 private fun TableCell(
     text: String,
+    references: Map<String, String>,
     isHeader: Boolean,
     style: TextStyle,
     rendering: InlineRendering,
     onTextClick: (() -> Unit)?,
 ) {
-    val inlines = remember(text) { parseInlineMarkdown(text) }
+    val inlines = remember(text, references) { parseInlineMarkdown(text, references) }
     Box(
         modifier =
             Modifier
