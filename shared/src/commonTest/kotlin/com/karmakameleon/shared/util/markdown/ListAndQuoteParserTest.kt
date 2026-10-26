@@ -6,6 +6,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.measureTime
 
 // The block parser's tests for lists and quotes, apart from BlockParserTest so that neither class is too large.
 class ListAndQuoteParserTest {
@@ -135,10 +137,8 @@ class ListAndQuoteParserTest {
     @Test
     fun list_indentedFourSpacesIsCode() {
         assertEquals(listOf(MarkdownBlock.CodeBlock("- a")), parse("    - a"))
-        assertEquals(
-            listOf(MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("text"))), MarkdownBlock.CodeBlock("- a")),
-            parse("text\n    - a"),
-        )
+        // After text, it isn't a list item either, and indented code can't interrupt a paragraph, so it's text.
+        assertEquals(listOf(paragraph("text - a")), parse("text\n    - a"))
     }
 
     @Test
@@ -226,6 +226,34 @@ class ListAndQuoteParserTest {
             parse("> one\n- two"),
         )
         assertEquals(listOf(quote(paragraph("one")), MarkdownBlock.Heading(1, listOf(MarkdownInline.Text("two")))), parse("> one\n# two"))
+    }
+
+    @Test
+    fun indentedLine_continuesItemQuoteAndParagraph() {
+        // Indented code can't interrupt a paragraph, so a line indented four spaces continues it.
+        assertEquals(listOf(MarkdownBlock.BulletListItem(listOf(MarkdownInline.Text("one two")), 0)), parse("- one\n    two"))
+        assertEquals(listOf(quote(paragraph("one two"))), parse("> one\n    two"))
+        assertEquals(listOf(paragraph("one two")), parse("one\n    two"))
+    }
+
+    @Test
+    fun blockQuote_longDeeplyNestedLazyLines_parseQuickly() {
+        // Checking each lazy line used to parse the quote again, at every level of nesting, which took far too long.
+        val markdown = List(1_000) { "> > > > x\ny" }.joinToString("\n")
+        val time = measureTime { parse(markdown) }
+        assertTrue(time < 5.seconds, "took $time")
+        var block = assertIs<MarkdownBlock.BlockQuote>(parse(markdown).single())
+        repeat(3) { block = assertIs<MarkdownBlock.BlockQuote>(block.children.single()) }
+        val text = assertIs<MarkdownInline.Text>(assertIs<MarkdownBlock.Paragraph>(block.children.single()).children.single())
+        assertEquals(List(1_000) { "x y" }.joinToString(" "), text.text)
+    }
+
+    @Test
+    fun blockQuote_linkDefinition() {
+        // After a blank line, a definition isn't shown and ends the paragraph, so the next line isn't lazy.
+        assertEquals(listOf(quote(paragraph("text")), paragraph("more")), parse("> text\n>\n> [x]: /wiki\nmore"))
+        // Right after text, it can't interrupt the paragraph, so it's text that the next line continues.
+        assertEquals(listOf(quote(paragraph("text [x]: /wiki more"))), parse("> text\n> [x]: /wiki\nmore"))
     }
 
     @Test

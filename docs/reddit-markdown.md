@@ -119,6 +119,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Inline code | `` `code` `` | Code; no markdown inside | ✅ |
 | Inline code with more backticks | ``` ``a ` b`` ``` | Code "a ` b" | ❌ #83: splits into the wrong pieces |
 | Code block, indented 4 spaces | `␣␣␣␣code` | Code block | ✅ |
+| Indented line right after text | `text` ⏎ `␣␣␣␣more` | Continues the paragraph, list item or quote | ✅ |
 | Fenced with backticks (new Reddit only) | ```` ``` ```` ⏎ code ⏎ ```` ``` ```` | Code block | ✅ |
 | Fenced with tildes (new Reddit only) | `~~~` ⏎ code ⏎ `~~~` | Code block | ✅ |
 | Longer fence around a shorter one | ```` ```` ```` around ```` ``` ```` | Code block containing the inner fence | ✅ |

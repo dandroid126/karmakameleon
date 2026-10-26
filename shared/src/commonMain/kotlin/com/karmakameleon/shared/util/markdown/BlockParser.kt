@@ -105,7 +105,8 @@ private fun isListItemLine(line: String): Boolean {
     return match.groupValues[1].length <= MAX_LIST_INDENT
 }
 
-// Lines that start a block of their own, so they end a paragraph.
+// Lines that start a block of their own, so they end a paragraph. As in CommonMark, an indented line doesn't: indented
+// code can't interrupt a paragraph, so the line continues it.
 private fun isSpecialLine(
     lines: List<String>,
     i: Int,
@@ -114,7 +115,6 @@ private fun isSpecialLine(
     val line = lines[i]
     return line.startsWith("#") ||
         isQuoteLine(line) ||
-        isCodeLine(line) ||
         isCodeFence(line) ||
         horizontalRuleRegex.matches(line) ||
         isListItemLine(line) ||
@@ -145,11 +145,13 @@ private fun parseFencedCodeAt(
     codeFence: MatchResult,
 ): ParsedBlock {
     val (indent, fence) = codeFence.destructured
-    val closingFence = Regex("^ {0,3}${fence[0]}{${fence.length},}[ \t]*$")
+    val closingFence = closingFenceRegex(fence)
     val end = (i + 1 until lines.size).firstOrNull { closingFence.matches(lines[it]) } ?: lines.size
     val code = lines.subList(i + 1, end).joinToString("\n") { it.dropLeadingSpaces(indent.length) }
     return ParsedBlock(MarkdownBlock.CodeBlock(code), minOf(end + 1, lines.size))
 }
+
+private fun closingFenceRegex(fence: String) = Regex("^ {0,3}${fence[0]}{${fence.length},}[ \t]*$")
 
 private fun String.dropLeadingSpaces(max: Int): String = drop(take(max).takeWhile { it == ' ' }.length)
 
@@ -173,13 +175,17 @@ private fun parseQuoteAt(
 ): ParsedBlock {
     val quoteLines = mutableListOf<String>()
     val lazyLines = mutableSetOf<Int>()
+    val tail = QuoteTail()
     var end = i
     while (end < lines.size) {
-        if (isQuoteLine(lines[end])) {
-            quoteLines += lines[end].removePrefix(">").removePrefix(" ")
-        } else if (continuesQuote(lines, end, quoteLines, lazyLines, references)) {
+        val line = lines[end]
+        if (isQuoteLine(line)) {
+            quoteLines += line.removePrefix(">").removePrefix(" ")
+            tail.add(quoteLines.last(), lazy = false)
+        } else if (tail.endsWithParagraph && isLazyLine(lines, end)) {
             lazyLines += quoteLines.size
-            quoteLines += lines[end]
+            quoteLines += line
+            tail.add(line, lazy = true)
         } else {
             break
         }
@@ -188,28 +194,140 @@ private fun parseQuoteAt(
     return ParsedBlock(MarkdownBlock.BlockQuote(parseBlocks(quoteLines, references, lazyLines)), end)
 }
 
-// Whether lines[i] lazily continues a quote whose lines so far are quoteLines.
-private fun continuesQuote(
+// Whether lines[i] can continue a paragraph in a quote above it. A spoiler's >! marks a spoiler of its own rather
+// than quoted text, so a spoiler line stays out of the quote.
+private fun isLazyLine(
     lines: List<String>,
     i: Int,
-    quoteLines: List<String>,
-    lazyLines: Set<Int>,
-    references: LinkReferences,
-): Boolean {
-    // A spoiler's >! marks a spoiler of its own rather than quoted text, so it stays out of the quote, as before.
-    if (!isParagraphContinuation(lines, i) || lines[i].startsWith(">!") || quoteLines.last().isBlank()) return false
-    // A lazy line is paragraph text, so the paragraph is still open after one.
-    if (quoteLines.lastIndex in lazyLines) return true
-    // Parsed with references of their own, so the definitions in the quote are only collected once.
-    return endsWithParagraph(parseBlocks(quoteLines, LinkReferences(known = references.known), lazyLines))
-}
+): Boolean = isParagraphContinuation(lines, i) && !lines[i].startsWith(">!")
 
-private fun endsWithParagraph(blocks: List<MarkdownBlock>): Boolean =
-    when (val last = blocks.lastOrNull()) {
-        is MarkdownBlock.Paragraph, is MarkdownBlock.BulletListItem, is MarkdownBlock.OrderedListItem -> true
-        is MarkdownBlock.BlockQuote -> endsWithParagraph(last.children)
-        else -> false
+// How a quote's lines so far end, updated as each line is added, so that whether a lazy line continues the quote is
+// known without parsing the quote again for each one. Parsing again would take time growing with the quote's length
+// for each level of nested quotes. It follows the rules of parseBlocks, and QuoteTailTest checks that it agrees.
+internal class QuoteTail {
+    // Whether the lines end with a paragraph or list item that a lazy line would continue.
+    var endsWithParagraph = false
+        private set
+    private var inListItem = false
+
+    // While a list can go on, where the text of its latest top-level item starts, as in parseListAt.
+    private var listTextColumn: Int? = null
+    private var closingFence: Regex? = null
+    private var inTable = false
+
+    // The line before, when it could be a table's header row, or "". Like in parseBlocks, it can be when it starts a
+    // block or continues a paragraph, even a nested quote's, but not when it's a later line of a nested quote with a >,
+    // or a later item of a list.
+    private var previousLine = ""
+    private var lineCanBeHeader = true
+
+    // The quote the lines end with, if they do.
+    private var nested: QuoteTail? = null
+
+    // A lazy line is one that only continues the paragraph the lines end with.
+    fun add(
+        line: String,
+        lazy: Boolean,
+    ) {
+        lineCanBeHeader = true
+        endsWithParagraph = next(line, lazy)
+        // A table's rows can't be the header of another one.
+        previousLine = if (inTable || !lineCanBeHeader) "" else line
     }
+
+    private fun next(
+        line: String,
+        lazy: Boolean,
+    ): Boolean {
+        // After a nested quote, the paragraph that was open was the nested quote's.
+        val paragraphOpen = endsWithParagraph && nested == null
+        return continuesFenceOrTable(line, lazy)
+            ?: continuesNestedQuote(line)
+            ?: (lazy || continuesBlock(line, paragraphOpen) ?: continuesList(line) ?: startsBlock(line))
+    }
+
+    // False when the line is in fenced code or a table, including a table's separator row, and null otherwise.
+    private fun continuesFenceOrTable(
+        line: String,
+        lazy: Boolean,
+    ): Boolean? {
+        val fence = closingFence
+        if (fence != null) {
+            if (fence.matches(line)) closingFence = null
+        } else {
+            // As in isTableStart, a table starts at its separator row, after the header row.
+            inTable = (inTable && hasCellSeparator(line)) ||
+                (!lazy && hasCellSeparator(previousLine) && tableSeparatorRegex.matches(line))
+            if (inTable) {
+                nested = null
+                listTextColumn = null
+            }
+        }
+        return if (fence != null || inTable) false else null
+    }
+
+    // For a line of a nested quote, with a > or lazy, whether the nested quote then ends with a paragraph, and null
+    // for other lines, which end the nested quote.
+    private fun continuesNestedQuote(line: String): Boolean? {
+        val nestedTail = nested
+        val quoted = isQuoteLine(line)
+        nested =
+            when {
+                quoted -> nestedTail ?: QuoteTail()
+                nestedTail != null && nestedTail.endsWithParagraph && isLazyLine(listOf(line), 0) -> nestedTail
+                else -> null
+            }
+        if (quoted) {
+            listTextColumn = null
+            lineCanBeHeader = nestedTail == null
+        }
+        val tail = nested ?: return null
+        tail.add(if (quoted) line.removePrefix(">").removePrefix(" ") else line, lazy = !quoted)
+        return tail.endsWithParagraph
+    }
+
+    // Whether the line leaves the paragraph or list item the lines end with open, or null when it doesn't continue it.
+    private fun continuesBlock(
+        line: String,
+        paragraphOpen: Boolean,
+    ): Boolean? =
+        when {
+            !paragraphOpen -> null
+            inListItem -> if (isParagraphContinuation(listOf(line), 0) && !listItemRegex.matches(line)) true else null
+            headingUnderlineRegex.matches(line) -> false
+            isParagraphContinuation(listOf(line), 0) -> true
+            else -> null
+        }
+
+    // True when the line is an item of the list the lines end with, or of a new list, and null otherwise.
+    private fun continuesList(line: String): Boolean? {
+        val match = listItemRegex.matchEntire(line)
+        val listGoesOn = listTextColumn != null && line.isBlank()
+        if (match == null) return if (listGoesOn) false else null
+        val (indent, marker, gap) = match.destructured
+        val column = listTextColumn
+        when {
+            column != null && indent.length >= column -> Unit
+            indent.length <= MAX_LIST_INDENT -> listTextColumn = indent.length + marker.length + gap.length
+            else -> return null
+        }
+        lineCanBeHeader = column == null
+        inListItem = true
+        return true
+    }
+
+    private fun startsBlock(line: String): Boolean {
+        val codeFence = codeFenceRegex.matchEntire(line)
+        if (codeFence != null) closingFence = closingFenceRegex(codeFence.groupValues[2])
+        inListItem = false
+        listTextColumn = null
+        return when {
+            codeFence != null || line.isBlank() || line.startsWith("#") || isCodeLine(line) -> false
+            horizontalRuleRegex.matches(line) || linkDefinitionRegex.matches(line) -> false
+            else -> true
+        }
+    }
+}
 
 // Consecutive list items, which blank lines can separate. Like on Reddit, an item indented at least as far as the
 // text of an item above it is nested in that item, so a sublist needs two spaces under "- " and three under "1. ".
