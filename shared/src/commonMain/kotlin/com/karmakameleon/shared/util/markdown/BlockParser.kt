@@ -1,6 +1,7 @@
 package com.karmakameleon.shared.util.markdown
 
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
+import com.karmakameleon.shared.domain.markdown.MarkdownInline
 
 // A line indented by four spaces is a code block.
 private const val CODE_INDENT = "    "
@@ -20,12 +21,37 @@ private const val MAX_LIST_INDENT = 3
 
 private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
 
+// A reference link's definition: up to three spaces, [label]: and the URL, optionally in angle brackets, then
+// optionally a title in double quotes, single quotes or parentheses, which is a tooltip on Reddit, so it's dropped.
+private val linkDefinitionRegex =
+    Regex("""^ {0,3}\[([^\]]*\S[^\]]*)]:[ \t]*<?([^\s<>]+)>?(?:[ \t]+(?:"[^"]*"|'[^']*'|\([^)]*\)))?[ \t]*$""")
+
 fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
     val lines = markdown.split("\n")
+    val firstPass = LinkReferences(known = emptyMap())
+    val blocks = parseBlocks(lines, firstPass)
+    // A link can use a definition further down, so with any definitions the text is parsed again to link them.
+    return if (firstPass.found.isEmpty()) blocks else parseBlocks(lines, LinkReferences(known = firstPass.found))
+}
+
+// The URLs of reference links, by normalized label: the known ones, which links use, and the ones found while
+// parsing. Like on Reddit, the first definition of a label wins.
+private class LinkReferences(
+    val known: Map<String, String>,
+) {
+    val found = mutableMapOf<String, String>()
+
+    fun inlines(text: String): List<MarkdownInline> = parseInlineMarkdown(text, known)
+}
+
+private fun parseBlocks(
+    lines: List<String>,
+    references: LinkReferences,
+): List<MarkdownBlock> {
     val blocks = mutableListOf<MarkdownBlock>()
     var i = 0
     while (i < lines.size) {
-        val parsed = parseBlockAt(lines, i)
+        val parsed = parseBlockAt(lines, i, references)
         blocks.addAll(parsed.blocks)
         i = parsed.nextIndex
     }
@@ -44,19 +70,20 @@ private class ParsedBlock(
 private fun parseBlockAt(
     lines: List<String>,
     i: Int,
+    references: LinkReferences,
 ): ParsedBlock {
     val line = lines[i]
     val codeFence = codeFenceRegex.matchEntire(line)
     return when {
         codeFence != null -> parseFencedCodeAt(lines, i, codeFence)
-        isTableStart(lines, i) -> parseTableAt(lines, i)
-        line.startsWith("#") -> ParsedBlock(parseHeading(line), i + 1)
-        isQuoteLine(line) -> parseQuoteAt(lines, i)
+        isTableStart(lines, i) -> parseTableAt(lines, i, references)
+        line.startsWith("#") -> ParsedBlock(parseHeading(line, references), i + 1)
+        isQuoteLine(line) -> parseQuoteAt(lines, i, references)
         isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.removePrefix(CODE_INDENT)), i + 1)
         horizontalRuleRegex.matches(line) -> ParsedBlock(MarkdownBlock.HorizontalRule, i + 1)
-        isListItemLine(line) -> parseListAt(lines, i)
-        line.isNotBlank() -> parseParagraphAt(lines, i)
-        else -> parseBlankLinesAt(lines, i)
+        isListItemLine(line) -> parseListAt(lines, i, references)
+        line.isNotBlank() && !linkDefinitionRegex.matches(line) -> parseParagraphAt(lines, i, references)
+        else -> parseBlankLinesAt(lines, i, references)
     }
 }
 
@@ -89,9 +116,10 @@ private fun isSpecialLine(
 private fun parseTableAt(
     lines: List<String>,
     i: Int,
+    references: LinkReferences,
 ): ParsedBlock {
     val tableEnd = findTableEnd(lines, i)
-    return ParsedBlock(parseTable(lines.subList(i, tableEnd)), tableEnd)
+    return ParsedBlock(parseTable(lines.subList(i, tableEnd), references.known), tableEnd)
 }
 
 // The lines between an opening fence and a closing one, kept as typed. The closing fence uses the same character, at
@@ -112,18 +140,23 @@ private fun parseFencedCodeAt(
 private fun String.dropLeadingSpaces(max: Int): String = drop(take(max).takeWhile { it == ' ' }.length)
 
 // Up to six #s set the level; any more are part of the text.
-private fun parseHeading(line: String): MarkdownBlock.Heading {
+private fun parseHeading(
+    line: String,
+    references: LinkReferences,
+): MarkdownBlock.Heading {
     val level = line.takeWhile { it == '#' }.length.coerceAtMost(6)
-    return MarkdownBlock.Heading(level, parseInlineMarkdown(line.drop(level).trimStart()))
+    return MarkdownBlock.Heading(level, references.inlines(line.drop(level).trimStart()))
 }
 
+// Definitions inside a quote can be used anywhere, so the quote's text shares the references of the text around it.
 private fun parseQuoteAt(
     lines: List<String>,
     i: Int,
+    references: LinkReferences,
 ): ParsedBlock {
     val end = findBlockEnd(lines, i) { isQuoteLine(it) }
-    val quoteText = lines.subList(i, end).joinToString("\n") { it.removePrefix(">").removePrefix(" ") }
-    return ParsedBlock(MarkdownBlock.BlockQuote(parseMarkdownBlocks(quoteText)), end)
+    val quoteLines = lines.subList(i, end).map { it.removePrefix(">").removePrefix(" ") }
+    return ParsedBlock(MarkdownBlock.BlockQuote(parseBlocks(quoteLines, references)), end)
 }
 
 // Consecutive list items, which blank lines can separate. Like on Reddit, an item indented at least as far as the
@@ -131,20 +164,21 @@ private fun parseQuoteAt(
 private fun parseListAt(
     lines: List<String>,
     i: Int,
+    references: LinkReferences,
 ): ParsedBlock {
     // Where the text starts in each item that the next item could be nested in, outermost first.
     val textColumns = ArrayDeque<Int>()
     val items = mutableListOf<MarkdownBlock>()
     var end = i
     var next = i
-    var item = parseListItem(lines[i], textColumns)
+    var item = parseListItem(lines[i], textColumns, references)
     while (item != null) {
         if (next > end) items += MarkdownBlock.BlankLine
         items += item
         end = next + 1
         // Blank lines between items keep the list going, so a sublist after one is still nested.
         next = (end until lines.size).firstOrNull { lines[it].isNotBlank() } ?: lines.size
-        item = lines.getOrNull(next)?.let { parseListItem(it, textColumns) }
+        item = lines.getOrNull(next)?.let { parseListItem(it, textColumns, references) }
     }
     return ParsedBlock(items, end)
 }
@@ -154,6 +188,7 @@ private fun parseListAt(
 private fun parseListItem(
     line: String,
     textColumns: ArrayDeque<Int>,
+    references: LinkReferences,
 ): MarkdownBlock? {
     val match = listItemRegex.matchEntire(line) ?: return null
     val (indent, marker, gap) = match.destructured
@@ -161,16 +196,18 @@ private fun parseListItem(
     if (textColumns.isEmpty() && indent.length > MAX_LIST_INDENT) return null
     val level = textColumns.size
     textColumns.addLast(indent.length + marker.length + gap.length)
-    val children = parseInlineMarkdown(match.groupValues.last())
+    val children = references.inlines(match.groupValues.last())
     val number = marker.dropLast(1).toIntOrNull()
     return if (number != null) MarkdownBlock.OrderedListItem(number, children, level) else MarkdownBlock.BulletListItem(children, level)
 }
 
 // Consecutive plain lines form one paragraph. A line ending in two spaces is a line break; otherwise lines are
-// joined with a space.
+// joined with a space. As in CommonMark, a link definition can't interrupt a paragraph, so one on the paragraph's
+// next line is text.
 private fun parseParagraphAt(
     lines: List<String>,
     i: Int,
+    references: LinkReferences,
 ): ParsedBlock {
     var end = i + 1
     while (end < lines.size && lines[end].isNotBlank() && !isSpecialLine(lines, end)) end++
@@ -182,16 +219,33 @@ private fun parseParagraphAt(
                 append(l.trimEnd())
             }
         }
-    return ParsedBlock(MarkdownBlock.Paragraph(parseInlineMarkdown(merged)), end)
+    return ParsedBlock(MarkdownBlock.Paragraph(references.inlines(merged)), end)
 }
 
-// Consecutive blank lines collapse into one BlankLine, and trailing ones are dropped.
+// Consecutive blank lines collapse into one BlankLine, and trailing ones are dropped. Link definitions among them
+// aren't shown, so they're collected and count as blank, except that definitions alone, with no blank line, add no
+// space.
 private fun parseBlankLinesAt(
     lines: List<String>,
     i: Int,
+    references: LinkReferences,
 ): ParsedBlock {
-    val end = findBlockEnd(lines, i) { it.isBlank() }
-    return ParsedBlock(if (end < lines.size) MarkdownBlock.BlankLine else null, end)
+    var hasBlankLine = false
+    var end = i
+    while (end < lines.size) {
+        val line = lines[end]
+        val definition = linkDefinitionRegex.matchEntire(line)
+        if (definition != null) {
+            val (label, url) = definition.destructured
+            references.found.getOrPut(normalizeLinkLabel(label)) { url }
+        } else if (line.isBlank()) {
+            hasBlankLine = true
+        } else {
+            break
+        }
+        end++
+    }
+    return ParsedBlock(if (hasBlankLine && end < lines.size) MarkdownBlock.BlankLine else null, end)
 }
 
 // The index of the first line after start that doesn't match.
@@ -226,14 +280,17 @@ internal fun findTableEnd(
     return i
 }
 
-private fun parseTable(tableLines: List<String>): MarkdownBlock.Table {
+private fun parseTable(
+    tableLines: List<String>,
+    references: Map<String, String>,
+): MarkdownBlock.Table {
     val header = parseTableRow(tableLines[0])
     val rows =
         tableLines
             .drop(2)
             .filter { !isTableSeparator(it) }
             .map { parseTableRow(it) }
-    return MarkdownBlock.Table(header, rows)
+    return MarkdownBlock.Table(header, rows, references)
 }
 
 // Leading and trailing pipes are optional, so an empty first or last cell isn't a cell.

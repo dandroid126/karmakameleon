@@ -52,6 +52,20 @@ private const val INLINE_MARKDOWN = "**Bold**, *italic*, ***both***, ~~struck~~,
 private const val LINK_TITLES_MARKDOWN =
     "A [link](https://example.com \"title\"), [another](https://example.com 'title') and [a third](https://example.com (title))."
 
+// The definitions aren't shown, and leave one paragraph break between the text around them.
+private val referenceLinksMarkdown =
+    """
+    Read [the guide][guide], [Reddit][] or [a cell].
+
+    [guide]: https://support.reddithelp.com/hc/
+    [reddit]: https://www.reddit.com
+    [a cell]: https://example.com
+
+    | Table |
+    |---|
+    | Also in [a cell] |
+    """.trimIndent()
+
 private val tableMarkdown =
     """
     | Feature | Since |
@@ -211,6 +225,12 @@ class MarkdownTextScreenshotTest {
     fun linkTitles() {
         show(LINK_TITLES_MARKDOWN)
         capture("markdown_link_titles")
+    }
+
+    @Test
+    fun referenceLinks() {
+        show(referenceLinksMarkdown)
+        capture("markdown_reference_links")
     }
 
     @Test

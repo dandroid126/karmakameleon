@@ -71,8 +71,10 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Autolink in angle brackets | `<https://www.reddit.com/>` | Link without the brackets | ❌ #83: keeps `<` as text and puts `>` into the URL |
 | Link title in quotes | `[text](https://example.com "title")` or `'title'` | Link to the URL; the title is a tooltip | ✅ (the title isn't shown) |
 | Link title in parentheses (new Reddit only) | `[text](https://example.com (title))` | As above | ✅ (the title isn't shown) |
-| Reference link | `[text][id]` with `[id]: https://…` on its own line | Link; the definition isn't shown | ❌ #83: links to the text, and the definition is shown |
-| Shortcut reference link | `[text]` with `[text]: https://…` | As above | ❌ #83: `[text]` is shown as typed, without a link, and the definition is shown with its URL linked |
+| Reference link | `[text][id]` with `[id]: https://…` on its own line | Link; the definition isn't shown | ✅ (labels ignore case and spacing; the first definition of a label wins) |
+| Shortcut reference link | `[text]` or `[text][]` with `[text]: https://…` | As above | ✅ |
+| Undefined reference | `[text][nope]` with no `[nope]: …` | ❔ In CommonMark, text as typed | Text as typed |
+| Definition right under a paragraph's line | `text` ⏎ `[id]: https://…` | ❔ In CommonMark, part of the paragraph's text | Part of the paragraph's text |
 | Schemes | `http://`, `https://`, `ftp://`, `mailto:`, `git://`, `steam://`, `irc://`, `ircs://`, `news://`, `mumble://`, `ssh://`, `ts3server://`, `/`, `#` | Link | ✅ for `mailto:`, `steam://` and `/`; ❔ the rest |
 | No scheme | `[a](www.reddit.com)` | Not a working link | ❔ |
 
