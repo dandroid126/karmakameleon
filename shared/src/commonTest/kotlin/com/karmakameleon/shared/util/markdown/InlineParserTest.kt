@@ -525,6 +525,93 @@ class InlineParserTest {
     }
 
     @Test
+    fun nested_boldInsideItalicWithSameCharacter() {
+        val expected =
+            listOf(
+                MarkdownInline.Italic(
+                    listOf(
+                        MarkdownInline.Text("this is "),
+                        MarkdownInline.Bold(listOf(MarkdownInline.Text("really"))),
+                        MarkdownInline.Text(" important"),
+                    ),
+                ),
+            )
+        assertEquals(expected, parse("_this is __really__ important_"))
+        assertEquals(expected, parse("*this is **really** important*"))
+    }
+
+    @Test
+    fun nested_boldClosingWithItalic() {
+        val expected =
+            listOf(
+                MarkdownInline.Italic(
+                    listOf(MarkdownInline.Text("this is "), MarkdownInline.Bold(listOf(MarkdownInline.Text("really")))),
+                ),
+            )
+        assertEquals(expected, parse("*this is **really***"))
+        assertEquals(expected, parse("_this is __really___"))
+    }
+
+    @Test
+    fun nested_boldOpeningWithItalic() {
+        val expected =
+            listOf(
+                MarkdownInline.Italic(
+                    listOf(MarkdownInline.Bold(listOf(MarkdownInline.Text("really"))), MarkdownInline.Text(" important")),
+                ),
+            )
+        assertEquals(expected, parse("***really** important*"))
+        assertEquals(expected, parse("___really__ important_"))
+    }
+
+    @Test
+    fun nested_italicClosingWithBold() {
+        val expected =
+            listOf(
+                MarkdownInline.Bold(
+                    listOf(MarkdownInline.Text("this is "), MarkdownInline.Italic(listOf(MarkdownInline.Text("really")))),
+                ),
+            )
+        assertEquals(expected, parse("**this is *really***"))
+        assertEquals(expected, parse("__this is _really___"))
+    }
+
+    @Test
+    fun nested_italicOpeningWithBold() {
+        val expected =
+            listOf(
+                MarkdownInline.Bold(
+                    listOf(MarkdownInline.Italic(listOf(MarkdownInline.Text("really"))), MarkdownInline.Text(" important")),
+                ),
+            )
+        assertEquals(expected, parse("***really* important**"))
+        assertEquals(expected, parse("___really_ important__"))
+    }
+
+    @Test
+    fun tripleRun_withoutNestedSpan_keepsExtraDelimitersAsText() {
+        val expected = listOf(MarkdownInline.Text("**"), MarkdownInline.Italic(listOf(MarkdownInline.Text("really important"))))
+        assertEquals(expected, parse("***really important*"))
+    }
+
+    @Test
+    fun nested_italicInsideBoldWithSameCharacter() {
+        val bold = assertIs<MarkdownInline.Bold>(parse("__this is _really_ important__").single())
+        assertIs<MarkdownInline.Italic>(bold.children[1])
+    }
+
+    @Test
+    fun italic_skipsDoubleDelimiterWithoutClose() {
+        val italic = assertIs<MarkdownInline.Italic>(parse("*foo**bar*").single())
+        assertEquals(listOf(MarkdownInline.Text("foo**bar")), italic.children)
+    }
+
+    @Test
+    fun italic_withOnlyDoubleDelimitersAfter_staysText() {
+        assertEquals(listOf(MarkdownInline.Text("*foo**bar")), parse("*foo**bar"))
+    }
+
+    @Test
     fun nested_superscriptInsideItalic() {
         val result = parse("*italic ^superscript^*")
         assertEquals(1, result.size)
