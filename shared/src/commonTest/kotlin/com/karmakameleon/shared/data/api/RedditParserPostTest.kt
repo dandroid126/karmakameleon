@@ -254,7 +254,7 @@ class RedditParserPostTest {
                 "1xavut5",
             ).with("title" to JsonPrimitive("Tom &amp; Jerry &lt;3 &quot;cats&quot; &#39;n&nbsp;dogs&gt;"))
 
-        assertEquals("Tom & Jerry <3 \"cats\" 'n dogs>", parser.post(data).title)
+        assertEquals("Tom & Jerry <3 \"cats\" 'n\u00A0dogs>", parser.post(data).title)
     }
 
     @Test

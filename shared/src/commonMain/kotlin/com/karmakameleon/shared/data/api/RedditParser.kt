@@ -39,6 +39,7 @@ import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
 import com.karmakameleon.shared.domain.model.UserSubreddit
 import com.karmakameleon.shared.util.RedditLink
+import com.karmakameleon.shared.util.markdown.decodeHtmlEntities
 import com.karmakameleon.shared.util.parseRedditLink
 import com.karmakameleon.shared.util.runSuspendCatching
 import io.github.aakira.napier.Napier
@@ -221,13 +222,13 @@ internal class RedditParser(
         return Post(
             id = dto.id,
             name = dto.name,
-            title = decodeHtml(dto.title),
+            title = decodeHtmlEntities(dto.title),
             author = dto.author,
             subreddit = dto.subreddit,
             subredditId = dto.subredditId,
             selfText = dto.selftext,
             selfTextHtml = dto.selftextHtml,
-            url = resolveRedditMediaUrl(decodeHtml(dto.url)),
+            url = resolveRedditMediaUrl(decodeHtmlEntities(dto.url)),
             permalink = dto.permalink,
             thumbnail = dto.thumbnail?.takeIf { it.startsWith("http") },
             thumbnailWidth = dto.thumbnailWidth,
@@ -278,14 +279,14 @@ internal class RedditParser(
                     PreviewImage(
                         source =
                             ImageSource(
-                                url = decodeHtml(img.source.url),
+                                url = decodeHtmlEntities(img.source.url),
                                 width = img.source.width,
                                 height = img.source.height,
                             ),
                         resolutions =
                             img.resolutions.map { res ->
                                 ImageSource(
-                                    url = decodeHtml(res.url),
+                                    url = decodeHtmlEntities(res.url),
                                     width = res.width,
                                     height = res.height,
                                 )
@@ -295,7 +296,7 @@ internal class RedditParser(
                                 ?.mp4
                                 ?.source
                                 ?.url
-                                ?.let { decodeHtml(it) },
+                                ?.let { decodeHtmlEntities(it) },
                     )
                 },
             enabled = dto.enabled,
@@ -334,9 +335,9 @@ internal class RedditParser(
                 dto.items.mapNotNull { item ->
                     val meta = metadata?.get(item.mediaId)
                     val isAnimated = meta?.e == "AnimatedImage"
-                    val mp4Url = meta?.s?.mp4?.let { decodeHtml(it) }
-                    val gifUrl = meta?.s?.gif?.let { decodeHtml(it) }
-                    val imageUrl = meta?.s?.u?.let { decodeHtml(it) }
+                    val mp4Url = meta?.s?.mp4?.let { decodeHtmlEntities(it) }
+                    val gifUrl = meta?.s?.gif?.let { decodeHtmlEntities(it) }
+                    val imageUrl = meta?.s?.u?.let { decodeHtmlEntities(it) }
                     val url = if (isAnimated) mp4Url ?: imageUrl else imageUrl
                     if (url != null || metadata == null) {
                         GalleryItem(
@@ -464,10 +465,10 @@ internal class RedditParser(
             name = dto.name,
             displayName = dto.displayName,
             displayNamePrefixed = dto.displayNamePrefixed,
-            title = decodeHtml(dto.title),
-            description = dto.description?.let { decodeHtml(it) },
+            title = decodeHtmlEntities(dto.title),
+            description = dto.description?.let { decodeHtmlEntities(it) },
             descriptionHtml = dto.descriptionHtml,
-            publicDescription = dto.publicDescription?.let { decodeHtml(it) },
+            publicDescription = dto.publicDescription?.let { decodeHtmlEntities(it) },
             subscribers = dto.subscribers,
             activeUserCount = dto.activeUserCount,
             created = dto.created.toLong(),
@@ -478,7 +479,7 @@ internal class RedditParser(
             iconUrl =
                 imageUrl(dto.communityIcon) ?: imageUrl(dto.iconImg),
             bannerUrl = imageUrl(dto.bannerImg),
-            communityIcon = dto.communityIcon?.let { decodeHtml(it) },
+            communityIcon = dto.communityIcon?.let { decodeHtmlEntities(it) },
             primaryColor = dto.primaryColor,
             keyColor = dto.keyColor,
             url = dto.url,
@@ -530,8 +531,8 @@ internal class RedditParser(
             name = dto.name,
             author = dto.author,
             dest = dto.dest,
-            subject = decodeHtml(dto.subject),
-            body = decodeHtml(dto.body),
+            subject = decodeHtmlEntities(dto.subject),
+            body = decodeHtmlEntities(dto.body),
             bodyHtml = dto.bodyHtml,
             created = dto.created.toLong(),
             createdUtc = dto.createdUtc.toLong(),
@@ -542,7 +543,7 @@ internal class RedditParser(
             parentId = dto.parentId,
             firstMessageName = dto.firstMessageName,
             replies = emptyList(), // Nested replies aren't parsed.
-            linkTitle = dto.linkTitle?.let { decodeHtml(it) },
+            linkTitle = dto.linkTitle?.let { decodeHtmlEntities(it) },
             likes = dto.likes,
             type =
                 when (dto.type) {
@@ -601,16 +602,5 @@ internal class RedditParser(
     }
 
     // Reddit sends an empty string, not null, for an image that isn't set.
-    private fun imageUrl(url: String?): String? = url?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) }
-
-    // For titles, URLs and messages. Bodies shown as markdown are kept as typed, so editing one doesn't lose the
-    // entities in it, and the markdown parser decodes them outside code.
-    private fun decodeHtml(text: String): String =
-        text
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&amp;", "&")
-            .replace("&quot;", "\"")
-            .replace("&#39;", "'")
-            .replace("&nbsp;", " ")
+    private fun imageUrl(url: String?): String? = url?.takeIf { it.isNotEmpty() }?.let { decodeHtmlEntities(it) }
 }
