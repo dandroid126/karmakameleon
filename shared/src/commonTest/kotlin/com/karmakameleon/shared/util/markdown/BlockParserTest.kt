@@ -10,6 +10,12 @@ import kotlin.test.assertTrue
 class BlockParserTest {
     private fun parse(text: String) = parseMarkdownBlocks(text)
 
+    // The text of the only block, a paragraph of text.
+    private fun paragraphText(blocks: List<MarkdownBlock>): String {
+        val paragraph = assertIs<MarkdownBlock.Paragraph>(blocks.single())
+        return paragraph.children.joinToString("") { assertIs<MarkdownInline.Text>(it).text }
+    }
+
     // ==================== Headings ====================
 
     @Test
@@ -164,6 +170,24 @@ class BlockParserTest {
         val p = assertIs<MarkdownBlock.Paragraph>(result[0])
         val text = p.children.filterIsInstance<MarkdownInline.Text>().joinToString("") { it.text }
         assertTrue(text.contains("\n"))
+    }
+
+    @Test
+    fun paragraph_hardBreak_trailingBackslash() {
+        val result = parse("line one\\\nline two")
+        assertEquals("line one\nline two", paragraphText(result))
+    }
+
+    @Test
+    fun paragraph_escapedTrailingBackslash_isTextAndJoinsLines() {
+        val result = parse("line one\\\\\nline two")
+        assertEquals("line one\\ line two", paragraphText(result))
+    }
+
+    @Test
+    fun paragraph_backslashOnLastLine_staysText() {
+        val result = parse("line one\\")
+        assertEquals("line one\\", paragraphText(result))
     }
 
     // ==================== Code block ====================

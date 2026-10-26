@@ -24,7 +24,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Extra blank lines add no extra space | `one` (3 blank lines) `two` | Same spacing as one blank line | ✅ |
 | A single line break joins the lines | `one`⏎`two` | "one two" | ✅ |
 | Two spaces at the end of a line make a hard break | `one␣␣`⏎`two` | Two lines | ✅ |
-| A backslash at the end of a line makes a hard break (new Reddit only) | `one\`⏎`two` | Two lines | ❌ #83: shows the backslash and joins the lines |
+| A backslash at the end of a line makes a hard break (new Reddit only) | `one\`⏎`two` | Two lines | ✅ |
 | A paragraph of only `&nbsp;` makes an empty line | `one` ⏎⏎ `&nbsp;` ⏎⏎ `two` | An empty paragraph between them | ❌ #83: `decodeHtml` turns `&nbsp;` into a normal space, so the line counts as blank and merges with the blank lines around it |
 
 ## Emphasis
