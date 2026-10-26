@@ -239,6 +239,14 @@ class RedditParserPostTest {
     }
 
     @Test
+    fun post_keepsTheSelfTextAsTyped() {
+        val selfText = "Tom &amp; Jerry &lt;3 &nbsp; & <b>"
+        val data = thing("post_listing.json", "1xavut5").with("selftext" to JsonPrimitive(selfText))
+
+        assertEquals(selfText, parser.post(data).selfText)
+    }
+
+    @Test
     fun post_decodesHtmlEntitiesInTheTitle() {
         val data =
             thing(

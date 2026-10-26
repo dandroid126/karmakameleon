@@ -194,6 +194,25 @@ class BlockParserTest {
     // ==================== Code block ====================
 
     @Test
+    fun paragraph_ofOnlyNbsp_isKeptAsAnEmptyLine() {
+        assertEquals(
+            listOf(
+                MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("one"))),
+                MarkdownBlock.BlankLine,
+                MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("\u00A0"))),
+                MarkdownBlock.BlankLine,
+                MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("two"))),
+            ),
+            parse("one\n\n&nbsp;\n\ntwo"),
+        )
+    }
+
+    @Test
+    fun codeBlock_keepsHtmlEntitiesAsTyped() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("&mdash; &nbsp;")), parse("```\n&mdash; &nbsp;\n```"))
+    }
+
+    @Test
     fun codeBlock_fourSpaceIndent() {
         val result = parse("    code here")
         assertEquals(1, result.size)

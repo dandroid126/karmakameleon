@@ -135,7 +135,7 @@ open class RedditApi(
     )
 
     // POSTs a form to an API path, leaving out fields whose value is null. The body is always read, which releases
-    // the connection.
+    // the connection. raw_json=1 stops Reddit from HTML-escaping the text in the response, like a new comment's body.
     private suspend fun postForm(
         path: String,
         vararg fields: Pair<String, String?>,
@@ -144,6 +144,7 @@ open class RedditApi(
             authenticatedRequest {
                 method = HttpMethod.Post
                 url("$BASE_URL$path")
+                parameter("raw_json", 1)
                 if (fields.isNotEmpty()) {
                     setBody(FormDataContent(Parameters.build { fields.forEach { (name, value) -> value?.let { append(name, it) } } }))
                 }

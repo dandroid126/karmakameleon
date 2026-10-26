@@ -157,6 +157,12 @@ private const val NESTED_EMPHASIS_MARKDOWN =
     "_this is __really__ important_ and *so is **this** one*, *and **this***, and ***this** too*.\n\n" +
         "**Bold with *italic***, and ***italic* in bold**."
 
+// Entities show as their characters, except in code. The paragraph of only &nbsp; is an empty line, and the
+// non-breaking spaces keep "100 km/h" on one line.
+private const val HTML_ENTITIES_MARKDOWN =
+    "Named &mdash; &hearts; &copy;, numeric &#8364; &#x1F600;, and &lt;b&gt; &amp;amp; as text, " +
+        "but `&mdash;` in code. A speed of 100&nbsp;km/h.\n\n&nbsp;\n\nAfter an empty line."
+
 // Line breaks and indents are kept, markdown inside isn't parsed, and a longer fence holds a shorter one.
 private val fencedCodeMarkdown =
     """
@@ -318,6 +324,12 @@ class MarkdownTextScreenshotTest {
     fun nestedEmphasis() {
         show(NESTED_EMPHASIS_MARKDOWN)
         capture("markdown_nested_emphasis")
+    }
+
+    @Test
+    fun htmlEntities() {
+        show(HTML_ENTITIES_MARKDOWN)
+        capture("markdown_html_entities")
     }
 
     @Test

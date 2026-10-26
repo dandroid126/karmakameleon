@@ -91,6 +91,7 @@ private val inlineMatchers: List<InlineMatcher> =
     listOf(
         InlineCursor::matchEscapedReference,
         InlineCursor::matchBackslashEscape,
+        InlineCursor::matchHtmlEntity,
         InlineCursor::matchInlineImage,
         InlineCursor::matchInlineGif,
         InlineCursor::matchInlineLink,
@@ -121,6 +122,14 @@ private fun InlineCursor.matchBackslashEscape(): InlineMatch? {
     val escaped = text.getOrNull(i + 1)
     if (text[i] != '\\' || escaped == null || escaped !in escapeChars) return null
     return InlineMatch(MarkdownInline.Text(escaped.toString()), i + 2)
+}
+
+// A character reference like &mdash; or &#8203;, as the character it stands for. Like other text, the character
+// isn't markdown, so &ast;not italic&ast; stays as typed. In code, references stay as typed.
+private fun InlineCursor.matchHtmlEntity(): InlineMatch? {
+    if (text[i] != '&') return null
+    val (decoded, end) = htmlEntityAt(text, i) ?: return null
+    return InlineMatch(MarkdownInline.Text(decoded), end)
 }
 
 // ![img](url), or ![img](id) for an image uploaded to Reddit

@@ -28,7 +28,8 @@ class RedditApiActionTest {
     ) {
         val request = reddit.request
         assertEquals(HttpMethod.Post, request.method)
-        assertEquals("https://oauth.reddit.com$path", request.url.toString())
+        assertEquals("https://oauth.reddit.com$path", request.url.toString().substringBefore("?"))
+        assertEquals("1", request.url.parameters["raw_json"])
         assertEquals(form, request.form().entries().associate { (name, values) -> name to values.single() })
         assertEquals("Bearer fake_token", request.headers[HttpHeaders.Authorization])
     }
@@ -175,7 +176,7 @@ class RedditApiActionTest {
             assertTrue(api().markAllMessagesRead())
 
             assertEquals(HttpMethod.Post, reddit.request.method)
-            assertEquals("https://oauth.reddit.com/api/read_all_messages", reddit.request.url.toString())
+            assertEquals("https://oauth.reddit.com/api/read_all_messages?raw_json=1", reddit.request.url.toString())
             assertFalse(reddit.request.body is FormDataContent)
         }
 

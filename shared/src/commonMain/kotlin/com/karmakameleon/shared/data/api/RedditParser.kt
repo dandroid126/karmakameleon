@@ -225,7 +225,7 @@ internal class RedditParser(
             author = dto.author,
             subreddit = dto.subreddit,
             subredditId = dto.subredditId,
-            selfText = dto.selftext?.let { decodeHtml(it) },
+            selfText = dto.selftext,
             selfTextHtml = dto.selftextHtml,
             url = resolveRedditMediaUrl(decodeHtml(dto.url)),
             permalink = dto.permalink,
@@ -367,7 +367,7 @@ internal class RedditParser(
             parentId = dto.parentId,
             linkId = dto.linkId,
             author = dto.author,
-            body = decodeHtml(dto.body),
+            body = dto.body,
             bodyHtml = dto.bodyHtml,
             score = dto.score,
             created = dto.created.toLong(),
@@ -603,6 +603,8 @@ internal class RedditParser(
     // Reddit sends an empty string, not null, for an image that isn't set.
     private fun imageUrl(url: String?): String? = url?.takeIf { it.isNotEmpty() }?.let { decodeHtml(it) }
 
+    // For titles, URLs and messages. Bodies shown as markdown are kept as typed, so editing one doesn't lose the
+    // entities in it, and the markdown parser decodes them outside code.
     private fun decodeHtml(text: String): String =
         text
             .replace("&lt;", "<")
