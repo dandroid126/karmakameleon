@@ -96,6 +96,15 @@ private const val BACKTICK_CODE_MARKDOWN = "Code with ``this ` backtick`` and ``
 // A backslash at the end of a line breaks it, like two spaces; an escaped one (\\) joins the lines.
 private const val BACKSLASH_BREAK_MARKDOWN = "Line one\\\nline two  \nline three\\\\\nstill line three"
 
+// Each column is wider than its text, so the text shows where it's aligned, the header too.
+private val alignedTableMarkdown =
+    """
+    | Default | Left | Center | Right |
+    |---|:--|:-:|--:|
+    | a | b | c | d |
+    | longer text | longer text | longer text | longer text |
+    """.trimIndent()
+
 private val tableMarkdown =
     """
     | Feature | Since |
@@ -367,6 +376,12 @@ class MarkdownTextScreenshotTest {
     fun table() {
         show(tableMarkdown)
         capture("markdown_table")
+    }
+
+    @Test
+    fun tableWithAlignedColumns() {
+        show(alignedTableMarkdown)
+        capture("markdown_table_aligned")
     }
 
     @Test
