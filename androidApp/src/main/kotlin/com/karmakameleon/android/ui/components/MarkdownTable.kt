@@ -49,6 +49,7 @@ import androidx.compose.ui.semantics.scrollBy
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.constrainHeight
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.ui.theme.markdownColors
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
+import com.karmakameleon.shared.domain.markdown.TableAlignment
 import com.karmakameleon.shared.util.markdown.parseInlineMarkdown
 import kotlin.math.roundToInt
 
@@ -81,6 +83,7 @@ internal fun RenderTable(
                         text = row.getOrElse(colIndex) { "" },
                         references = table.references,
                         isHeader = rowIndex == 0,
+                        alignment = table.alignments.getOrElse(colIndex) { TableAlignment.Default },
                         style = style,
                         rendering = cellRendering,
                         onTextClick = onTextClick,
@@ -126,6 +129,7 @@ private fun TableCell(
     text: String,
     references: Map<String, String>,
     isHeader: Boolean,
+    alignment: TableAlignment,
     style: TextStyle,
     rendering: InlineRendering,
     onTextClick: (() -> Unit)?,
@@ -138,14 +142,26 @@ private fun TableCell(
                 .background(if (isHeader) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
                 .padding(CELL_PADDING),
     ) {
+        // Filling the cell, so the text can be aligned in it.
         InlineText(
             inlines = inlines,
-            style = if (isHeader) style.copy(fontWeight = FontWeight.Bold) else style,
+            style = style.copy(fontWeight = if (isHeader) FontWeight.Bold else style.fontWeight, textAlign = alignment.textAlign),
             rendering = rendering,
             onTextClick = onTextClick,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
+
+// Like Reddit's align="left" and align="right", left and right don't change with the layout direction.
+private val TableAlignment.textAlign: TextAlign
+    get() =
+        when (this) {
+            TableAlignment.Default -> TextAlign.Start
+            TableAlignment.Left -> TextAlign.Left
+            TableAlignment.Center -> TextAlign.Center
+            TableAlignment.Right -> TextAlign.Right
+        }
 
 // How far a wide table is scrolled. maxOffset is set each time the table is measured.
 @Stable

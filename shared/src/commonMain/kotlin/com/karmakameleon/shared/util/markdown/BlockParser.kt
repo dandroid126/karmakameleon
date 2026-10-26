@@ -2,6 +2,7 @@ package com.karmakameleon.shared.util.markdown
 
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.markdown.MarkdownInline
+import com.karmakameleon.shared.domain.markdown.TableAlignment
 
 // A line indented by four spaces is a code block.
 private const val CODE_INDENT = "    "
@@ -473,7 +474,18 @@ private fun parseTable(
             .drop(2)
             .filter { !isTableSeparator(it) }
             .map { parseTableRow(it) }
-    return MarkdownBlock.Table(header, rows, references)
+    return MarkdownBlock.Table(header, rows, references, parseTableRow(tableLines[1]).map(::parseAlignment))
+}
+
+private fun parseAlignment(separatorCell: String): TableAlignment {
+    val left = separatorCell.startsWith(":")
+    val right = separatorCell.endsWith(":")
+    return when {
+        left && right -> TableAlignment.Center
+        left -> TableAlignment.Left
+        right -> TableAlignment.Right
+        else -> TableAlignment.Default
+    }
 }
 
 // Leading and trailing pipes are optional, so an empty first or last cell isn't a cell.

@@ -2,6 +2,7 @@ package com.karmakameleon.shared.util.markdown
 
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.markdown.MarkdownInline
+import com.karmakameleon.shared.domain.markdown.TableAlignment
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -321,6 +322,18 @@ class BlockParserTest {
         assertEquals(listOf("A", "B"), table.header)
         assertEquals(1, table.rows.size)
         assertEquals(listOf("1", "2"), table.rows[0])
+    }
+
+    @Test
+    fun table_alignments() {
+        val table = assertIs<MarkdownBlock.Table>(parse("| A | B | C | D |\n|---|:--|--:|:-:|\n| 1 | 2 | 3 | 4 |").single())
+        assertEquals(listOf(TableAlignment.Default, TableAlignment.Left, TableAlignment.Right, TableAlignment.Center), table.alignments)
+    }
+
+    @Test
+    fun table_alignments_withSpacesAndWithoutOuterPipes() {
+        val table = assertIs<MarkdownBlock.Table>(parse("A | B\n :---  |  ---: \n1 | 2").single())
+        assertEquals(listOf(TableAlignment.Left, TableAlignment.Right), table.alignments)
     }
 
     @Test
