@@ -222,9 +222,9 @@ private fun parseParagraphAt(
     return ParsedBlock(MarkdownBlock.Paragraph(references.inlines(merged)), end)
 }
 
-// Consecutive blank lines collapse into one BlankLine, and trailing ones are dropped. Link definitions among them
-// aren't shown, so they're collected and count as blank, except that definitions alone, with no blank line, add no
-// space.
+// Consecutive blank lines collapse into one BlankLine, and leading and trailing ones are dropped. Link definitions
+// among them aren't shown, so they're collected and count as blank, except that definitions alone, with no blank
+// line, add no space. Definitions at the start of the text or of a quote leave no gap above it either.
 private fun parseBlankLinesAt(
     lines: List<String>,
     i: Int,
@@ -245,7 +245,7 @@ private fun parseBlankLinesAt(
         }
         end++
     }
-    return ParsedBlock(if (hasBlankLine && end < lines.size) MarkdownBlock.BlankLine else null, end)
+    return ParsedBlock(if (hasBlankLine && i > 0 && end < lines.size) MarkdownBlock.BlankLine else null, end)
 }
 
 // The index of the first line after start that doesn't match.

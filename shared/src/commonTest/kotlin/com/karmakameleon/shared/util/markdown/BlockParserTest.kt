@@ -548,6 +548,14 @@ class BlockParserTest {
         assertEquals(listOf<MarkdownBlock>(MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("two")))), parse("[a]: /x\ntwo"))
     }
 
+    // Like trailing ones, definitions at the start leave no gap, in a quote too.
+    @Test
+    fun linkDefinition_atStart_addsNoBlankLine() {
+        val two = MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("two")))
+        assertEquals(listOf<MarkdownBlock>(two), parse("[a]: /x\n\ntwo"))
+        assertEquals(listOf<MarkdownBlock>(MarkdownBlock.BlockQuote(listOf(two))), parse("> [a]: /x\n>\n> two"))
+    }
+
     @Test
     fun linkDefinition_underParagraphLine_isText() {
         val paragraph = assertIs<MarkdownBlock.Paragraph>(parse("text\n[a]: https://example.com").single())
