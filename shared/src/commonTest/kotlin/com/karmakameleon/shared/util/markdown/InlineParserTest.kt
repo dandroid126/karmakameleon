@@ -164,6 +164,43 @@ class InlineParserTest {
         assertEquals("**not bold**", code.text)
     }
 
+    @Test
+    fun inlineCode_doubleBackticksContainSingleBacktick() {
+        val result = parse("``this ` backtick``")
+        assertEquals(listOf(MarkdownInline.Code("this ` backtick")), result)
+    }
+
+    @Test
+    fun inlineCode_closesOnlyAtRunOfSameLength() {
+        val result = parse("``a ``` b`` c")
+        assertEquals(listOf(MarkdownInline.Code("a ``` b"), MarkdownInline.Text(" c")), result)
+    }
+
+    @Test
+    fun inlineCode_stripsOneSpaceFromEachEnd() {
+        assertEquals(listOf(MarkdownInline.Code("`a`")), parse("`` `a` ``"))
+        assertEquals(listOf(MarkdownInline.Code(" b ")), parse("`  b  `"))
+    }
+
+    @Test
+    fun inlineCode_keepsSpaceOnOneSideOrOnlySpaces() {
+        assertEquals(listOf(MarkdownInline.Code(" a")), parse("` a`"))
+        assertEquals(listOf(MarkdownInline.Code("  ")), parse("`  `"))
+    }
+
+    @Test
+    fun inlineCode_lineBreakBecomesSpace() {
+        val result = parse("`a\nb`")
+        assertEquals(listOf(MarkdownInline.Code("a b")), result)
+    }
+
+    @Test
+    fun inlineCode_unmatchedRunIsText() {
+        val result = parse("``a` b")
+        assertTrue(result.all { it is MarkdownInline.Text })
+        assertEquals("``a` b", result.joinToString("") { (it as MarkdownInline.Text).text })
+    }
+
     // ==================== Superscript ====================
 
     @Test
