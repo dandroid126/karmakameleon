@@ -171,13 +171,14 @@ private fun InlineCursor.linkDestination(start: Int): Pair<String, Int>? {
         idx = if (titleEnd == -1) text.length else titleEnd + 1
         while (text.getOrNull(idx)?.isWhitespace() == true) idx++
     }
-    return if (text.getOrNull(idx) == ')') text.substring(urlStart, urlEnd) to idx + 1 else wholeLinkDestination(start)
+    return if (text.getOrNull(idx) == ')') decodeHtmlEntities(text.substring(urlStart, urlEnd)) to idx + 1 else wholeLinkDestination(start)
 }
 
-// All the text from start to the next ) as the URL, and the index just after the ). Null without a ).
+// All the text from start to the next ) as the URL, and the index just after the ). Null without a ). As in
+// CommonMark, character references in a link's URL are decoded, so ?a=1&amp;b=2 opens ?a=1&b=2.
 private fun InlineCursor.wholeLinkDestination(start: Int): Pair<String, Int>? {
     val closeIdx = text.indexOf(')', start)
-    return if (closeIdx == -1) null else text.substring(start, closeIdx) to closeIdx + 1
+    return if (closeIdx == -1) null else decodeHtmlEntities(text.substring(start, closeIdx)) to closeIdx + 1
 }
 
 // Reference link: [text][ref], [text][] with the text as the label, or [text] alone. It links to the URL of the
@@ -290,11 +291,12 @@ private fun InlineCursor.matchCode(): InlineMatch? {
 
 private fun InlineCursor.backtickRunEnd(start: Int): Int = (start until text.length).firstOrNull { text[it] != '`' } ?: text.length
 
-// Bare URL: https:// or http://, shown as an image when it's a preview.redd.it image
+// Bare URL: https:// or http://, shown as an image when it's a preview.redd.it image. Character references in it
+// are decoded, as the browser does with old Reddit's links.
 private fun InlineCursor.matchBareUrl(): InlineMatch? {
     if (!text.startsWith("https://", i) && !text.startsWith("http://", i)) return null
     val end = (i until text.length).firstOrNull { text[it].isWhitespace() || text[it] == ')' } ?: text.length
-    return InlineMatch(urlNode(text.substring(i, end)), end)
+    return InlineMatch(urlNode(decodeHtmlEntities(text.substring(i, end))), end)
 }
 
 // Autolink: <https://example.com>, shown without the brackets. Like on Reddit, <mailto:…> shows only the address.

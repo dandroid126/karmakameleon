@@ -30,6 +30,25 @@ internal fun htmlEntityAt(
     return codePointToString(codePoint) to match.range.last + 1
 }
 
+// The text with every character reference decoded, for text that isn't parsed as markdown, like a link's URL or a
+// plain-text preview of a body.
+fun decodeHtmlEntities(text: String): String {
+    if ('&' !in text) return text
+    val result = StringBuilder()
+    var i = 0
+    while (i < text.length) {
+        val entity = if (text[i] == '&') htmlEntityAt(text, i) else null
+        if (entity == null) {
+            result.append(text[i])
+            i++
+        } else {
+            result.append(entity.first)
+            i = entity.second
+        }
+    }
+    return result.toString()
+}
+
 private fun codePointToString(codePoint: Int): String {
     val valid = codePoint in 1..MAX_CODE_POINT && codePoint !in SURROGATES_START..SURROGATES_END
     val cp = if (valid) codePoint else REPLACEMENT_CHARACTER

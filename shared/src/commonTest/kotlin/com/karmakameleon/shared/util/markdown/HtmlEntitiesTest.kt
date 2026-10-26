@@ -70,4 +70,25 @@ class HtmlEntitiesTest {
         val link = assertIs<MarkdownInline.Link>(parse("[a &amp; b](https://example.com)").single())
         assertEquals(MarkdownInline.Text("&"), link.text[1])
     }
+
+    @Test
+    fun htmlEntity_inLinkUrl_isDecoded() {
+        val link = assertIs<MarkdownInline.Link>(parse("[x](https://example.com/?a=1&amp;b=2)").single())
+        assertEquals("https://example.com/?a=1&b=2", link.url)
+        val titled = assertIs<MarkdownInline.Link>(parse("[x](https://example.com/?a=1&amp;b=2 \"title\")").single())
+        assertEquals("https://example.com/?a=1&b=2", titled.url)
+    }
+
+    @Test
+    fun htmlEntity_inBareUrl_isDecoded() {
+        val link = assertIs<MarkdownInline.Link>(parse("https://example.com/?a=1&amp;b=2").single())
+        assertEquals("https://example.com/?a=1&b=2", link.url)
+        assertEquals(listOf(MarkdownInline.Text("https://example.com/?a=1&b=2")), link.text)
+    }
+
+    @Test
+    fun decodeHtmlEntities_decodesEveryReference() {
+        assertEquals("Tom & Jerry <3 \u2014\u00A0ok &nosuch; &", decodeHtmlEntities("Tom &amp; Jerry &lt;3 &mdash;&nbsp;ok &nosuch; &"))
+        assertEquals("&lt;", decodeHtmlEntities("&amp;lt;"))
+    }
 }

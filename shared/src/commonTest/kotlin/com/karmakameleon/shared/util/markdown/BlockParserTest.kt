@@ -208,6 +208,13 @@ class BlockParserTest {
     }
 
     @Test
+    fun referenceDefinition_decodesHtmlEntitiesInTheUrl() {
+        val paragraph = assertIs<MarkdownBlock.Paragraph>(parse("[x]\n\n[x]: https://example.com/?a=1&amp;b=2").first())
+        val link = assertIs<MarkdownInline.Link>(paragraph.children.single())
+        assertEquals("https://example.com/?a=1&b=2", link.url)
+    }
+
+    @Test
     fun codeBlock_keepsHtmlEntitiesAsTyped() {
         assertEquals(listOf(MarkdownBlock.CodeBlock("&mdash; &nbsp;")), parse("```\n&mdash; &nbsp;\n```"))
     }

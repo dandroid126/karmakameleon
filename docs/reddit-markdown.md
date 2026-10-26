@@ -143,7 +143,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 
 ## HTML entities
 
-The app asks the API for `raw_json=1`, so bodies arrive as typed, without HTML escaping. The inline parser decodes entities outside code, as new Reddit does: HTML 4's named entities and `&apos;`, and numeric ones. The decoded characters are text, not markdown. Entities in code stay as typed.
+The app asks the API for `raw_json=1`, so bodies arrive as typed, without HTML escaping. The inline parser decodes entities outside code, as new Reddit does: HTML 4's named entities and `&apos;`, and numeric ones. The decoded characters are text, not markdown. Entities in code stay as typed. Link URLs (inline, reference and bare) are decoded too, so `?a=1&amp;b=2` opens `?a=1&b=2`, and so is the feed's plain-text preview of a post.
 
 | Rule | Written | Reddit | App |
 |---|---|---|---|

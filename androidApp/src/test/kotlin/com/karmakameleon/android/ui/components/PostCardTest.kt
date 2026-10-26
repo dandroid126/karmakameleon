@@ -77,6 +77,12 @@ class PostCardTest {
     }
 
     @Test
+    fun selfTextPreview_showsEntitiesAsCharacters() {
+        showPostCard(post = testPost().copy(selfText = "Tom &amp; Jerry &lt;3"))
+        composeRule.onNodeWithText("Tom & Jerry <3").assertExists()
+    }
+
+    @Test
     fun tappingSubredditAndAuthorOpensThem() {
         showPostCard()
         composeRule.onNodeWithText("r/Kotlin").performClick()
