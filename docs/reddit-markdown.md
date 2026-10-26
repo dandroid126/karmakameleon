@@ -100,6 +100,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Bulleted sublist, indented 2 or more spaces | `- a` ⏎ `␣␣- b` | Nested list | ✅ |
 | Numbered sublist, indented 3 or more spaces | `1. a` ⏎ `␣␣␣1. b` | Nested list | ✅ |
 | Sublist indented 4 spaces | `- a` ⏎ `␣␣␣␣- b` | Nested list | ✅ |
+| Text continued on the next line | `- one` ⏎ `two` | One item, "one two" | ✅ |
 | Paragraphs, quotes and other blocks inside a list item | Indented under the item | Part of the item | ❔ |
 
 ## Blockquotes
@@ -107,7 +108,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Rule | Written | Reddit | App |
 |---|---|---|---|
 | Quote | `> text` | Quote | ✅ |
-| Lazy continuation | `> one` ⏎ `two` | One quoted paragraph | ❌ #83: "two" is a separate, unquoted paragraph |
+| Lazy continuation | `> one` ⏎ `two` | One quoted paragraph | ✅ (not for a `>!spoiler!<` line, which stays a paragraph of its own) |
 | Nested quote | `> > nested` | Quote in a quote | ✅ |
 | Lists, headings and tables in a quote | `> - item`, `> ### Heading`, `> \|a\|b\|` … | Inside the quote | ✅ |
 
@@ -118,6 +119,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Inline code | `` `code` `` | Code; no markdown inside | ✅ |
 | Inline code with more backticks | ``` ``a ` b`` ``` | Code "a ` b" | ❌ #83: splits into the wrong pieces |
 | Code block, indented 4 spaces | `␣␣␣␣code` | Code block | ✅ |
+| Indented line right after text | `text` ⏎ `␣␣␣␣more` | Continues the paragraph, list item or quote | ✅ |
 | Fenced with backticks (new Reddit only) | ```` ``` ```` ⏎ code ⏎ ```` ``` ```` | Code block | ✅ |
 | Fenced with tildes (new Reddit only) | `~~~` ⏎ code ⏎ `~~~` | Code block | ✅ |
 | Longer fence around a shorter one | ```` ```` ```` around ```` ``` ```` | Code block containing the inner fence | ✅ |
