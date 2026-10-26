@@ -6,6 +6,13 @@ private val inlineImagePattern = Regex("""!\[img]\(([^)]+)\)""")
 private val inlineGifPattern = Regex("""!\[gif]\(giphy\|([^)]+)\)""")
 private val previewRedditUrlPattern = Regex("""https://preview\.redd\.it/[^\s)]+""")
 private val whitespacePattern = Regex("""\s+""")
+
+// <url> with a scheme Reddit links, or <mailto:…>. Inside the brackets the URL can't have spaces or brackets.
+private val angleAutolinkPattern = Regex("""<((?:https?|ftp|git|steam|ircs?|news|mumble|ssh|ts3server)://[^\s<>]+|mailto:[^\s<>]+)>""")
+
+// <me@example.com>, which links to mailto:me@example.com. Like on Reddit, the address can only have letters, digits,
+// ".", "-", "_" and "+", so <foo://bar@x.com> isn't one.
+private val angleEmailAutolinkPattern = Regex("""<([\w.+-]+@[\w-]+(?:\.[\w-]+)+)>""")
 private val escapeChars = setOf('\\', '*', '_', '~', '`', '>', '!', '<', '^', '[', ']', '(', ')', '#', '-', '.', '+', '|', '/')
 
 // references holds the URLs of reference links, by their normalized label (see normalizeLinkLabel).
@@ -96,6 +103,8 @@ private val inlineMatchers: List<InlineMatcher> =
         InlineCursor::matchWordSuperscript,
         InlineCursor::matchItalic,
         InlineCursor::matchCode,
+        InlineCursor::matchAngleAutolink,
+        InlineCursor::matchAngleEmailAutolink,
         InlineCursor::matchBareUrl,
         InlineCursor::matchRedditReference,
     )
@@ -245,15 +254,36 @@ private fun InlineCursor.matchCode(): InlineMatch? {
 private fun InlineCursor.matchBareUrl(): InlineMatch? {
     if (!text.startsWith("https://", i) && !text.startsWith("http://", i)) return null
     val end = (i until text.length).firstOrNull { text[it].isWhitespace() || text[it] == ')' } ?: text.length
-    val url = text.substring(i, end)
+    return InlineMatch(urlNode(text.substring(i, end)), end)
+}
+
+// Autolink: <https://example.com>, shown without the brackets. Like on Reddit, <mailto:…> shows only the address.
+private fun InlineCursor.matchAngleAutolink(): InlineMatch? {
+    val match = angleAutolinkPattern.matchAt(text, i) ?: return null
+    val url = match.groupValues[1]
+    val node = if (url.startsWith(MAILTO)) mailtoLink(url.removePrefix(MAILTO)) else urlNode(url)
+    return InlineMatch(node, match.range.last + 1)
+}
+
+// Email autolink: <me@example.com>, shown without the brackets.
+private fun InlineCursor.matchAngleEmailAutolink(): InlineMatch? {
+    val match = angleEmailAutolinkPattern.matchAt(text, i) ?: return null
+    return InlineMatch(mailtoLink(match.groupValues[1]), match.range.last + 1)
+}
+
+private const val MAILTO = "mailto:"
+
+// A link that shows an email address and opens it as mailto:.
+private fun mailtoLink(address: String): MarkdownInline = MarkdownInline.Link(listOf(MarkdownInline.Text(address)), MAILTO + address)
+
+// A URL typed in the text, as a link that shows it, opened as https when it's http. A preview.redd.it image is shown.
+private fun urlNode(url: String): MarkdownInline {
     val httpsUrl = if (url.startsWith("http://")) url.replace("http://", "https://") else url
-    val node =
-        if (previewRedditUrlPattern.matches(httpsUrl)) {
-            MarkdownInline.Image(httpsUrl)
-        } else {
-            MarkdownInline.Link(listOf(MarkdownInline.Text(url)), httpsUrl)
-        }
-    return InlineMatch(node, end)
+    return if (previewRedditUrlPattern.matches(httpsUrl)) {
+        MarkdownInline.Image(httpsUrl)
+    } else {
+        MarkdownInline.Link(listOf(MarkdownInline.Text(url)), httpsUrl)
+    }
 }
 
 // Subreddit or user reference: /r/name, r/name, /u/name or u/name. Without the slash it must start a word.
