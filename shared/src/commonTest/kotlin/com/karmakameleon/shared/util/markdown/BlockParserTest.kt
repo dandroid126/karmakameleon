@@ -61,6 +61,77 @@ class BlockParserTest {
         assertEquals(6, h.level)
     }
 
+    @Test
+    fun underlinedHeading_equalsIsLevel1() {
+        val result = parse("Heading 1\n===")
+        assertEquals(listOf(MarkdownBlock.Heading(1, listOf(MarkdownInline.Text("Heading 1")))), result)
+    }
+
+    @Test
+    fun underlinedHeading_dashesIsLevel2NotRule() {
+        val result = parse("Heading 2\n---")
+        assertEquals(listOf(MarkdownBlock.Heading(2, listOf(MarkdownInline.Text("Heading 2")))), result)
+    }
+
+    @Test
+    fun underlinedHeading_anyLengthAndIndentUpToThree() {
+        val result = parse("One\n=\n\nTwo\n   --  ")
+        assertEquals(
+            listOf(
+                MarkdownBlock.Heading(1, listOf(MarkdownInline.Text("One"))),
+                MarkdownBlock.BlankLine,
+                MarkdownBlock.Heading(2, listOf(MarkdownInline.Text("Two"))),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun underlinedHeading_takesTheWholeParagraph() {
+        val result = parse("First line\nsecond *line*\n===\nAfter")
+        assertEquals(
+            listOf(
+                MarkdownBlock.Heading(
+                    1,
+                    listOf(MarkdownInline.Text("First line second "), MarkdownInline.Italic(listOf(MarkdownInline.Text("line")))),
+                ),
+                MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("After"))),
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun underline_withoutParagraphAbove() {
+        // With a blank line above, === is text and --- a horizontal rule.
+        val result = parse("Text\n\n===\n\n---")
+        assertEquals(
+            listOf(
+                MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("Text"))),
+                MarkdownBlock.BlankLine,
+                MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("==="))),
+                MarkdownBlock.BlankLine,
+                MarkdownBlock.HorizontalRule,
+            ),
+            result,
+        )
+    }
+
+    @Test
+    fun underline_afterListItemIsRule() {
+        val result = parse("- item\n---")
+        assertEquals(listOf(MarkdownBlock.BulletListItem(listOf(MarkdownInline.Text("item")), 0), MarkdownBlock.HorizontalRule), result)
+    }
+
+    @Test
+    fun underlinedHeading_inQuote() {
+        val result = parse("> Quoted\n> ===")
+        assertEquals(
+            listOf(MarkdownBlock.BlockQuote(listOf(MarkdownBlock.Heading(1, listOf(MarkdownInline.Text("Quoted")))))),
+            result,
+        )
+    }
+
     // ==================== Paragraphs ====================
 
     @Test
@@ -515,9 +586,12 @@ class BlockParserTest {
 
     @Test
     fun table_lineWithOnlyEscapedPipes_doesNotStartTable() {
+        // Without a table, the --- underlines a heading.
         val result = parse("x \\| y\n---")
-        assertIs<MarkdownBlock.Paragraph>(result[0])
-        assertEquals(MarkdownBlock.HorizontalRule, result[1])
+        assertEquals(
+            MarkdownBlock.Heading(2, listOf(MarkdownInline.Text("x "), MarkdownInline.Text("|"), MarkdownInline.Text(" y"))),
+            result.single(),
+        )
     }
 
     // ==================== Link definitions ====================
