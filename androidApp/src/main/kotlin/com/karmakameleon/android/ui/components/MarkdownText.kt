@@ -20,10 +20,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -69,8 +69,11 @@ fun MarkdownText(
     navigationHandler: NavigationHandler = koinInject(),
     markdownRepository: MarkdownRepository = koinInject(),
 ) {
-    // Text that hasn't been parsed yet is parsed off the main thread, and shows once it's ready.
-    val blocks by produceState(markdownRepository.cached(markdown), markdown) { value = markdownRepository.parse(markdown) }
+    // Text that hasn't been parsed yet is parsed off the main thread, and shows once it's ready. Keyed on the text, so
+    // when it changes in place, like an edited comment, the old text isn't shown in the meantime.
+    val parsed = remember(markdown) { mutableStateOf(markdownRepository.cached(markdown)) }
+    LaunchedEffect(markdown) { parsed.value = markdownRepository.parse(markdown) }
+    val blocks by parsed
     // The same objects while only the callbacks change, so a recomposition of the screen around unchanged text (a vote,
     // or hiding the post body) can skip its blocks. Callers usually pass new lambdas each time.
     val currentOnImageClick by rememberUpdatedState(onImageClick)

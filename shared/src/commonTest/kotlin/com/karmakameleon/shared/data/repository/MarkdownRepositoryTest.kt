@@ -58,4 +58,20 @@ class MarkdownRepositoryTest {
             assertNotNull(repo.cached("two"))
             assertNotNull(repo.cached("three"))
         }
+
+    @Test
+    fun parse_keepsTheTextsAskedForMostRecently() =
+        runTest {
+            val repo = MarkdownRepository(StandardTestDispatcher(testScheduler), maxEntries = 2)
+            repo.parse("post body")
+            repo.parse("comment")
+
+            // Shown again, so it's kept over the comment, which was parsed after it.
+            repo.parse("post body")
+            repo.parse("more comments")
+
+            assertNotNull(repo.cached("post body"))
+            assertNull(repo.cached("comment"))
+            assertNotNull(repo.cached("more comments"))
+        }
 }

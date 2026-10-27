@@ -1,5 +1,8 @@
 package com.karmakameleon.android.ui.components
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -11,6 +14,8 @@ import androidx.compose.ui.test.performFirstLinkClick
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
+import com.karmakameleon.shared.data.repository.MarkdownRepository
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -51,6 +56,28 @@ class MarkdownTextTest {
         { link: AnnotatedString.Range<LinkAnnotation> -> (link.item as LinkAnnotation.Clickable).tag.contains(urlPart) }
 
     private val isSpoiler = { link: AnnotatedString.Range<LinkAnnotation> -> (link.item as LinkAnnotation.Clickable).tag == "spoiler" }
+
+    @Test
+    fun changedTextReplacesTheOldOne() {
+        // Parses only when the test runs the dispatcher, so the test can look while the new text is being parsed.
+        val parsing = StandardTestDispatcher()
+        val repository = MarkdownRepository(parsing)
+        // Like a comment edited in place: the same MarkdownText gets a new text.
+        var markdown by mutableStateOf("The **old** text")
+        composeRule.setContent {
+            KarmaKameleonTheme(dynamicColor = false) { MarkdownText(markdown = markdown, markdownRepository = repository) }
+        }
+        composeRule.waitForIdle()
+        parsing.scheduler.advanceUntilIdle()
+        composeRule.onNodeWithText("The old text").assertExists()
+
+        markdown = "The **new** text"
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText("The old text").assertDoesNotExist()
+
+        parsing.scheduler.advanceUntilIdle()
+        composeRule.onNodeWithText("The new text").assertExists()
+    }
 
     @Test
     fun tappingLinkOpensIt() {
