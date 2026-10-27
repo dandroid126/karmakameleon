@@ -388,6 +388,25 @@ class ProfileViewModelTest {
             assertTrue(viewModel.uiState.value.posts.hasMore)
         }
 
+    @Test
+    fun loadMoreUserPosts_skipsPostsAlreadyInTheList() =
+        runTest {
+            fakeApi.meResult = createTestUser(name = "testuser")
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1"), createTestPost(id = "p2")))
+            viewModel.loadMore(ProfileList.POSTS)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("p1", "p2"),
+                viewModel.uiState.value.posts.items
+                    .map { it.id },
+            )
+        }
+
     // ==================== Load More: Comments ====================
 
     @Test
@@ -407,6 +426,27 @@ class ProfileViewModelTest {
 
             assertTrue(viewModel.uiState.value.comments.items.size > initialCount)
             assertFalse(viewModel.uiState.value.comments.isLoadingMore)
+        }
+
+    @Test
+    fun loadMoreUserComments_skipsCommentsAlreadyInTheList() =
+        runTest {
+            fakeApi.meResult = createTestUser(name = "testuser")
+            fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            viewModel.setSelectedTab(ProfileTab.COMMENTS)
+            advanceUntilIdle()
+
+            fakeApi.userCommentsResult = createTestListing(items = listOf(createTestComment(id = "c1"), createTestComment(id = "c2")))
+            viewModel.loadMore(ProfileList.COMMENTS)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("c1", "c2"),
+                viewModel.uiState.value.comments.items
+                    .map { it.id },
+            )
         }
 
     @Test

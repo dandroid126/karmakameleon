@@ -89,7 +89,7 @@ class PostList internal constructor(
                 onSuccess = { listing ->
                     _state.update {
                         it.copy(
-                            posts = it.posts.plusNewPosts(listing.items),
+                            posts = it.posts.plusNew(listing.items, Post::id),
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoadingMore = false,
@@ -188,15 +188,6 @@ private fun Post.isVisible(
     nsfwEnabled: Boolean,
     blockedSubreddits: Set<String>,
 ): Boolean = (nsfwEnabled || !isNsfw) && subreddit.lowercase() !in blockedSubreddits
-
-/**
- * Adds the posts of the next page that aren't in the list yet. Posts move between pages as their ranking changes, so
- * the next page can repeat one. Kept, it would show twice and give the LazyColumn two items with the same key, which crashes.
- */
-internal fun List<Post>.plusNewPosts(nextPage: List<Post>): List<Post> {
-    val ids = mapTo(HashSet()) { it.id }
-    return this + nextPage.filter { ids.add(it.id) }
-}
 
 // Puts [updated] in place of the post with its id, or removes that post if it's now hidden.
 private fun List<Post>.withUpdatedPost(updated: Post): List<Post> =

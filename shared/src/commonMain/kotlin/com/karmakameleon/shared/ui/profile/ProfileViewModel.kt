@@ -15,6 +15,7 @@ import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
 import com.karmakameleon.shared.ui.PagedList
 import com.karmakameleon.shared.ui.comment.CommentViewModel
+import com.karmakameleon.shared.ui.plusNew
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -197,6 +198,7 @@ class ProfileViewModel(
     private class ListSource<T>(
         val get: (ProfileUiState) -> PagedList<T>,
         val set: (ProfileUiState, PagedList<T>) -> ProfileUiState,
+        val id: (T) -> String,
         val fetchPage: suspend (username: String, after: String?) -> Result<Listing<T>>,
     ) {
         fun update(
@@ -206,27 +208,29 @@ class ProfileViewModel(
     }
 
     private val userPosts =
-        ListSource({ it.posts }, { state, list -> state.copy(posts = list) }) { username, after ->
+        ListSource({ it.posts }, { state, list -> state.copy(posts = list) }, Post::id) { username, after ->
             userRepository.getUserPosts(username, _uiState.value.postsSort, _uiState.value.postsTimeFilter, after)
         }
     private val userComments =
-        ListSource({ it.comments }, { state, list -> state.copy(comments = list) }) { username, after ->
+        ListSource({ it.comments }, { state, list -> state.copy(comments = list) }, Comment::id) { username, after ->
             userRepository.getUserComments(username, _uiState.value.commentsSort, _uiState.value.commentsTimeFilter, after)
         }
 
     // The saved, upvoted and downvoted lists are the logged-in account's, so they don't need the username.
     private val savedPosts =
-        ListSource({ it.savedPosts }, { state, list -> state.copy(savedPosts = list) }) { _, after -> userRepository.getSavedPosts(after) }
+        ListSource({
+            it.savedPosts
+        }, { state, list -> state.copy(savedPosts = list) }, Post::id) { _, after -> userRepository.getSavedPosts(after) }
     private val savedComments =
-        ListSource({ it.savedComments }, { state, list -> state.copy(savedComments = list) }) { _, after ->
+        ListSource({ it.savedComments }, { state, list -> state.copy(savedComments = list) }, Comment::id) { _, after ->
             userRepository.getSavedComments(after)
         }
     private val upvotedPosts =
-        ListSource({ it.upvotedPosts }, { state, list -> state.copy(upvotedPosts = list) }) { _, after ->
+        ListSource({ it.upvotedPosts }, { state, list -> state.copy(upvotedPosts = list) }, Post::id) { _, after ->
             userRepository.getUpvotedPosts(after)
         }
     private val downvotedPosts =
-        ListSource({ it.downvotedPosts }, { state, list -> state.copy(downvotedPosts = list) }) { _, after ->
+        ListSource({ it.downvotedPosts }, { state, list -> state.copy(downvotedPosts = list) }, Post::id) { _, after ->
             userRepository.getDownvotedPosts(after)
         }
 
@@ -282,7 +286,7 @@ class ProfileViewModel(
                     result.fold(
                         onSuccess = { listing ->
                             list.copy(
-                                items = list.items + listing.items,
+                                items = list.items.plusNew(listing.items, source.id),
                                 after = listing.after,
                                 hasMore = listing.hasMore,
                                 isLoadingMore = false,
