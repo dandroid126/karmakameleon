@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FlairChip
+import com.karmakameleon.android.ui.components.KeptWhenCollapsed
 import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
 import com.karmakameleon.android.ui.components.PostScore
@@ -126,20 +127,15 @@ internal fun PostHeader(
             }
         }
 
-        AnimatedVisibility(
-            visible = isBodyExpanded,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
-        ) {
-            PostBody(
-                post = post,
-                actions = actions,
-                selectionVersion = selectionVersion,
-                renderInlineImages = renderInlineImages,
-                nsfwEnabled = nsfwEnabled,
-                navigationHandler = navigationHandler,
-            )
-        }
+        PostBody(
+            post = post,
+            isExpanded = isBodyExpanded,
+            actions = actions,
+            selectionVersion = selectionVersion,
+            renderInlineImages = renderInlineImages,
+            nsfwEnabled = nsfwEnabled,
+            navigationHandler = navigationHandler,
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
         PostHeaderActionRow(post = post, isLoggedIn = isLoggedIn, actions = actions)
@@ -175,42 +171,53 @@ private fun PostHeaderByline(
     }
 }
 
-// The media, the self text, and links to the linked page and the original of a crosspost.
+// The media, the self text, and links to the linked page and the original of a crosspost, which can be collapsed.
+// The text stays composed while it's collapsed, so expanding it doesn't lay out all of a long post again. The media
+// leaves composition, so a video doesn't keep playing, and the links go with it.
 @Composable
 private fun PostBody(
     post: Post,
+    isExpanded: Boolean,
     actions: PostHeaderActions,
     selectionVersion: Int,
     renderInlineImages: Boolean,
     nsfwEnabled: Boolean,
     navigationHandler: NavigationHandler,
 ) {
-    Column {
-        // NSFW media is only shown when NSFW content is enabled.
-        if (!post.isNsfw || nsfwEnabled) {
+    // NSFW media is only shown when NSFW content is enabled.
+    if (!post.isNsfw || nsfwEnabled) {
+        AnimatedVisibility(visible = isExpanded, enter = expandVertically(), exit = shrinkVertically()) {
             PostMedia(post = post, onImageClick = actions.onImageClick, navigationHandler = navigationHandler)
         }
+    }
 
-        val selfText = post.selfText
-        if (!selfText.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            SelectableArea(selectionVersion = selectionVersion, onTouchStart = actions.onTouchStart) {
-                MarkdownText(
-                    markdown = selfText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    renderInlineImages = renderInlineImages,
-                    onImageClick = actions.onInlineImageClick,
-                )
+    val selfText = post.selfText
+    if (!selfText.isNullOrBlank()) {
+        KeptWhenCollapsed(isExpanded = isExpanded) {
+            Column {
+                Spacer(modifier = Modifier.height(12.dp))
+                SelectableArea(selectionVersion = selectionVersion, onTouchStart = actions.onTouchStart) {
+                    MarkdownText(
+                        markdown = selfText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        renderInlineImages = renderInlineImages,
+                        onImageClick = actions.onInlineImageClick,
+                    )
+                }
             }
         }
+    }
 
-        if (post.isLinkPost) {
-            PostLink(text = post.domain) { navigationHandler.handleLink(post.url) }
-        }
-        val crosspostParentSubreddit = post.crosspostParentSubreddit
-        if (post.isCrosspost && crosspostParentSubreddit != null) {
-            PostLink(text = "View original post at r/$crosspostParentSubreddit") {
-                post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+    AnimatedVisibility(visible = isExpanded, enter = expandVertically(), exit = shrinkVertically()) {
+        Column {
+            if (post.isLinkPost) {
+                PostLink(text = post.domain) { navigationHandler.handleLink(post.url) }
+            }
+            val crosspostParentSubreddit = post.crosspostParentSubreddit
+            if (post.isCrosspost && crosspostParentSubreddit != null) {
+                PostLink(text = "View original post at r/$crosspostParentSubreddit") {
+                    post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                }
             }
         }
     }
