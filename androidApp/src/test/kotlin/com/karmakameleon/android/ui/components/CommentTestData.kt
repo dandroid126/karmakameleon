@@ -1,7 +1,9 @@
 package com.karmakameleon.android.ui.components
 
 import com.karmakameleon.android.navigation.NavigationHandler
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.model.Comment
+import kotlinx.coroutines.Dispatchers
 import org.junit.rules.ExternalResource
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -65,7 +67,10 @@ class RecordedCommentActions {
         )
 }
 
-/** Gives the components the [NavigationHandler] they get from Koin, recording where it was asked to go. */
+/**
+ * Gives the components what they get from Koin: a [NavigationHandler] that records where it was asked to go, and a
+ * [MarkdownRepository].
+ */
 class NavigationRule : ExternalResource() {
     val calls = mutableListOf<String>()
 
@@ -77,7 +82,16 @@ class NavigationRule : ExternalResource() {
         }
 
     override fun before() {
-        startKoin { modules(module { single { handler } }) }
+        startKoin {
+            modules(
+                module {
+                    single { handler }
+                    // Parses on the main thread, which the Compose test rule waits for, so the text is shown by the time
+                    // the test looks at it.
+                    single { MarkdownRepository(Dispatchers.Main) }
+                },
+            )
+        }
     }
 
     override fun after() {

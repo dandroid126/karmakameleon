@@ -11,6 +11,7 @@ import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApiException
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
@@ -38,7 +39,7 @@ class PostDetailViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val authManager = FakeAuthManager()
     private val fakeApi = FakeRedditApi(authManager)
-    private val postRepo = PostRepository(fakeApi)
+    private val postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
     private val settingsRepo = SettingsRepository(MapSettings())
     private val draftRepo = CommentDraftRepository(MapSettings())
     private val post = createTestPost(id = "abc123", name = "t3_abc123", title = "A title", selfText = "Some text")

@@ -3,6 +3,7 @@ package com.karmakameleon.shared.ui.profile
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.PostSort
@@ -41,7 +42,7 @@ class ProfileViewModelLoginTest {
         Dispatchers.setMain(testDispatcher)
         fakeApi = FakeRedditApi()
         fakeAuthManager = FakeAuthManager()
-        postRepo = PostRepository(fakeApi)
+        postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         commentRepo = CommentRepository(fakeApi)
         userRepo = UserRepository(fakeApi, fakeAuthManager)
         viewModel = ProfileViewModel(userRepo, postRepo, commentRepo, fakeAuthManager)

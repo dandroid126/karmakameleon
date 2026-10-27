@@ -6,6 +6,7 @@ import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
@@ -32,7 +33,12 @@ class ProfileViewModelContentTest {
     private val fakeAuthManager = FakeAuthManager()
     private val fakeApi = FakeRedditApi(fakeAuthManager)
     private val viewModel =
-        ProfileViewModel(UserRepository(fakeApi, fakeAuthManager), PostRepository(fakeApi), CommentRepository(fakeApi), fakeAuthManager)
+        ProfileViewModel(
+            UserRepository(fakeApi, fakeAuthManager),
+            PostRepository(fakeApi, MarkdownRepository()),
+            CommentRepository(fakeApi),
+            fakeAuthManager,
+        )
 
     @BeforeTest
     fun setup() {

@@ -5,6 +5,7 @@ import com.karmakameleon.shared.FakeRedditApi.SearchRequest
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestSubreddit
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
@@ -44,7 +45,7 @@ class SearchViewModelTest {
         val fakeAuthManager = FakeAuthManager()
         fakeApi = FakeRedditApi(fakeAuthManager)
         settingsRepo = SettingsRepository(MapSettings())
-        postRepo = PostRepository(fakeApi)
+        postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         subredditRepo = SubredditRepository(fakeApi, settingsRepo)
         viewModel = SearchViewModel(postRepo, subredditRepo, settingsRepo)
     }
