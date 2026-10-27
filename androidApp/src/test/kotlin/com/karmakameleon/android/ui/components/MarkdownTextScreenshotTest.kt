@@ -6,6 +6,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.performFirstLinkClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
@@ -238,12 +240,13 @@ class MarkdownTextScreenshotTest {
         darkTheme: Boolean = false,
         renderInlineImages: Boolean = true,
         fontScale: Float = 1f,
+        layoutDirection: LayoutDirection = LayoutDirection.Ltr,
     ) {
         composeRule.setContent {
             val density = Density(LocalDensity.current.density, fontScale)
             // Dynamic colors come from the wallpaper, which would make the screenshots depend on the machine.
             KarmaKameleonTheme(darkTheme = darkTheme, dynamicColor = false) {
-                CompositionLocalProvider(LocalDensity provides density) {
+                CompositionLocalProvider(LocalDensity provides density, LocalLayoutDirection provides layoutDirection) {
                     Surface(color = MaterialTheme.colorScheme.background) {
                         MarkdownText(markdown = markdown, renderInlineImages = renderInlineImages, modifier = Modifier.padding(8.dp))
                     }
@@ -264,6 +267,13 @@ class MarkdownTextScreenshotTest {
     fun blocksDark() {
         show(blocksMarkdown, darkTheme = true)
         capture("markdown_blocks_dark")
+    }
+
+    // Quotes' bars and lists' markers are on the start side, which is the right in right-to-left languages.
+    @Test
+    fun blocksRightToLeft() {
+        show(blocksMarkdown, layoutDirection = LayoutDirection.Rtl)
+        capture("markdown_blocks_rtl")
     }
 
     @Test

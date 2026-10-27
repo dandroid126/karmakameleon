@@ -1,9 +1,6 @@
 package com.karmakameleon.android.ui.post
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -33,22 +30,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FlairChip
+import com.karmakameleon.android.ui.components.KeptWhenCollapsed
 import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
 import com.karmakameleon.android.ui.components.PostScore
@@ -69,7 +63,6 @@ import com.karmakameleon.shared.domain.model.GalleryItem
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.util.extractYouTubeVideoId
 import org.koin.compose.koinInject
-import kotlin.math.roundToInt
 
 private val POST_DETAIL_IMAGE_MAX_HEIGHT = 400.dp
 
@@ -227,33 +220,6 @@ private fun PostBody(
                 }
             }
         }
-    }
-}
-
-// Expands and collapses its content like AnimatedVisibility's expandVertically and shrinkVertically, but keeps it
-// composed and measured while it's collapsed, so expanding it again only places it. The content is measured as if it
-// were expanded, and the animation only changes how much of it shows. While collapsed it isn't placed, so it isn't
-// drawn, tapped or read by screen readers.
-@Composable
-private fun KeptWhenCollapsed(
-    isExpanded: Boolean,
-    content: @Composable () -> Unit,
-) {
-    // The same spring AnimatedVisibility uses, so the text moves with the media and links around it.
-    val shown by animateFloatAsState(if (isExpanded) 1f else 0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
-    Box(
-        modifier =
-            Modifier
-                .then(if (isExpanded) Modifier else Modifier.clearAndSetSemantics {})
-                .clipToBounds()
-                // Reads the animation while laying out, so each frame of it lays out again without composing again.
-                .layout { measurable, constraints ->
-                    val placeable = measurable.measure(constraints)
-                    val height = (placeable.height * shown).roundToInt()
-                    layout(placeable.width, height) { if (height > 0) placeable.place(0, 0) }
-                },
-    ) {
-        content()
     }
 }
 

@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -51,6 +52,7 @@ import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import coil3.compose.AsyncImage
@@ -274,8 +276,12 @@ private fun RenderBlockQuote(
                 ).padding(8.dp)
                 // Drawn rather than laid out beside the text, which would need the quote measured twice to know how
                 // tall to make the bar. A long quote takes long enough to lay out that twice is noticeable.
-                .drawBehind { drawRect(barColor, size = Size(QUOTE_BAR_WIDTH.roundToPx().toFloat(), size.height)) }
-                .padding(start = QUOTE_BAR_WIDTH + QUOTE_BAR_GAP),
+                .drawBehind {
+                    // On the start side, like the padding below.
+                    val barWidth = QUOTE_BAR_WIDTH.roundToPx().toFloat()
+                    val x = if (layoutDirection == LayoutDirection.Rtl) size.width - barWidth else 0f
+                    drawRect(barColor, topLeft = Offset(x, 0f), size = Size(barWidth, size.height))
+                }.padding(start = QUOTE_BAR_WIDTH + QUOTE_BAR_GAP),
     ) {
         for (child in block.children) {
             RenderBlock(
