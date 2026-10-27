@@ -299,6 +299,24 @@ class SearchViewModelTest {
         }
 
     @Test
+    fun loadMore_skipsPostsAlreadyInTheList() =
+        runTest {
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "t3_p1")
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1"), createTestPost(id = "p2")))
+
+            viewModel.loadMore()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("p1", "p2"),
+                viewModel.uiState.value.posts
+                    .map { it.id },
+            )
+        }
+
+    @Test
     fun loadMore_keepsNsfwPostsWhenEnabled() =
         runTest {
             settingsRepo.setNsfwEnabled(true)

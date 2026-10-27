@@ -10,6 +10,7 @@ import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.SearchType
 import com.karmakameleon.shared.domain.model.Subreddit
 import com.karmakameleon.shared.domain.model.TimeFilter
+import com.karmakameleon.shared.ui.plusNewPosts
 import com.karmakameleon.shared.util.RedditLink
 import com.karmakameleon.shared.util.parseRedditLink
 import kotlinx.coroutines.Job
@@ -186,7 +187,7 @@ class SearchViewModel(
                     val posts = if (nsfwEnabled) listing.items else listing.items.filter { !it.isNsfw }
                     _uiState.update {
                         it.copy(
-                            posts = it.posts + posts,
+                            posts = it.posts.plusNewPosts(posts),
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoading = false,

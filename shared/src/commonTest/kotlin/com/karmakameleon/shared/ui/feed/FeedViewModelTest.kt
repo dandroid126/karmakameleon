@@ -396,6 +396,32 @@ class FeedViewModelTest {
             assertTrue(posts.any { it.id == "1" })
         }
 
+    @Test
+    fun loadMorePosts_skipsPostsAlreadyInTheList() =
+        runTest {
+            fakeApi.postsResult =
+                createTestListing(
+                    items = listOf(createTestPost(id = "1"), createTestPost(id = "2")),
+                    after = "t3_2",
+                )
+            viewModel.postList.load(forceRefresh = true)
+            advanceUntilIdle()
+
+            // Post 2 dropped in the ranking and came back on the next page, and the page repeats post 3 too.
+            fakeApi.postsResult =
+                createTestListing(
+                    items = listOf(createTestPost(id = "2"), createTestPost(id = "3"), createTestPost(id = "3")),
+                )
+            viewModel.postList.loadMore()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("1", "2", "3"),
+                viewModel.postList.state.value.posts
+                    .map { it.id },
+            )
+        }
+
     // ==================== Voting ====================
 
     @Test
