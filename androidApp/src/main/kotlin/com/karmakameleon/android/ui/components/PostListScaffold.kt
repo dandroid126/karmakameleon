@@ -35,7 +35,7 @@ fun PostListScaffold(
     val state by postList.state.collectAsState()
     var showSortSheet by remember { mutableStateOf(false) }
 
-    LoadMoreNearEnd(listState, state.posts.size, enabled = state.canLoadMore) { postList.loadMore() }
+    LoadMoreNearEnd(listState, state.posts.size, state.after, enabled = state.canLoadMore) { postList.loadMore() }
     ScrollToTopAfterRefresh(listState, state.isRefreshing)
 
     Scaffold(

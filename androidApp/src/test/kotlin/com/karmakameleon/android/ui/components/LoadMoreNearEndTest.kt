@@ -26,6 +26,7 @@ class LoadMoreNearEndTest {
     val composeRule = createComposeRule()
 
     private var items by mutableStateOf(List(20) { it })
+    private var after by mutableStateOf("page2")
     private var isLoadingMore by mutableStateOf(false)
     private var loads = 0
 
@@ -33,7 +34,7 @@ class LoadMoreNearEndTest {
     private fun showList() {
         composeRule.setContent {
             val listState = rememberLazyListState()
-            LoadMoreNearEnd(listState, items.size, enabled = !isLoadingMore) {
+            LoadMoreNearEnd(listState, items.size, after, enabled = !isLoadingMore) {
                 loads++
                 isLoadingMore = true
             }
@@ -48,10 +49,14 @@ class LoadMoreNearEndTest {
         composeRule.waitForIdle()
     }
 
-    // The view model finishes loading a page, which added these items.
-    private fun finishLoading(newItems: List<Int>) {
+    // The view model finishes loading a page, which added these items and moved the cursor to nextAfter.
+    private fun finishLoading(
+        newItems: List<Int>,
+        nextAfter: String,
+    ) {
         composeRule.runOnIdle {
             items = items + newItems
+            after = nextAfter
             isLoadingMore = false
         }
         composeRule.waitForIdle()
@@ -72,11 +77,25 @@ class LoadMoreNearEndTest {
         scrollToEnd()
 
         // The second page only repeated items from the first, so the list stays near its end.
-        finishLoading(emptyList())
+        finishLoading(emptyList(), nextAfter = "page3")
         assertEquals(2, loads)
 
-        finishLoading(listOf(20))
+        finishLoading(listOf(20), nextAfter = "page4")
         assertEquals(3, loads)
+    }
+
+    @Test
+    fun retriesAFailedLoadOnlyAfterScrollingAwayAndBack() {
+        showList()
+        scrollToEnd()
+
+        // A failed load adds nothing and leaves the cursor the same.
+        finishLoading(emptyList(), nextAfter = "page2")
+        assertEquals(1, loads)
+
+        composeRule.onNodeWithTag("list").performScrollToIndex(0)
+        scrollToEnd()
+        assertEquals(2, loads)
     }
 
     @Test
@@ -84,7 +103,7 @@ class LoadMoreNearEndTest {
         showList()
         scrollToEnd()
 
-        finishLoading(List(20) { 20 + it })
+        finishLoading(List(20) { 20 + it }, nextAfter = "page3")
         assertEquals(1, loads)
 
         scrollToEnd()
