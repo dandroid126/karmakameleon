@@ -115,7 +115,10 @@ fun FeedPostItem(
     )
 }
 
-/** Calls onLoadMore when the list is scrolled to within a few items of its end, while enabled. */
+/**
+ * Calls onLoadMore when the list is scrolled to within a few items of its end, while enabled. Being disabled counts as
+ * not near the end, so when a load adds only a few items, the list still near its end loads again once it's enabled.
+ */
 @Composable
 fun LoadMoreNearEnd(
     listState: LazyListState,
@@ -129,10 +132,10 @@ fun LoadMoreNearEnd(
     LaunchedEffect(listState) {
         snapshotFlow {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            lastVisible != null && lastVisible.index >= currentItemCount - 5
+            currentEnabled && lastVisible != null && lastVisible.index >= currentItemCount - 5
         }.distinctUntilChanged()
             .filter { nearEnd -> nearEnd }
-            .collect { if (currentEnabled) currentOnLoadMore() }
+            .collect { currentOnLoadMore() }
     }
 }
 
