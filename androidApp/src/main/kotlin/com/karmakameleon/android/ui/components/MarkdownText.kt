@@ -30,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -259,7 +261,8 @@ private fun RenderBlockQuote(
     rendering: InlineRendering,
     onTextClick: (() -> Unit)?,
 ) {
-    Row(
+    val barColor = MaterialTheme.colorScheme.outline
+    Column(
         modifier =
             Modifier
                 .padding(start = 12.dp, top = 4.dp, bottom = 4.dp)
@@ -268,29 +271,25 @@ private fun RenderBlockQuote(
                     shape =
                         androidx.compose.foundation.shape
                             .RoundedCornerShape(4.dp),
-                ).height(IntrinsicSize.Min)
-                .padding(8.dp),
+                ).padding(8.dp)
+                // Drawn rather than laid out beside the text, which would need the quote measured twice to know how
+                // tall to make the bar. A long quote takes long enough to lay out that twice is noticeable.
+                .drawBehind { drawRect(barColor, size = Size(QUOTE_BAR_WIDTH.roundToPx().toFloat(), size.height)) }
+                .padding(start = QUOTE_BAR_WIDTH + QUOTE_BAR_GAP),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(MaterialTheme.colorScheme.outline),
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Column {
-            for (child in block.children) {
-                RenderBlock(
-                    block = child,
-                    style = style.copy(fontStyle = FontStyle.Italic),
-                    rendering = rendering,
-                    onTextClick = onTextClick,
-                )
-            }
+        for (child in block.children) {
+            RenderBlock(
+                block = child,
+                style = style.copy(fontStyle = FontStyle.Italic),
+                rendering = rendering,
+                onTextClick = onTextClick,
+            )
         }
     }
 }
+
+private val QUOTE_BAR_WIDTH = 4.dp
+private val QUOTE_BAR_GAP = 8.dp
 
 private sealed interface InlineSegment {
     data class TextRun(

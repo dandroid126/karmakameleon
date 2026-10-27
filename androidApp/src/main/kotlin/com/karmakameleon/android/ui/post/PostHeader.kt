@@ -1,6 +1,9 @@
 package com.karmakameleon.android.ui.post
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -30,12 +33,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,6 +69,7 @@ import com.karmakameleon.shared.domain.model.GalleryItem
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.util.extractYouTubeVideoId
 import org.koin.compose.koinInject
+import kotlin.math.roundToInt
 
 private val POST_DETAIL_IMAGE_MAX_HEIGHT = 400.dp
 
@@ -126,20 +134,15 @@ internal fun PostHeader(
             }
         }
 
-        AnimatedVisibility(
-            visible = isBodyExpanded,
-            enter = expandVertically(),
-            exit = shrinkVertically(),
-        ) {
-            PostBody(
-                post = post,
-                actions = actions,
-                selectionVersion = selectionVersion,
-                renderInlineImages = renderInlineImages,
-                nsfwEnabled = nsfwEnabled,
-                navigationHandler = navigationHandler,
-            )
-        }
+        PostBody(
+            post = post,
+            isExpanded = isBodyExpanded,
+            actions = actions,
+            selectionVersion = selectionVersion,
+            renderInlineImages = renderInlineImages,
+            nsfwEnabled = nsfwEnabled,
+            navigationHandler = navigationHandler,
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
         PostHeaderActionRow(post = post, isLoggedIn = isLoggedIn, actions = actions)
@@ -175,44 +178,82 @@ private fun PostHeaderByline(
     }
 }
 
-// The media, the self text, and links to the linked page and the original of a crosspost.
+// The media, the self text, and links to the linked page and the original of a crosspost, which can be collapsed.
+// The text stays composed while it's collapsed, so expanding it doesn't lay out all of a long post again. The media
+// leaves composition, so a video doesn't keep playing, and the links go with it.
 @Composable
 private fun PostBody(
     post: Post,
+    isExpanded: Boolean,
     actions: PostHeaderActions,
     selectionVersion: Int,
     renderInlineImages: Boolean,
     nsfwEnabled: Boolean,
     navigationHandler: NavigationHandler,
 ) {
-    Column {
-        // NSFW media is only shown when NSFW content is enabled.
-        if (!post.isNsfw || nsfwEnabled) {
+    // NSFW media is only shown when NSFW content is enabled.
+    if (!post.isNsfw || nsfwEnabled) {
+        AnimatedVisibility(visible = isExpanded, enter = expandVertically(), exit = shrinkVertically()) {
             PostMedia(post = post, onImageClick = actions.onImageClick, navigationHandler = navigationHandler)
         }
+    }
 
-        val selfText = post.selfText
-        if (!selfText.isNullOrBlank()) {
-            Spacer(modifier = Modifier.height(12.dp))
-            SelectableArea(selectionVersion = selectionVersion, onTouchStart = actions.onTouchStart) {
-                MarkdownText(
-                    markdown = selfText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    renderInlineImages = renderInlineImages,
-                    onImageClick = actions.onInlineImageClick,
-                )
+    val selfText = post.selfText
+    if (!selfText.isNullOrBlank()) {
+        KeptWhenCollapsed(isExpanded = isExpanded) {
+            Column {
+                Spacer(modifier = Modifier.height(12.dp))
+                SelectableArea(selectionVersion = selectionVersion, onTouchStart = actions.onTouchStart) {
+                    MarkdownText(
+                        markdown = selfText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        renderInlineImages = renderInlineImages,
+                        onImageClick = actions.onInlineImageClick,
+                    )
+                }
             }
         }
+    }
 
-        if (post.isLinkPost) {
-            PostLink(text = post.domain) { navigationHandler.handleLink(post.url) }
-        }
-        val crosspostParentSubreddit = post.crosspostParentSubreddit
-        if (post.isCrosspost && crosspostParentSubreddit != null) {
-            PostLink(text = "View original post at r/$crosspostParentSubreddit") {
-                post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+    AnimatedVisibility(visible = isExpanded, enter = expandVertically(), exit = shrinkVertically()) {
+        Column {
+            if (post.isLinkPost) {
+                PostLink(text = post.domain) { navigationHandler.handleLink(post.url) }
+            }
+            val crosspostParentSubreddit = post.crosspostParentSubreddit
+            if (post.isCrosspost && crosspostParentSubreddit != null) {
+                PostLink(text = "View original post at r/$crosspostParentSubreddit") {
+                    post.crosspostParentPermalink?.let { navigationHandler.handleLink(it) }
+                }
             }
         }
+    }
+}
+
+// Expands and collapses its content like AnimatedVisibility's expandVertically and shrinkVertically, but keeps it
+// composed and measured while it's collapsed, so expanding it again only places it. The content is measured as if it
+// were expanded, and the animation only changes how much of it shows. While collapsed it isn't placed, so it isn't
+// drawn, tapped or read by screen readers.
+@Composable
+private fun KeptWhenCollapsed(
+    isExpanded: Boolean,
+    content: @Composable () -> Unit,
+) {
+    // The same spring AnimatedVisibility uses, so the text moves with the media and links around it.
+    val shown by animateFloatAsState(if (isExpanded) 1f else 0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow))
+    Box(
+        modifier =
+            Modifier
+                .then(if (isExpanded) Modifier else Modifier.clearAndSetSemantics {})
+                .clipToBounds()
+                // Reads the animation while laying out, so each frame of it lays out again without composing again.
+                .layout { measurable, constraints ->
+                    val placeable = measurable.measure(constraints)
+                    val height = (placeable.height * shown).roundToInt()
+                    layout(placeable.width, height) { if (height > 0) placeable.place(0, 0) }
+                },
+    ) {
+        content()
     }
 }
 
