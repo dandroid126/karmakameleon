@@ -87,7 +87,7 @@ fun SearchScreen(
 
     // Only post results come in pages.
     val canLoadMore = !uiState.isLoading && uiState.hasMore && uiState.searchType == SearchType.POST
-    LoadMoreNearEnd(listState, uiState.posts.size, enabled = canLoadMore) { viewModel.loadMore() }
+    LoadMoreNearEnd(listState, uiState.posts.size, uiState.after, enabled = canLoadMore) { viewModel.loadMore() }
 
     Scaffold(
         modifier = modifier,

@@ -25,8 +25,6 @@ import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.Post
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import org.koin.compose.koinInject
 
 // Shared by the screens that show a list of posts.
@@ -115,24 +113,39 @@ fun FeedPostItem(
     )
 }
 
-/** Calls onLoadMore when the list is scrolled to within a few items of its end, while enabled. */
+/**
+ * Calls onLoadMore when the list is scrolled to within a few items of its end, while enabled. [after] is the cursor of
+ * the next page. While the list stays near its end, it loads again once a page has loaded and moved the cursor on, even
+ * if the page added few items, but not after a failed load, which leaves the cursor the same. Scrolling away and back
+ * tries that page again.
+ */
 @Composable
 fun LoadMoreNearEnd(
     listState: LazyListState,
     itemCount: Int,
+    after: String?,
     enabled: Boolean,
     onLoadMore: () -> Unit,
 ) {
     val currentItemCount by rememberUpdatedState(itemCount)
+    val currentAfter by rememberUpdatedState(after)
     val currentEnabled by rememberUpdatedState(enabled)
     val currentOnLoadMore by rememberUpdatedState(onLoadMore)
     LaunchedEffect(listState) {
+        // The cursor of the page last asked for, while the list has stayed near its end.
+        var requestedAfter: String? = null
         snapshotFlow {
             val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()
-            lastVisible != null && lastVisible.index >= currentItemCount - 5
-        }.distinctUntilChanged()
-            .filter { nearEnd -> nearEnd }
-            .collect { if (currentEnabled) currentOnLoadMore() }
+            val nearEnd = lastVisible != null && lastVisible.index >= currentItemCount - 5
+            nearEnd to currentAfter.takeIf { currentEnabled }
+        }.collect { (nearEnd, loadableAfter) ->
+            if (!nearEnd) {
+                requestedAfter = null
+            } else if (loadableAfter != null && loadableAfter != requestedAfter) {
+                requestedAfter = loadableAfter
+                currentOnLoadMore()
+            }
+        }
     }
 }
 

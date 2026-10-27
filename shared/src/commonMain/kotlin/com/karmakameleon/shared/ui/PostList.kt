@@ -89,7 +89,7 @@ class PostList internal constructor(
                 onSuccess = { listing ->
                     _state.update {
                         it.copy(
-                            posts = it.posts + listing.items,
+                            posts = it.posts.plusNew(listing.items, Post::id),
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoadingMore = false,

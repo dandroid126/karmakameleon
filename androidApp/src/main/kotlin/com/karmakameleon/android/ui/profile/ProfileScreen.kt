@@ -538,7 +538,13 @@ private fun ProfileTabContent(
     val listStates = ProfileList.entries.associateWith { rememberLazyListState() }
     ProfileList.entries.forEach { list ->
         val pagedList = uiState.pagedList(list)
-        LoadMoreNearEnd(listStates.getValue(list), pagedList.items.size, enabled = uiState.isShowing(list) && pagedList.canLoadMore) {
+        LoadMoreNearEnd(
+            listStates.getValue(list),
+            pagedList.items.size,
+            pagedList.after,
+            enabled =
+                uiState.isShowing(list) && pagedList.canLoadMore,
+        ) {
             actions.onLoadMore(list)
         }
     }
