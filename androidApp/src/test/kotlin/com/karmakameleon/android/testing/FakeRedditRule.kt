@@ -5,6 +5,7 @@ import com.karmakameleon.android.ui.components.threeHoursAgo
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.data.api.dto.TokenInfo
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.di.sharedModule
 import com.karmakameleon.shared.testing.MockReddit
@@ -41,6 +42,7 @@ class FakeRedditRule : ExternalResource() {
                     single { settings }
                     single<AuthManager> { authManager(loggedIn) }
                     single<RedditApi> { reddit.api(settings, Dispatchers.Main) }
+                    single { MarkdownRepository(Dispatchers.Main) }
                 },
             )
         }

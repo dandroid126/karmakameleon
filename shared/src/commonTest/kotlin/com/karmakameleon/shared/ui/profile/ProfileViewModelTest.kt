@@ -6,6 +6,7 @@ import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Post
@@ -43,9 +44,9 @@ class ProfileViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakeApi = FakeRedditApi()
         fakeAuthManager = FakeAuthManager()
-        postRepo = PostRepository(fakeApi)
-        commentRepo = CommentRepository(fakeApi)
-        userRepo = UserRepository(fakeApi, fakeAuthManager)
+        postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
+        commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
+        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
         viewModel = ProfileViewModel(userRepo, postRepo, commentRepo, fakeAuthManager)
     }
 

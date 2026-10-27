@@ -148,6 +148,7 @@ dependencies {
     testImplementation(libs.ktor.client.core)
     testImplementation(libs.ktor.client.mock)
     testImplementation(libs.ktor.http)
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.serialization.json)
     testImplementation(libs.multiplatform.settings.test)
     // Types into the reply field, a platform EditText. Also, the Compose test library brings in Espresso 3.5, which

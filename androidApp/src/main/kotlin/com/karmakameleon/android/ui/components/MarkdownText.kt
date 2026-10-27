@@ -20,10 +20,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,9 +53,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.markdown.MarkdownInline
-import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import org.koin.compose.koinInject
 
 @Composable
@@ -65,18 +67,32 @@ fun MarkdownText(
     renderInlineImages: Boolean = true,
     onImageClick: (String) -> Unit = {},
     navigationHandler: NavigationHandler = koinInject(),
+    markdownRepository: MarkdownRepository = koinInject(),
 ) {
-    val blocks = remember(markdown) { parseMarkdownBlocks(markdown) }
+    // Text that hasn't been parsed yet is parsed off the main thread, and shows once it's ready. Keyed on the text, so
+    // when it changes in place, like an edited comment, the old text isn't shown in the meantime.
+    val parsed = remember(markdown) { mutableStateOf(markdownRepository.cached(markdown)) }
+    LaunchedEffect(markdown) { parsed.value = markdownRepository.parse(markdown) }
+    val blocks by parsed
+    // The same objects while only the callbacks change, so a recomposition of the screen around unchanged text (a vote,
+    // or hiding the post body) can skip its blocks. Callers usually pass new lambdas each time.
+    val currentOnImageClick by rememberUpdatedState(onImageClick)
+    val currentOnTextClick by rememberUpdatedState(onTextClick)
+    val linkColor = MaterialTheme.colorScheme.primary
     val rendering =
-        InlineRendering(
-            linkColor = MaterialTheme.colorScheme.primary,
-            onLinkClick = { url -> navigationHandler.handleLink(url) },
-            renderInlineImages = renderInlineImages,
-            onImageClick = onImageClick,
-        )
+        remember(linkColor, navigationHandler, renderInlineImages) {
+            InlineRendering(
+                linkColor = linkColor,
+                onLinkClick = { url -> navigationHandler.handleLink(url) },
+                renderInlineImages = renderInlineImages,
+                onImageClick = { url -> currentOnImageClick(url) },
+            )
+        }
+    val hasTextClick = onTextClick != null
+    val textClick: (() -> Unit)? = remember(hasTextClick) { if (hasTextClick) ({ currentOnTextClick?.invoke() }) else null }
     Column(modifier = modifier) {
-        for (block in blocks) {
-            RenderBlock(block = block, style = style, rendering = rendering, onTextClick = onTextClick)
+        for (block in blocks.orEmpty()) {
+            RenderBlock(block = block, style = style, rendering = rendering, onTextClick = textClick)
         }
     }
 }

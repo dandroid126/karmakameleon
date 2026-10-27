@@ -5,6 +5,7 @@ import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestSubreddit
 import com.karmakameleon.shared.createTestUser
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
@@ -47,9 +48,9 @@ class SubredditViewModelTest {
         val fakeAuthManager = FakeAuthManager()
         fakeApi = FakeRedditApi(fakeAuthManager)
         settingsRepo = SettingsRepository(MapSettings())
-        postRepo = PostRepository(fakeApi)
+        postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         subredditRepo = SubredditRepository(fakeApi, settingsRepo)
-        userRepo = UserRepository(fakeApi, fakeAuthManager)
+        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
         viewModel = SubredditViewModel("kotlin", subredditRepo, postRepo, userRepo, settingsRepo)
     }
 

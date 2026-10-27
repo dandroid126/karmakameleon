@@ -6,6 +6,7 @@ import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestMessage
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.repository.InboxPoller
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.MessageRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.InboxFilter
@@ -44,7 +45,7 @@ class InboxViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakeApi = FakeRedditApi(fakeAuthManager)
         messageRepo = MessageRepository(fakeApi)
-        userRepo = UserRepository(fakeApi, fakeAuthManager)
+        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
         inboxPoller = InboxPoller(messageRepo, fakeAuthManager)
         viewModel = InboxViewModel(messageRepo, userRepo, inboxPoller)
     }

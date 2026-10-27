@@ -5,15 +5,22 @@ import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.api.CommentOrMore
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PostRepositoryTest {
-    private fun createRepo(api: FakeRedditApi = FakeRedditApi()) = PostRepository(api) to api
+    // Parses as soon as it's asked to, so the texts are cached by the time a call returns.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val markdown = MarkdownRepository(UnconfinedTestDispatcher())
+
+    private fun createRepo(api: FakeRedditApi = FakeRedditApi()) = PostRepository(api, markdown) to api
 
     // ==================== getPosts ====================
 
@@ -116,6 +123,22 @@ class PostRepositoryTest {
             assertEquals(1, resultComments.size)
         }
 
+    @Test
+    fun getPostWithComments_parsesThePostAndEveryCommentBeforeReturning() =
+        runTest {
+            val (repo, api) = createRepo()
+            val reply = createTestComment(id = "c2", body = "a *reply*")
+            val comment = createTestComment(id = "c1", body = "a **comment**", replies = listOf(reply))
+            api.postWithCommentsResult = createTestPost(id = "p1", selfText = "the post") to listOf(CommentOrMore.CommentItem(comment))
+
+            repo.getPostWithComments("sub", "p1")
+
+            // So the screen doesn't parse them while drawing.
+            assertNotNull(markdown.cached("the post"))
+            assertNotNull(markdown.cached("a **comment**"))
+            assertNotNull(markdown.cached("a *reply*"))
+        }
+
     // ==================== getMoreComments ====================
 
     @Test
@@ -128,6 +151,7 @@ class PostRepositoryTest {
             val result = repo.getMoreComments("t3_p1", listOf("c1"))
             assertTrue(result.isSuccess)
             assertEquals(1, result.getOrThrow().size)
+            assertNotNull(markdown.cached(comment.body))
         }
 
     // ==================== vote ====================

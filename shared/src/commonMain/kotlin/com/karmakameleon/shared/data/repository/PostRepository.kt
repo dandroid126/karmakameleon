@@ -2,6 +2,7 @@ package com.karmakameleon.shared.data.repository
 
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApi
+import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Post
@@ -17,6 +18,7 @@ import kotlinx.coroutines.flow.update
 
 class PostRepository(
     private val redditApi: RedditApi,
+    private val markdownRepository: MarkdownRepository,
 ) {
     private val cachedPosts = MutableStateFlow<Map<String, Post>>(emptyMap())
     private val _postUpdates = MutableSharedFlow<Post>(extraBufferCapacity = 16)
@@ -86,6 +88,7 @@ class PostRepository(
             val result = redditApi.getPostWithComments(subreddit, postId, sort, commentId = commentId, context = context)
             val post = preserveCachedPreviewData(result.first)
             cachedPosts.update { it + (postId to post) }
+            parseMarkdown(post, result.second)
             post to result.second
         }
 
@@ -104,7 +107,27 @@ class PostRepository(
         linkId: String,
         children: List<String>,
         sort: CommentSort = CommentSort.CONFIDENCE,
-    ): Result<List<CommentOrMore>> = runSuspendCatching { redditApi.getMoreComments(linkId, children, sort) }
+    ): Result<List<CommentOrMore>> =
+        runSuspendCatching {
+            redditApi.getMoreComments(linkId, children, sort).also { parseMarkdown(post = null, it) }
+        }
+
+    // Parses the text of the post and of the comments and their replies before they're shown, so the screen doesn't
+    // parse them while drawing.
+    private suspend fun parseMarkdown(
+        post: Post?,
+        comments: List<CommentOrMore>,
+    ) {
+        val texts = mutableListOf<String>()
+        post?.selfText?.let(texts::add)
+
+        fun addThread(comment: Comment) {
+            texts += comment.body
+            comment.replies.forEach(::addThread)
+        }
+        comments.filterIsInstance<CommentOrMore.CommentItem>().forEach { addThread(it.comment) }
+        markdownRepository.parseAll(texts)
+    }
 
     suspend fun vote(
         post: Post,

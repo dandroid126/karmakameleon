@@ -6,6 +6,7 @@ import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,7 +33,7 @@ class CommentViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         fakeApi = FakeRedditApi()
-        commentRepo = CommentRepository(fakeApi)
+        commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
         draftRepo = CommentDraftRepository(MapSettings())
         viewModel = CommentViewModel(commentRepo, draftRepo)
     }

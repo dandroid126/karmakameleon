@@ -8,8 +8,10 @@ import androidx.compose.ui.test.performClick
 import com.karmakameleon.android.testing.FakeRedditApi
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.testing.FakeAuthManager
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -46,7 +48,7 @@ class CommentItemTest {
                     loggedInUsername = "me",
                     isSingleThreadMode = isSingleThreadMode,
                     showSubreddit = showSubreddit,
-                    commentRepository = CommentRepository(redditApi),
+                    commentRepository = CommentRepository(redditApi, MarkdownRepository(Dispatchers.Main)),
                 )
             }
         }
