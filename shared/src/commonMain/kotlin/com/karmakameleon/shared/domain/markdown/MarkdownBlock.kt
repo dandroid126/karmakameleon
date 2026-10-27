@@ -30,15 +30,17 @@ sealed interface MarkdownBlock {
         val text: String,
     ) : MarkdownBlock
 
-    // The cells are parsed when they're shown, with references holding the URLs that reference links in them use,
-    // by normalized label. alignments has each column's alignment, from the separator row, and can have fewer or more
-    // entries than there are columns; a column without one has the default alignment.
+    // A row can have fewer or more cells than the header. alignments has each column's alignment, from the separator
+    // row, and can have fewer or more entries than there are columns; a column without one has the default alignment.
     data class Table(
-        val header: List<String>,
-        val rows: List<List<String>>,
-        val references: Map<String, String> = emptyMap(),
+        val header: List<Cell>,
+        val rows: List<List<Cell>>,
         val alignments: List<TableAlignment> = emptyList(),
-    ) : MarkdownBlock
+    ) : MarkdownBlock {
+        data class Cell(
+            val children: List<MarkdownInline>,
+        )
+    }
 
     object HorizontalRule : MarkdownBlock
 

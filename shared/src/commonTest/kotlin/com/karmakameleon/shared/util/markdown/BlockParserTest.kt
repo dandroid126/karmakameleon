@@ -339,15 +339,17 @@ class BlockParserTest {
 
     // ==================== Table ====================
 
+    // A cell with plain text.
+    private fun cell(text: String) = MarkdownBlock.Table.Cell(listOf(MarkdownInline.Text(text)))
+
     @Test
     fun table_basic() {
         val md = "| A | B |\n|---|---|\n| 1 | 2 |"
         val result = parse(md)
         assertEquals(1, result.size)
         val table = assertIs<MarkdownBlock.Table>(result[0])
-        assertEquals(listOf("A", "B"), table.header)
-        assertEquals(1, table.rows.size)
-        assertEquals(listOf("1", "2"), table.rows[0])
+        assertEquals(listOf(cell("A"), cell("B")), table.header)
+        assertEquals(listOf(listOf(cell("1"), cell("2"))), table.rows)
     }
 
     @Test
@@ -374,19 +376,19 @@ class BlockParserTest {
     @Test
     fun table_escapedPipe_staysInCell() {
         val table = assertIs<MarkdownBlock.Table>(parse("| A | B |\n|---|---|\n| a \\| pipe | ok |").single())
-        assertEquals(listOf(listOf("a | pipe", "ok")), table.rows)
+        assertEquals(listOf(listOf(cell("a | pipe"), cell("ok"))), table.rows)
     }
 
     @Test
     fun table_escapedPipe_inHeaderAndWithoutOuterPipes() {
         val table = assertIs<MarkdownBlock.Table>(parse("x \\| y | z\n--|--\n1 | 2").single())
-        assertEquals(listOf("x | y", "z"), table.header)
+        assertEquals(listOf(cell("x | y"), cell("z")), table.header)
     }
 
     @Test
     fun table_escapedPipe_inInlineCode() {
         val table = assertIs<MarkdownBlock.Table>(parse("| A |\n|---|\n| `a \\| b` |").single())
-        assertEquals(listOf(listOf("`a | b`")), table.rows)
+        assertEquals(listOf(listOf(MarkdownBlock.Table.Cell(listOf(MarkdownInline.Code("a | b"))))), table.rows)
     }
 
     // In \\| the backslash is escaped, so the pipe separates cells; the inline parser turns \\ into one backslash.
@@ -400,7 +402,7 @@ class BlockParserTest {
     @Test
     fun table_lineWithOnlyEscapedPipes_endsTable() {
         val result = parse("| A |\n|---|\n| 1 |\nuse a \\| b")
-        assertEquals(listOf(listOf("1")), assertIs<MarkdownBlock.Table>(result[0]).rows)
+        assertEquals(listOf(listOf(cell("1"))), assertIs<MarkdownBlock.Table>(result[0]).rows)
         assertIs<MarkdownBlock.Paragraph>(result[1])
     }
 
@@ -471,7 +473,13 @@ class BlockParserTest {
         val itemLink = assertIs<MarkdownBlock.BulletListItem>(result[1]).children.single()
         assertEquals("https://example.com", assertIs<MarkdownInline.Link>(headingLink).url)
         assertEquals("https://example.com", assertIs<MarkdownInline.Link>(itemLink).url)
-        assertEquals(mapOf("a" to "https://example.com"), assertIs<MarkdownBlock.Table>(result[3]).references)
+        val cellLink =
+            assertIs<MarkdownBlock.Table>(result[3])
+                .header
+                .single()
+                .children
+                .single()
+        assertEquals("https://example.com", assertIs<MarkdownInline.Link>(cellLink).url)
     }
 
     @Test

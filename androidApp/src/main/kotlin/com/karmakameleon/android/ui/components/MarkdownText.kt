@@ -286,13 +286,29 @@ private fun RenderBlockQuote(
         for (child in block.children) {
             RenderBlock(
                 block = child,
-                style = style.copy(fontStyle = FontStyle.Italic),
+                style = quoteStyle(style),
                 rendering = rendering,
                 onTextClick = onTextClick,
             )
         }
     }
 }
+
+// The tables in blocks, each with the style RenderBlock shows it in, so their columns can be measured before they're
+// shown. Like RenderBlockQuote, a quote's blocks are in italics.
+internal fun tablesIn(
+    blocks: List<MarkdownBlock>,
+    style: TextStyle,
+): List<Pair<MarkdownBlock.Table, TextStyle>> =
+    blocks.flatMap { block ->
+        when (block) {
+            is MarkdownBlock.Table -> listOf(block to style)
+            is MarkdownBlock.BlockQuote -> tablesIn(block.children, quoteStyle(style))
+            else -> emptyList()
+        }
+    }
+
+private fun quoteStyle(style: TextStyle) = style.copy(fontStyle = FontStyle.Italic)
 
 private val QUOTE_BAR_WIDTH = 4.dp
 private val QUOTE_BAR_GAP = 8.dp
@@ -414,6 +430,15 @@ private fun ClickableMarkdownText(
         modifier = if (onTextClick != null) modifier.clickable(onClick = onTextClick) else modifier,
     )
 }
+
+// A table cell's text as InlineText builds it, to measure it. Only its characters and the spans that change their size
+// matter, so the colors and taps are placeholders. Spoilers take the same room hidden or revealed.
+internal fun tableCellText(inlines: List<MarkdownInline>): AnnotatedString =
+    buildInlines(inlines, MEASURING_RENDERING, Spoilers(revealed = emptySet(), hiddenColor = Color.Unspecified, onReveal = {}))
+
+// Like a table cell's: images aren't shown as [img] links.
+private val MEASURING_RENDERING =
+    InlineRendering(linkColor = Color.Unspecified, onLinkClick = {}, renderInlineImages = true, onImageClick = {})
 
 private fun buildInlines(
     inlines: List<MarkdownInline>,

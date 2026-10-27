@@ -89,6 +89,7 @@ class NavigationRule : ExternalResource() {
                     // Parses on the main thread, which the Compose test rule waits for, so the text is shown by the time
                     // the test looks at it.
                     single { MarkdownRepository(Dispatchers.Main) }
+                    single { TableColumnWidths(Dispatchers.Main) }
                 },
             )
         }
