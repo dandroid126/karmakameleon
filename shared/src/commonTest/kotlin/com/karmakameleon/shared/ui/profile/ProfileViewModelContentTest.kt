@@ -34,9 +34,9 @@ class ProfileViewModelContentTest {
     private val fakeApi = FakeRedditApi(fakeAuthManager)
     private val viewModel =
         ProfileViewModel(
-            UserRepository(fakeApi, fakeAuthManager),
+            UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main)),
             PostRepository(fakeApi, MarkdownRepository()),
-            CommentRepository(fakeApi),
+            CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)),
             fakeAuthManager,
         )
 

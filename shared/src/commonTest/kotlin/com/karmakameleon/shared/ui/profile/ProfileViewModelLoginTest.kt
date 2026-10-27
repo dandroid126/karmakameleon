@@ -43,8 +43,8 @@ class ProfileViewModelLoginTest {
         fakeApi = FakeRedditApi()
         fakeAuthManager = FakeAuthManager()
         postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
-        commentRepo = CommentRepository(fakeApi)
-        userRepo = UserRepository(fakeApi, fakeAuthManager)
+        commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
+        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
         viewModel = ProfileViewModel(userRepo, postRepo, commentRepo, fakeAuthManager)
     }
 

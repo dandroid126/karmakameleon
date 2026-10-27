@@ -44,7 +44,7 @@ class FeedViewModelTest {
         fakeApi = FakeRedditApi(fakeAuthManager)
         settingsRepo = SettingsRepository(MapSettings())
         postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
-        userRepo = UserRepository(fakeApi, fakeAuthManager)
+        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
         viewModel = FeedViewModel(postRepo, userRepo, settingsRepo)
     }
 

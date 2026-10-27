@@ -7,20 +7,25 @@ import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class UserRepositoryTest {
+    // Parses as soon as it's asked to, so the texts are cached by the time a call returns.
+    private val markdown = MarkdownRepository(UnconfinedTestDispatcher())
+
     private fun createRepo(
         api: FakeRedditApi = FakeRedditApi(),
         authManager: FakeAuthManager = FakeAuthManager(),
-    ): Triple<UserRepository, FakeRedditApi, FakeAuthManager> = Triple(UserRepository(api, authManager), api, authManager)
+    ): Triple<UserRepository, FakeRedditApi, FakeAuthManager> = Triple(UserRepository(api, authManager, markdown), api, authManager)
 
     // ==================== loadCurrentUser ====================
 
@@ -64,7 +69,7 @@ class UserRepositoryTest {
             val api = FakeRedditApi().apply { meResult = createTestUser(name = "testuser") }
             // The login state collector only runs when this test lets it, so anything it hasn't applied yet comes
             // after loadCurrentUser().
-            val repo = UserRepository(api, FakeAuthManager(), backgroundScope)
+            val repo = UserRepository(api, FakeAuthManager(), markdown, backgroundScope)
 
             repo.loadCurrentUser()
             runCurrent()
@@ -162,6 +167,8 @@ class UserRepositoryTest {
             val result = repo.getUserComments("testuser")
             assertTrue(result.isSuccess)
             assertEquals(1, result.getOrThrow().items.size)
+            // So the profile shows the comments' text on its first frame.
+            assertNotNull(markdown.cached(comments.single().body))
         }
 
     // ==================== getSavedPosts ====================
@@ -203,11 +210,12 @@ class UserRepositoryTest {
             val (repo, api, _) = createRepo()
             api.meResult = createTestUser(name = "testuser")
             repo.loadCurrentUser()
-            api.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1")))
+            api.savedCommentsResult = createTestListing(items = listOf(createTestComment(id = "sc1", body = "A saved comment")))
 
             val result = repo.getSavedComments()
             assertTrue(result.isSuccess)
             assertEquals(1, result.getOrThrow().items.size)
+            assertNotNull(markdown.cached("A saved comment"))
         }
 
     // ==================== getUpvotedPosts ====================

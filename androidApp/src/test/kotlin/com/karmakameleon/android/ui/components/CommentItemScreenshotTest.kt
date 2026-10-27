@@ -8,8 +8,10 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.karmakameleon.android.testing.FakeRedditApi
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.testing.FakeAuthManager
+import kotlinx.coroutines.Dispatchers
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -46,7 +48,7 @@ class CommentItemScreenshotTest {
                         isLoggedIn = isLoggedIn,
                         loggedInUsername = "me",
                         showSubreddit = showSubreddit,
-                        commentRepository = CommentRepository(FakeRedditApi(FakeAuthManager())),
+                        commentRepository = CommentRepository(FakeRedditApi(FakeAuthManager()), MarkdownRepository(Dispatchers.Main)),
                     )
                 }
             }

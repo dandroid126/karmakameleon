@@ -34,8 +34,8 @@ val sharedModule =
         // Repositories
         single { PostRepository(get(), get()) }
         single { SubredditRepository(get(), get()) }
-        single { UserRepository(get(), get()) }
-        single { CommentRepository(get()) }
+        single { UserRepository(get(), get(), get()) }
+        single { CommentRepository(get(), get()) }
         single { MessageRepository(get()) }
         single { InboxPoller(get(), get()) }
         single { ReadPostsRepository(get()) }

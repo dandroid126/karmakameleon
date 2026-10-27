@@ -6,6 +6,7 @@ import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +28,7 @@ import kotlin.test.assertTrue
 class CommentViewModelEditingTest {
     private val fakeApi = FakeRedditApi()
     private val draftRepo = CommentDraftRepository(MapSettings())
-    private val viewModel = CommentViewModel(CommentRepository(fakeApi), draftRepo)
+    private val viewModel = CommentViewModel(CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)), draftRepo)
     private val more = createTestMoreComments(id = "m1", name = "t1_m1", parentId = "t3_abc123", depth = 0)
 
     @BeforeTest

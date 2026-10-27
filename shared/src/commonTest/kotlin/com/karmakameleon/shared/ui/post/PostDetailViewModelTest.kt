@@ -63,12 +63,12 @@ class PostDetailViewModelTest {
 
     private fun createViewModel(
         target: PostDetailTarget = PostDetailTarget("kotlin", "abc123"),
-        userRepo: UserRepository = UserRepository(fakeApi, authManager),
+        userRepo: UserRepository = UserRepository(fakeApi, authManager, MarkdownRepository(Dispatchers.Main)),
     ): PostDetailViewModel =
         PostDetailViewModel(
             target,
             postRepo,
-            CommentRepository(fakeApi),
+            CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)),
             userRepo,
             draftRepo,
             settingsRepo,
@@ -178,7 +178,7 @@ class PostDetailViewModelTest {
     fun init_loadsTheAccountOfALoggedInUser() =
         runTest {
             // Logged in, but the account failed to load then.
-            val userRepo = UserRepository(fakeApi, authManager)
+            val userRepo = UserRepository(fakeApi, authManager, MarkdownRepository(Dispatchers.Main))
             userRepo.handleAuthCallback("code")
             fakeApi.meResult = createTestUser(name = "me")
 

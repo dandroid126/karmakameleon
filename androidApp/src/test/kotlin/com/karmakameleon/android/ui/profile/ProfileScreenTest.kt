@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -18,13 +19,17 @@ import com.karmakameleon.android.testing.postListing
 import com.karmakameleon.android.ui.components.FakeImagesRule
 import com.karmakameleon.android.ui.feed.FIRST_POST_TITLE
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
+import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.testing.form
 import com.karmakameleon.shared.testing.query
 import com.karmakameleon.shared.testing.readFixture
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.koin.core.context.loadKoinModules
+import org.koin.dsl.module
 import org.robolectric.RobolectricTestRunner
 
 // The comment in user_comments.json, which its author sees on their own profile.
@@ -126,6 +131,26 @@ class ProfileScreenTest {
     }
 
     @Test
+    fun commentsShowTheirTextOnTheirFirstFrame() {
+        // Parses only when the test runs it, which it does only until the comment is shown. Text the screen had to
+        // parse itself, after showing the comment, would never appear.
+        val parsing = StandardTestDispatcher()
+        loadKoinModules(module { single { MarkdownRepository(parsing) } })
+        showOtherProfile()
+        composeRule.onNodeWithText("Comments").performClick()
+        // The comment's author, which only its item shows.
+        val comment = composeRule.onNodeWithText(OWN_USERNAME)
+        repeat(PARSE_ROUNDS) {
+            composeRule.waitForIdle()
+            if (comment.isDisplayed()) return@repeat
+            parsing.scheduler.advanceUntilIdle()
+        }
+
+        comment.assertExists()
+        composeRule.onNodeWithText(OWN_COMMENT, substring = true).assertExists()
+    }
+
+    @Test
     fun aboutShowsKarmaAndOwnBadges() {
         showOwnProfile()
         // Your own profile has more tabs than fit, so About starts off screen.
@@ -184,3 +209,6 @@ fun respondWithProfile(
     fakeReddit.reddit.respond("/user/$username/submitted", postListing())
     fakeReddit.reddit.respond("/user/$username/comments", lastPage(postListing("user_comments.json")))
 }
+
+// More than the times the profile waits for parsing before it shows its comments.
+private const val PARSE_ROUNDS = 5

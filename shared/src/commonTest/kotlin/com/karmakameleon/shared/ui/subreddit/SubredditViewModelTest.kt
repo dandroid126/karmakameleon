@@ -50,7 +50,7 @@ class SubredditViewModelTest {
         settingsRepo = SettingsRepository(MapSettings())
         postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         subredditRepo = SubredditRepository(fakeApi, settingsRepo)
-        userRepo = UserRepository(fakeApi, fakeAuthManager)
+        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
         viewModel = SubredditViewModel("kotlin", subredditRepo, postRepo, userRepo, settingsRepo)
     }
 

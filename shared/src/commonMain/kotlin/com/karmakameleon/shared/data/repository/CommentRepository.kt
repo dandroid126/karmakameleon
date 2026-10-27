@@ -4,8 +4,11 @@ import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.util.runSuspendCatching
 
+// Parses the text of the comments it returns with new text, a reply or an edit, so the screen shows it on its first
+// frame without parsing it while drawing.
 class CommentRepository(
     private val redditApi: RedditApi,
+    private val markdownRepository: MarkdownRepository,
 ) {
     suspend fun vote(
         comment: Comment,
@@ -36,7 +39,9 @@ class CommentRepository(
         text: String,
     ): Result<Comment> =
         runSuspendCatching {
-            redditApi.submitComment(parentId, text) ?: error("Failed to submit comment")
+            val comment = redditApi.submitComment(parentId, text) ?: error("Failed to submit comment")
+            markdownRepository.parse(comment.body)
+            comment
         }
 
     suspend fun editComment(
@@ -45,6 +50,7 @@ class CommentRepository(
     ): Result<Comment> =
         runSuspendCatching {
             check(redditApi.editComment(comment.name, text)) { "Edit failed" }
+            markdownRepository.parse(text)
             comment.copy(body = text)
         }
 
