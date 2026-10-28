@@ -134,7 +134,7 @@ private fun parseTableAt(
     references: LinkReferences,
 ): ParsedBlock {
     val tableEnd = findTableEnd(lines, i)
-    return ParsedBlock(parseTable(lines.subList(i, tableEnd), references.known), tableEnd)
+    return ParsedBlock(parseTable(lines.subList(i, tableEnd), references), tableEnd)
 }
 
 // The lines between an opening fence and a closing one, kept as typed. The closing fence uses the same character, at
@@ -466,15 +466,15 @@ internal fun findTableEnd(
 
 private fun parseTable(
     tableLines: List<String>,
-    references: Map<String, String>,
+    references: LinkReferences,
 ): MarkdownBlock.Table {
-    val header = parseTableRow(tableLines[0])
+    fun cells(line: String) = parseTableRow(line).map { MarkdownBlock.Table.Cell(references.inlines(it)) }
     val rows =
         tableLines
             .drop(2)
             .filter { !isTableSeparator(it) }
-            .map { parseTableRow(it) }
-    return MarkdownBlock.Table(header, rows, references, parseTableRow(tableLines[1]).map(::parseAlignment))
+            .map(::cells)
+    return MarkdownBlock.Table(cells(tableLines[0]), rows, parseTableRow(tableLines[1]).map(::parseAlignment))
 }
 
 private fun parseAlignment(separatorCell: String): TableAlignment {

@@ -1,6 +1,7 @@
 package com.karmakameleon.android.di
 
 import com.karmakameleon.android.navigation.NavigationHandler
+import com.karmakameleon.android.ui.components.TableColumnWidths
 import com.karmakameleon.android.ui.menu.GlobalMenuManager
 import com.karmakameleon.shared.di.platformModule
 import com.karmakameleon.shared.di.sharedModule
@@ -17,6 +18,7 @@ val androidModule =
     module {
         single { NavigationHandler() }
         single { GlobalMenuManager() }
+        single { TableColumnWidths() }
         // ViewModels (Android-specific registration using viewModel DSL)
         viewModel { FeedViewModel(get(), get(), get()) }
         viewModel { params -> PostDetailViewModel(params.get(), get(), get(), get(), get(), get()) }

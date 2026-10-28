@@ -97,6 +97,7 @@ import com.karmakameleon.android.ui.components.FlairChip
 import com.karmakameleon.android.ui.components.FullScreenImageViewer
 import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
+import com.karmakameleon.android.ui.components.MeasureTablesAhead
 import com.karmakameleon.android.ui.components.ProgressiveAsyncImage
 import com.karmakameleon.android.ui.components.ReplyBar
 import com.karmakameleon.android.ui.components.SubredditFlairChip
@@ -111,6 +112,7 @@ import com.karmakameleon.android.ui.components.showShortToast
 import com.karmakameleon.android.ui.components.videoMenuItems
 import com.karmakameleon.android.ui.theme.postFlairColors
 import com.karmakameleon.android.ui.theme.voteColors
+import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
@@ -153,6 +155,10 @@ fun PostDetailScreen(
     val screen = rememberPostDetailScreenState()
     var isBodyExpanded by rememberSaveable { mutableStateOf(true) }
 
+    // The post body and the comments are shown in bodyMedium, in PostHeader and CommentItem.
+    MeasureTablesAhead(key = uiState.post?.selfText to commentState.comments, style = MaterialTheme.typography.bodyMedium) {
+        listOfNotNull(uiState.post?.selfText) + commentState.comments.commentBodies()
+    }
     ShowActionErrors(uiState.actionError, onConsumeError = viewModel::clearActionError)
     ConsumePendingQuotes { text -> viewModel.handleQuote(text, commentState) }
     val replyActions = viewModel.replyActions(commentState, screen.draftDialogs, context)
@@ -850,4 +856,16 @@ private fun MoreCommentsButton(
             style = MaterialTheme.typography.labelLarge,
         )
     }
+}
+
+// The text of the comments and all their replies.
+private fun List<CommentOrMore>.commentBodies(): List<String> {
+    val bodies = mutableListOf<String>()
+
+    fun add(comment: Comment) {
+        bodies += comment.body
+        comment.replies.forEach(::add)
+    }
+    filterIsInstance<CommentOrMore.CommentItem>().forEach { add(it.comment) }
+    return bodies
 }

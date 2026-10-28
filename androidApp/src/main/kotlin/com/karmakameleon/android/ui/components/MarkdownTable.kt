@@ -1,11 +1,15 @@
 package com.karmakameleon.android.ui.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import android.view.ViewConfiguration
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.PressGestureScope
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,18 +19,21 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -34,7 +41,9 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.IntrinsicMeasurable
 import androidx.compose.ui.layout.IntrinsicMeasureScope
 import androidx.compose.ui.layout.Layout
@@ -42,13 +51,15 @@ import androidx.compose.ui.layout.Measurable
 import androidx.compose.ui.layout.MeasurePolicy
 import androidx.compose.ui.layout.MeasureResult
 import androidx.compose.ui.layout.MeasureScope
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ScrollAxisRange
 import androidx.compose.ui.semantics.horizontalScrollAxisRange
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.scrollBy
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.LayoutDirection
@@ -57,8 +68,13 @@ import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.ui.theme.markdownColors
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
+import com.karmakameleon.shared.domain.markdown.MarkdownInline
 import com.karmakameleon.shared.domain.markdown.TableAlignment
-import com.karmakameleon.shared.util.markdown.parseInlineMarkdown
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
 // Columns are sized by their content, like a browser's automatic table layout, and a table too wide for the
@@ -69,24 +85,25 @@ internal fun RenderTable(
     style: TextStyle,
     rendering: InlineRendering,
     onTextClick: (() -> Unit)?,
+    columnWidths: TableColumnWidths = koinInject(),
 ) {
     if (table.header.isEmpty()) return
     val cellRendering = rendering.copy(renderInlineImages = true, onImageClick = {})
     val columnCount = table.header.size
     val scroll = remember { TableScroll() }
+    val environment = rememberTableTextEnvironment(style)
+    val knownWidths = remember(columnWidths, table, environment) { KnownColumnWidths(columnWidths, table, environment) }
 
     Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        TableGrid(columnCount = columnCount, scroll = scroll) {
+        TableGrid(columnCount = columnCount, scroll = scroll, knownWidths = knownWidths, onTextClick = onTextClick) {
             (listOf(table.header) + table.rows).forEachIndexed { rowIndex, row ->
                 repeat(columnCount) { colIndex ->
                     TableCell(
-                        text = row.getOrElse(colIndex) { "" },
-                        references = table.references,
+                        inlines = row.getOrNull(colIndex)?.children.orEmpty(),
                         isHeader = rowIndex == 0,
-                        alignment = table.alignments.getOrElse(colIndex) { TableAlignment.Default },
+                        alignment = table.alignment(colIndex),
                         style = style,
                         rendering = cellRendering,
-                        onTextClick = onTextClick,
                     )
                 }
             }
@@ -113,7 +130,7 @@ internal fun RenderTable(
 }
 
 private val TABLE_BORDER_WIDTH = 1.dp
-private val CELL_PADDING = 8.dp
+internal val CELL_PADDING = 8.dp
 private val SCROLL_HINT_ICON_SIZE = 20.dp
 private val SCROLL_FADE_WIDTH = 32.dp
 
@@ -124,37 +141,31 @@ private const val LONG_WORD_MIN_SHARE = 1f / 3
 // In a table that scrolls, the widest a word can make its column, so a column is never wider than the screen.
 private const val SCROLLING_COLUMN_MAX_SHARE = 0.6f
 
+// Only the text and its padding: the grid draws the borders and the header's background, and handles taps, so a
+// table with many cells doesn't compose and draw them for each one.
 @Composable
 private fun TableCell(
-    text: String,
-    references: Map<String, String>,
+    inlines: List<MarkdownInline>,
     isHeader: Boolean,
     alignment: TableAlignment,
     style: TextStyle,
     rendering: InlineRendering,
-    onTextClick: (() -> Unit)?,
 ) {
-    val inlines = remember(text, references) { parseInlineMarkdown(text, references) }
-    Box(
-        modifier =
-            Modifier
-                .border(TABLE_BORDER_WIDTH, MaterialTheme.colorScheme.outline)
-                .background(if (isHeader) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent)
-                .padding(CELL_PADDING),
-    ) {
-        // Filling the cell, so the text can be aligned in it.
-        InlineText(
-            inlines = inlines,
-            style = style.copy(fontWeight = if (isHeader) FontWeight.Bold else style.fontWeight, textAlign = alignment.textAlign),
-            rendering = rendering,
-            onTextClick = onTextClick,
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
+    // Filling the cell inside its padding, so the text can be aligned in it. The padding is on the text rather than on
+    // a box around it, which would be another layout node for each cell.
+    InlineText(
+        inlines = inlines,
+        style = tableCellStyle(style, isHeader, alignment),
+        rendering = rendering,
+        onTextClick = null,
+        modifier = Modifier.padding(CELL_PADDING).fillMaxWidth(),
+    )
 }
 
 // Like Reddit's align="left" and align="right", left and right don't change with the layout direction.
-private val TableAlignment.textAlign: TextAlign
+internal fun MarkdownBlock.Table.alignment(column: Int): TableAlignment = alignments.getOrElse(column) { TableAlignment.Default }
+
+internal val TableAlignment.textAlign: TextAlign
     get() =
         when (this) {
             TableAlignment.Default -> TextAlign.Start
@@ -195,10 +206,17 @@ internal class TableScroll {
 private fun TableGrid(
     columnCount: Int,
     scroll: TableScroll,
+    knownWidths: KnownColumnWidths,
+    onTextClick: (() -> Unit)?,
     content: @Composable () -> Unit,
 ) {
     val fadeMaskColor = markdownColors().fadeMaskColor
-    val measurePolicy = remember(columnCount, scroll) { TableMeasurePolicy(columnCount, scroll) }
+    val borderColor = MaterialTheme.colorScheme.outline
+    val headerColor = MaterialTheme.colorScheme.surfaceVariant
+    val geometry = remember { TableGeometry() }
+    val interactionSource = remember { MutableInteractionSource() }
+    val measurePolicy =
+        remember(columnCount, scroll, geometry, knownWidths) { TableMeasurePolicy(columnCount, scroll, geometry, knownWidths) }
     val canScroll = scroll.maxOffset > 0
     Layout(
         content = content,
@@ -215,10 +233,109 @@ private fun TableGrid(
                     // Off when the table fits, so a sideways swipe on it reaches whatever is around it.
                     enabled = canScroll,
                     reverseDirection = ScrollableDefaults.reverseDirection(LocalLayoutDirection.current, Orientation.Horizontal, false),
-                ).fadeScrolledEdges(scroll, fadeMaskColor)
-                .clipToBounds(),
+                ).then(if (onTextClick != null) Modifier.onTapOutsideLinks(interactionSource, onTextClick) else Modifier)
+                .fadeScrolledEdges(scroll, fadeMaskColor)
+                .clipToBounds()
+                // Inside the fade, so the borders fade out with the cells.
+                .drawBehind { drawGrid(geometry, scroll.offset, borderColor, headerColor) },
         measurePolicy = measurePolicy,
     )
+}
+
+// Calls onTap for a tap anywhere on the table but its links, which take their taps first, with a ripple like the text
+// around it and a click action for screen readers. Not clickable, which merges its content's semantics: a screen reader
+// would read the whole table as one text and couldn't reach its links.
+private fun Modifier.onTapOutsideLinks(
+    interactionSource: MutableInteractionSource,
+    onTap: () -> Unit,
+): Modifier =
+    semantics {
+        onClick {
+            onTap()
+            true
+        }
+    }.indication(interactionSource, ripple())
+        .pointerInput(interactionSource, onTap) {
+            detectTapGestures(onPress = { offset -> showPress(interactionSource, offset) }, onTap = { onTap() })
+        }
+
+// Shows the press like clickable in a scrolling list does: only once it has lasted the tap timeout or ended in a tap,
+// so starting to scroll the comments over a table doesn't flash it.
+private suspend fun PressGestureScope.showPress(
+    interactionSource: MutableInteractionSource,
+    offset: Offset,
+) {
+    val press = PressInteraction.Press(offset)
+    coroutineScope {
+        val delayedPress =
+            launch {
+                delay(ViewConfiguration.getTapTimeout().toLong())
+                interactionSource.emit(press)
+            }
+        val released = tryAwaitRelease()
+        if (delayedPress.isActive) {
+            delayedPress.cancelAndJoin()
+            // A quick tap, which still shows.
+            if (released) interactionSource.emit(press)
+        }
+        interactionSource.emit(if (released) PressInteraction.Release(press) else PressInteraction.Cancel(press))
+    }
+}
+
+// The columns' widths and the rows' heights from the last time the table was measured, for drawing its grid. State, so
+// the grid is drawn again when they change.
+@Stable
+private class TableGeometry {
+    var columnWidths by mutableStateOf(IntArray(0))
+        private set
+    var rowHeights by mutableStateOf(IntArray(0))
+        private set
+
+    fun update(
+        columns: IntArray,
+        rows: IntArray,
+    ) {
+        if (!columns.contentEquals(columnWidths)) columnWidths = columns
+        if (!rows.contentEquals(rowHeights)) rowHeights = rows
+    }
+}
+
+// The header's background, then a border along each edge of every cell, where a border on each cell would draw it,
+// so cells next to each other have a line twice as thick between them as the table's outer edge.
+private fun DrawScope.drawGrid(
+    geometry: TableGeometry,
+    scrollOffset: Float,
+    borderColor: Color,
+    headerColor: Color,
+) {
+    val widths = geometry.columnWidths
+    val heights = geometry.rowHeights
+    if (widths.isEmpty() || heights.isEmpty()) return
+    val border = TABLE_BORDER_WIDTH.toPx()
+    val tableWidth = widths.sum().toFloat()
+    val tableHeight = heights.sum().toFloat()
+    // Where the table starts, scrolled, and which way its columns go.
+    val rtl = layoutDirection == LayoutDirection.Rtl
+    val start = -scrollOffset.roundToInt().toFloat()
+
+    fun left(
+        x: Float,
+        width: Float,
+    ) = if (rtl) size.width - (start + x) - width else start + x
+
+    drawRect(headerColor, topLeft = Offset(left(0f, tableWidth), 0f), size = Size(tableWidth, heights[0].toFloat()))
+    var x = 0f
+    for (width in widths) {
+        drawRect(borderColor, topLeft = Offset(left(x, border), 0f), size = Size(border, tableHeight))
+        drawRect(borderColor, topLeft = Offset(left(x + width - border, border), 0f), size = Size(border, tableHeight))
+        x += width
+    }
+    var y = 0f
+    for (height in heights) {
+        drawRect(borderColor, topLeft = Offset(left(0f, tableWidth), y), size = Size(tableWidth, border))
+        drawRect(borderColor, topLeft = Offset(left(0f, tableWidth), y + height - border), size = Size(tableWidth, border))
+        y += height
+    }
 }
 
 // Fades the content out towards each edge it can still scroll to.
@@ -253,10 +370,33 @@ private fun Modifier.fadeScrolledEdges(
         }
     }
 
+// The widths kept for one table shown in one environment.
+private class KnownColumnWidths(
+    private val widths: TableColumnWidths,
+    private val table: MarkdownBlock.Table,
+    private val environment: TableTextEnvironment,
+) {
+    fun get(): ColumnWidths? = widths.get(table, environment)
+
+    fun put(columns: ColumnWidths) = widths.put(table, environment, columns)
+}
+
+@Composable
+private fun rememberTableTextEnvironment(style: TextStyle): TableTextEnvironment {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val fontFamilyResolver = LocalFontFamilyResolver.current
+    return remember(style, density, layoutDirection, fontFamilyResolver) {
+        TableTextEnvironment(style, density, layoutDirection, fontFamilyResolver)
+    }
+}
+
 // Lays out the cells, given in rows, in columns sized by columnWidths, each row as tall as its tallest cell.
 private class TableMeasurePolicy(
     private val columnCount: Int,
     private val scroll: TableScroll,
+    private val geometry: TableGeometry,
+    private val knownWidths: KnownColumnWidths,
 ) : MeasurePolicy {
     override fun MeasureScope.measure(
         measurables: List<Measurable>,
@@ -264,11 +404,11 @@ private class TableMeasurePolicy(
     ): MeasureResult {
         val widths = columnWidths(measurables, constraints.maxWidth)
         val rows = measurables.chunked(columnCount)
-        val heights = rowHeights(rows, widths)
-        val placeables =
-            rows.mapIndexed { rowIndex, row ->
-                row.mapIndexed { colIndex, cell -> cell.measure(Constraints.fixed(widths[colIndex], heights[rowIndex])) }
-            }
+        // Each cell is measured once, at its column's width, and the row is as tall as its tallest cell. Cells don't
+        // need to fill their row, since the grid draws their borders.
+        val placeables = rows.map { row -> row.mapIndexed { colIndex, cell -> cell.measure(Constraints.fixedWidth(widths[colIndex])) } }
+        val heights = IntArray(rows.size) { rowIndex -> placeables[rowIndex].maxOf { it.height } }
+        geometry.update(widths, heights)
         val tableWidth = widths.sum()
         val width = constraints.constrainWidth(tableWidth)
         scroll.updateMaxOffset(tableWidth - width)
@@ -310,11 +450,30 @@ private class TableMeasurePolicy(
         cells: List<IntrinsicMeasurable>,
         available: Int,
     ): IntArray {
+        // Measured before, or in the background before the table was shown, or else measured from the cells and kept.
         val rows = cells.chunked(columnCount)
-        val maxWidths = rows.columnMaxOf { it.maxIntrinsicWidth(Constraints.Infinity) }
-        if (available == Constraints.Infinity) return maxWidths
-        val minWidths = rows.columnMaxOf { it.minIntrinsicWidth(Constraints.Infinity) }
-        return distributeColumnWidths(minWidths, maxWidths, available)
+        val known = knownWidths.get()
+        val maxWidths = known?.widest ?: rows.columnMaxOf { it.maxIntrinsicWidth(Constraints.Infinity) }
+        if (known == null) knownWidths.put(ColumnWidths(maxWidths, narrowest = null))
+        return when {
+            available == Constraints.Infinity -> {
+                maxWidths
+            }
+
+            // When the columns fit at their widest, their narrowest widths don't change the result, so they aren't
+            // measured.
+            maxWidths.sum() <= available -> {
+                distributeColumnWidths(maxWidths, maxWidths, available)
+            }
+
+            else -> {
+                val minWidths =
+                    known?.narrowest ?: rows.columnMaxOf { it.minIntrinsicWidth(Constraints.Infinity) }.also {
+                        knownWidths.put(ColumnWidths(maxWidths, it))
+                    }
+                distributeColumnWidths(minWidths, maxWidths, available)
+            }
+        }
     }
 
     private fun rowHeights(
