@@ -1,10 +1,15 @@
 package com.karmakameleon.android.ui.components
 
+import android.view.ViewConfiguration
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.PressGestureScope
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.indication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -64,6 +70,10 @@ import com.karmakameleon.android.ui.theme.markdownColors
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.markdown.MarkdownInline
 import com.karmakameleon.shared.domain.markdown.TableAlignment
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import kotlin.math.roundToInt
 
@@ -204,6 +214,7 @@ private fun TableGrid(
     val borderColor = MaterialTheme.colorScheme.outline
     val headerColor = MaterialTheme.colorScheme.surfaceVariant
     val geometry = remember { TableGeometry() }
+    val interactionSource = remember { MutableInteractionSource() }
     val measurePolicy =
         remember(columnCount, scroll, geometry, knownWidths) { TableMeasurePolicy(columnCount, scroll, geometry, knownWidths) }
     val canScroll = scroll.maxOffset > 0
@@ -222,7 +233,7 @@ private fun TableGrid(
                     // Off when the table fits, so a sideways swipe on it reaches whatever is around it.
                     enabled = canScroll,
                     reverseDirection = ScrollableDefaults.reverseDirection(LocalLayoutDirection.current, Orientation.Horizontal, false),
-                ).then(if (onTextClick != null) Modifier.onTapOutsideLinks(onTextClick) else Modifier)
+                ).then(if (onTextClick != null) Modifier.onTapOutsideLinks(interactionSource, onTextClick) else Modifier)
                 .fadeScrolledEdges(scroll, fadeMaskColor)
                 .clipToBounds()
                 // Inside the fade, so the borders fade out with the cells.
@@ -231,16 +242,45 @@ private fun TableGrid(
     )
 }
 
-// Calls onTap for a tap anywhere on the table but its links, which take their taps first, with a click action for
-// screen readers. Not clickable, which merges its content's semantics: a screen reader would read the whole table as
-// one text and couldn't reach its links.
-private fun Modifier.onTapOutsideLinks(onTap: () -> Unit): Modifier =
+// Calls onTap for a tap anywhere on the table but its links, which take their taps first, with a ripple like the text
+// around it and a click action for screen readers. Not clickable, which merges its content's semantics: a screen reader
+// would read the whole table as one text and couldn't reach its links.
+private fun Modifier.onTapOutsideLinks(
+    interactionSource: MutableInteractionSource,
+    onTap: () -> Unit,
+): Modifier =
     semantics {
         onClick {
             onTap()
             true
         }
-    }.pointerInput(onTap) { detectTapGestures { onTap() } }
+    }.indication(interactionSource, ripple())
+        .pointerInput(interactionSource, onTap) {
+            detectTapGestures(onPress = { offset -> showPress(interactionSource, offset) }, onTap = { onTap() })
+        }
+
+// Shows the press like clickable in a scrolling list does: only once it has lasted the tap timeout or ended in a tap,
+// so starting to scroll the comments over a table doesn't flash it.
+private suspend fun PressGestureScope.showPress(
+    interactionSource: MutableInteractionSource,
+    offset: Offset,
+) {
+    val press = PressInteraction.Press(offset)
+    coroutineScope {
+        val delayedPress =
+            launch {
+                delay(ViewConfiguration.getTapTimeout().toLong())
+                interactionSource.emit(press)
+            }
+        val released = tryAwaitRelease()
+        if (delayedPress.isActive) {
+            delayedPress.cancelAndJoin()
+            // A quick tap, which still shows.
+            if (released) interactionSource.emit(press)
+        }
+        interactionSource.emit(if (released) PressInteraction.Release(press) else PressInteraction.Cancel(press))
+    }
+}
 
 // The columns' widths and the rows' heights from the last time the table was measured, for drawing its grid. State, so
 // the grid is drawn again when they change.
