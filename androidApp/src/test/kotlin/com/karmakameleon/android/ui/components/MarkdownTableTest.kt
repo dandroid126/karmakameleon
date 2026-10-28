@@ -1,14 +1,19 @@
 package com.karmakameleon.android.ui.components
 
 import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
+import androidx.compose.ui.text.AnnotatedString
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -122,6 +127,28 @@ class MarkdownTableTest {
 
         assertEquals(emptyList<Any>(), reads)
         assertEquals(20f, scroll.offset, 0f)
+    }
+
+    // The grid handles taps for its cells without merging them, so a screen reader still reads each cell on its own
+    // and can activate the table like the text around it.
+    @Test
+    fun cellsStaySeparateForScreenReaders() {
+        show("| A | B |\n|---|---|\n| 1 | 2 |")
+
+        composeRule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.Text, listOf(AnnotatedString("A")))).assertExists()
+        composeRule.onNode(hasClickAction()).performSemanticsAction(SemanticsActions.OnClick)
+        assertEquals(listOf("text"), calls)
+    }
+
+    // A tap on a link in a cell opens it rather than counting as a tap on the text.
+    @Test
+    fun tapOnLinkInCellOpensIt() {
+        show("| Site |\n|:-:|\n| [kotlin](https://kotlinlang.org) |")
+
+        composeRule.onNodeWithText("kotlin").performTouchInput { click(center) }
+
+        assertEquals(listOf("external https://kotlinlang.org"), navigation.calls)
+        assertEquals(emptyList<String>(), calls)
     }
 
     // A quote asks for its content's intrinsic height, which the table has to answer without being measured.

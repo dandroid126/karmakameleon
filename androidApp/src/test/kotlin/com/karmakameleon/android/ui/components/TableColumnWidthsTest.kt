@@ -17,6 +17,9 @@ import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -29,6 +32,7 @@ import org.koin.core.context.GlobalContext
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.GraphicsMode
+import kotlin.coroutines.CoroutineContext
 
 // Native graphics, so text has its real width.
 @RunWith(RobolectricTestRunner::class)
@@ -160,6 +164,35 @@ class TableColumnWidthsTest {
         assertNull(widths.get(b, environment))
         assertNotNull(widths.get(a, environment))
         assertNotNull(widths.get(c, environment))
+    }
+
+    // The screen measures again when its comments change, which cancels the measuring in progress. The tables measured
+    // by then are kept, so they aren't measured again.
+    @Test
+    fun measure_keepsTablesMeasuredBeforeItsCancelled() {
+        lateinit var job: Job
+        var dispatches = 0
+        // Cancels the measuring when it moves to its second table.
+        val cancelOnSecond =
+            object : CoroutineDispatcher() {
+                override fun dispatch(
+                    context: CoroutineContext,
+                    block: Runnable,
+                ) {
+                    if (++dispatches == 2) job.cancel()
+                    block.run()
+                }
+            }
+        val widths = TableColumnWidths(measureDispatcher = cancelOnSecond)
+        val (first, second) = List(2) { parseMarkdownBlocks("| a$it |\n|---|\n| b |").filterIsInstance<MarkdownBlock.Table>().single() }
+
+        runBlocking {
+            job = launch { widths.measure(listOf(first to plainEnvironment, second to plainEnvironment)) }
+            job.join()
+        }
+
+        assertNotNull(widths.get(first, plainEnvironment))
+        assertNull(widths.get(second, plainEnvironment))
     }
 
     @Test

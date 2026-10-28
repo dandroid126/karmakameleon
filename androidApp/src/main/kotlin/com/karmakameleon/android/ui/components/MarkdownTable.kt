@@ -1,9 +1,9 @@
 package com.karmakameleon.android.ui.components
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.IntrinsicMeasurable
 import androidx.compose.ui.layout.IntrinsicMeasureScope
 import androidx.compose.ui.layout.Layout
@@ -49,6 +50,7 @@ import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.ScrollAxisRange
 import androidx.compose.ui.semantics.horizontalScrollAxisRange
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.scrollBy
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -220,7 +222,7 @@ private fun TableGrid(
                     // Off when the table fits, so a sideways swipe on it reaches whatever is around it.
                     enabled = canScroll,
                     reverseDirection = ScrollableDefaults.reverseDirection(LocalLayoutDirection.current, Orientation.Horizontal, false),
-                ).then(if (onTextClick != null) Modifier.clickable(onClick = onTextClick) else Modifier)
+                ).then(if (onTextClick != null) Modifier.onTapOutsideLinks(onTextClick) else Modifier)
                 .fadeScrolledEdges(scroll, fadeMaskColor)
                 .clipToBounds()
                 // Inside the fade, so the borders fade out with the cells.
@@ -228,6 +230,17 @@ private fun TableGrid(
         measurePolicy = measurePolicy,
     )
 }
+
+// Calls onTap for a tap anywhere on the table but its links, which take their taps first, with a click action for
+// screen readers. Not clickable, which merges its content's semantics: a screen reader would read the whole table as
+// one text and couldn't reach its links.
+private fun Modifier.onTapOutsideLinks(onTap: () -> Unit): Modifier =
+    semantics {
+        onClick {
+            onTap()
+            true
+        }
+    }.pointerInput(onTap) { detectTapGestures { onTap() } }
 
 // The columns' widths and the rows' heights from the last time the table was measured, for drawing its grid. State, so
 // the grid is drawn again when they change.

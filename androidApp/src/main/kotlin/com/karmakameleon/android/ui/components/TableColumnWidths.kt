@@ -75,10 +75,10 @@ internal class TableColumnWidths(
     suspend fun measure(tables: List<Pair<MarkdownBlock.Table, TableTextEnvironment>>) {
         // Only those not measured yet, or not measured in full, which takes a table's widest widths alone.
         val missing = tables.filter { (table, environment) -> get(table, environment)?.narrowest == null }.distinct()
-        if (missing.isEmpty()) return
-        val measured = withContext(measureDispatcher) { missing.map { (table, environment) -> measureColumns(table, environment) } }
-        missing.zip(measured).forEach { (tableAndEnvironment, columns) ->
-            put(tableAndEnvironment.first, tableAndEnvironment.second, columns)
+        // One at a time, each kept as soon as it's measured: the screen measures again when its comments change, as
+        // on a vote, which cancels this, and only the table being measured then is lost.
+        for ((table, environment) in missing) {
+            put(table, environment, withContext(measureDispatcher) { measureColumns(table, environment) })
         }
     }
 
