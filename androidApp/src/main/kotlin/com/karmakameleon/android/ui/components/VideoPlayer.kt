@@ -1,9 +1,9 @@
 package com.karmakameleon.android.ui.components
 
-import android.app.Activity
 import android.content.Context
 import android.content.pm.ActivityInfo
 import android.view.TextureView
+import androidx.activity.compose.LocalActivity
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -422,10 +422,10 @@ private fun FullscreenVideoDialog(
 // Hides the system bars and lets the screen rotate while fullscreen, restoring the orientation afterwards.
 @Composable
 private fun FullscreenWindowSetup() {
-    val context = LocalContext.current
+    // Not LocalContext: inside a Dialog, that's the dialog's context and not the activity.
+    val activity = LocalActivity.current
     val dialogView = LocalView.current
     DisposableEffect(Unit) {
-        val activity = context as? Activity
         val originalOrientation = activity?.requestedOrientation
         activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR
 
