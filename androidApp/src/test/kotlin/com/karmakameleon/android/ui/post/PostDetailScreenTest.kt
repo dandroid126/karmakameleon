@@ -193,9 +193,7 @@ class PostDetailScreenTest {
         composeRule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Load 1 more reply"))
         composeRule.onNodeWithText("Load 1 more reply").performClick()
         composeRule.waitForIdle()
-        val more = requests("/api/morechildren").single().query()
-        assertEquals("t3_1xawzaz", more["link_id"])
-        assertEquals("phxmjnl", more["children"])
+        requests("$POST_PATH/comment/phxmjnl").single()
     }
 
     @Test

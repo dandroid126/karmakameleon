@@ -3,8 +3,10 @@ package com.karmakameleon.shared.data.repository
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
+import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.api.CommentOrMore
+import com.karmakameleon.shared.domain.model.CommentSort
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -142,16 +144,52 @@ class PostRepositoryTest {
     // ==================== getMoreComments ====================
 
     @Test
-    fun getMoreComments_returnsComments() =
+    fun getMoreComments_loadsEachThreadAtTheDepthOfTheMoreEntry() =
         runTest {
             val (repo, api) = createRepo()
-            val comment = createTestComment(id = "c1")
-            api.moreCommentsResult = listOf(CommentOrMore.CommentItem(comment))
+            val reply = createTestComment(id = "r1", depth = 1)
+            val thread = createTestComment(id = "c1", depth = 0).copy(replies = listOf(reply))
+            api.commentThreadResults["c1"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(depth = 2, count = 1, children = listOf("c1"))
 
-            val result = repo.getMoreComments("t3_p1", listOf("c1"))
-            assertTrue(result.isSuccess)
-            assertEquals(1, result.getOrThrow().size)
-            assertNotNull(markdown.cached(comment.body))
+            val loaded = repo.getMoreComments("sub", "p1", more).getOrThrow().single() as CommentOrMore.CommentItem
+
+            assertEquals(2, loaded.comment.depth)
+            assertEquals(
+                3,
+                loaded.comment.replies
+                    .single()
+                    .depth,
+            )
+            assertNotNull(markdown.cached(thread.body))
+        }
+
+    @Test
+    fun getMoreComments_keepsWhatItDidNotLoad() =
+        runTest {
+            val (repo, api) = createRepo()
+            val thread = createTestComment(id = "k0")
+            api.postWithCommentsResult = createTestPost() to emptyList()
+            api.commentThreadResults["k0"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(count = 100, children = List(30) { "k$it" })
+
+            val items = repo.getMoreComments("sub", "p1", more).getOrThrow()
+
+            assertEquals(CommentSort.CONFIDENCE, api.postWithCommentsRequests.first().sort)
+            assertEquals(List(20) { "k$it" }.toSet(), api.postWithCommentsRequests.map { it.commentId }.toSet())
+            assertEquals(listOf("k0"), items.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment.id })
+            val left = (items.last() as CommentOrMore.More).more
+            assertEquals(List(10) { "k${it + 20}" }, left.children)
+            assertEquals(99, left.count)
+        }
+
+    @Test
+    fun getMoreComments_failsWhenARequestFails() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.shouldThrow = Exception("No connection")
+
+            assertTrue(repo.getMoreComments("sub", "p1", createTestMoreComments()).isFailure)
         }
 
     // ==================== vote ====================

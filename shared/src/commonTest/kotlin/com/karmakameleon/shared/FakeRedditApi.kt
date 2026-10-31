@@ -30,7 +30,6 @@ class FakeRedditApi(
     var postsResult: Listing<Post> = createTestListing()
     var postResult: Post? = null
     var postWithCommentsResult: Pair<Post, List<CommentOrMore>>? = null
-    var moreCommentsResult: List<CommentOrMore> = emptyList()
     var voteResult: Boolean = true
     var saveResult: Boolean = true
     var unsaveResult: Boolean = true
@@ -68,7 +67,6 @@ class FakeRedditApi(
 
     // What the code under test asked for, in order.
     val postWithCommentsRequests = mutableListOf<CommentsRequest>()
-    val moreCommentsRequests = mutableListOf<MoreCommentsRequest>()
     val submittedComments = mutableListOf<Pair<String, String>>()
     val editedComments = mutableListOf<Pair<String, String>>()
     val deletedComments = mutableListOf<String>()
@@ -104,12 +102,6 @@ class FakeRedditApi(
         val sort: SearchSort,
         val time: TimeFilter,
         val after: String?,
-    )
-
-    data class MoreCommentsRequest(
-        val linkId: String,
-        val children: List<String>,
-        val sort: CommentSort,
     )
 
     /** How long getPosts, search and getInbox take, so a test can act while one is in flight. */
@@ -159,15 +151,6 @@ class FakeRedditApi(
         postWithCommentsRequests += CommentsRequest(sort, commentId, context)
         val result = commentId?.let { commentThreadResults[it] } ?: postWithCommentsResult
         return throwOrReturn(result ?: error("No result configured"))
-    }
-
-    override suspend fun getMoreComments(
-        linkId: String,
-        children: List<String>,
-        sort: CommentSort,
-    ): List<CommentOrMore> {
-        moreCommentsRequests += MoreCommentsRequest(linkId, children, sort)
-        return throwOrReturn(moreCommentsResult)
     }
 
     override suspend fun vote(

@@ -12,6 +12,7 @@ import java.net.InetSocketAddress
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 /** Runs the OkHttp clients the app uses against a local server. */
 class HttpClientFactoryTest {
@@ -37,7 +38,7 @@ class HttpClientFactoryTest {
                 )
             }
             createContext("/echo-cookies") { it.respond(200, it.requestHeaders.getFirst("Cookie").orEmpty()) }
-            createContext("/echo-user-agent") { it.respond(200, it.requestHeaders.getFirst("User-Agent").orEmpty()) }
+            createContext("/echo-user-agent") { it.respond(200, it.requestHeaders["User-Agent"].orEmpty().joinToString("|")) }
             createContext("/token") {
                 it.respond(
                     200,
@@ -110,10 +111,17 @@ class HttpClientFactoryTest {
         }
 
     @Test
+    fun userAgent_avoidsTheTextRedditLimits() {
+        // See REDDIT_USER_AGENT.
+        assertFalse(REDDIT_USER_AGENT.contains("kameleo", ignoreCase = true))
+    }
+
+    @Test
     fun configuredClient_sendsTheUserAgentAndReadsJson() =
         runTest {
             createHttpClientWithConfig(OkHttpClientFactory).use { client ->
-                assertEquals("KK/1.0.0", client.get("$baseUrl/echo-user-agent").bodyAsText())
+                // Only one may be sent.
+                assertEquals(REDDIT_USER_AGENT, client.get("$baseUrl/echo-user-agent").bodyAsText())
                 // Fields the app doesn't know are ignored.
                 assertEquals("a", client.get("$baseUrl/token").body<AccessTokenResponse>().accessToken)
             }

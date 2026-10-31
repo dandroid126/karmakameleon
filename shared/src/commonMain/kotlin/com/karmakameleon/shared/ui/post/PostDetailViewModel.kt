@@ -199,8 +199,9 @@ class PostDetailViewModel(
 
             val result =
                 postRepository.getMoreComments(
-                    linkId = post.name,
-                    children = more.children.take(100),
+                    subreddit = post.subreddit,
+                    postId = post.id,
+                    more = commentViewModel.withoutLoadedChildren(more),
                     sort = _uiState.value.commentSort,
                 )
 

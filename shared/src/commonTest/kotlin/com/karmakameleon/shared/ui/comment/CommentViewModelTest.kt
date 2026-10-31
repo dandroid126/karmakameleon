@@ -264,37 +264,6 @@ class CommentViewModelTest {
 
     // ==================== Tree Building ====================
 
-    @Test
-    fun buildCommentTree_flatListToTree() {
-        val parent = createTestComment(id = "c1", name = "t1_c1", parentId = "t3_post", depth = 0)
-        val child = createTestComment(id = "c2", name = "t1_c2", parentId = "t1_c1", depth = 1)
-        val items =
-            listOf(
-                CommentOrMore.CommentItem(parent),
-                CommentOrMore.CommentItem(child),
-            )
-        val tree = buildCommentTree(items)
-        assertEquals(1, tree.size)
-        val rootComment = (tree[0] as CommentOrMore.CommentItem).comment
-        assertEquals(1, rootComment.replies.size)
-        assertEquals("c2", rootComment.replies[0].id)
-    }
-
-    @Test
-    fun buildCommentTree_withMoreComments() {
-        val parent = createTestComment(id = "c1", name = "t1_c1", parentId = "t3_post", depth = 0)
-        val more = createTestMoreComments(id = "more1", parentId = "t1_c1")
-        val items =
-            listOf(
-                CommentOrMore.CommentItem(parent),
-                CommentOrMore.More(more),
-            )
-        val tree = buildCommentTree(items)
-        assertEquals(1, tree.size)
-        val rootComment = (tree[0] as CommentOrMore.CommentItem).comment
-        assertEquals("more1", rootComment.moreReplies?.id)
-    }
-
     // ==================== Tree Modifications ====================
 
     @Test
@@ -308,6 +277,24 @@ class CommentViewModelTest {
         val comments = viewModel.uiState.value.comments
         assertEquals(1, comments.size)
         assertTrue(comments[0] is CommentOrMore.CommentItem)
+    }
+
+    @Test
+    fun insertMoreComments_dropsCommentsItAlreadyHas() {
+        val more = createTestMoreComments(id = "more1", parentId = "t3_post")
+        val kept = createTestComment(id = "kept", parentId = "t3_post", depth = 0)
+        viewModel.setComments(listOf(CommentOrMore.CommentItem(kept), CommentOrMore.More(more)))
+        val reply = createTestComment(id = "reply", parentId = "t1_top", depth = 1)
+        val top = createTestComment(id = "top", parentId = "t3_post", depth = 0).copy(replies = listOf(reply))
+
+        viewModel.insertMoreComments(
+            more,
+            // The reply was also listed on its own, before its parent, and "kept" is already on screen.
+            listOf(CommentOrMore.CommentItem(reply), CommentOrMore.CommentItem(top), CommentOrMore.CommentItem(kept)),
+        )
+
+        val ids = viewModel.getFlattenedComments().filterIsInstance<FlatCommentItem.CommentEntry>().map { it.comment.id }
+        assertEquals(listOf("kept", "top", "reply"), ids)
     }
 
     @Test

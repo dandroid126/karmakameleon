@@ -5,11 +5,15 @@ import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.Listing
+import com.karmakameleon.shared.domain.model.MoreComments
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.util.runSuspendCatching
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -103,14 +107,58 @@ class PostRepository(
         )
     }
 
+    /**
+     * Loads the next comments of [more], each with its replies and placed at the depth of [more]. Comments are loaded one
+     * request each, since Reddit blocks /api/morechildren, so a long list takes several calls: what's left of it comes back
+     * as the last item.
+     */
     suspend fun getMoreComments(
-        linkId: String,
-        children: List<String>,
+        subreddit: String,
+        postId: String,
+        more: MoreComments,
         sort: CommentSort = CommentSort.CONFIDENCE,
     ): Result<List<CommentOrMore>> =
         runSuspendCatching {
-            redditApi.getMoreComments(linkId, children, sort).also { parseMarkdown(post = null, it) }
+            val batch = more.children.take(MORE_COMMENTS_BATCH_SIZE)
+            val threads =
+                coroutineScope {
+                    batch
+                        .map { id ->
+                            async {
+                                redditApi
+                                    .getPostWithComments(subreddit, postId, sort, commentId = id)
+                                    .second
+                                    .filterIsInstance<CommentOrMore.CommentItem>()
+                                    // A deleted comment comes back as nothing, or as other comments.
+                                    .filter { it.comment.id == id }
+                                    .map { CommentOrMore.CommentItem(it.comment.atDepth(more.depth)) }
+                            }
+                        }.awaitAll()
+                        .flatten()
+                }
+            parseMarkdown(post = null, threads)
+            threads + listOfNotNull(more.afterLoading(batch.size, threads))
         }
+
+    private fun Comment.atDepth(newDepth: Int): Comment =
+        copy(
+            depth = newDepth,
+            replies = replies.map { it.atDepth(newDepth + 1) },
+            moreReplies = moreReplies?.copy(depth = newDepth + 1),
+        )
+
+    // What's left of this "more" entry after loading the first batchSize of its comments, if anything.
+    private fun MoreComments.afterLoading(
+        batchSize: Int,
+        threads: List<CommentOrMore.CommentItem>,
+    ): CommentOrMore.More? {
+        val remaining = children.drop(batchSize)
+        if (remaining.isEmpty()) return null
+
+        fun size(comment: Comment): Int = 1 + comment.replies.sumOf(::size)
+        val loaded = threads.sumOf { size(it.comment) }
+        return CommentOrMore.More(copy(children = remaining, count = maxOf(remaining.size, count - loaded)))
+    }
 
     // Parses the text of the post and of the comments and their replies before they're shown, so the screen doesn't
     // parse them while drawing.
@@ -198,3 +246,6 @@ class PostRepository(
 
     fun getCachedPost(postId: String): Post? = cachedPosts.value[postId]
 }
+
+// How many comments one tap on a "load more" button loads, since each one is a request.
+private const val MORE_COMMENTS_BATCH_SIZE = 20

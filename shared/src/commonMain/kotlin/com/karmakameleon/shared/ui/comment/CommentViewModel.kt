@@ -137,13 +137,18 @@ class CommentViewModel(
         more: MoreComments,
         newComments: List<CommentOrMore>,
     ) {
-        val treeComments = buildCommentTree(newComments)
         _uiState.update { state ->
             state.copy(
-                comments = state.comments.withMoreComments(more, treeComments),
+                comments = state.comments.withMoreComments(more, newComments.withoutDuplicates(state.comments)),
                 loadingMoreId = null,
             )
         }
+    }
+
+    /** [more] without the comments already on screen, which an earlier thread may have brought along as replies. */
+    fun withoutLoadedChildren(more: MoreComments): MoreComments {
+        val loaded = _uiState.value.comments.commentIds()
+        return more.copy(children = more.children.filterNot { it in loaded })
     }
 
     fun updateComment(updatedComment: Comment) {

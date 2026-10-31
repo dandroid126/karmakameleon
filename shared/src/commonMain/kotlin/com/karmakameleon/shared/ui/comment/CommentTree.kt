@@ -34,33 +34,48 @@ internal fun List<CommentOrMore>.findComment(predicate: (Comment) -> Boolean): C
 private fun Comment.findInThread(predicate: (Comment) -> Boolean): Comment? =
     if (predicate(this)) this else replies.firstNotNullOfOrNull { it.findInThread(predicate) }
 
-/**
- * Turns comments loaded as a flat list, each pointing at its parent, into a tree. Comments whose parent isn't in the
- * list become top-level items, as do "more" entries whose parent isn't.
- */
-fun buildCommentTree(flatItems: List<CommentOrMore>): List<CommentOrMore> {
-    val comments = flatItems.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
-    val moreEntries = flatItems.filterIsInstance<CommentOrMore.More>()
-    val commentByName = comments.associateByTo(mutableMapOf()) { it.name }
-
-    val childNamesOf = comments.filter { it.parentId in commentByName }.groupBy({ it.parentId }, { it.name })
-    val moreOf = moreEntries.filter { it.more.parentId in commentByName }.associate { it.more.parentId to it.more }
-
-    // Deepest first, so each comment's replies are complete before it's attached to its parent.
-    for (c in comments.sortedByDescending { it.depth }) {
-        val childNames = childNamesOf[c.name]
-        val more = moreOf[c.name]
-        if (childNames != null || more != null) {
-            val children = childNames?.map { commentByName.getValue(it) }.orEmpty()
-            commentByName[c.name] = commentByName.getValue(c.name).copy(replies = children, moreReplies = more)
+/** The IDs of all the comments here, with their replies. */
+internal fun List<CommentOrMore>.commentIds(): Set<String> =
+    buildSet {
+        fun addThread(comment: Comment) {
+            add(comment.id)
+            comment.replies.forEach(::addThread)
         }
+        this@commentIds.filterIsInstance<CommentOrMore.CommentItem>().forEach { addThread(it.comment) }
     }
 
-    return comments.filter { it.parentId !in commentByName }.map { CommentOrMore.CommentItem(commentByName.getValue(it.name)) } +
-        moreEntries.filter { it.more.parentId !in commentByName }
+/**
+ * Newly loaded threads without the comments that are in [existing] or appear twice, since a list needs each comment only
+ * once. A "more" entry can list a comment and its replies, and then the comment's thread includes those replies too.
+ */
+internal fun List<CommentOrMore>.withoutDuplicates(existing: List<CommentOrMore>): List<CommentOrMore> {
+    val replyIds =
+        filterIsInstance<CommentOrMore.CommentItem>()
+            .flatMap {
+                it.comment.replies
+            }.map { CommentOrMore.CommentItem(it) }
+            .commentIds()
+    val seen = existing.commentIds().toMutableSet()
+
+    fun Comment.newThread(): Comment? = if (seen.add(id)) copy(replies = replies.mapNotNull { it.newThread() }) else null
+
+    return mapNotNull { item ->
+        when (item) {
+            is CommentOrMore.CommentItem -> {
+                item.comment
+                    .takeIf { it.id !in replyIds }
+                    ?.newThread()
+                    ?.let { CommentOrMore.CommentItem(it) }
+            }
+
+            is CommentOrMore.More -> {
+                item
+            }
+        }
+    }
 }
 
-/** Replaces the "more" entry with the comments it loaded, which [buildCommentTree] has already made a tree. */
+/** Replaces the "more" entry with the threads it loaded. */
 internal fun List<CommentOrMore>.withMoreComments(
     more: MoreComments,
     loaded: List<CommentOrMore>,

@@ -12,7 +12,7 @@ All networking lives in `shared/src/commonMain/kotlin/com/karmakameleon/shared/d
 | `HttpClientFactory.kt` + `.android.kt` / `.ios.kt` | `createHttpClientWithConfig()` (expect) builds a Ktor `HttpClient` with JSON content-negotiation, logging, Auth plugin, User-Agent. |
 | `RedditApiException.kt` | Typed API errors (with HTTP status + body). |
 | `dto/AuthDto.kt` | OAuth token response payloads. |
-| `dto/CommentDto.kt` | Comment + MoreChildrenResponse + MoreCommentsDto. |
+| `dto/CommentDto.kt` | Comment + MoreCommentsDto. |
 | `dto/MessageDto.kt` | Inbox/message payloads. |
 | `dto/RedditResponse.kt` | `RedditResponse<T>`, `ListingData<T>`, `ThingData<T>` envelopes + `PostDto`, `MediaDto`, `MediaMetadataDto`, `PreviewDto`, `GalleryDataDto`. |
 | `dto/SubredditDto.kt` | Subreddit listing items + `UserSubredditDto`. |
