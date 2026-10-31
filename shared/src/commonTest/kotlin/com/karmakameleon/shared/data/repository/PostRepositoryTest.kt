@@ -184,6 +184,39 @@ class PostRepositoryTest {
         }
 
     @Test
+    fun getMoreComments_doesNotRequestOrKeepCommentsThatCameAsReplies() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.postWithCommentsResult = createTestPost() to emptyList()
+            val reply = createTestComment(id = "k6", depth = 1)
+            val thread = createTestComment(id = "k0").copy(replies = listOf(reply))
+            api.commentThreadResults["k0"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(count = 7, children = List(7) { "k$it" })
+
+            val items = repo.getMoreComments("sub", "p1", more).getOrThrow()
+
+            assertEquals(List(6) { "k$it" }, api.postWithCommentsRequests.map { it.commentId })
+            assertEquals(listOf("k0"), items.map { (it as CommentOrMore.CommentItem).comment.id })
+        }
+
+    @Test
+    fun getMoreComments_keepsWhatLoadedWhenARequestFails() =
+        runTest {
+            val (repo, api) = createRepo()
+            // Without a default result, the requests for the other comments fail.
+            val thread = createTestComment(id = "k0")
+            api.commentThreadResults["k0"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(count = 8, children = List(8) { "k$it" })
+
+            val items = repo.getMoreComments("sub", "p1", more).getOrThrow()
+
+            // It stops after the first few requests, and tries the failed ones again on the next tap.
+            assertEquals(5, api.postWithCommentsRequests.size)
+            assertEquals(listOf("k0"), items.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment.id })
+            assertEquals(List(7) { "k${it + 1}" }, (items.last() as CommentOrMore.More).more.children)
+        }
+
+    @Test
     fun getMoreComments_failsWhenARequestFails() =
         runTest {
             val (repo, api) = createRepo()
