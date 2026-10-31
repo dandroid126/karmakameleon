@@ -53,19 +53,3 @@ data class MoreCommentsDto(
     val depth: Int = 0,
     val children: List<String> = emptyList(),
 )
-
-@Serializable
-data class MoreChildrenResponse(
-    val json: MoreChildrenJson,
-)
-
-@Serializable
-data class MoreChildrenJson(
-    val errors: List<JsonElement> = emptyList(),
-    val data: MoreChildrenData? = null,
-)
-
-@Serializable
-data class MoreChildrenData(
-    val things: List<ThingData> = emptyList(),
-)

@@ -1,6 +1,5 @@
 package com.karmakameleon.shared.data.api
 
-import com.karmakameleon.shared.data.api.dto.MoreChildrenResponse
 import com.karmakameleon.shared.data.api.dto.ThingData
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.FlairRichtext
@@ -21,7 +20,6 @@ import kotlin.test.assertTrue
 /** Parses comments from saved Reddit responses (see `RedditParserFixtures.kt`). */
 class RedditParserCommentTest {
     private val parser = RedditParser(settingsRepository = null)
-    private val json = RedditParser.json
 
     private fun topLevelComments(): List<CommentOrMore> = parser.commentsOrMore(postWithComments()[1].data.children)
 
@@ -195,22 +193,6 @@ class RedditParserCommentTest {
         assertEquals("Kotlin", comment.subreddit)
         assertEquals("Thanks for sharing this, it would help a lot.", comment.body)
         assertEquals("t1_phx2cm1", comments.after)
-    }
-
-    @Test
-    fun moreChildren_readsTheCommentsAndMoreItems() {
-        val response = json.decodeFromString<MoreChildrenResponse>(readFixture("more_children.json"))
-
-        val things = parser.commentsOrMore(response.json.data!!.things)
-
-        assertTrue(response.json.errors.isEmpty())
-        val comments = things.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
-        assertEquals(listOf("phq1mw9", "phriw2f"), comments.map { it.id })
-        assertEquals(listOf(1, 2), comments.map { it.depth })
-        assertEquals("t1_phq1mw9", comments[1].parentId)
-        val more = assertIs<CommentOrMore.More>(things.last()).more
-        assertEquals(6, more.depth)
-        assertEquals(listOf("phvwk5j"), more.children)
     }
 
     // ==================== DTOs ====================

@@ -2,7 +2,6 @@ package com.karmakameleon.shared.ui.post
 
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.FakeRedditApi.CommentsRequest
-import com.karmakameleon.shared.FakeRedditApi.MoreCommentsRequest
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.createTestPost
@@ -348,24 +347,48 @@ class PostDetailViewModelTest {
     // ==================== More comments ====================
 
     @Test
-    fun loadMoreComments_insertsWhatItLoads() =
+    fun loadMoreComments_insertsWhatItLoadsAndKeepsTheRest() =
         runTest {
-            val more = createTestMoreComments(id = "m1", name = "t1_m1", parentId = "t3_abc123", depth = 0, children = List(150) { "k$it" })
+            val more =
+                createTestMoreComments(
+                    id = "m1",
+                    name = "t1_m1",
+                    parentId = "t3_abc123",
+                    depth = 0,
+                    count = 30,
+                    children = List(30) { "k$it" },
+                )
             fakeApi.postWithCommentsResult = post to listOf(CommentOrMore.CommentItem(comment("c1")), CommentOrMore.More(more))
-            fakeApi.moreCommentsResult = listOf(CommentOrMore.CommentItem(comment("k0")))
+            fakeApi.commentThreadResults["k0"] = post to listOf(CommentOrMore.CommentItem(comment("k0")))
             val viewModel = createViewModel()
             advanceUntilIdle()
 
             viewModel.loadMoreComments(more)
             advanceUntilIdle()
 
-            // Reddit takes at most 100 at a time.
-            assertEquals(
-                MoreCommentsRequest("t3_abc123", List(100) { "k$it" }, CommentSort.CONFIDENCE),
-                fakeApi.moreCommentsRequests.single(),
-            )
             assertEquals(listOf("c1", "k0"), viewModel.commentIds())
+            val left =
+                viewModel.commentViewModel.uiState.value.comments
+                    .last() as CommentOrMore.More
+            assertEquals(List(10) { "k${it + 20}" }, left.more.children)
             assertNull(viewModel.commentViewModel.uiState.value.loadingMoreId)
+        }
+
+    @Test
+    fun loadMoreComments_skipsCommentsAlreadyLoaded() =
+        runTest {
+            val more = createTestMoreComments(id = "m1", name = "t1_m1", parentId = "t3_abc123", depth = 0, children = listOf("c1", "k1"))
+            fakeApi.postWithCommentsResult = post to listOf(CommentOrMore.CommentItem(comment("c1")), CommentOrMore.More(more))
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+            fakeApi.postWithCommentsRequests.clear()
+            fakeApi.commentThreadResults["k1"] = post to listOf(CommentOrMore.CommentItem(comment("k1")))
+
+            viewModel.loadMoreComments(more)
+            advanceUntilIdle()
+
+            assertEquals(listOf("k1"), fakeApi.postWithCommentsRequests.map { it.commentId })
+            assertEquals(listOf("c1", "k1"), viewModel.commentIds())
         }
 
     @Test
@@ -378,7 +401,6 @@ class PostDetailViewModelTest {
             viewModel.loadMoreComments(createTestMoreComments(id = "m1"))
             advanceUntilIdle()
 
-            assertEquals(1, fakeApi.moreCommentsRequests.size)
             assertNull(viewModel.commentViewModel.uiState.value.loadingMoreId)
         }
 
@@ -392,7 +414,7 @@ class PostDetailViewModelTest {
             viewModel.loadMoreComments(createTestMoreComments(id = "m2", children = emptyList()))
             advanceUntilIdle()
 
-            assertTrue(fakeApi.moreCommentsRequests.isEmpty())
+            assertEquals(listOf<String?>(null), fakeApi.postWithCommentsRequests.map { it.commentId })
         }
 
     // ==================== Votes and saves ====================

@@ -6,7 +6,6 @@ import com.karmakameleon.shared.data.api.dto.ListingData
 import com.karmakameleon.shared.data.api.dto.MediaDto
 import com.karmakameleon.shared.data.api.dto.MediaMetadataDto
 import com.karmakameleon.shared.data.api.dto.MessageDto
-import com.karmakameleon.shared.data.api.dto.MoreChildrenResponse
 import com.karmakameleon.shared.data.api.dto.MoreCommentsDto
 import com.karmakameleon.shared.data.api.dto.PostDto
 import com.karmakameleon.shared.data.api.dto.PreviewDto
@@ -105,7 +104,6 @@ open class RedditApi(
         return httpClient.request {
             block()
             header(HttpHeaders.Authorization, "Bearer $token")
-            header(HttpHeaders.UserAgent, "KK/1.0.0 (Android)")
         }
     }
 
@@ -252,24 +250,6 @@ open class RedditApi(
         val commentChildren = listings.getOrNull(1)?.data?.children
         val comments = parser.commentsOrMore(commentChildren.orEmpty())
         return post to comments
-    }
-
-    open suspend fun getMoreComments(
-        linkId: String,
-        children: List<String>,
-        sort: CommentSort = CommentSort.CONFIDENCE,
-    ): List<CommentOrMore> {
-        val response =
-            getJson<MoreChildrenResponse>("/api/morechildren") {
-                parameter("api_type", "json")
-                parameter("link_id", linkId)
-                parameter("children", children.joinToString(","))
-                parameter("sort", sort.value)
-            }
-        return response.json.data
-            ?.things
-            ?.let { parser.commentsOrMore(it) }
-            .orEmpty()
     }
 
     // ==================== Voting ====================
@@ -526,7 +506,7 @@ open class RedditApi(
         runSuspendCatching {
             val response =
                 shareLinkClient.get("$WWW_URL/r/$subreddit/s/$shareId") {
-                    header(HttpHeaders.UserAgent, "KK/1.0.0 (Android)")
+                    header(HttpHeaders.UserAgent, REDDIT_USER_AGENT)
                 }
             val locationUrl = response.headers[HttpHeaders.Location] ?: return null
             when (val parsed = parseRedditLink(locationUrl)) {

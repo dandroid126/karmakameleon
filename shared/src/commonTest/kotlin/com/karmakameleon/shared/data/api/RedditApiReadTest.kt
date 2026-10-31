@@ -41,7 +41,6 @@ class RedditApiReadTest {
         assertEquals(query, request.query())
         assertEquals("1", request.url.parameters["raw_json"])
         assertEquals("Bearer fake_token", request.headers[HttpHeaders.Authorization])
-        assertEquals("KK/1.0.0 (Android)", request.headers[HttpHeaders.UserAgent])
     }
 
     // ==================== Requests ====================
@@ -158,28 +157,6 @@ class RedditApiReadTest {
 
             assertEquals("1xawzaz", post.id)
             assertTrue(comments.isEmpty())
-        }
-
-    @Test
-    fun getMoreComments() =
-        runTest {
-            reddit.respond("/api/morechildren", readFixture("more_children.json"))
-
-            val comments = api().getMoreComments("t3_1xa1fgb", listOf("phq1mw9", "phqv313"), CommentSort.TOP)
-
-            assertGet(
-                "/api/morechildren",
-                mapOf("api_type" to "json", "link_id" to "t3_1xa1fgb", "children" to "phq1mw9,phqv313", "sort" to "top"),
-            )
-            assertEquals(3, comments.size)
-        }
-
-    @Test
-    fun getMoreComments_emptyWithoutData() =
-        runTest {
-            reddit.respond("/api/morechildren", """{"json": {"errors": []}}""")
-
-            assertTrue(api().getMoreComments("t3_1xa1fgb", listOf("phq1mw9")).isEmpty())
         }
 
     // ==================== Subreddits ====================

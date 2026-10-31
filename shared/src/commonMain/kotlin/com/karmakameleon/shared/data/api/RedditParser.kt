@@ -6,7 +6,6 @@ import com.karmakameleon.shared.data.api.dto.ListingData
 import com.karmakameleon.shared.data.api.dto.MediaDto
 import com.karmakameleon.shared.data.api.dto.MediaMetadataDto
 import com.karmakameleon.shared.data.api.dto.MessageDto
-import com.karmakameleon.shared.data.api.dto.MoreChildrenResponse
 import com.karmakameleon.shared.data.api.dto.MoreCommentsDto
 import com.karmakameleon.shared.data.api.dto.PostDto
 import com.karmakameleon.shared.data.api.dto.PreviewDto
@@ -131,7 +130,7 @@ internal class RedditParser(
         depth: Int = 0,
     ): Comment = mapComment(json.decodeFromJsonElement<CommentDto>(data), depth)
 
-    /** Top-level comments and "more" entries, as returned with a post or by morechildren. */
+    /** Top-level comments and "more" entries, as returned with a post. */
     fun commentsOrMore(children: List<ThingData>): List<CommentOrMore> =
         children.mapNotNull { thing ->
             when (thing.kind) {

@@ -3,8 +3,10 @@ package com.karmakameleon.shared.data.repository
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
+import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.api.CommentOrMore
+import com.karmakameleon.shared.domain.model.CommentSort
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -142,16 +144,101 @@ class PostRepositoryTest {
     // ==================== getMoreComments ====================
 
     @Test
-    fun getMoreComments_returnsComments() =
+    fun getMoreComments_loadsEachThreadAtTheDepthOfTheMoreEntry() =
         runTest {
             val (repo, api) = createRepo()
-            val comment = createTestComment(id = "c1")
-            api.moreCommentsResult = listOf(CommentOrMore.CommentItem(comment))
+            val reply = createTestComment(id = "r1", depth = 1)
+            val thread = createTestComment(id = "c1", depth = 0).copy(replies = listOf(reply))
+            api.commentThreadResults["c1"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(depth = 2, count = 1, children = listOf("c1"))
 
-            val result = repo.getMoreComments("t3_p1", listOf("c1"))
-            assertTrue(result.isSuccess)
-            assertEquals(1, result.getOrThrow().size)
-            assertNotNull(markdown.cached(comment.body))
+            val loaded = repo.getMoreComments("sub", "p1", more).getOrThrow().single() as CommentOrMore.CommentItem
+
+            assertEquals(2, loaded.comment.depth)
+            assertEquals(
+                3,
+                loaded.comment.replies
+                    .single()
+                    .depth,
+            )
+            assertNotNull(markdown.cached(thread.body))
+        }
+
+    @Test
+    fun getMoreComments_keepsWhatItDidNotLoad() =
+        runTest {
+            val (repo, api) = createRepo()
+            val thread = createTestComment(id = "k0")
+            api.postWithCommentsResult = createTestPost() to emptyList()
+            api.commentThreadResults["k0"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(count = 100, children = List(30) { "k$it" })
+
+            val items = repo.getMoreComments("sub", "p1", more).getOrThrow()
+
+            assertEquals(CommentSort.CONFIDENCE, api.postWithCommentsRequests.first().sort)
+            assertEquals(List(20) { "k$it" }.toSet(), api.postWithCommentsRequests.map { it.commentId }.toSet())
+            assertEquals(listOf("k0"), items.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment.id })
+            val left = (items.last() as CommentOrMore.More).more
+            assertEquals(List(10) { "k${it + 20}" }, left.children)
+            assertEquals(99, left.count)
+        }
+
+    @Test
+    fun getMoreComments_doesNotRequestOrKeepCommentsThatCameAsReplies() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.postWithCommentsResult = createTestPost() to emptyList()
+            val reply = createTestComment(id = "k6", depth = 1)
+            val thread = createTestComment(id = "k0").copy(replies = listOf(reply))
+            api.commentThreadResults["k0"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(count = 7, children = List(7) { "k$it" })
+
+            val items = repo.getMoreComments("sub", "p1", more).getOrThrow()
+
+            assertEquals(List(6) { "k$it" }, api.postWithCommentsRequests.map { it.commentId })
+            assertEquals(listOf("k0"), items.map { (it as CommentOrMore.CommentItem).comment.id })
+        }
+
+    @Test
+    fun getMoreComments_leavesCommentsInAThreadsOwnMoreToThatThread() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.postWithCommentsResult = createTestPost() to emptyList()
+            val nestedMore = createTestMoreComments(id = "nested", children = listOf("k6"))
+            val thread = createTestComment(id = "k0").copy(moreReplies = nestedMore)
+            api.commentThreadResults["k0"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(count = 7, children = List(7) { "k$it" })
+
+            val items = repo.getMoreComments("sub", "p1", more).getOrThrow()
+
+            assertEquals(List(6) { "k$it" }, api.postWithCommentsRequests.map { it.commentId })
+            assertEquals(listOf("k0"), items.map { (it as CommentOrMore.CommentItem).comment.id })
+        }
+
+    @Test
+    fun getMoreComments_keepsWhatLoadedWhenARequestFails() =
+        runTest {
+            val (repo, api) = createRepo()
+            // Without a default result, the requests for the other comments fail.
+            val thread = createTestComment(id = "k0")
+            api.commentThreadResults["k0"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(count = 8, children = List(8) { "k$it" })
+
+            val items = repo.getMoreComments("sub", "p1", more).getOrThrow()
+
+            // It stops after the first few requests, and tries the failed ones again on the next tap.
+            assertEquals(5, api.postWithCommentsRequests.size)
+            assertEquals(listOf("k0"), items.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment.id })
+            assertEquals(List(7) { "k${it + 1}" }, (items.last() as CommentOrMore.More).more.children)
+        }
+
+    @Test
+    fun getMoreComments_failsWhenARequestFails() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.shouldThrow = Exception("No connection")
+
+            assertTrue(repo.getMoreComments("sub", "p1", createTestMoreComments()).isFailure)
         }
 
     // ==================== vote ====================
