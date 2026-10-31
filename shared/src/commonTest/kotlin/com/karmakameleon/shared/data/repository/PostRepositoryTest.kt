@@ -200,6 +200,22 @@ class PostRepositoryTest {
         }
 
     @Test
+    fun getMoreComments_leavesCommentsInAThreadsOwnMoreToThatThread() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.postWithCommentsResult = createTestPost() to emptyList()
+            val nestedMore = createTestMoreComments(id = "nested", children = listOf("k6"))
+            val thread = createTestComment(id = "k0").copy(moreReplies = nestedMore)
+            api.commentThreadResults["k0"] = createTestPost() to listOf(CommentOrMore.CommentItem(thread))
+            val more = createTestMoreComments(count = 7, children = List(7) { "k$it" })
+
+            val items = repo.getMoreComments("sub", "p1", more).getOrThrow()
+
+            assertEquals(List(6) { "k$it" }, api.postWithCommentsRequests.map { it.commentId })
+            assertEquals(listOf("k0"), items.map { (it as CommentOrMore.CommentItem).comment.id })
+        }
+
+    @Test
     fun getMoreComments_keepsWhatLoadedWhenARequestFails() =
         runTest {
             val (repo, api) = createRepo()

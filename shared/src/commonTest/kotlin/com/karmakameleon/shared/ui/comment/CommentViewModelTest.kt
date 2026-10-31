@@ -298,6 +298,21 @@ class CommentViewModelTest {
     }
 
     @Test
+    fun withoutLoadedChildren_keepsItsOwnChildrenButNotThoseOfOtherMoreEntries() {
+        val own = createTestMoreComments(id = "own", children = listOf("a", "b", "c"))
+        val other = createTestMoreComments(id = "other", children = listOf("b"))
+        viewModel.setComments(
+            listOf(
+                CommentOrMore.CommentItem(createTestComment(id = "c1").copy(moreReplies = own)),
+                CommentOrMore.CommentItem(createTestComment(id = "c2").copy(moreReplies = other)),
+                CommentOrMore.CommentItem(createTestComment(id = "c")),
+            ),
+        )
+
+        assertEquals(listOf("a"), viewModel.withoutLoadedChildren(own).children)
+    }
+
+    @Test
     fun updateComment_updatesInTree() {
         val comment = createTestComment(id = "c1", body = "original")
         viewModel.setComments(listOf(CommentOrMore.CommentItem(comment)))

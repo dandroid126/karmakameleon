@@ -44,6 +44,18 @@ internal fun List<CommentOrMore>.commentIds(): Set<String> =
         this@commentIds.filterIsInstance<CommentOrMore.CommentItem>().forEach { addThread(it.comment) }
     }
 
+/** The comments that [more] needn't load: those loaded, and those another "more" entry in their thread will load. */
+internal fun List<CommentOrMore>.commentIdsCoveredOutside(more: MoreComments): Set<String> =
+    buildSet {
+        addAll(this@commentIdsCoveredOutside.commentIds())
+
+        fun addMoreOf(comment: Comment) {
+            comment.moreReplies?.takeIf { it.id != more.id }?.let { addAll(it.children) }
+            comment.replies.forEach(::addMoreOf)
+        }
+        this@commentIdsCoveredOutside.filterIsInstance<CommentOrMore.CommentItem>().forEach { addMoreOf(it.comment) }
+    }
+
 /**
  * Newly loaded threads without the comments that are in [existing] or appear twice, since a list needs each comment only
  * once. A "more" entry can list a comment and its replies, and then the comment's thread includes those replies too.

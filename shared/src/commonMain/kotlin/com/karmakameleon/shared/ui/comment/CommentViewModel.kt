@@ -145,10 +145,10 @@ class CommentViewModel(
         }
     }
 
-    /** [more] without the comments already on screen, which an earlier thread may have brought along as replies. */
+    /** [more] without the comments an earlier thread brought along, as replies or in its own "more" entries. */
     fun withoutLoadedChildren(more: MoreComments): MoreComments {
-        val loaded = _uiState.value.comments.commentIds()
-        return more.copy(children = more.children.filterNot { it in loaded })
+        val covered = _uiState.value.comments.commentIdsCoveredOutside(more)
+        return more.copy(children = more.children.filterNot { it in covered })
     }
 
     fun updateComment(updatedComment: Comment) {

@@ -110,8 +110,9 @@ class PostRepository(
     /**
      * Loads the next comments of [more], each with its replies and placed at the depth of [more]. Comments are loaded one
      * request each, since Reddit blocks /api/morechildren, so a long list takes several calls: what's left of it comes back
-     * as the last item. [more] lists replies too, so comments that an earlier thread brought along aren't requested. A
-     * failed request stops the loading and its comments stay in what's left, and it only fails the call if nothing loaded.
+     * as the last item. [more] lists replies too, so comments that an earlier thread brought along, or holds in its own
+     * "more" entries, aren't requested: they'd end up a level too high. A failed request stops the loading and its comments
+     * stay in what's left, and it only fails the call if nothing loaded.
      */
     suspend fun getMoreComments(
         subreddit: String,
@@ -122,13 +123,14 @@ class PostRepository(
         runSuspendCatching {
             val threads = mutableListOf<CommentOrMore.CommentItem>()
             val loadedIds = mutableSetOf<String>()
+            val inThreadMoreIds = mutableSetOf<String>()
             val requested = mutableSetOf<String>()
             val failed = mutableSetOf<String>()
             var failure: Throwable? = null
             while (failure == null && requested.size < MORE_COMMENTS_BATCH_SIZE) {
                 val next =
                     more.children
-                        .filter { it !in loadedIds && it !in requested }
+                        .filter { it !in loadedIds && it !in inThreadMoreIds && it !in requested }
                         .take(minOf(MORE_COMMENTS_PARALLEL_REQUESTS, MORE_COMMENTS_BATCH_SIZE - requested.size))
                 if (next.isEmpty()) break
                 requested += next
@@ -141,7 +143,7 @@ class PostRepository(
                         .onSuccess { thread ->
                             thread?.let {
                                 threads += CommentOrMore.CommentItem(it.atDepth(more.depth))
-                                it.addIdsTo(loadedIds)
+                                it.addIdsTo(loadedIds, inThreadMoreIds)
                             }
                         }.onFailure {
                             failed += id
@@ -151,7 +153,10 @@ class PostRepository(
             }
             failure?.takeIf { threads.isEmpty() }?.let { throw it }
             parseMarkdown(post = null, threads)
-            val remaining = more.children.filter { it !in loadedIds && (it !in requested || it in failed) }
+            val remaining =
+                more.children
+                    .filter { it !in loadedIds && it !in inThreadMoreIds }
+                    .filter { it !in requested || it in failed }
             threads + listOfNotNull(more.afterLoading(remaining, loadedIds.size))
         }
 
@@ -169,9 +174,13 @@ class PostRepository(
             .firstOrNull { it.comment.id == commentId }
             ?.comment
 
-    private fun Comment.addIdsTo(ids: MutableSet<String>) {
-        ids += id
-        replies.forEach { it.addIdsTo(ids) }
+    private fun Comment.addIdsTo(
+        loadedIds: MutableSet<String>,
+        inMoreIds: MutableSet<String>,
+    ) {
+        loadedIds += id
+        moreReplies?.let { inMoreIds += it.children }
+        replies.forEach { it.addIdsTo(loadedIds, inMoreIds) }
     }
 
     private fun Comment.atDepth(newDepth: Int): Comment =
