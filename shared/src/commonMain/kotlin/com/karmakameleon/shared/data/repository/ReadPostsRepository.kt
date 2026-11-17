@@ -24,13 +24,7 @@ class ReadPostsRepository(
         post: Post,
         historyMode: NsfwHistoryMode,
     ): Boolean {
-        val wouldBeExcluded =
-            when (historyMode) {
-                NsfwHistoryMode.SAVE_ALL -> false
-                NsfwHistoryMode.DONT_SAVE_NSFW_SUBREDDITS -> if (post.subredditNsfwKnown) post.subredditIsNsfw else post.isNsfw
-                NsfwHistoryMode.DONT_SAVE_ANY_NSFW -> post.isNsfw
-            }
-        if (wouldBeExcluded) return false
+        if (historyMode.skips(post)) return false
         return _readPostIds.value.contains(post.id)
     }
 
@@ -38,13 +32,7 @@ class ReadPostsRepository(
         post: Post,
         historyMode: NsfwHistoryMode,
     ) {
-        val shouldSkip =
-            when (historyMode) {
-                NsfwHistoryMode.SAVE_ALL -> false
-                NsfwHistoryMode.DONT_SAVE_NSFW_SUBREDDITS -> if (post.subredditNsfwKnown) post.subredditIsNsfw else post.isNsfw
-                NsfwHistoryMode.DONT_SAVE_ANY_NSFW -> post.isNsfw
-            }
-        if (shouldSkip) return
+        if (historyMode.skips(post)) return
 
         val entry = ReadPostEntry(post.id, post.isNsfw, post.subredditIsNsfw)
         val updatedEntries = readPostEntries.value + entry
@@ -71,13 +59,8 @@ class ReadPostsRepository(
     ) {
         val kept =
             entries
-                .filterNot {
-                    when (historyMode) {
-                        NsfwHistoryMode.SAVE_ALL -> false
-                        NsfwHistoryMode.DONT_SAVE_NSFW_SUBREDDITS -> it.subredditIsNsfw
-                        NsfwHistoryMode.DONT_SAVE_ANY_NSFW -> it.isNsfw
-                    }
-                }.toSet()
+                .filterNot { historyMode.skips(it.isNsfw, it.subredditIsNsfw) }
+                .toSet()
         readPostEntries.value = kept
         saveReadPostEntries(kept)
         _readPostIds.value = kept.map { it.postId }.toSet()
@@ -118,3 +101,19 @@ data class ReadPostEntry(
     val isNsfw: Boolean,
     val subredditIsNsfw: Boolean,
 )
+
+/** Whether this mode leaves a post out of the read history. */
+private fun NsfwHistoryMode.skips(
+    isNsfw: Boolean,
+    subredditIsNsfw: Boolean,
+): Boolean =
+    when (this) {
+        NsfwHistoryMode.SAVE_ALL -> false
+        NsfwHistoryMode.DONT_SAVE_NSFW_SUBREDDITS -> subredditIsNsfw
+        NsfwHistoryMode.DONT_SAVE_ANY_NSFW -> isNsfw
+    }
+
+// Until the subreddit's NSFW flag is looked up, the post's own flag stands in for it. A saved entry has no such gap:
+// it records the subreddit's flag as it was when the post was read.
+private fun NsfwHistoryMode.skips(post: Post): Boolean =
+    skips(post.isNsfw, subredditIsNsfw = if (post.subredditNsfwKnown) post.subredditIsNsfw else post.isNsfw)

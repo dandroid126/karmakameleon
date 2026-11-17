@@ -118,6 +118,13 @@ internal class BackupController(
         dialog = BackupDialog.Export
     }
 
+    /** Categories with nothing to export: the Reddit app setup before a client ID is set. */
+    val unavailableExportCategories: Set<BackupCategory>
+        get() = if (repository.hasRedditApp()) emptySet() else setOf(BackupCategory.REDDIT_APP)
+
+    // The choice is kept as made, so a category that becomes available later is still ticked.
+    val chosenExportCategories: Set<BackupCategory> get() = exportCategories - unavailableExportCategories
+
     fun confirmExport() {
         dialog = null
         pickExportFile(exportFileName(Date()))
@@ -125,7 +132,7 @@ internal class BackupController(
 
     fun onExportFilePicked(location: String?) {
         location ?: return
-        val categories = exportCategories
+        val categories = chosenExportCategories
         scope.launch {
             val message =
                 repository.export(location, categories).fold(
@@ -327,8 +334,9 @@ private fun ExportDialog(
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 CategoryChecklist(
                     categories = BackupCategory.entries,
-                    checked = controller.exportCategories,
+                    checked = controller.chosenExportCategories,
                     onCheckedChange = { controller.exportCategories = it },
+                    disabled = controller.unavailableExportCategories,
                 )
                 Text(
                     text = "The file is plain text, so anyone who has it can read what's in it.",
@@ -339,7 +347,7 @@ private fun ExportDialog(
             }
         },
         confirmButton = {
-            Button(onClick = controller::confirmExport, enabled = controller.exportCategories.isNotEmpty()) { Text("Export") }
+            Button(onClick = controller::confirmExport, enabled = controller.chosenExportCategories.isNotEmpty()) { Text("Export") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
@@ -443,9 +451,11 @@ private fun CategoryChecklist(
     categories: List<BackupCategory>,
     checked: Set<BackupCategory>,
     onCheckedChange: (Set<BackupCategory>) -> Unit,
+    disabled: Set<BackupCategory> = emptySet(),
 ) {
     categories.forEach { category ->
         val isChecked = category in checked
+        val enabled = category !in disabled
         // The whole row is the checkbox, like the settings' switches.
         Row(
             modifier =
@@ -453,15 +463,16 @@ private fun CategoryChecklist(
                     .fillMaxWidth()
                     .toggleable(
                         value = isChecked,
+                        enabled = enabled,
                         role = Role.Checkbox,
                         onValueChange = { onCheckedChange(if (it) checked + category else checked - category) },
                     ).padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Checkbox(checked = isChecked, onCheckedChange = null)
+            Checkbox(checked = isChecked, onCheckedChange = null, enabled = enabled)
             SettingTitle(
                 title = category.displayName,
-                description = category.description(),
+                description = if (enabled) category.description() else "Not set up on this device",
                 modifier = Modifier.padding(start = 12.dp),
             )
         }

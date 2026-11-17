@@ -37,7 +37,8 @@ data class Backup(
                 if (favoriteSubreddits != null) add(BackupCategory.FAVORITE_SUBREDDITS)
                 if (readHistory != null) add(BackupCategory.READ_HISTORY)
                 if (drafts != null) add(BackupCategory.DRAFTS)
-                if (redditApp != null) add(BackupCategory.REDDIT_APP)
+                // A blank client ID would replace a working one and log out, so it isn't offered.
+                if (redditApp != null && redditApp.clientId.isNotBlank()) add(BackupCategory.REDDIT_APP)
             }
 
     /** Whether a newer version of the app wrote this file, so it may hold data this version skips. */

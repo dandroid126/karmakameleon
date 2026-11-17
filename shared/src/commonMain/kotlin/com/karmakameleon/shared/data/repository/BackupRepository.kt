@@ -84,12 +84,15 @@ class BackupRepository(
                 },
             drafts = if (BackupCategory.DRAFTS in categories) commentDraftRepository.allDrafts() else null,
             redditApp =
-                if (BackupCategory.REDDIT_APP in categories) {
+                if (BackupCategory.REDDIT_APP in categories && hasRedditApp()) {
                     BackupRedditApp(authManager.getClientId(), authManager.getRedirectUri())
                 } else {
                     null
                 },
         )
+
+    /** Whether a client ID is set, without which there's no Reddit app setup to export. */
+    fun hasRedditApp(): Boolean = authManager.getClientId().isNotBlank()
 
     private fun exportSettings(): BackupSettings =
         with(settingsRepository) {
@@ -119,7 +122,9 @@ class BackupRepository(
 
         var loggedOut = false
         var skipped = false
-        chosen(BackupCategory.REDDIT_APP, backup.redditApp)?.let { loggedOut = importRedditApp(it) }
+        chosen(BackupCategory.REDDIT_APP, backup.redditApp)
+            ?.takeIf { BackupCategory.REDDIT_APP in backup.categories }
+            ?.let { loggedOut = importRedditApp(it) }
         // Before the read history, which leaves out what the imported history mode doesn't save.
         chosen(BackupCategory.SETTINGS, backup.settings)?.let { skipped = !importSettings(it) }
         chosen(BackupCategory.BLOCKED_SUBREDDITS, backup.blockedSubreddits)?.let { settingsRepository.setBlockedSubreddits(it.toSet()) }

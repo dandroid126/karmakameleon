@@ -6,6 +6,8 @@ import com.russhwolf.settings.set
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /** Reads and writes export files, and keeps the list of those the app wrote or imported, so they can be deleted later. */
 class BackupFileStore(
@@ -13,6 +15,9 @@ class BackupFileStore(
     private val backupFiles: BackupFiles,
 ) {
     private val _files = MutableStateFlow<List<BackupFileInfo>>(emptyList())
+
+    // Each change reads the stored list, suspends, and saves it again, so one running alongside another would undo it.
+    private val mutex = Mutex()
 
     /** The listed files, newest first. Empty until [refresh] loads them. */
     val files: StateFlow<List<BackupFileInfo>> = _files.asStateFlow()
@@ -25,14 +30,17 @@ class BackupFileStore(
     suspend fun read(location: String): String = backupFiles.read(location)
 
     /** Adds the file to the list, keeping the app's access to it. Throws when the access can't be kept. */
-    suspend fun remember(location: String) {
-        backupFiles.keepAccess(location)
-        saveLocations(storedLocations() + location)
-        refresh()
-    }
+    suspend fun remember(location: String) =
+        mutex.withLock {
+            backupFiles.keepAccess(location)
+            saveLocations(storedLocations() + location)
+            refreshLocked()
+        }
 
     /** Loads the details of the listed files, and drops those that are gone. */
-    suspend fun refresh() {
+    suspend fun refresh() = mutex.withLock { refreshLocked() }
+
+    private suspend fun refreshLocked() {
         val found = mutableListOf<BackupFileInfo>()
         for (location in storedLocations()) {
             val info = runSuspendCatching { backupFiles.info(location) }.getOrNull()
@@ -47,12 +55,13 @@ class BackupFileStore(
     }
 
     /** Deletes the file and drops it from the list. Throws when it can't be deleted, which leaves it listed. */
-    suspend fun delete(location: String) {
-        backupFiles.delete(location)
-        runSuspendCatching { backupFiles.releaseAccess(location) }
-        saveLocations(storedLocations() - location)
-        _files.value = _files.value.filterNot { it.location == location }
-    }
+    suspend fun delete(location: String) =
+        mutex.withLock {
+            backupFiles.delete(location)
+            runSuspendCatching { backupFiles.releaseAccess(location) }
+            saveLocations(storedLocations() - location)
+            _files.value = _files.value.filterNot { it.location == location }
+        }
 
     // Content URIs can hold commas, but never line breaks.
     private fun storedLocations(): List<String> =

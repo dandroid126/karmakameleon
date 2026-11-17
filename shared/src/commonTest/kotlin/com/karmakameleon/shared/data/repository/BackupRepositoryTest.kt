@@ -12,9 +12,12 @@ import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.testing.FakeBackupFiles
 import com.karmakameleon.shared.testing.MockReddit
 import com.russhwolf.settings.MapSettings
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -114,6 +117,13 @@ class BackupRepositoryTest {
         assertEquals(listOf("kotlin"), backup.favoriteSubreddits)
         assertEquals(setOf(BackupReadPost("a1"), BackupReadPost("b2", nsfw = true, subredditNsfw = true)), backup.readHistory?.toSet())
         assertEquals(BackupRedditApp("old_client", "app://old"), backup.redditApp)
+    }
+
+    @Test
+    fun createBackup_leavesOutTheRedditAppSetupWithoutAClientId() {
+        assertFalse(repository.hasRedditApp())
+
+        assertNull(repository.createBackup(everything).redditApp)
     }
 
     @Test
@@ -291,6 +301,21 @@ class BackupRepositoryTest {
     }
 
     @Test
+    fun apply_ignoresABlankClientId() {
+        authManager.setClientId("my_client")
+        authManager.fakeIsLoggedIn = true
+        // What an older export from a device that was never set up holds.
+        val backup = Backup(Backup.CURRENT_VERSION, redditApp = BackupRedditApp(" ", "karmakameleon://oauth"))
+
+        assertFalse(BackupCategory.REDDIT_APP in backup.categories)
+        val result = repository.apply(backup, everything)
+
+        assertFalse(result.loggedOut)
+        assertEquals("my_client", authManager.getClientId())
+        assertTrue(authManager.isLoggedIn())
+    }
+
+    @Test
     fun importLogsOut_isFalseWhenLoggedOutOrTheFileHasNoClientId() {
         authManager.setClientId("old_client")
 
@@ -388,6 +413,47 @@ class BackupRepositoryTest {
 
             assertContentEquals(listOf("third.json", "first.json"), restarted.files.value.map { it.name })
             assertFalse("content://docs/second.json" in files.kept)
+        }
+
+    @Test
+    fun aFileListedDuringARefreshStaysListed() =
+        runTest {
+            repository.export("content://docs/old.json", everything)
+            val gate = CompletableDeferred<Unit>()
+            files.infoGate = gate
+
+            // The refresh waits on the old file's details while an export lists a new one.
+            val refresh = launch { repository.refreshFiles() }
+            runCurrent()
+            val export = launch { repository.export("content://docs/new.json", everything) }
+            runCurrent()
+            gate.complete(Unit)
+            refresh.join()
+            export.join()
+
+            assertEquals(
+                setOf("old.json", "new.json"),
+                repository.files.value
+                    .map { it.name }
+                    .toSet(),
+            )
+            // Read again from storage, as after a restart.
+            val restarted =
+                BackupRepository(
+                    BackupFileStore(settings, files),
+                    settingsRepository,
+                    readPostsRepository,
+                    draftRepository,
+                    authManager,
+                    userRepository,
+                )
+            restarted.refreshFiles()
+            assertEquals(
+                setOf("old.json", "new.json"),
+                restarted.files.value
+                    .map { it.name }
+                    .toSet(),
+            )
         }
 
     @Test

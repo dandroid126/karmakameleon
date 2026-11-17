@@ -2,6 +2,7 @@ package com.karmakameleon.shared.testing
 
 import com.karmakameleon.shared.data.backup.BackupFileInfo
 import com.karmakameleon.shared.data.backup.BackupFiles
+import kotlinx.coroutines.CompletableDeferred
 
 /**
  * Export files kept in memory, by location. A file's name is the end of its location, its size the length of its text,
@@ -44,7 +45,14 @@ class FakeBackupFiles : BackupFiles {
         kept -= location
     }
 
+    /** When set, the next lookup of a file's details waits for it, like a slow cloud provider. Later ones don't. */
+    var infoGate: CompletableDeferred<Unit>? = null
+
     override suspend fun info(location: String): BackupFileInfo? {
+        infoGate?.let {
+            infoGate = null
+            it.await()
+        }
         val text = contents[location] ?: return null
         val lastModified = writeOrder[location]?.let { FIRST_WRITE_MILLIS + (it - 1) * MINUTE_MILLIS }
         return BackupFileInfo(location, location.substringAfterLast('/'), text.length.toLong(), lastModified)

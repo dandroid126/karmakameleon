@@ -7,11 +7,11 @@ import androidx.core.app.ActivityOptionsCompat
 
 /**
  * Stands in for the activities a screen starts for a result, like Android's file pickers, which Robolectric can't show.
- * Each launch is recorded in [launched] and answered with [nextResult] at once. Provide it to a screen through
- * `LocalActivityResultRegistryOwner`.
+ * Each launch is recorded in [launched] and answered at once with the next of [results], or with null (cancelled) when
+ * none is left. Provide it to a screen through `LocalActivityResultRegistryOwner`.
  */
 class FakeActivityResults : ActivityResultRegistryOwner {
-    var nextResult: Any? = null
+    val results = ArrayDeque<Any?>()
     val launched = mutableListOf<Any?>()
 
     override val activityResultRegistry =
@@ -23,7 +23,7 @@ class FakeActivityResults : ActivityResultRegistryOwner {
                 options: ActivityOptionsCompat?,
             ) {
                 launched += input
-                dispatchResult(requestCode, nextResult)
+                dispatchResult(requestCode, results.removeFirstOrNull())
             }
         }
 }

@@ -1,5 +1,6 @@
 package com.karmakameleon.android.ui.settings
 
+import android.Manifest
 import android.net.Uri
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.compose.runtime.CompositionLocalProvider
@@ -16,15 +17,20 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.work.WorkManager
 import androidx.work.testing.WorkManagerTestInitHelper
+import com.karmakameleon.android.notifications.InboxNotificationWorker
 import com.karmakameleon.android.testing.FakeActivityResults
 import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
+import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.backup.BackupCategory
 import com.karmakameleon.shared.data.repository.BackupRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -33,7 +39,9 @@ import org.junit.runner.RunWith
 import org.koin.core.context.GlobalContext
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import java.time.LocalDate
+import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 class BackupSettingsTest {
@@ -79,8 +87,16 @@ class BackupSettingsTest {
         composeRule.onNode(hasText(text) and hasClickAction() and hasAnyAncestor(isDialog()))
 
     private fun pickFile(location: String?) {
-        pickers.nextResult = location?.let(Uri::parse)
+        pickers.results += location?.let(Uri::parse)
     }
+
+    private fun inboxWork() =
+        runBlocking {
+            WorkManager
+                .getInstance(RuntimeEnvironment.getApplication())
+                .getWorkInfosForUniqueWorkFlow(InboxNotificationWorker.WORK_NAME)
+                .first()
+        }
 
     @Test
     fun exportWritesTheChosenCategoriesAndListsTheFile() {
@@ -89,10 +105,9 @@ class BackupSettingsTest {
         showSettings()
 
         sectionButton("Export").performClick()
-        // Read history and drafts start unticked.
+        // Read history and drafts start unticked, and the Reddit app setup can't be chosen without a client ID.
         inDialog("Settings").performClick()
         inDialog("Favorite Subreddits").performClick()
-        inDialog("Reddit App Setup").performClick()
         inDialog("Export").performClick()
         composeRule.waitForIdle()
 
@@ -103,11 +118,66 @@ class BackupSettingsTest {
     }
 
     @Test
+    fun exportIncludesTheRedditAppSetupOnceAClientIdIsSet() {
+        pickFile("content://docs/before.json")
+        pickFile("content://docs/after.json")
+        showSettings()
+
+        // Without a client ID there's nothing to export, and a blank one would replace a working one on import.
+        sectionButton("Export").performClick()
+        composeRule.onNodeWithText("Not set up on this device").assertIsDisplayed()
+        inDialog("Export").performClick()
+        composeRule.waitForIdle()
+        assertFalse("redditApp" in files.contents.getValue("content://docs/before.json"))
+
+        GlobalContext.get().get<AuthManager>().setClientId("my_client")
+        sectionButton("Export").performClick()
+        composeRule.onNodeWithText("Not set up on this device").assertDoesNotExist()
+        inDialog("Export").performClick()
+        composeRule.waitForIdle()
+        assertTrue(""""clientId":"my_client"""" in files.contents.getValue("content://docs/after.json"))
+    }
+
+    @Test
+    fun importTurningNotificationsOnAsksForPermissionThenSchedulesTheCheck() {
+        fakeReddit.loggedIn = true
+        files.contents["content://docs/old.json"] = """{"version":1,"settings":{"notificationInterval":"ONE_HOUR"}}"""
+        pickFile("content://docs/old.json")
+        // The answer to the permission request.
+        pickers.results += false
+        showSettings()
+
+        sectionButton("Import").performClick()
+        inDialog("Replace").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(Manifest.permission.POST_NOTIFICATIONS, pickers.launched.last())
+        // Scheduled even when refused, like when the app starts: Android may let the user allow it later.
+        assertEquals(TimeUnit.HOURS.toMillis(1), inboxWork().single().periodicityInfo?.repeatIntervalMillis)
+    }
+
+    @Test
+    fun importSchedulesTheCheckWithoutAskingWhenNotificationsAreAllowed() {
+        shadowOf(RuntimeEnvironment.getApplication()).grantPermissions(Manifest.permission.POST_NOTIFICATIONS)
+        fakeReddit.loggedIn = true
+        files.contents["content://docs/old.json"] = """{"version":1,"settings":{"notificationInterval":"SIX_HOURS"}}"""
+        pickFile("content://docs/old.json")
+        showSettings()
+
+        sectionButton("Import").performClick()
+        inDialog("Replace").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(1, pickers.launched.size)
+        assertEquals(TimeUnit.HOURS.toMillis(6), inboxWork().single().periodicityInfo?.repeatIntervalMillis)
+    }
+
+    @Test
     fun exportNeedsACategory() {
         showSettings()
 
         sectionButton("Export").performClick()
-        listOf("Settings", "Blocked Subreddits", "Favorite Subreddits", "Reddit App Setup").forEach { inDialog(it).performClick() }
+        listOf("Settings", "Blocked Subreddits", "Favorite Subreddits").forEach { inDialog(it).performClick() }
 
         inDialog("Export").assertIsNotEnabled()
     }

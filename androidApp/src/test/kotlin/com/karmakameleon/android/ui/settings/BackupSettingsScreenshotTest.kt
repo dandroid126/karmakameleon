@@ -16,6 +16,7 @@ import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.testing.saveScreenshot
 import com.karmakameleon.android.testing.saveScreenshotWithDialog
 import com.karmakameleon.android.testing.showScreen
+import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.backup.BackupCategory
 import com.karmakameleon.shared.data.repository.BackupRepository
 import kotlinx.coroutines.runBlocking
@@ -78,8 +79,10 @@ class BackupSettingsScreenshotTest {
         composeRule.saveScreenshot("settings_export_files")
     }
 
+    // With a client ID, so every category can be chosen.
     @Test
     fun exportDialog() {
+        GlobalContext.get().get<AuthManager>().setClientId("client")
         showSettings()
         clickSectionButton("Export")
 
@@ -89,6 +92,7 @@ class BackupSettingsScreenshotTest {
 
     @Test
     fun exportDialogDark() {
+        GlobalContext.get().get<AuthManager>().setClientId("client")
         showSettings(darkTheme = true)
         clickSectionButton("Export")
 
@@ -102,7 +106,7 @@ class BackupSettingsScreenshotTest {
         fakeReddit.loggedIn = true
         fakeReddit.backupFiles.contents["content://docs/new.json"] =
             """{"version":2,"settings":{},"blockedSubreddits":[],"readHistory":[],"redditApp":{"clientId":"new","redirectUri":"app://new"}}"""
-        pickers.nextResult = Uri.parse("content://docs/new.json")
+        pickers.results += Uri.parse("content://docs/new.json")
         showSettings()
         clickSectionButton("Import")
 
