@@ -35,8 +35,10 @@ jobs:
       - name: Run unit tests
         run: ./gradlew :shared:testAndroidHostTest
 
-      - name: Build Debug APK
-        run: ./gradlew :androidApp:assembleDebug
+      # The profileable APK is release code with the debug package, for measuring performance. PRs build release
+      # already, which runs the same R8 step, so only main builds this one.
+      - name: Build APKs
+        run: ./gradlew :androidApp:assembleDebug :androidApp:assembleProfileable
 
       - name: Get commit info
         id: commit_info
@@ -46,11 +48,14 @@ jobs:
           echo "sha=$COMMIT_SHA" >> "$GITHUB_OUTPUT"
           echo "date=$COMMIT_DATE" >> "$GITHUB_OUTPUT"
 
-      - name: Upload APK
+      - name: Upload APKs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: debug-apk
-          path: androidApp/build/outputs/apk/debug/androidApp-debug.apk
+          # Saved under their common folder, so they download as apk/debug/… and apk/profileable/….
+          path: |
+            androidApp/build/outputs/apk/debug/androidApp-debug.apk
+            androidApp/build/outputs/apk/profileable/androidApp-profileable.apk
           if-no-files-found: error
 
   publish:
@@ -68,7 +73,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
 
     steps:
-      - name: Download APK
+      - name: Download APKs
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: debug-apk
@@ -77,7 +82,7 @@ jobs:
       # Each runner signs debug builds with a new random key, which Android rejects as an
       # update. Re-sign with a fixed key here, rather than in the build job, so third-party
       # actions and Gradle plugins never see it.
-      - name: Sign APK with the debug key
+      - name: Sign APKs with the debug key
         env:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
           DEBUG_KEYSTORE_PASSWORD: ${{ secrets.DEBUG_KEYSTORE_PASSWORD }}
@@ -89,10 +94,13 @@ jobs:
           KEYSTORE="$RUNNER_TEMP/debug.p12"
           echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)/apksigner"
-          "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass env:DEBUG_KEYSTORE_PASSWORD \
-            --ks-key-alias debug apk/androidApp-debug.apk
+          for APK in apk/debug/androidApp-debug.apk apk/profileable/androidApp-profileable.apk; do
+            "$APKSIGNER" sign --ks "$KEYSTORE" --ks-pass env:DEBUG_KEYSTORE_PASSWORD --ks-key-alias debug "$APK"
+          done
           rm "$KEYSTORE"
-          "$APKSIGNER" verify --print-certs apk/androidApp-debug.apk
+          for APK in apk/debug/androidApp-debug.apk apk/profileable/androidApp-profileable.apk; do
+            "$APKSIGNER" verify --print-certs "$APK"
+          done
 
       - name: Create Debug Release
         env:
@@ -100,18 +108,23 @@ jobs:
           DATE: ${{ needs.build.outputs.date }}
         run: |
           cat > notes.md <<EOF
-          Debug APK build from main branch
+          Debug and profileable APK builds from main branch
 
           **Commit**: $SHA
           **Date**: $DATE
 
-          This is a debug build for testing purposes, signed with the project's debug key so it installs as an update.
+          These are builds for testing, signed with the project's debug key so they install as updates.
+
+          - \`androidApp-debug.apk\`: debuggable.
+          - \`androidApp-profileable.apk\`: release code that can be traced with Perfetto, for measuring performance.
+
+          Both are the same app (\`com.karmakameleon.android.debug\`), so either one installs over the other and keeps the app's data.
           EOF
           # Recreate the release so the debug-latest tag moves to this commit.
           if gh release view debug-latest > /dev/null 2>&1; then
             gh release delete debug-latest --cleanup-tag --yes
           fi
-          gh release create debug-latest apk/androidApp-debug.apk \
+          gh release create debug-latest apk/debug/androidApp-debug.apk apk/profileable/androidApp-profileable.apk \
             --target "$GITHUB_SHA" \
             --title "Debug Build - $DATE" \
             --notes-file notes.md \
