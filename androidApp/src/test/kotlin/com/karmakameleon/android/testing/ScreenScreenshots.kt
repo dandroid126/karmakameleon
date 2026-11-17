@@ -3,7 +3,9 @@ package com.karmakameleon.android.testing
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 
 /** Shows [screen] at a phone's size and saves a screenshot of it as `src/test/screenshots/<name>.png`. */
@@ -30,4 +32,10 @@ fun ComposeContentTestRule.showScreen(
 /** Saves a screenshot of what's shown as `src/test/screenshots/<name>.png`. */
 fun ComposeContentTestRule.saveScreenshot(name: String) {
     onRoot().captureRoboImage("src/test/screenshots/$name.png")
+}
+
+/** Like [saveScreenshot], for a screen showing a dialog, which is a window of its own over the screen's. */
+@OptIn(ExperimentalRoborazziApi::class)
+fun saveScreenshotWithDialog(name: String) {
+    captureScreenRoboImage("src/test/screenshots/$name.png")
 }

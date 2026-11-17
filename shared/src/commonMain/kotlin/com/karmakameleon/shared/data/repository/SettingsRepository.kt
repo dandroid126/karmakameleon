@@ -124,6 +124,18 @@ class SettingsRepository(
         saveFavoriteSubreddits(updated)
     }
 
+    fun setBlockedSubreddits(subreddits: Set<String>) {
+        val updated = subreddits.map { it.lowercase() }.toSet()
+        _blockedSubreddits.value = updated
+        saveBlockedSubreddits(updated)
+    }
+
+    fun setFavoriteSubreddits(subreddits: Set<String>) {
+        val updated = subreddits.map { it.lowercase() }.toSet()
+        _favoriteSubreddits.value = updated
+        saveFavoriteSubreddits(updated)
+    }
+
     fun isFavoriteSubreddit(subreddit: String): Boolean = subreddit.lowercase() in _favoriteSubreddits.value
 
     private fun loadBlockedSubreddits(): Set<String> {

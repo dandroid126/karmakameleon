@@ -1,5 +1,10 @@
 package com.karmakameleon.android.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -26,10 +31,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,8 +48,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.karmakameleon.android.notifications.InboxNotificationWorker
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
+import com.karmakameleon.shared.data.repository.BackupRepository
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NotificationInterval
@@ -56,11 +66,20 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     settingsRepository: SettingsRepository = koinInject(),
     readPostsRepository: ReadPostsRepository = koinInject(),
+    backupRepository: BackupRepository = koinInject(),
 ) {
     val nsfwEnabled by settingsRepository.nsfwEnabled.collectAsState()
     val blockedSubreddits by settingsRepository.blockedSubreddits.collectAsState()
     val context = LocalContext.current
     var showPurgeConfirmDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scheduleNotifications = rememberNotificationScheduler(settingsRepository)
+    // An import can change the interval or the login, which the worker's schedule depends on.
+    val backupController = rememberBackupController(backupRepository, snackbarHostState, onImport = { scheduleNotifications() })
+    val backupFiles by backupController.files.collectAsState()
+
+    LaunchedEffect(backupController) { backupController.refreshFiles() }
+    BackupDialogs(backupController)
 
     if (showPurgeConfirmDialog) {
         PurgeNsfwHistoryDialog(
@@ -74,6 +93,7 @@ fun SettingsScreen(
 
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             UniversalTopAppBar(
                 excludeSettings = true,
@@ -96,6 +116,32 @@ fun SettingsScreen(
             nsfwSettings(settingsRepository, nsfwEnabled = nsfwEnabled, onClearHistoryClick = { showPurgeConfirmDialog = true })
             spoilerSettings(settingsRepository)
             blockedSubredditSettings(blockedSubreddits, onUnblock = settingsRepository::removeBlockedSubreddit)
+            item { SettingsDivider() }
+            backupSettings(backupFiles, backupController)
+        }
+    }
+}
+
+/**
+ * Schedules the inbox notification worker for the current interval, first asking for permission to notify when the
+ * interval is on and Android requires it. The worker is scheduled either way, like when the app starts.
+ */
+@Composable
+private fun rememberNotificationScheduler(settingsRepository: SettingsRepository): () -> Unit {
+    val context = LocalContext.current
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+            InboxNotificationWorker.schedule(context)
+        }
+    return {
+        val needsPermission =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                settingsRepository.notificationInterval.value != NotificationInterval.OFF &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            InboxNotificationWorker.schedule(context)
         }
     }
 }
@@ -254,7 +300,7 @@ private fun LazyListScope.blockedSubredditSettings(
 }
 
 @Composable
-private fun SettingsSectionHeader(text: String) {
+internal fun SettingsSectionHeader(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleSmall,
@@ -269,7 +315,7 @@ private fun SettingsDivider() {
 }
 
 @Composable
-private fun SettingTitle(
+internal fun SettingTitle(
     title: String,
     description: String,
     modifier: Modifier = Modifier,

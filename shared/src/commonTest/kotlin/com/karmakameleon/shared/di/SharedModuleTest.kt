@@ -3,6 +3,8 @@ package com.karmakameleon.shared.di
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.api.HttpClientFactory
 import com.karmakameleon.shared.data.api.RedditApi
+import com.karmakameleon.shared.data.backup.BackupFiles
+import com.karmakameleon.shared.data.repository.BackupRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.InboxPoller
@@ -12,6 +14,7 @@ import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
+import com.karmakameleon.shared.testing.FakeBackupFiles
 import com.russhwolf.settings.MapSettings
 import com.russhwolf.settings.Settings
 import io.ktor.client.HttpClient
@@ -66,6 +69,7 @@ class SharedModuleTest {
                     single<Settings> { settings }
                     single<Settings>(TOKEN_SETTINGS) { tokenSettings }
                     single { httpClientFactory }
+                    single<BackupFiles> { FakeBackupFiles() }
                 },
             )
         }
@@ -92,6 +96,7 @@ class SharedModuleTest {
                 InboxPoller::class,
                 ReadPostsRepository::class,
                 CommentDraftRepository::class,
+                BackupRepository::class,
             )
 
         types.forEach { type ->

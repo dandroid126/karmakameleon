@@ -11,16 +11,12 @@ import kotlinx.coroutines.flow.asStateFlow
 class ReadPostsRepository(
     private val settings: Settings,
 ) {
-    private data class ReadPostEntry(
-        val postId: String,
-        val isNsfw: Boolean,
-        val subredditIsNsfw: Boolean,
-    )
-
     private val _readPostIds = MutableStateFlow(loadReadPostIds())
     val readPostIds: StateFlow<Set<String>> = _readPostIds.asStateFlow()
 
     private val readPostEntries = MutableStateFlow(loadReadPostEntries())
+
+    val entries: Set<ReadPostEntry> get() = readPostEntries.value
 
     fun isRead(postId: String): Boolean = _readPostIds.value.contains(postId)
 
@@ -68,6 +64,25 @@ class ReadPostsRepository(
         _readPostIds.value = filteredIds
     }
 
+    /** Replaces the whole history, leaving out the posts that [historyMode] doesn't save. */
+    fun replaceAll(
+        entries: Collection<ReadPostEntry>,
+        historyMode: NsfwHistoryMode,
+    ) {
+        val kept =
+            entries
+                .filterNot {
+                    when (historyMode) {
+                        NsfwHistoryMode.SAVE_ALL -> false
+                        NsfwHistoryMode.DONT_SAVE_NSFW_SUBREDDITS -> it.subredditIsNsfw
+                        NsfwHistoryMode.DONT_SAVE_ANY_NSFW -> it.isNsfw
+                    }
+                }.toSet()
+        readPostEntries.value = kept
+        saveReadPostEntries(kept)
+        _readPostIds.value = kept.map { it.postId }.toSet()
+    }
+
     private fun loadReadPostIds(): Set<String> = loadReadPostEntries().map { it.postId }.toSet()
 
     private fun loadReadPostEntries(): Set<ReadPostEntry> {
@@ -97,3 +112,9 @@ class ReadPostsRepository(
         private const val ENTRY_FIELD_COUNT = 3
     }
 }
+
+data class ReadPostEntry(
+    val postId: String,
+    val isNsfw: Boolean,
+    val subredditIsNsfw: Boolean,
+)
