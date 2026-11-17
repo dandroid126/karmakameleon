@@ -58,6 +58,16 @@ jobs:
       GH_REPO: ${{ github.repository }}
 
     steps:
+      # Catches a tag pushed on the wrong commit, such as a branch that wasn't merged. It doesn't stop a deliberate
+      # attack, since whoever pushes a tag also chooses the workflow that runs: the tag ruleset does (docs/releasing.md).
+      - name: Check that the tagged commit is on main
+        run: |
+          STATUS="$(gh api "repos/$GH_REPO/compare/main...$GITHUB_SHA" --jq .status)"
+          if [ "$STATUS" != identical ] && [ "$STATUS" != behind ]; then
+            echo "::error::$GITHUB_REF_NAME points at $GITHUB_SHA, which isn't on main (compared: $STATUS)"
+            exit 1
+          fi
+
       - name: Download APK
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
