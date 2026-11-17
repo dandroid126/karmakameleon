@@ -24,7 +24,7 @@ android {
     }
 
     signingConfigs {
-        // Optionally sign debug builds with the key CI signs its debug releases with, so local
+        // Optionally sign debug and profileable builds with the key CI signs its debug releases with, so local
         // and GitHub builds can update each other. Set both properties in ~/.gradle/gradle.properties.
         val debugKeystore = providers.gradleProperty("karmakameleon.debugKeystore").orNull
         if (debugKeystore != null) {
@@ -49,6 +49,17 @@ android {
         debug {
             isMinifyEnabled = false
             applicationIdSuffix = ".debug"
+        }
+        // Release code (R8, not debuggable) that Perfetto and simpleperf can trace, for measuring performance: debug
+        // builds run much slower and overstate costs. It has the debug build's package and key, so the two install
+        // over each other and keep the app's data, to switch to debug when something needs debugging.
+        create("profileable") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-profileable"
+            signingConfig = signingConfigs.getByName("debug")
+            // Libraries only have debug and release variants.
+            matchingFallbacks += "release"
         }
     }
 
