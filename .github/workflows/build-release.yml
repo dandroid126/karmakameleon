@@ -46,9 +46,11 @@ jobs:
 
   publish:
     # Uses the built-in GITHUB_TOKEN, so there is no release token to keep up to date.
-    # Only GitHub's own code runs in this job, since it is the one that can write to the repo.
+    # Only GitHub's own code runs in this job, since it is the one that can write to the repo and sign.
     needs: build
     runs-on: ubuntu-latest
+    # The release key's secrets live in this environment, which only v* tags can use (docs/releasing.md).
+    environment: release
     permissions:
       contents: write
     env:
@@ -62,13 +64,33 @@ jobs:
           name: release-apk
           path: apk
 
+      # Signed here, rather than in the build job, so third-party actions and Gradle plugins never see the key.
+      - name: Sign APK with the release key
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ] || [ -z "$RELEASE_KEYSTORE_PASSWORD" ]; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 and RELEASE_KEYSTORE_PASSWORD must be set in the release environment"
+            exit 1
+          fi
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          # apksigner needs an aligned APK. -P 16 keeps native libraries aligned to 16 KB pages.
+          "$BUILD_TOOLS/zipalign" -f -P 16 4 apk/androidApp-release-unsigned.apk apk/androidApp-release.apk
+          KEYSTORE="$RUNNER_TEMP/release.p12"
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$KEYSTORE"
+          "$BUILD_TOOLS/apksigner" sign --ks "$KEYSTORE" --ks-pass env:RELEASE_KEYSTORE_PASSWORD \
+            --ks-key-alias release apk/androidApp-release.apk
+          rm "$KEYSTORE"
+          "$BUILD_TOOLS/apksigner" verify --print-certs apk/androidApp-release.apk
+
       - name: Create Release
         run: |
           # On a re-run the release already exists, so replace its APK instead.
           if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" apk/androidApp-release-unsigned.apk --clobber
+            gh release upload "$GITHUB_REF_NAME" apk/androidApp-release.apk --clobber
           else
-            gh release create "$GITHUB_REF_NAME" apk/androidApp-release-unsigned.apk \
+            gh release create "$GITHUB_REF_NAME" apk/androidApp-release.apk \
               --verify-tag \
               --title "$GITHUB_REF_NAME" \
               --notes "" \

@@ -19,3 +19,7 @@ local.properties
 .resources
 .kotlin
 .env
+# Signing keys never belong in the repo, even by accident (docs/releasing.md).
+*.p12
+*.jks
+*.keystore
