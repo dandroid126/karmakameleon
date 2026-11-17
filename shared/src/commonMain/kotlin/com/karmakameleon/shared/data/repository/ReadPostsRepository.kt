@@ -11,16 +11,12 @@ import kotlinx.coroutines.flow.asStateFlow
 class ReadPostsRepository(
     private val settings: Settings,
 ) {
-    private data class ReadPostEntry(
-        val postId: String,
-        val isNsfw: Boolean,
-        val subredditIsNsfw: Boolean,
-    )
-
     private val _readPostIds = MutableStateFlow(loadReadPostIds())
     val readPostIds: StateFlow<Set<String>> = _readPostIds.asStateFlow()
 
     private val readPostEntries = MutableStateFlow(loadReadPostEntries())
+
+    val entries: Set<ReadPostEntry> get() = readPostEntries.value
 
     fun isRead(postId: String): Boolean = _readPostIds.value.contains(postId)
 
@@ -28,13 +24,7 @@ class ReadPostsRepository(
         post: Post,
         historyMode: NsfwHistoryMode,
     ): Boolean {
-        val wouldBeExcluded =
-            when (historyMode) {
-                NsfwHistoryMode.SAVE_ALL -> false
-                NsfwHistoryMode.DONT_SAVE_NSFW_SUBREDDITS -> if (post.subredditNsfwKnown) post.subredditIsNsfw else post.isNsfw
-                NsfwHistoryMode.DONT_SAVE_ANY_NSFW -> post.isNsfw
-            }
-        if (wouldBeExcluded) return false
+        if (historyMode.skips(post)) return false
         return _readPostIds.value.contains(post.id)
     }
 
@@ -42,13 +32,7 @@ class ReadPostsRepository(
         post: Post,
         historyMode: NsfwHistoryMode,
     ) {
-        val shouldSkip =
-            when (historyMode) {
-                NsfwHistoryMode.SAVE_ALL -> false
-                NsfwHistoryMode.DONT_SAVE_NSFW_SUBREDDITS -> if (post.subredditNsfwKnown) post.subredditIsNsfw else post.isNsfw
-                NsfwHistoryMode.DONT_SAVE_ANY_NSFW -> post.isNsfw
-            }
-        if (shouldSkip) return
+        if (historyMode.skips(post)) return
 
         val entry = ReadPostEntry(post.id, post.isNsfw, post.subredditIsNsfw)
         val updatedEntries = readPostEntries.value + entry
@@ -66,6 +50,20 @@ class ReadPostsRepository(
 
         val filteredIds = filtered.map { it.postId }.toSet()
         _readPostIds.value = filteredIds
+    }
+
+    /** Replaces the whole history, leaving out the posts that [historyMode] doesn't save. */
+    fun replaceAll(
+        entries: Collection<ReadPostEntry>,
+        historyMode: NsfwHistoryMode,
+    ) {
+        val kept =
+            entries
+                .filterNot { historyMode.skips(it.isNsfw, it.subredditIsNsfw) }
+                .toSet()
+        readPostEntries.value = kept
+        saveReadPostEntries(kept)
+        _readPostIds.value = kept.map { it.postId }.toSet()
     }
 
     private fun loadReadPostIds(): Set<String> = loadReadPostEntries().map { it.postId }.toSet()
@@ -97,3 +95,25 @@ class ReadPostsRepository(
         private const val ENTRY_FIELD_COUNT = 3
     }
 }
+
+data class ReadPostEntry(
+    val postId: String,
+    val isNsfw: Boolean,
+    val subredditIsNsfw: Boolean,
+)
+
+/** Whether this mode leaves a post out of the read history. */
+private fun NsfwHistoryMode.skips(
+    isNsfw: Boolean,
+    subredditIsNsfw: Boolean,
+): Boolean =
+    when (this) {
+        NsfwHistoryMode.SAVE_ALL -> false
+        NsfwHistoryMode.DONT_SAVE_NSFW_SUBREDDITS -> subredditIsNsfw
+        NsfwHistoryMode.DONT_SAVE_ANY_NSFW -> isNsfw
+    }
+
+// Until the subreddit's NSFW flag is looked up, the post's own flag stands in for it. A saved entry has no such gap:
+// it records the subreddit's flag as it was when the post was read.
+private fun NsfwHistoryMode.skips(post: Post): Boolean =
+    skips(post.isNsfw, subredditIsNsfw = if (post.subredditNsfwKnown) post.subredditIsNsfw else post.isNsfw)

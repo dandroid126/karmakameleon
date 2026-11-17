@@ -5,9 +5,11 @@ import com.karmakameleon.android.ui.components.threeHoursAgo
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.data.api.dto.TokenInfo
+import com.karmakameleon.shared.data.backup.BackupFiles
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.di.sharedModule
+import com.karmakameleon.shared.testing.FakeBackupFiles
 import com.karmakameleon.shared.testing.MockReddit
 import com.karmakameleon.shared.testing.readFixture
 import com.russhwolf.settings.MapSettings
@@ -22,13 +24,15 @@ import kotlin.time.Duration.Companion.days
 
 /**
  * Starts Koin with the app's own modules, so screens get their real view models and repositories, with Reddit replaced
- * by [reddit] and the settings kept in memory. Tests set [reddit]'s responses before showing a screen.
+ * by [reddit], the settings kept in memory and the export files in [backupFiles]. Tests set [reddit]'s responses
+ * before showing a screen.
  */
 class FakeRedditRule : ExternalResource() {
     // Read when a screen first asks for the login, so set it before showing one.
     var loggedIn = false
     val reddit = MockReddit()
     val settings = SettingsRepository(MapSettings())
+    val backupFiles = FakeBackupFiles()
 
     override fun before() {
         startKoin {
@@ -40,6 +44,7 @@ class FakeRedditRule : ExternalResource() {
                 module {
                     single<Settings> { MapSettings() }
                     single { settings }
+                    single<BackupFiles> { backupFiles }
                     single<AuthManager> { authManager(loggedIn) }
                     single<RedditApi> { reddit.api(settings, Dispatchers.Main) }
                     single { MarkdownRepository(Dispatchers.Main) }
