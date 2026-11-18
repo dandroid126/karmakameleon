@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -59,6 +61,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +72,8 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
@@ -729,14 +734,7 @@ private fun LoginPrompt(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(24.dp))
-        OutlinedTextField(
-            value = clientId,
-            onValueChange = onClientIdChange,
-            label = { Text("Reddit Client ID") },
-            placeholder = { Text("Enter your Reddit app client ID") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(0.9f),
-        )
+        ClientIdField(clientId, onClientIdChange)
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedTextField(
             value = redirectUri,
@@ -763,6 +761,33 @@ private fun LoginPrompt(
             Text("Sign In")
         }
     }
+}
+
+// Hidden like a password until revealed, so screenshots and screen recordings don't show it.
+@Composable
+private fun ClientIdField(
+    clientId: String,
+    onClientIdChange: (String) -> Unit,
+) {
+    var showClientId by rememberSaveable { mutableStateOf(false) }
+    OutlinedTextField(
+        value = clientId,
+        onValueChange = onClientIdChange,
+        label = { Text("Reddit Client ID") },
+        placeholder = { Text("Enter your Reddit app client ID") },
+        singleLine = true,
+        visualTransformation = if (showClientId) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+        trailingIcon = {
+            IconButton(onClick = { showClientId = !showClientId }) {
+                Icon(
+                    imageVector = if (showClientId) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    contentDescription = if (showClientId) "Hide client ID" else "Show client ID",
+                )
+            }
+        },
+        modifier = Modifier.fillMaxWidth(0.9f),
+    )
 }
 
 @Composable
