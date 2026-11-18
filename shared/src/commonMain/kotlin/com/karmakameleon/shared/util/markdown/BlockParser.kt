@@ -26,6 +26,10 @@ private val listItemRegex = Regex("^( *)([-*+]|\\d{1,9}[.)])([ \t]+)(.*)")
 // A list can be indented by up to three spaces; with four, it's a code block.
 private const val MAX_LIST_INDENT = 3
 
+// The parts of a list item line (see listItemRegex), or null when it isn't one. As in CommonMark, a line like "* * *"
+// or "- - -" is a horizontal rule rather than an item.
+private fun listItemMatch(line: String): MatchResult? = if (horizontalRuleRegex.matches(line)) null else listItemRegex.matchEntire(line)
+
 private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
 
 // A reference link's definition: up to three spaces, [label]: and the URL, optionally in angle brackets, then
@@ -105,7 +109,7 @@ private fun isCodeLine(line: String): Boolean = line.startsWith(CODE_INDENT) && 
 private fun isCodeFence(line: String): Boolean = codeFenceRegex.matches(line)
 
 private fun isListItemLine(line: String): Boolean {
-    val match = listItemRegex.matchEntire(line) ?: return false
+    val match = listItemMatch(line) ?: return false
     return match.groupValues[1].length <= MAX_LIST_INDENT
 }
 
@@ -310,7 +314,7 @@ internal class QuoteTail {
     ): Boolean? =
         when {
             !paragraphOpen -> null
-            inListItem -> if (isParagraphContinuation(listOf(line), 0) && !listItemRegex.matches(line)) true else null
+            inListItem -> if (isParagraphContinuation(listOf(line), 0) && listItemMatch(line) == null) true else null
             headingUnderlineRegex.matches(line) -> false
             isParagraphContinuation(listOf(line), 0) -> true
             else -> null
@@ -318,7 +322,7 @@ internal class QuoteTail {
 
     // True when the line is an item of the list the lines end with, or of a new list, and null otherwise.
     private fun continuesList(line: String): Boolean? {
-        val match = listItemRegex.matchEntire(line)
+        val match = listItemMatch(line)
         val listGoesOn = listTextColumn != null && line.isBlank()
         if (match == null) return if (listGoesOn) false else null
         val (indent, marker, gap) = match.destructured
@@ -361,7 +365,7 @@ private fun parseListAt(
     var next = i
     while (next < lines.size) {
         var itemEnd = next + 1
-        while (itemEnd < lines.size && isParagraphContinuation(lines, itemEnd) && !listItemRegex.matches(lines[itemEnd])) itemEnd++
+        while (itemEnd < lines.size && isParagraphContinuation(lines, itemEnd) && listItemMatch(lines[itemEnd]) == null) itemEnd++
         val item = parseListItem(lines.subList(next, itemEnd), textColumns, references) ?: break
         if (next > end) items += MarkdownBlock.BlankLine
         items += item
@@ -379,7 +383,7 @@ private fun parseListItem(
     textColumns: ArrayDeque<Int>,
     references: LinkReferences,
 ): MarkdownBlock? {
-    val match = listItemRegex.matchEntire(itemLines.first()) ?: return null
+    val match = listItemMatch(itemLines.first()) ?: return null
     val (indent, marker, gap) = match.destructured
     while (textColumns.isNotEmpty() && indent.length < textColumns.last()) textColumns.removeLast()
     if (textColumns.isEmpty() && indent.length > MAX_LIST_INDENT) return null
