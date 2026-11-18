@@ -1,10 +1,13 @@
 package com.karmakameleon.android.ui.components
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import com.karmakameleon.android.testing.FakeRedditApi
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.data.repository.CommentRepository
@@ -70,6 +73,17 @@ class CommentItemTest {
         composeRule.onNodeWithText("commenter").performClick()
         assertEquals(listOf("user commenter"), navigation.calls)
         assertCalls()
+    }
+
+    // The author's link mustn't reach into the comment's text below it (#33).
+    @Test
+    fun tappingJustBelowAuthorSelectsComment() {
+        showComment(isSelected = false)
+        composeRule
+            .onNodeWithText("commenter", useUnmergedTree = true)
+            .performTouchInput { click(Offset(1f, height + 1f)) }
+        assertEquals(emptyList<String>(), navigation.calls)
+        assertCalls("select")
     }
 
     @Test

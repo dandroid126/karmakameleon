@@ -1,11 +1,14 @@
 package com.karmakameleon.android.ui.components
 
 import android.content.ClipboardManager
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.domain.model.Post
 import org.junit.Assert.assertEquals
@@ -88,6 +91,18 @@ class PostCardTest {
         composeRule.onNodeWithText("r/Kotlin").performClick()
         composeRule.onNodeWithText("u/kotlinfan").performClick()
         assertCalls("subreddit", "user")
+    }
+
+    // The header's links mustn't reach into the title below them (#33).
+    @Test
+    fun tappingJustBelowSubredditOrAuthorOpensPost() {
+        showPostCard()
+        for (link in listOf("r/Kotlin", "u/kotlinfan")) {
+            composeRule
+                .onNodeWithText(link, useUnmergedTree = true)
+                .performTouchInput { click(Offset(1f, height + 1f)) }
+        }
+        assertCalls("open", "open")
     }
 
     @Test
