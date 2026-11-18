@@ -406,6 +406,28 @@ class BlockParserTest {
         assertIs<MarkdownBlock.Heading>(parse("Heading\n---   ").single())
     }
 
+    // ==================== Line endings ====================
+
+    // A heading underline, a hard break, a rule and a closing code fence, which all look at the end of their line.
+    private val lineEndingSample = "Heading\n===\n\ntext  \nbroken\n\n---\n\n```\ncode\n```\nafter"
+
+    // Like r/hockey's daily thread, whose bot writes parts of the body with \r\n.
+    @Test
+    fun lineEndings_crlfAndCr_parseLikeLf() {
+        val expected = parse(lineEndingSample)
+        assertIs<MarkdownBlock.Heading>(expected.first())
+        assertTrue(MarkdownBlock.HorizontalRule in expected)
+        assertTrue(MarkdownBlock.CodeBlock("code") in expected)
+        assertEquals(expected, parse(lineEndingSample.replace("\n", "\r\n")))
+        assertEquals(expected, parse(lineEndingSample.replace("\n", "\r")))
+    }
+
+    @Test
+    fun lineEndings_mixedInOneBody() {
+        val text = MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("text")))
+        assertEquals(listOf(MarkdownBlock.HorizontalRule, MarkdownBlock.BlankLine, text), parse("---\r\n\ntext\r\n"))
+    }
+
     // ==================== Table ====================
 
     // A cell with plain text.
