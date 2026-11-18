@@ -37,8 +37,10 @@ private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
 private val linkDefinitionRegex =
     Regex("""^ {0,3}\[([^\]]*\S[^\]]*)]:[ \t]*<?([^\s<>]+)>?(?:[ \t]+(?:"[^"]*"|'[^']*'|\([^)]*\)))?[ \t]*$""")
 
+// As in CommonMark, a line can end in \n, \r\n or \r. Some bots post bodies with \r\n, and a \r left at the end of a
+// line would stop it from being a horizontal rule, a heading underline or a closing code fence.
 fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
-    val lines = markdown.split("\n")
+    val lines = markdown.lines()
     val firstPass = LinkReferences(known = emptyMap())
     val blocks = parseBlocks(lines, firstPass)
     // A link can use a definition further down, so with any definitions the text is parsed again to link them.

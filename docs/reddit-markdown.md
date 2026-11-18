@@ -23,6 +23,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Paragraphs are separated by a blank line | `one` (blank line) `two` | Two paragraphs | ✅ |
 | Extra blank lines add no extra space | `one` (3 blank lines) `two` | Same spacing as one blank line | ✅ |
 | A line of only spaces is blank | `one` ⏎ `␣␣␣␣` ⏎ `two` | Two paragraphs, even with 4 or more spaces | ✅ |
+| Windows line endings | Lines ending in `\r\n` (or `\r`), as some bots write them | Same as `\n` | ✅ |
 | A single line break joins the lines | `one`⏎`two` | "one two" | ✅ |
 | Two spaces at the end of a line make a hard break | `one␣␣`⏎`two` | Two lines | ✅ |
 | A backslash at the end of a line makes a hard break (new Reddit only) | `one\`⏎`two` | Two lines | ✅ |
