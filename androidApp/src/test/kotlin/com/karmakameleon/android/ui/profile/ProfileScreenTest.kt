@@ -1,5 +1,6 @@
 package com.karmakameleon.android.ui.profile
 
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
@@ -86,6 +87,21 @@ class ProfileScreenTest {
         composeRule.onNodeWithText("Sign In").assertIsNotEnabled()
         composeRule.onNode(hasSetTextAction() and hasText("Reddit Client ID")).performTextInput("client-id")
         composeRule.onNodeWithText("Sign In").assertIsEnabled()
+    }
+
+    // The client ID is hidden like a password, so it doesn't show up in screenshots, until it's revealed. Only the
+    // shown text is checked: hasText also matches the input itself, which is the real ID.
+    @Test
+    fun clientIdIsHiddenUntilRevealed() {
+        showProfile(username = null)
+        val field = composeRule.onNode(hasSetTextAction() and hasText("Reddit Client ID"))
+        val shownText = { field.fetchSemanticsNode().config[SemanticsProperties.EditableText].text }
+        field.performTextInput("client-id")
+        assertEquals("•".repeat("client-id".length), shownText())
+        composeRule.onNodeWithContentDescription("Show client ID").performClick()
+        assertEquals("client-id", shownText())
+        composeRule.onNodeWithContentDescription("Hide client ID").performClick()
+        assertEquals("•".repeat("client-id".length), shownText())
     }
 
     @Test
