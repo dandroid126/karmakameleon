@@ -11,7 +11,9 @@ private const val CODE_INDENT = "    "
 // which is ignored. A backtick fence's info string can't contain a backtick, so ```code``` on one line is inline code.
 private val codeFenceRegex = Regex("^( {0,3})(`{3,}(?=[^`]*$)|~{3,})(.*)")
 
-private val horizontalRuleRegex = Regex("^(-{3,}|\\*{3,}|_{3,})$")
+// A horizontal rule: up to three spaces, then three or more of the same -, * or _, with spaces or tabs allowed between
+// and after them, as in Reddit's renderer and CommonMark. So "- - -" and "---" followed by spaces are rules too.
+private val horizontalRuleRegex = Regex("^ {0,3}([-*_])(?:[ \t]*\\1){2,}[ \t]*$")
 
 // A line of =s under a paragraph makes it a level 1 heading, and one of -s a level 2 heading. It can be indented by up
 // to three spaces, and any length counts.
@@ -87,7 +89,7 @@ private fun parseBlockAt(
         isTableStart(lines, i, lazyLines) -> parseTableAt(lines, i, references)
         line.startsWith("#") -> ParsedBlock(parseHeading(line, references), i + 1)
         isQuoteLine(line) -> parseQuoteAt(lines, i, references)
-        isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.removePrefix(CODE_INDENT)), i + 1)
+        isCodeLine(line) -> parseIndentedCodeAt(lines, i)
         horizontalRuleRegex.matches(line) -> ParsedBlock(MarkdownBlock.HorizontalRule, i + 1)
         isListItemLine(line) -> parseListAt(lines, i, references)
         line.isNotBlank() && !linkDefinitionRegex.matches(line) -> parseParagraphAt(lines, i, references, lazyLines)
@@ -97,7 +99,8 @@ private fun parseBlockAt(
 
 private fun isQuoteLine(line: String): Boolean = line.startsWith(">") && !line.startsWith(">!")
 
-private fun isCodeLine(line: String): Boolean = line.startsWith(CODE_INDENT)
+// A line of only spaces is blank, however many there are, as on Reddit, so it isn't code.
+private fun isCodeLine(line: String): Boolean = line.startsWith(CODE_INDENT) && line.isNotBlank()
 
 private fun isCodeFence(line: String): Boolean = codeFenceRegex.matches(line)
 
@@ -150,6 +153,19 @@ private fun parseFencedCodeAt(
     val end = (i + 1 until lines.size).firstOrNull { closingFence.matches(lines[it]) } ?: lines.size
     val code = lines.subList(i + 1, end).joinToString("\n") { it.dropLeadingSpaces(indent.length) }
     return ParsedBlock(MarkdownBlock.CodeBlock(code), minOf(end + 1, lines.size))
+}
+
+// Consecutive indented lines form one code block, without their indent. Like on Reddit, blank lines between them stay
+// in the block as empty lines, and blank lines after the last one don't.
+private fun parseIndentedCodeAt(
+    lines: List<String>,
+    i: Int,
+): ParsedBlock {
+    var end = i + 1
+    while (end < lines.size && (isCodeLine(lines[end]) || lines[end].isBlank())) end++
+    while (lines[end - 1].isBlank()) end--
+    val code = lines.subList(i, end).joinToString("\n") { if (it.isBlank()) "" else it.removePrefix(CODE_INDENT) }
+    return ParsedBlock(MarkdownBlock.CodeBlock(code), end)
 }
 
 private fun closingFenceRegex(fence: String) = Regex("^ {0,3}${fence[0]}{${fence.length},}[ \t]*$")

@@ -257,6 +257,11 @@ class ListAndQuoteParserTest {
     }
 
     @Test
+    fun blockQuote_lineOfOnlySpaces_isBlankLine_notCode() {
+        assertEquals(listOf(quote(paragraph("one"), MarkdownBlock.BlankLine, paragraph("two"))), parse("> one\n>      \n> two"))
+    }
+
+    @Test
     fun blockQuote_lazyLine_isNotTableSeparator() {
         assertEquals(listOf(quote(paragraph("x a | b -|-"))), parse("> x\n> a | b\n-|-"))
     }
