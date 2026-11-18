@@ -95,6 +95,16 @@ class InboxScreenTest {
         assertEquals("/message/unread", requestedPaths().last())
     }
 
+    @Test
+    fun filterNamesOfSeveralWordsAreSpacedOut() {
+        showInbox()
+        composeRule.onNodeWithContentDescription("Filter").performClick()
+        composeRule.onNodeWithText("Post replies").assertExists()
+        composeRule.onNodeWithText("Comment replies").performClick()
+        composeRule.waitForIdle()
+        assertEquals("/message/comments", requestedPaths().last())
+    }
+
     // Opening the inbox at a filter, as a notification does, is left out until it's fixed: the filter is ignored while
     // the first load runs, so it shows every message (#87).
 
