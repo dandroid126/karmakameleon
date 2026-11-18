@@ -1,10 +1,13 @@
 package com.karmakameleon.android.ui.components
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.domain.model.Message
 import org.junit.Assert.assertEquals
@@ -42,6 +45,17 @@ class MessageItemTest {
         composeRule.onNodeWithText("u/replier").performClick()
         assertEquals(listOf("select"), recorded.calls)
         assertEquals(listOf("user replier"), navigation.calls)
+    }
+
+    // The author's link mustn't reach into the subject above it or the message's text below it (#33).
+    @Test
+    fun tappingJustAboveOrBelowAuthorSelectsMessage() {
+        showMessage(testPrivateMessage(), isSelected = false)
+        val author = composeRule.onNodeWithText("u/replier", useUnmergedTree = true)
+        author.performTouchInput { click(Offset(1f, -1f)) }
+        author.performTouchInput { click(Offset(1f, height + 1f)) }
+        assertEquals(listOf("select", "select"), recorded.calls)
+        assertEquals(emptyList<String>(), navigation.calls)
     }
 
     @Test

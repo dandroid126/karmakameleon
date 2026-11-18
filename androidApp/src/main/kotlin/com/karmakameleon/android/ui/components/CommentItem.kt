@@ -206,20 +206,24 @@ private fun CommentHeader(
             Spacer(modifier = Modifier.height(4.dp))
         }
         if (showSubreddit) {
-            Text(
-                text = "r/${comment.subreddit}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.clickable { navigationHandler.onSubredditClick(comment.subreddit) },
-            )
+            InlineLinks {
+                Text(
+                    text = "r/${comment.subreddit}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable { navigationHandler.onSubredditClick(comment.subreddit) },
+                )
+            }
             Spacer(modifier = Modifier.height(4.dp))
         }
-        CommentByline(
-            comment = comment,
-            isHidden = isHidden,
-            loggedInUsername = loggedInUsername,
-            onUserClick = { navigationHandler.onUserClick(comment.author) },
-        )
+        InlineLinks {
+            CommentByline(
+                comment = comment,
+                isHidden = isHidden,
+                loggedInUsername = loggedInUsername,
+                onUserClick = { navigationHandler.onUserClick(comment.author) },
+            )
+        }
     }
 }
 

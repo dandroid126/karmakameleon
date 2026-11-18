@@ -280,25 +280,27 @@ private fun CompactSubredditLine(
     post: Post,
     onSubredditClick: () -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = "r/${post.subreddit}",
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier =
-                Modifier
-                    .weight(1f, fill = false)
-                    .clickable(onClick = onSubredditClick),
-        )
-        Text(
-            text = " • ${formatNumber(post.numComments)} comments • ${formatTimeAgo(post.createdUtc)}",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-        )
+    InlineLinks {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "r/${post.subreddit}",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .weight(1f, fill = false)
+                        .clickable(onClick = onSubredditClick),
+            )
+            Text(
+                text = " • ${formatNumber(post.numComments)} comments • ${formatTimeAgo(post.createdUtc)}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
+        }
     }
 }
 

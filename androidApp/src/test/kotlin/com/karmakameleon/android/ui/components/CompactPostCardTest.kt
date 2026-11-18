@@ -1,10 +1,13 @@
 package com.karmakameleon.android.ui.components
 
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.domain.model.Post
 import org.junit.Assert.assertEquals
@@ -53,6 +56,16 @@ class CompactPostCardTest {
         composeRule.onNodeWithText(testPost().title).performClick()
         composeRule.onNodeWithContentDescription("Open post").performClick()
         assertCalls("toggle", "open")
+    }
+
+    // Compose grows a small link's touch area to 48 dp; the subreddit's mustn't reach into the title above it (#33).
+    @Test
+    fun tappingJustAboveSubredditExpandsCard() {
+        showCompactPostCard(isExpanded = false)
+        composeRule
+            .onNodeWithText("r/Kotlin", useUnmergedTree = true)
+            .performTouchInput { click(Offset(1f, -1f)) }
+        assertCalls("toggle")
     }
 
     @Test

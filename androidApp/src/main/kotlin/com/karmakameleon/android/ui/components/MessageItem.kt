@@ -99,12 +99,14 @@ private fun MessageListItem(
         supportingContent = {
             Column {
                 message.author?.let { author ->
-                    Text(
-                        text = "u/$author",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.clickable { onUserClick(author) },
-                    )
+                    InlineLinks {
+                        Text(
+                            text = "u/$author",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { onUserClick(author) },
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                 }
                 Text(
