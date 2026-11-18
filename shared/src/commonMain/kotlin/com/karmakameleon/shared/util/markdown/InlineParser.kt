@@ -202,22 +202,7 @@ private fun isBackslashEscape(
 
 // A link's URL as it opens: Reddit escapes markdown characters even in URLs, like \_ in ?utm\_medium=ios, so the
 // escapes are undone, and character references are decoded.
-internal fun decodeLinkUrl(url: String): String {
-    if ('\\' !in url) return decodeHtmlEntities(url)
-    val result = StringBuilder()
-    var i = 0
-    while (i < url.length) {
-        if (isBackslashEscape(url, i)) {
-            result.append(url[i + 1])
-            i += 2
-        } else {
-            val entity = if (url[i] == '&') htmlEntityAt(url, i) else null
-            result.append(entity?.first ?: url[i])
-            i = entity?.second ?: (i + 1)
-        }
-    }
-    return result.toString()
-}
+internal fun decodeLinkUrl(url: String): String = decodeEscapesAndHtmlEntities(url, ::isBackslashEscape)
 
 // Reference link: [text][ref], [text][] with the text as the label, or [text] alone. It links to the URL of the
 // definition with that label, like [ref]: https://example.com on its own line. Without one, it stays as text.
