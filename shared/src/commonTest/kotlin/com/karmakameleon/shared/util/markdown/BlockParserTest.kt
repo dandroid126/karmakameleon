@@ -235,6 +235,28 @@ class BlockParserTest {
     }
 
     @Test
+    fun codeBlock_consecutiveIndentedLines_areOneBlock() {
+        assertEquals(listOf(MarkdownBlock.CodeBlock("one\n  two\nthree")), parse("    one\n      two\n    three"))
+    }
+
+    // Blank lines inside the block are kept as empty lines; blank lines after it aren't part of it.
+    @Test
+    fun codeBlock_blankLinesBetweenIndentedLines_stayInBlock() {
+        val result = parse("    one\n\n        \n    two\n    \n\ntext")
+        val text = MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("text")))
+        assertEquals(listOf(MarkdownBlock.CodeBlock("one\n\n\ntwo"), MarkdownBlock.BlankLine, text), result)
+    }
+
+    // Like a comment on the test post, where Reddit shows two paragraphs.
+    @Test
+    fun lineOfOnlySpaces_isBlankLine_notCode() {
+        val hello = MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("Hello")))
+        val goodbye = MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("Goodbye")))
+        assertEquals(listOf(hello, MarkdownBlock.BlankLine, goodbye), parse("Hello\n    \nGoodbye"))
+        assertEquals(listOf(hello, MarkdownBlock.BlankLine, goodbye), parse("Hello\n          \nGoodbye"))
+    }
+
+    @Test
     fun fencedCode_backticks_keepsLinesAndIndent() {
         assertEquals(listOf(MarkdownBlock.CodeBlock("fenced code\n  indented line")), parse("```\nfenced code\n  indented line\n```"))
     }
@@ -342,6 +364,46 @@ class BlockParserTest {
         val result = parse("______")
         assertEquals(1, result.size)
         assertIs<MarkdownBlock.HorizontalRule>(result[0])
+    }
+
+    // Like r/funny's reminder bot, which starts its comments with "---" and trailing spaces.
+    @Test
+    fun horizontalRule_trailingSpacesAndTabs() {
+        val text = MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("text")))
+        assertEquals(listOf(MarkdownBlock.HorizontalRule, MarkdownBlock.BlankLine, text), parse("---      \n\ntext"))
+        assertEquals(listOf<MarkdownBlock>(MarkdownBlock.HorizontalRule), parse("***\t"))
+    }
+
+    @Test
+    fun horizontalRule_spacesBetweenCharacters() {
+        for (rule in listOf("- - -", "* * *", "_ _ _", "-  -\t-  -", "- ---")) {
+            assertEquals(listOf<MarkdownBlock>(MarkdownBlock.HorizontalRule), parse(rule), rule)
+        }
+    }
+
+    @Test
+    fun horizontalRule_upToThreeSpacesOfIndentation() {
+        assertEquals(listOf<MarkdownBlock>(MarkdownBlock.HorizontalRule), parse("   ---"))
+        assertIs<MarkdownBlock.CodeBlock>(parse("    ---").single())
+    }
+
+    @Test
+    fun horizontalRule_interruptsParagraph() {
+        val text = MarkdownBlock.Paragraph(listOf(MarkdownInline.Text("text")))
+        assertEquals(listOf(text, MarkdownBlock.HorizontalRule), parse("text\n* * *"))
+    }
+
+    @Test
+    fun horizontalRule_otherCharactersOrMixedOrTooFew_areNotRules() {
+        for (text in listOf("---a", "- - - a", "-*-", "- -", "*-*-*")) {
+            assertTrue(parse(text).none { it is MarkdownBlock.HorizontalRule }, text)
+        }
+    }
+
+    // A heading underline with trailing spaces still makes a heading rather than a rule.
+    @Test
+    fun headingUnderline_withTrailingSpaces_staysHeading() {
+        assertIs<MarkdownBlock.Heading>(parse("Heading\n---   ").single())
     }
 
     // ==================== Table ====================

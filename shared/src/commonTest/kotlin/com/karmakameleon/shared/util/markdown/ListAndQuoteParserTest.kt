@@ -128,6 +128,13 @@ class ListAndQuoteParserTest {
         assertEquals(listOf(bullet("a")), parse("- a\n\n"))
     }
 
+    // A line like "* * *" is a rule rather than an item, so it ends the list.
+    @Test
+    fun list_spacedRuleAfterItem_isRule() {
+        assertEquals(listOf(bullet("one"), MarkdownBlock.HorizontalRule), parse("- one\n* * *"))
+        assertEquals(listOf(bullet("one"), MarkdownBlock.BlankLine, MarkdownBlock.HorizontalRule), parse("- one\n\n- - -"))
+    }
+
     @Test
     fun list_indentedUpToThreeSpaces() {
         assertEquals(listOf(bullet("a"), numbered(2, "b")), parse("   - a\n 2. b"))
@@ -254,6 +261,11 @@ class ListAndQuoteParserTest {
         assertEquals(listOf(quote(paragraph("text")), paragraph("more")), parse("> text\n>\n> [x]: /wiki\nmore"))
         // Right after text, it can't interrupt the paragraph, so it's text that the next line continues.
         assertEquals(listOf(quote(paragraph("text [x]: /wiki more"))), parse("> text\n> [x]: /wiki\nmore"))
+    }
+
+    @Test
+    fun blockQuote_lineOfOnlySpaces_isBlankLine_notCode() {
+        assertEquals(listOf(quote(paragraph("one"), MarkdownBlock.BlankLine, paragraph("two"))), parse("> one\n>      \n> two"))
     }
 
     @Test

@@ -22,6 +22,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 |---|---|---|---|
 | Paragraphs are separated by a blank line | `one` (blank line) `two` | Two paragraphs | ✅ |
 | Extra blank lines add no extra space | `one` (3 blank lines) `two` | Same spacing as one blank line | ✅ |
+| A line of only spaces is blank | `one` ⏎ `␣␣␣␣` ⏎ `two` | Two paragraphs, even with 4 or more spaces | ✅ |
 | A single line break joins the lines | `one`⏎`two` | "one two" | ✅ |
 | Two spaces at the end of a line make a hard break | `one␣␣`⏎`two` | Two lines | ✅ |
 | A backslash at the end of a line makes a hard break (new Reddit only) | `one\`⏎`two` | Two lines | ✅ |
@@ -119,6 +120,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Inline code | `` `code` `` | Code; no markdown inside | ✅ |
 | Inline code with more backticks | ``` ``a ` b`` ``` | Code "a ` b" | ✅ |
 | Code block, indented 4 spaces | `␣␣␣␣code` | Code block | ✅ |
+| Several indented lines | `␣␣␣␣one` ⏎ (blank line) ⏎ `␣␣␣␣two` | One code block; blank lines between the lines stay in it | ✅ |
 | Indented line right after text | `text` ⏎ `␣␣␣␣more` | Continues the paragraph, list item or quote | ✅ |
 | Fenced with backticks (new Reddit only) | ```` ``` ```` ⏎ code ⏎ ```` ``` ```` | Code block | ✅ |
 | Fenced with tildes (new Reddit only) | `~~~` ⏎ code ⏎ `~~~` | Code block | ✅ |
@@ -140,6 +142,7 @@ When a fix lands, update its row here and add the case to the parser tests and, 
 | Rule | Written | Reddit | App |
 |---|---|---|---|
 | Rule | `***`, `---` or `___` (three or more) | Horizontal line | ✅ |
+| Rule with spaces | `- - -`, `---` followed by spaces, or up to three spaces before it | Horizontal line (Reddit's own HTML, snudown and CommonMark; the Formatting Guide's examples have no spaces) | ✅ |
 
 ## HTML entities
 

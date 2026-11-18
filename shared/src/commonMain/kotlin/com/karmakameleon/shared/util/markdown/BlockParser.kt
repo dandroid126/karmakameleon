@@ -11,7 +11,9 @@ private const val CODE_INDENT = "    "
 // which is ignored. A backtick fence's info string can't contain a backtick, so ```code``` on one line is inline code.
 private val codeFenceRegex = Regex("^( {0,3})(`{3,}(?=[^`]*$)|~{3,})(.*)")
 
-private val horizontalRuleRegex = Regex("^(-{3,}|\\*{3,}|_{3,})$")
+// A horizontal rule: up to three spaces, then three or more of the same -, * or _, with spaces or tabs allowed between
+// and after them, as in Reddit's renderer and CommonMark. So "- - -" and "---" followed by spaces are rules too.
+private val horizontalRuleRegex = Regex("^ {0,3}([-*_])(?:[ \t]*\\1){2,}[ \t]*$")
 
 // A line of =s under a paragraph makes it a level 1 heading, and one of -s a level 2 heading. It can be indented by up
 // to three spaces, and any length counts.
@@ -23,6 +25,10 @@ private val listItemRegex = Regex("^( *)([-*+]|\\d{1,9}[.)])([ \t]+)(.*)")
 
 // A list can be indented by up to three spaces; with four, it's a code block.
 private const val MAX_LIST_INDENT = 3
+
+// The parts of a list item line (see listItemRegex), or null when it isn't one. As in CommonMark, a line like "* * *"
+// or "- - -" is a horizontal rule rather than an item.
+private fun listItemMatch(line: String): MatchResult? = if (horizontalRuleRegex.matches(line)) null else listItemRegex.matchEntire(line)
 
 private val tableSeparatorRegex = Regex("^\\|?\\s*[-:\\s|]+\\s*\\|?$")
 
@@ -87,7 +93,7 @@ private fun parseBlockAt(
         isTableStart(lines, i, lazyLines) -> parseTableAt(lines, i, references)
         line.startsWith("#") -> ParsedBlock(parseHeading(line, references), i + 1)
         isQuoteLine(line) -> parseQuoteAt(lines, i, references)
-        isCodeLine(line) -> ParsedBlock(MarkdownBlock.CodeBlock(line.removePrefix(CODE_INDENT)), i + 1)
+        isCodeLine(line) -> parseIndentedCodeAt(lines, i)
         horizontalRuleRegex.matches(line) -> ParsedBlock(MarkdownBlock.HorizontalRule, i + 1)
         isListItemLine(line) -> parseListAt(lines, i, references)
         line.isNotBlank() && !linkDefinitionRegex.matches(line) -> parseParagraphAt(lines, i, references, lazyLines)
@@ -97,12 +103,13 @@ private fun parseBlockAt(
 
 private fun isQuoteLine(line: String): Boolean = line.startsWith(">") && !line.startsWith(">!")
 
-private fun isCodeLine(line: String): Boolean = line.startsWith(CODE_INDENT)
+// A line of only spaces is blank, however many there are, as on Reddit, so it isn't code.
+private fun isCodeLine(line: String): Boolean = line.startsWith(CODE_INDENT) && line.isNotBlank()
 
 private fun isCodeFence(line: String): Boolean = codeFenceRegex.matches(line)
 
 private fun isListItemLine(line: String): Boolean {
-    val match = listItemRegex.matchEntire(line) ?: return false
+    val match = listItemMatch(line) ?: return false
     return match.groupValues[1].length <= MAX_LIST_INDENT
 }
 
@@ -150,6 +157,19 @@ private fun parseFencedCodeAt(
     val end = (i + 1 until lines.size).firstOrNull { closingFence.matches(lines[it]) } ?: lines.size
     val code = lines.subList(i + 1, end).joinToString("\n") { it.dropLeadingSpaces(indent.length) }
     return ParsedBlock(MarkdownBlock.CodeBlock(code), minOf(end + 1, lines.size))
+}
+
+// Consecutive indented lines form one code block, without their indent. Like on Reddit, blank lines between them stay
+// in the block as empty lines, and blank lines after the last one don't.
+private fun parseIndentedCodeAt(
+    lines: List<String>,
+    i: Int,
+): ParsedBlock {
+    var end = i + 1
+    while (end < lines.size && (isCodeLine(lines[end]) || lines[end].isBlank())) end++
+    while (lines[end - 1].isBlank()) end--
+    val code = lines.subList(i, end).joinToString("\n") { if (it.isBlank()) "" else it.removePrefix(CODE_INDENT) }
+    return ParsedBlock(MarkdownBlock.CodeBlock(code), end)
 }
 
 private fun closingFenceRegex(fence: String) = Regex("^ {0,3}${fence[0]}{${fence.length},}[ \t]*$")
@@ -294,7 +314,7 @@ internal class QuoteTail {
     ): Boolean? =
         when {
             !paragraphOpen -> null
-            inListItem -> if (isParagraphContinuation(listOf(line), 0) && !listItemRegex.matches(line)) true else null
+            inListItem -> if (isParagraphContinuation(listOf(line), 0) && listItemMatch(line) == null) true else null
             headingUnderlineRegex.matches(line) -> false
             isParagraphContinuation(listOf(line), 0) -> true
             else -> null
@@ -302,7 +322,7 @@ internal class QuoteTail {
 
     // True when the line is an item of the list the lines end with, or of a new list, and null otherwise.
     private fun continuesList(line: String): Boolean? {
-        val match = listItemRegex.matchEntire(line)
+        val match = listItemMatch(line)
         val listGoesOn = listTextColumn != null && line.isBlank()
         if (match == null) return if (listGoesOn) false else null
         val (indent, marker, gap) = match.destructured
@@ -345,7 +365,7 @@ private fun parseListAt(
     var next = i
     while (next < lines.size) {
         var itemEnd = next + 1
-        while (itemEnd < lines.size && isParagraphContinuation(lines, itemEnd) && !listItemRegex.matches(lines[itemEnd])) itemEnd++
+        while (itemEnd < lines.size && isParagraphContinuation(lines, itemEnd) && listItemMatch(lines[itemEnd]) == null) itemEnd++
         val item = parseListItem(lines.subList(next, itemEnd), textColumns, references) ?: break
         if (next > end) items += MarkdownBlock.BlankLine
         items += item
@@ -363,7 +383,7 @@ private fun parseListItem(
     textColumns: ArrayDeque<Int>,
     references: LinkReferences,
 ): MarkdownBlock? {
-    val match = listItemRegex.matchEntire(itemLines.first()) ?: return null
+    val match = listItemMatch(itemLines.first()) ?: return null
     val (indent, marker, gap) = match.destructured
     while (textColumns.isNotEmpty() && indent.length < textColumns.last()) textColumns.removeLast()
     if (textColumns.isEmpty() && indent.length > MAX_LIST_INDENT) return null
