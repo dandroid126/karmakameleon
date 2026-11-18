@@ -47,6 +47,8 @@ data class ProfileUiState(
     val clientId: String = "",
     val redirectUri: String = AuthManager.DEFAULT_REDIRECT_URI,
     val isSigningIn: Boolean = false,
+    // True once a sign-in succeeds, until the screen has acted on it (see consumeSignedIn).
+    val signedIn: Boolean = false,
     val savedContentType: SavedContentType = SavedContentType.POSTS,
 )
 
@@ -103,6 +105,10 @@ class ProfileViewModel(
 
     fun clearErrorMessage() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun consumeSignedIn() {
+        _uiState.update { it.copy(signedIn = false) }
     }
 
     fun setClientId(clientId: String) {
@@ -408,7 +414,7 @@ class ProfileViewModel(
                 _uiState.update { it.copy(isSigningIn = true) }
                 viewModelScope.launch {
                     val success = userRepository.handleAuthCallback(code)
-                    _uiState.update { it.copy(isSigningIn = false) }
+                    _uiState.update { it.copy(isSigningIn = false, signedIn = success) }
                     if (!success) showLoginError("Sign in failed. Check your client ID and redirect URI.")
                 }
             }

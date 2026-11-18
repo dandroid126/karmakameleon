@@ -2,18 +2,41 @@ package com.karmakameleon.android.testing
 
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.api.RedditApi
+import com.karmakameleon.shared.data.api.createHttpClientWithConfig
 import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Message
 import com.karmakameleon.shared.domain.model.MessageType
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.respondError
+import io.ktor.client.request.forms.FormDataContent
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
 import java.io.IOException
 
 // No request reaches Reddit: the fakes below answer before anything is sent.
 internal fun offlineClient() = HttpClient(MockEngine { respondError(HttpStatusCode.ServiceUnavailable) })
+
+private const val SIGN_IN_TOKEN =
+    """{"access_token": "access", "token_type": "bearer", "expires_in": 86400, "refresh_token": "refresh", "scope": "*"}"""
+
+// Reddit's token endpoint for AuthManager: it answers a sign-in's code exchange with a token, and fails every other
+// grant, as offlineClient does. Configured like the app's own client, so the token is decoded the same way.
+internal fun tokenClient(): HttpClient =
+    createHttpClientWithConfig {
+        HttpClient(
+            MockEngine { request ->
+                if ((request.body as? FormDataContent)?.formData?.get("grant_type") == "authorization_code") {
+                    respond(SIGN_IN_TOKEN, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                } else {
+                    respondError(HttpStatusCode.ServiceUnavailable)
+                }
+            },
+        )
+    }
 
 class FakeRedditApi(
     authManager: AuthManager,

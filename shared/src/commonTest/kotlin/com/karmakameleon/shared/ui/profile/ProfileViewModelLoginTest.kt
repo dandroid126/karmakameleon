@@ -158,6 +158,10 @@ class ProfileViewModelLoginTest {
             assertNull(viewModel.uiState.value.authUrl)
             assertFalse(viewModel.uiState.value.isSigningIn)
             assertNull(viewModel.uiState.value.errorMessage)
+            // The screen leaves the profile once it sees the sign-in, and clears it.
+            assertTrue(viewModel.uiState.value.signedIn)
+            viewModel.consumeSignedIn()
+            assertFalse(viewModel.uiState.value.signedIn)
         }
 
     @Test
@@ -222,6 +226,7 @@ class ProfileViewModelLoginTest {
 
             assertFalse(viewModel.uiState.value.isSigningIn)
             assertNotNull(viewModel.uiState.value.errorMessage)
+            assertFalse(viewModel.uiState.value.signedIn)
         }
 
     @Test

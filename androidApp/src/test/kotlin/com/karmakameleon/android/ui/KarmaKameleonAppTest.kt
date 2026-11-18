@@ -1,14 +1,19 @@
 package com.karmakameleon.android.ui
 
+import android.webkit.WebView
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.Espresso.pressBack
+import androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom
 import com.karmakameleon.android.data.PendingNotificationAction
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.testing.FakeRedditRule
@@ -19,6 +24,8 @@ import com.karmakameleon.android.ui.profile.OWN_USERNAME
 import com.karmakameleon.android.ui.profile.respondWithProfile
 import com.karmakameleon.android.ui.profile.userAbout
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
+import com.karmakameleon.shared.data.api.AuthManager
+import io.ktor.http.Url
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Rule
@@ -26,6 +33,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.core.context.GlobalContext
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 
 // Characters a URL in a route has to keep: a space, a "+" and an escape. Encoding a route's URL the wrong way or
 // decoding it twice changes them.
@@ -151,6 +159,35 @@ class KarmaKameleonAppTest {
         openMenuItem("Log In")
         assertEquals(DetailScreen.OwnProfile.route, route())
         composeRule.onNodeWithText("Sign In").assertExists()
+    }
+
+    // Signs in from the menu: Reddit's page loads in a WebView, which can't run here, so this plays its redirect back
+    // to the app with the state the page was opened with.
+    private fun signInFromTheMenu() {
+        openMenuItem("Log In")
+        composeRule.onNode(hasSetTextAction() and hasText("Reddit Client ID")).performTextInput("client-id")
+        composeRule.onNodeWithText("Sign In").performClick()
+        composeRule.waitForIdle()
+        lateinit var webView: WebView
+        onView(isAssignableFrom(WebView::class.java)).check { view, _ -> webView = view as WebView }
+        val state = Url(shadowOf(webView).lastLoadedUrl).parameters["state"]
+        composeRule.runOnUiThread {
+            shadowOf(webView).webViewClient.onPageStarted(webView, "${AuthManager.DEFAULT_REDIRECT_URI}?state=$state&code=code#_", null)
+        }
+        composeRule.waitForIdle()
+    }
+
+    @Test
+    fun signingInReturnsToTheFeedAndShowsYourProfile() {
+        respondWithProfile(fakeReddit, OWN_USERNAME)
+        showApp(loggedIn = false)
+        fakeReddit.reddit.respond("/api/v1/me", userAbout(OWN_USERNAME).getValue("data").toString())
+        signInFromTheMenu()
+        assertEquals("feed", route())
+        composeRule.onNodeWithText(FIRST_POST_TITLE).assertExists()
+
+        openMenuItem("$OWN_USERNAME's Profile")
+        composeRule.onNodeWithContentDescription("Logout").assertExists()
     }
 
     @Test

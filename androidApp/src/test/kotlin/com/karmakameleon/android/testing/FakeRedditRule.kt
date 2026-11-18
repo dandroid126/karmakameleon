@@ -60,7 +60,8 @@ class FakeRedditRule : ExternalResource() {
 
 /**
  * A real [AuthManager] with a saved login or none. The screens learn the login state from it, while [MockReddit]'s API
- * gets its tokens from a fake. Nothing reaches the network: the token is valid for a day.
+ * gets its tokens from a fake. Nothing reaches the network: the token is valid for a day, and signing in gets one from
+ * [tokenClient].
  */
 private fun authManager(loggedIn: Boolean): AuthManager {
     val tokenSettings = MapSettings()
@@ -69,7 +70,7 @@ private fun authManager(loggedIn: Boolean): AuthManager {
         // The key AuthManager saves the login under.
         tokenSettings.putString("token_info", Json.encodeToString(TokenInfo("access", "refresh", expiresAt, "*")))
     }
-    return AuthManager(offlineClient(), MapSettings(), tokenSettings)
+    return AuthManager(tokenClient(), MapSettings(), tokenSettings)
 }
 
 /** A saved Reddit listing with every post three hours old, so screenshots show the same ages whenever they run. */
