@@ -430,7 +430,7 @@ private fun parseBlankLinesAt(
         val definition = linkDefinitionRegex.matchEntire(line)
         if (definition != null) {
             val (label, url) = definition.destructured
-            references.found.getOrPut(normalizeLinkLabel(label)) { decodeHtmlEntities(url) }
+            references.found.getOrPut(normalizeLinkLabel(label)) { decodeLinkUrl(url) }
         } else if (line.isBlank()) {
             hasBlankLine = true
         } else {
