@@ -32,18 +32,34 @@ internal fun htmlEntityAt(
 
 // The text with every character reference decoded, for text that isn't parsed as markdown, like a link's URL or a
 // plain-text preview of a body.
-fun decodeHtmlEntities(text: String): String {
-    if ('&' !in text) return text
+fun decodeHtmlEntities(text: String): String = if ('&' !in text) text else decodeEscapesAndHtmlEntities(text) { _, _ -> false }
+
+// The text with every character reference decoded, and every backslash escape replaced by the character it escapes.
+// isEscape says whether an escape starts at an index. The character after it is kept as typed, even when it would
+// start a character reference.
+internal fun decodeEscapesAndHtmlEntities(
+    text: String,
+    isEscape: (String, Int) -> Boolean,
+): String {
     val result = StringBuilder()
     var i = 0
     while (i < text.length) {
         val entity = if (text[i] == '&') htmlEntityAt(text, i) else null
-        if (entity == null) {
-            result.append(text[i])
-            i++
-        } else {
-            result.append(entity.first)
-            i = entity.second
+        when {
+            isEscape(text, i) -> {
+                result.append(text[i + 1])
+                i += 2
+            }
+
+            entity != null -> {
+                result.append(entity.first)
+                i = entity.second
+            }
+
+            else -> {
+                result.append(text[i])
+                i++
+            }
         }
     }
     return result.toString()

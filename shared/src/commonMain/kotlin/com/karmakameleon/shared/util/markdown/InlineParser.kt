@@ -161,7 +161,7 @@ private fun InlineCursor.linkDestination(start: Int): Pair<String, Int>? {
     var idx = start
     while (text.getOrNull(idx)?.isWhitespace() == true) idx++
     val urlStart = idx
-    while (idx < text.length && !text[idx].isWhitespace() && text[idx] != ')') idx++
+    idx = urlEnd(idx) { it.isWhitespace() || it == ')' }
     val urlEnd = idx
     while (text.getOrNull(idx)?.isWhitespace() == true) idx++
     // A title needs space before it, so a quote or ( in the URL itself isn't taken for one.
@@ -171,15 +171,38 @@ private fun InlineCursor.linkDestination(start: Int): Pair<String, Int>? {
         idx = if (titleEnd == -1) text.length else titleEnd + 1
         while (text.getOrNull(idx)?.isWhitespace() == true) idx++
     }
-    return if (text.getOrNull(idx) == ')') decodeHtmlEntities(text.substring(urlStart, urlEnd)) to idx + 1 else wholeLinkDestination(start)
+    return if (text.getOrNull(idx) == ')') decodeLinkUrl(text.substring(urlStart, urlEnd)) to idx + 1 else wholeLinkDestination(start)
 }
 
 // All the text from start to the next ) as the URL, and the index just after the ). Null without a ). As in
-// CommonMark, character references in a link's URL are decoded, so ?a=1&amp;b=2 opens ?a=1&b=2.
+// CommonMark, character references and backslash escapes in a link's URL are decoded, so ?a=1&amp;b=2 opens
+// ?a=1&b=2, and an escaped \) doesn't end the URL.
 private fun InlineCursor.wholeLinkDestination(start: Int): Pair<String, Int>? {
-    val closeIdx = text.indexOf(')', start)
-    return if (closeIdx == -1) null else decodeHtmlEntities(text.substring(start, closeIdx)) to closeIdx + 1
+    val closeIdx = urlEnd(start) { it == ')' }
+    return if (closeIdx == text.length) null else decodeLinkUrl(text.substring(start, closeIdx)) to closeIdx + 1
 }
+
+// The index of the first character from start that ends a URL, or the text's length. A backslash escape, like \) or
+// \_, never ends it.
+private inline fun InlineCursor.urlEnd(
+    start: Int,
+    isEnd: (Char) -> Boolean,
+): Int {
+    var idx = start
+    while (idx < text.length && !isEnd(text[idx])) {
+        idx += if (isBackslashEscape(text, idx)) 2 else 1
+    }
+    return idx
+}
+
+private fun isBackslashEscape(
+    text: String,
+    index: Int,
+): Boolean = text[index] == '\\' && text.getOrNull(index + 1)?.let { it in escapeChars } == true
+
+// A link's URL as it opens: Reddit escapes markdown characters even in URLs, like \_ in ?utm\_medium=ios, so the
+// escapes are undone, and character references are decoded.
+internal fun decodeLinkUrl(url: String): String = decodeEscapesAndHtmlEntities(url, ::isBackslashEscape)
 
 // Reference link: [text][ref], [text][] with the text as the label, or [text] alone. It links to the URL of the
 // definition with that label, like [ref]: https://example.com on its own line. Without one, it stays as text.
@@ -292,11 +315,11 @@ private fun InlineCursor.matchCode(): InlineMatch? {
 private fun InlineCursor.backtickRunEnd(start: Int): Int = (start until text.length).firstOrNull { text[it] != '`' } ?: text.length
 
 // Bare URL: https:// or http://, shown as an image when it's a preview.redd.it image. Character references in it
-// are decoded, as the browser does with old Reddit's links.
+// are decoded, as the browser does with old Reddit's links, and so are backslash escapes (see decodeLinkUrl).
 private fun InlineCursor.matchBareUrl(): InlineMatch? {
     if (!text.startsWith("https://", i) && !text.startsWith("http://", i)) return null
-    val end = (i until text.length).firstOrNull { text[it].isWhitespace() || text[it] == ')' } ?: text.length
-    return InlineMatch(urlNode(decodeHtmlEntities(text.substring(i, end))), end)
+    val end = urlEnd(i) { it.isWhitespace() || it == ')' }
+    return InlineMatch(urlNode(decodeLinkUrl(text.substring(i, end))), end)
 }
 
 // Autolink: <https://example.com>, shown without the brackets. Like on Reddit, <mailto:…> shows only the address.

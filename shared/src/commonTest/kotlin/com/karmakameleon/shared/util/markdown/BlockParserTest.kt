@@ -215,6 +215,13 @@ class BlockParserTest {
     }
 
     @Test
+    fun referenceDefinition_undoesBackslashEscapesInTheUrl() {
+        val paragraph = assertIs<MarkdownBlock.Paragraph>(parse("[x]\n\n[x]: https://example.com/?utm\\_medium=ios").first())
+        val link = assertIs<MarkdownInline.Link>(paragraph.children.single())
+        assertEquals("https://example.com/?utm_medium=ios", link.url)
+    }
+
+    @Test
     fun codeBlock_keepsHtmlEntitiesAsTyped() {
         assertEquals(listOf(MarkdownBlock.CodeBlock("&mdash; &nbsp;")), parse("```\n&mdash; &nbsp;\n```"))
     }
