@@ -35,12 +35,13 @@ enum class MessageType {
 
 enum class InboxFilter(
     val value: String,
+    val displayName: String,
 ) {
-    ALL("inbox"),
-    UNREAD("unread"),
-    MESSAGES("messages"),
-    COMMENT_REPLIES("comments"),
-    POST_REPLIES("selfreply"),
-    MENTIONS("mentions"),
-    SENT("sent"),
+    ALL("inbox", "All"),
+    UNREAD("unread", "Unread"),
+    MESSAGES("messages", "Messages"),
+    COMMENT_REPLIES("comments", "Comment replies"),
+    POST_REPLIES("selfreply", "Post replies"),
+    MENTIONS("mentions", "Mentions"),
+    SENT("sent", "Sent"),
 }

@@ -194,7 +194,7 @@ private fun InboxFilterMenu(
         ) {
             InboxFilter.entries.forEach { filter ->
                 DropdownMenuItem(
-                    text = { Text(filter.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    text = { Text(filter.displayName) },
                     onClick = {
                         onSelectFilter(filter)
                         showFilterMenu = false
