@@ -116,6 +116,7 @@ fun ProfileScreen(
     onBackClick: (() -> Unit)? = null,
     onCommentClick: (subreddit: String, postId: String, commentId: String) -> Unit = { s, p, c -> onPostClick(s, p) },
     onLinkClick: (String) -> Unit = {},
+    onSignedIn: () -> Unit = {},
     viewModel: ProfileViewModel = koinViewModel(),
     userRepository: UserRepository = koinInject(),
     navigationHandler: NavigationHandler = koinInject(),
@@ -133,6 +134,7 @@ fun ProfileScreen(
         onLoadUserProfile = { viewModel.loadUserProfile(it) },
         onConsumeError = viewModel::clearErrorMessage,
     )
+    SignedInEffect(uiState.signedIn, onConsume = viewModel::consumeSignedIn, onSignedIn = onSignedIn)
 
     Scaffold(
         modifier = modifier,
@@ -311,6 +313,23 @@ private fun ProfileReplyBar(
             onSubmit = onSubmitReply,
             onCancel = onCancelReply,
         )
+    }
+}
+
+// Calls onSignedIn once for each sign-in that succeeds.
+@Composable
+private fun SignedInEffect(
+    signedIn: Boolean,
+    onConsume: () -> Unit,
+    onSignedIn: () -> Unit,
+) {
+    val currentOnConsume by rememberUpdatedState(onConsume)
+    val currentOnSignedIn by rememberUpdatedState(onSignedIn)
+    SideEffect(signedIn) {
+        if (signedIn) {
+            currentOnConsume()
+            currentOnSignedIn()
+        }
     }
 }
 

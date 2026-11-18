@@ -179,7 +179,9 @@ fun KarmaKameleonApp(
                     .consumeWindowInsets(innerPadding),
         ) {
             mainTabs(navController)
-            profileAndSettingsScreens(navController, ownUsername = currentAccount?.name)
+            // A lambda, so the profile reads the account when it shows rather than when the graph was built, and
+            // switches from the login prompt once signing in loads the account.
+            profileAndSettingsScreens(navController, ownUsername = { currentAccount?.name })
             contentScreens(navController)
             mediaViewers(navController)
         }
@@ -416,7 +418,7 @@ private fun NavGraphBuilder.mainTabs(navController: NavController) {
 
 private fun NavGraphBuilder.profileAndSettingsScreens(
     navController: NavController,
-    ownUsername: String?,
+    ownUsername: () -> String?,
 ) {
     detailScreen(
         route = DetailScreen.Inbox.route,
@@ -437,8 +439,14 @@ private fun NavGraphBuilder.profileAndSettingsScreens(
     }
     detailScreen(DetailScreen.OwnProfile.route) {
         ProfileScreen(
-            username = ownUsername,
+            username = ownUsername(),
             onBackClick = { navController.popBackStack() },
+            onSignedIn = {
+                navController.navigate(Screen.Feed.route) {
+                    popUpTo(Screen.Feed.route) { inclusive = false }
+                    launchSingleTop = true
+                }
+            },
             onPostClick = { subreddit, postId -> navController.openPost(subreddit, postId) },
             onCommentClick = navController::openPost,
             onSubredditClick = navController::openSubreddit,
