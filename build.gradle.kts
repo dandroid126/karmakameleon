@@ -550,9 +550,10 @@ tasks.register<GradleActionsCacheCheckTask>("gradleActionsCacheCheck") {
 }
 
 // Fails when too few of the lines changed since the branch left main are covered by tests, in the shared module and
-// the app together. A changed line counts if a coverage report has it, which leaves out blank lines, comments and
-// declarations with no code. Uncommitted and untracked files count too, so it can be run before committing. It also
-// reports how many branches on the changed lines are covered, without failing on them yet (#58).
+// the app together, or too few of the branches on those lines. A changed line counts if a coverage report has it, which
+// leaves out blank lines, comments and declarations with no code. Branches on annotation lines don't count: they're
+// the ones the serialization plugin generates for each field with a default, which Kover puts on the @Serializable
+// line. Uncommitted and untracked files count too, so it can be run before committing.
 abstract class DiffCoverageTask : DefaultTask() {
     // Kover's XML reports, one per module.
     @get:InputFiles
@@ -568,6 +569,9 @@ abstract class DiffCoverageTask : DefaultTask() {
 
     @get:Input
     abstract val minimumPercent: Property<Int>
+
+    @get:Input
+    abstract val minimumBranchPercent: Property<Int>
 
     @get:Internal
     abstract val projectDir: DirectoryProperty
@@ -591,16 +595,32 @@ abstract class DiffCoverageTask : DefaultTask() {
     @TaskAction
     fun run() {
         val coverage = readCoverage()
-        val changed = changedLines()
         val measured =
-            changed.flatMap { (path, lines) ->
+            changedLines().flatMap { (path, lines) ->
                 val fileCoverage = coverage[coverageKey(path)].orEmpty()
-                lines.mapNotNull { line -> fileCoverage[line]?.let { ChangedLine(path, line, it) } }
+                val source =
+                    projectDir
+                        .file(path)
+                        .get()
+                        .asFile
+                        .readLines()
+                lines.mapNotNull { line ->
+                    fileCoverage[line]?.let {
+                        val annotation = source.getOrNull(line - 1)?.trim()?.startsWith("@") == true
+                        ChangedLine(path, line, if (annotation) it.copy(coveredBranches = 0, missedBranches = 0) else it)
+                    }
+                }
             }
         if (measured.isEmpty()) {
             logger.lifecycle("No changed lines with code in ${sourceDirs.get().joinToString()}, so there's nothing to measure.")
             return
         }
+        val failures = listOfNotNull(lineReport(measured), branchReport(measured))
+        if (failures.isNotEmpty()) throw GradleException(failures.joinToString("\n"))
+    }
+
+    // Logs how many changed lines are covered, and returns the failure message when too few are.
+    private fun lineReport(measured: List<ChangedLine>): String? {
         val covered = measured.count { it.coverage.covered }
         val percent = covered * 100.0 / measured.size
         val summary =
@@ -611,28 +631,33 @@ abstract class DiffCoverageTask : DefaultTask() {
                 minimumPercent.get(),
             )
         val uncovered = lineList(measured.filterNot { it.coverage.covered })
-        if (percent < minimumPercent.get()) {
-            logger.lifecycle(branchReport(measured))
-            throw GradleException("$summary Add tests for these lines:\n$uncovered")
-        }
+        if (percent < minimumPercent.get()) return "$summary Add tests for these lines:\n$uncovered"
         logger.lifecycle(summary + if (uncovered.isEmpty()) "" else "\nNot covered:\n$uncovered")
-        logger.lifecycle(branchReport(measured))
+        return null
     }
 
-    // How many branches on the changed lines are covered, and which lines have branches no test took.
-    private fun branchReport(measured: List<ChangedLine>): String {
+    // Logs how many branches on the changed lines are covered, and returns the failure message when too few are. A
+    // change with no branches passes.
+    private fun branchReport(measured: List<ChangedLine>): String? {
         val withBranches = measured.filter { it.coverage.coveredBranches + it.coverage.missedBranches > 0 }
-        if (withBranches.isEmpty()) return "Branches (not required yet): the changed lines have no branches."
+        if (withBranches.isEmpty()) {
+            logger.lifecycle("The changed lines have no branches.")
+            return null
+        }
         val covered = withBranches.sumOf { it.coverage.coveredBranches }
         val total = withBranches.sumOf { it.coverage.coveredBranches + it.coverage.missedBranches }
+        val percent = covered * 100.0 / total
         val summary =
-            "Branches (not required yet): %d of %d branches on the changed lines are covered (%.1f%%).".format(
+            "%d of %d branches on the changed lines are covered (%.1f%%; at least %d%% is required).".format(
                 covered,
                 total,
-                covered * 100.0 / total,
+                percent,
+                minimumBranchPercent.get(),
             )
         val partial = lineList(withBranches.filter { it.coverage.missedBranches > 0 })
-        return summary + if (partial.isEmpty()) "" else "\nLines with branches no test took:\n$partial"
+        if (percent < minimumBranchPercent.get()) return "$summary Add tests for the branches these lines skip:\n$partial"
+        logger.lifecycle(summary + if (partial.isEmpty()) "" else "\nLines with branches no test took:\n$partial")
+        return null
     }
 
     // The lines grouped by file, like "  path/File.kt: 3-5, 9".
@@ -737,7 +762,7 @@ abstract class DiffCoverageTask : DefaultTask() {
 }
 
 tasks.register<DiffCoverageTask>("diffCoverage") {
-    description = "Fails when too few of the changed lines in the shared module and the app are covered by tests."
+    description = "Fails when too few of the changed lines, or their branches, in the shared module and the app are covered by tests."
     group = "verification"
     dependsOn(":shared:koverXmlReport", ":androidApp:koverXmlReportDebug")
     reports.from("shared/build/reports/kover/report.xml", "androidApp/build/reports/kover/reportDebug.xml")
@@ -746,5 +771,7 @@ tasks.register<DiffCoverageTask>("diffCoverage") {
     // CI checks out main as origin/main. -Pcoverage.base=<ref> compares with something else.
     baseRef.set(providers.gradleProperty("coverage.base").orElse("origin/main"))
     minimumPercent.set(providers.gradleProperty("coverage.minimumPercent").map { it.toInt() }.orElse(80))
+    // Lower than the line target: Kotlin compiles some branches no test can reach (#58).
+    minimumBranchPercent.set(providers.gradleProperty("coverage.minimumBranchPercent").map { it.toInt() }.orElse(60))
     projectDir.set(layout.projectDirectory)
 }
