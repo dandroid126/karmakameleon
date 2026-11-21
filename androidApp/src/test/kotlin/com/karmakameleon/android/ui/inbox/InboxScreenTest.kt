@@ -14,12 +14,14 @@ import com.karmakameleon.android.testing.postListing
 import com.karmakameleon.android.ui.post.submittedComment
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.testing.form
+import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.core.context.GlobalContext
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.shadows.ShadowToast
 
 // The first message in message_listing.json, a reply to a comment.
 const val FIRST_MESSAGE = "Coroutines & flows work well here."
@@ -84,6 +86,15 @@ class InboxScreenTest {
         composeRule.onNodeWithContentDescription("Mark all read").performClick()
         composeRule.waitForIdle()
         assertEquals(1, requests("/api/read_all_messages").size)
+    }
+
+    @Test
+    fun failingToMarkReadSaysSo() {
+        fakeReddit.reddit.respond("/api/read_all_messages", "{}", HttpStatusCode.InternalServerError)
+        showInbox()
+        composeRule.onNodeWithContentDescription("Mark all read").performClick()
+        composeRule.waitForIdle()
+        assertEquals("Failed to mark all as read", ShadowToast.getTextOfLatestToast())
     }
 
     @Test

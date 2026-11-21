@@ -293,6 +293,96 @@ class InboxViewModelTest {
             )
         }
 
+    @Test
+    fun markAsRead_showsItReadBeforeRedditAnswers() =
+        runTest {
+            logInWithMessages(createTestMessage(id = "msg1", isNew = true))
+
+            viewModel.markAsRead(
+                viewModel.uiState.value.messages
+                    .first(),
+            )
+
+            assertFalse(
+                viewModel.uiState.value.messages
+                    .single()
+                    .isNew,
+            )
+        }
+
+    @Test
+    fun markAsRead_putsItBackAndReportsTheErrorWhenItFails() =
+        runTest {
+            logInWithMessages(createTestMessage(id = "msg1", isNew = true), createTestMessage(id = "msg2", isNew = true))
+            fakeApi.markMessageReadResult = false
+
+            viewModel.markAsRead(
+                viewModel.uiState.value.messages
+                    .first(),
+            )
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(true, true),
+                viewModel.uiState.value.messages
+                    .map { it.isNew },
+            )
+            assertEquals("Failed to mark as read", viewModel.uiState.value.actionError)
+        }
+
+    @Test
+    fun markAsRead_skipsAReadMessage() =
+        runTest {
+            logInWithMessages(createTestMessage(id = "msg1", isNew = false))
+            fakeApi.markMessageReadResult = false
+
+            viewModel.markAsRead(
+                viewModel.uiState.value.messages
+                    .first(),
+            )
+            advanceUntilIdle()
+
+            assertFalse(
+                viewModel.uiState.value.messages
+                    .single()
+                    .isNew,
+            )
+            assertNull(viewModel.uiState.value.actionError)
+        }
+
+    @Test
+    fun markAllAsRead_putsBackOnlyTheUnreadOnesWhenItFails() =
+        runTest {
+            logInWithMessages(createTestMessage(id = "msg1", isNew = true), createTestMessage(id = "msg2", isNew = false))
+            fakeApi.markAllMessagesReadResult = false
+
+            viewModel.markAllAsRead()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(true, false),
+                viewModel.uiState.value.messages
+                    .map { it.isNew },
+            )
+            assertEquals("Failed to mark all as read", viewModel.uiState.value.actionError)
+        }
+
+    @Test
+    fun clearActionError_clearsIt() =
+        runTest {
+            logInWithMessages(createTestMessage(id = "msg1", isNew = true))
+            fakeApi.markMessageReadResult = false
+            viewModel.markAsRead(
+                viewModel.uiState.value.messages
+                    .first(),
+            )
+            advanceUntilIdle()
+
+            viewModel.clearActionError()
+
+            assertNull(viewModel.uiState.value.actionError)
+        }
+
     // ==================== Voting ====================
 
     @Test
@@ -358,6 +448,26 @@ class InboxViewModelTest {
         }
 
     @Test
+    fun markAsUnread_putsItBackAndReportsTheErrorWhenItFails() =
+        runTest {
+            logInWithMessages(createTestMessage(id = "msg1", isNew = false))
+            fakeApi.markMessageUnreadResult = false
+
+            viewModel.markAsUnread(
+                viewModel.uiState.value.messages
+                    .first(),
+            )
+            advanceUntilIdle()
+
+            assertFalse(
+                viewModel.uiState.value.messages
+                    .single()
+                    .isNew,
+            )
+            assertEquals("Failed to mark as unread", viewModel.uiState.value.actionError)
+        }
+
+    @Test
     fun blockUser_blocksAndClosesTheMessage() =
         runTest {
             logInWithMessages(createTestMessage(id = "msg1"))
@@ -367,6 +477,20 @@ class InboxViewModelTest {
             advanceUntilIdle()
 
             assertEquals(listOf("sender"), fakeApi.blockedUsers)
+            assertNull(viewModel.uiState.value.selectedMessageId)
+        }
+
+    @Test
+    fun blockUser_reportsTheErrorWhenItFails() =
+        runTest {
+            logInWithMessages(createTestMessage(id = "msg1"))
+            viewModel.selectMessage("msg1")
+            fakeApi.blockUserResult = false
+
+            viewModel.blockUser("sender")
+            advanceUntilIdle()
+
+            assertEquals("Failed to block user", viewModel.uiState.value.actionError)
             assertNull(viewModel.uiState.value.selectedMessageId)
         }
 
