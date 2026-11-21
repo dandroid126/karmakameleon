@@ -1,5 +1,6 @@
 package com.karmakameleon.android.ui.inbox
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -37,10 +38,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.MessageActions
@@ -65,11 +68,12 @@ fun InboxScreen(
     val uiState by viewModel.uiState.collectAsState()
     var blockPendingMessage by remember { mutableStateOf<Message?>(null) }
 
-    SideEffect(initialFilter) {
-        if (initialFilter != null) {
-            viewModel.setFilter(initialFilter)
-        }
-    }
+    InboxEffects(
+        initialFilter = initialFilter,
+        actionError = uiState.actionError,
+        onSetFilter = viewModel::setFilter,
+        onConsumeActionError = viewModel::clearActionError,
+    )
 
     Scaffold(
         modifier = modifier,
@@ -120,6 +124,31 @@ fun InboxScreen(
             },
             onDismiss = { blockPendingMessage = null },
         )
+    }
+}
+
+// Opens [initialFilter] and shows each [actionError] once.
+@Composable
+private fun InboxEffects(
+    initialFilter: InboxFilter?,
+    actionError: String?,
+    onSetFilter: (InboxFilter) -> Unit,
+    onConsumeActionError: () -> Unit,
+) {
+    val currentOnSetFilter by rememberUpdatedState(onSetFilter)
+    val currentOnConsumeActionError by rememberUpdatedState(onConsumeActionError)
+    SideEffect(initialFilter) {
+        if (initialFilter != null) {
+            currentOnSetFilter(initialFilter)
+        }
+    }
+
+    val context = LocalContext.current
+    SideEffect(actionError) {
+        actionError?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            currentOnConsumeActionError()
+        }
     }
 }
 
