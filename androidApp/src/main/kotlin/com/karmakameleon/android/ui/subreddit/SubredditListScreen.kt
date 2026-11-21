@@ -63,9 +63,11 @@ fun SubredditListScreen(
     val nsfwSearchEnabled by settingsRepository.nsfwSearchEnabled.collectAsState()
     val isLoggedIn by userRepository.isLoggedIn.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
+    val query = searchQuery.trim()
     val isLoading = loadSubscriptionsOnLogin(isLoggedIn, hasSubscriptions = subscribedSubreddits.isNotEmpty(), subredditRepository)
-    val searchResults = searchSubreddits(searchQuery, includeOver18 = nsfwEnabled && nsfwSearchEnabled, subredditRepository)
+    val search = searchSubreddits(query, includeOver18 = nsfwEnabled && nsfwSearchEnabled, subredditRepository)
     val visibleSubscriptions = remember(subscribedSubreddits, nsfwEnabled) { subscribedSubreddits.filter { nsfwEnabled || !it.isNsfw } }
+    val matches = rememberSearchMatches(query, visibleSubscriptions, search)
     val section = @Composable { title: String, subreddits: List<Subreddit> ->
         SubredditSection(
             title = title,
@@ -90,17 +92,24 @@ fun SubredditListScreen(
 
             when {
                 isLoading -> {
-                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+                    LoadingIndicator()
                 }
 
-                searchQuery.isNotEmpty() && searchResults.isNotEmpty() -> {
-                    section("Search Results", searchResults)
+                query.isNotEmpty() && matches.isNotEmpty() -> {
+                    section("Search Results", matches)
+                }
+
+                query.length >= MIN_SEARCH_LENGTH && search.isDoneFor(query) -> {
+                    CenteredMessage("No subreddits found")
                 }
 
                 !isLoggedIn -> {
                     CenteredMessage("Log in to see your subscriptions", "Use search to find subreddits")
+                }
+
+                // While Reddit's search is running, or before the query is long enough for one.
+                query.isNotEmpty() -> {
+                    CenteredMessage("No matching subscriptions")
                 }
 
                 visibleSubscriptions.isEmpty() -> {
@@ -151,22 +160,65 @@ private fun loadSubscriptionsOnLogin(
     return isLoading
 }
 
-// Searches once the query is at least two characters long.
+private const val MIN_SEARCH_LENGTH = 2
+
+// Reddit's results for a query, or none yet while the search is running.
+private class RedditSearch(
+    val query: String,
+    val results: List<Subreddit>,
+    val isDone: Boolean,
+) {
+    // Whether this search is for the query and has finished. Right after the query changes,
+    // the search for the old one is still here until the new one starts.
+    fun isDoneFor(query: String): Boolean = this.query == query && isDone
+}
+
+// The subscriptions whose names contain the query, those starting with it first, then Reddit's
+// results that aren't among them. The subscriptions show at once, without waiting for Reddit.
+// Subreddit names can't contain spaces, so the subscriptions are matched without the query's
+// spaces: "baby big" finds r/babybigcatgifs. Reddit gets the query as typed, since it also
+// searches titles and descriptions.
+@Composable
+private fun rememberSearchMatches(
+    query: String,
+    subscriptions: List<Subreddit>,
+    search: RedditSearch,
+): List<Subreddit> = remember(query, subscriptions, search) { searchMatches(query, subscriptions, search) }
+
+private fun searchMatches(
+    query: String,
+    subscriptions: List<Subreddit>,
+    search: RedditSearch,
+): List<Subreddit> {
+    if (query.isEmpty()) return emptyList()
+    val searchResults = if (search.query == query) search.results else emptyList()
+    val name = query.filterNot(Char::isWhitespace)
+    val subscribed =
+        subscriptions
+            .filter { it.displayName.contains(name, ignoreCase = true) }
+            .sortedByDescending { it.displayName.startsWith(name, ignoreCase = true) }
+    val subscribedNames = subscribed.mapTo(HashSet()) { it.displayName.lowercase() }
+    return subscribed + searchResults.filter { it.displayName.lowercase() !in subscribedNames }
+}
+
+// Searches Reddit once the query is at least MIN_SEARCH_LENGTH characters long. A failed search counts as
+// finding nothing.
 @Composable
 private fun searchSubreddits(
     query: String,
     includeOver18: Boolean,
     subredditRepository: SubredditRepository,
-): List<Subreddit> {
-    var results by remember { mutableStateOf<List<Subreddit>>(emptyList()) }
+): RedditSearch {
+    var search by remember { mutableStateOf(RedditSearch("", emptyList(), isDone = true)) }
     LaunchedEffect(query, includeOver18) {
-        if (query.length >= 2) {
-            subredditRepository.searchSubreddits(query, includeOver18 = includeOver18).onSuccess { results = it }
-        } else {
-            results = emptyList()
+        val searchesReddit = query.length >= MIN_SEARCH_LENGTH
+        search = RedditSearch(query, emptyList(), isDone = !searchesReddit)
+        if (searchesReddit) {
+            val results = subredditRepository.searchSubreddits(query, includeOver18 = includeOver18).getOrDefault(emptyList())
+            search = RedditSearch(query, results, isDone = true)
         }
     }
-    return results
+    return search
 }
 
 @Composable
@@ -193,6 +245,13 @@ private fun SubredditSection(
                 onClick = { onSubredditClick(subreddit.displayName) },
             )
         }
+    }
+}
+
+@Composable
+private fun LoadingIndicator() {
+    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator()
     }
 }
 

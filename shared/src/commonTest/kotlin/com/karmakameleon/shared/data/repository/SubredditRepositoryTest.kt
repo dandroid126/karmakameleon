@@ -201,6 +201,38 @@ class SubredditRepositoryTest {
         }
 
     @Test
+    fun searchSubreddits_listsSubscriptionsFirstInRedditsOrder() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.searchSubredditsResult =
+                listOf(
+                    createTestSubreddit(id = "a", displayName = "kotlin"),
+                    createTestSubreddit(id = "b", displayName = "KotlinAndroid", isSubscribed = true),
+                    createTestSubreddit(id = "c", displayName = "androiddev"),
+                    createTestSubreddit(id = "d", displayName = "KotlinMultiplatform", isSubscribed = true),
+                )
+
+            val result = repo.searchSubreddits("kotlin").getOrThrow()
+            assertEquals(listOf("b", "d", "a", "c"), result.map { it.id })
+        }
+
+    @Test
+    fun searchSubreddits_countsLocalSubscriptions() =
+        runTest {
+            val (repo, api) = createRepo()
+            api.subscribedSubredditsResult = createTestListing(items = listOf(createTestSubreddit(id = "c", displayName = "AndroidDev")))
+            repo.loadSubscribedSubreddits()
+            api.searchSubredditsResult =
+                listOf(
+                    createTestSubreddit(id = "a", displayName = "kotlin"),
+                    createTestSubreddit(id = "c", displayName = "androiddev"),
+                )
+
+            val result = repo.searchSubreddits("kotlin").getOrThrow()
+            assertEquals(listOf("c", "a"), result.map { it.id })
+        }
+
+    @Test
     fun searchSubreddits_returnsFailureOnError() =
         runTest {
             val (repo, api) = createRepo()

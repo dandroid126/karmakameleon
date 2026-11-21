@@ -90,10 +90,18 @@ class SubredditRepository(
             updated
         }
 
+    // Lists the user's subscriptions first, each group in Reddit's order. The local subscription
+    // list also counts, in case a subscription from this session isn't in Reddit's results yet.
     suspend fun searchSubreddits(
         query: String,
         includeOver18: Boolean = true,
-    ): Result<List<Subreddit>> = runSuspendCatching { redditApi.searchSubreddits(query, includeOver18 = includeOver18) }
+    ): Result<List<Subreddit>> =
+        runSuspendCatching {
+            val subscribed = _subscribedSubreddits.value.mapTo(HashSet()) { it.displayName.lowercase() }
+            redditApi
+                .searchSubreddits(query, includeOver18 = includeOver18)
+                .sortedByDescending { it.isSubscribed || it.displayName.lowercase() in subscribed }
+        }
 
     suspend fun getPopularSubreddits(after: String? = null): Result<Listing<Subreddit>> =
         runSuspendCatching { redditApi.getPopularSubreddits(after) }
