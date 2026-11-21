@@ -175,8 +175,9 @@ private class RedditSearch(
 
 // The subscriptions whose names contain the query, those starting with it first, then Reddit's
 // results that aren't among them. The subscriptions show at once, without waiting for Reddit.
-// The query comes trimmed: subreddit names can't contain spaces, and keyboards add one after a
-// suggested word.
+// Subreddit names can't contain spaces, so the subscriptions are matched without the query's
+// spaces: "baby big" finds r/babybigcatgifs. Reddit gets the query as typed, since it also
+// searches titles and descriptions.
 @Composable
 private fun rememberSearchMatches(
     query: String,
@@ -191,10 +192,11 @@ private fun searchMatches(
 ): List<Subreddit> {
     if (query.isEmpty()) return emptyList()
     val searchResults = if (search.query == query) search.results else emptyList()
+    val name = query.filterNot(Char::isWhitespace)
     val subscribed =
         subscriptions
-            .filter { it.displayName.contains(query, ignoreCase = true) }
-            .sortedByDescending { it.displayName.startsWith(query, ignoreCase = true) }
+            .filter { it.displayName.contains(name, ignoreCase = true) }
+            .sortedByDescending { it.displayName.startsWith(name, ignoreCase = true) }
     val subscribedNames = subscribed.mapTo(HashSet()) { it.displayName.lowercase() }
     return subscribed + searchResults.filter { it.displayName.lowercase() !in subscribedNames }
 }

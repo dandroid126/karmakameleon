@@ -198,6 +198,16 @@ class SubredditListScreenTest {
     }
 
     @Test
+    fun matchesSubscriptionsWithoutTheQuerysSpaces() {
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("android dev")
+        assertEquals(listOf("r/androiddev"), shownSubreddits())
+        // Reddit also searches titles and descriptions, so it gets the spaces.
+        val search = fakeReddit.reddit.requests.last { it.url.encodedPath == "/subreddits/search" }
+        assertEquals("android dev", search.query()["q"])
+    }
+
+    @Test
     fun ignoresSpacesAroundTheQuery() {
         showList()
         composeRule.onNode(hasSetTextAction()).performTextInput("kotlin ")
