@@ -1,6 +1,8 @@
 package com.karmakameleon.android.ui.subreddit
 
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
@@ -38,9 +40,12 @@ class SubredditListScreenTest {
 
     private val opened = mutableListOf<String>()
 
-    private fun showList(loggedIn: Boolean = true) {
+    private fun showList(
+        loggedIn: Boolean = true,
+        subscribed: String = subscriptions,
+    ) {
         fakeReddit.loggedIn = loggedIn
-        fakeReddit.reddit.respond("/subreddits/mine/subscriber", subscriptions)
+        fakeReddit.reddit.respond("/subreddits/mine/subscriber", subscribed)
         composeRule.setContent {
             KarmaKameleonTheme(dynamicColor = false) {
                 SubredditListScreen(onSubredditClick = { opened += it })
@@ -111,5 +116,62 @@ class SubredditListScreenTest {
         assertEquals("kot", search.query()["q"])
         assertEquals("false", search.query()["include_over_18"])
         assertEquals(listOf("Kotlin"), opened)
+    }
+
+    // The subreddit names shown, top to bottom.
+    private fun shownSubreddits(): List<String> =
+        composeRule
+            .onAllNodes(hasText("r/", substring = true))
+            .fetchSemanticsNodes()
+            .flatMap { it.config.getOrElse(SemanticsProperties.Text) { emptyList() } }
+            .map { it.text }
+            .filter { it.startsWith("r/") }
+
+    @Test
+    fun filtersSubscriptionsAsYouType() {
+        showList()
+
+        // One character is too short to search Reddit, so the matches come from the subscriptions alone.
+        composeRule.onNode(hasSetTextAction()).performTextInput("D")
+        assertEquals(listOf("r/androiddev"), shownSubreddits())
+        assertEquals(0, fakeReddit.reddit.requests.count { it.url.encodedPath == "/subreddits/search" })
+    }
+
+    @Test
+    fun listsSubscriptionsStartingWithTheQueryFirst() {
+        showList(
+            subscribed =
+                listingOf(
+                    subredditThing("androiddev", nsfw = false, subscribers = 245_000),
+                    subredditThing("Design", nsfw = false, subscribers = 1_000),
+                    subredditThing("pics", nsfw = false, subscribers = 32_100_000),
+                ),
+        )
+        composeRule.onNode(hasSetTextAction()).performTextInput("d")
+        assertEquals(listOf("r/Design", "r/androiddev"), shownSubreddits())
+    }
+
+    @Test
+    fun addsRedditsResultsAfterTheMatchingSubscriptions() {
+        fakeReddit.reddit.respond(
+            "/subreddits/search",
+            listingOf(
+                subredditThing("KotlinAndroid", nsfw = false, subscribers = 7_000),
+                subredditThing("Kotlin", nsfw = false, subscribers = 108_935),
+            ),
+        )
+        showList()
+
+        composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.waitForIdle()
+        assertEquals(listOf("r/Kotlin", "r/KotlinAndroid"), shownSubreddits())
+    }
+
+    @Test
+    fun saysWhenNoSubscriptionMatches() {
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("zz")
+        composeRule.onNodeWithText("No matching subscriptions").assertExists()
+        composeRule.onNodeWithText("r/Kotlin").assertDoesNotExist()
     }
 }

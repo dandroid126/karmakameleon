@@ -66,6 +66,10 @@ fun SubredditListScreen(
     val isLoading = loadSubscriptionsOnLogin(isLoggedIn, hasSubscriptions = subscribedSubreddits.isNotEmpty(), subredditRepository)
     val searchResults = searchSubreddits(searchQuery, includeOver18 = nsfwEnabled && nsfwSearchEnabled, subredditRepository)
     val visibleSubscriptions = remember(subscribedSubreddits, nsfwEnabled) { subscribedSubreddits.filter { nsfwEnabled || !it.isNsfw } }
+    val matches =
+        remember(searchQuery, visibleSubscriptions, searchResults) {
+            searchMatches(searchQuery, visibleSubscriptions, searchResults)
+        }
     val section = @Composable { title: String, subreddits: List<Subreddit> ->
         SubredditSection(
             title = title,
@@ -95,12 +99,17 @@ fun SubredditListScreen(
                     }
                 }
 
-                searchQuery.isNotEmpty() && searchResults.isNotEmpty() -> {
-                    section("Search Results", searchResults)
+                searchQuery.isNotEmpty() && matches.isNotEmpty() -> {
+                    section("Search Results", matches)
                 }
 
                 !isLoggedIn -> {
                     CenteredMessage("Log in to see your subscriptions", "Use search to find subreddits")
+                }
+
+                // Reddit's results replace this when they come.
+                searchQuery.isNotEmpty() -> {
+                    CenteredMessage("No matching subscriptions")
                 }
 
                 visibleSubscriptions.isEmpty() -> {
@@ -149,6 +158,22 @@ private fun loadSubscriptionsOnLogin(
         }
     }
     return isLoading
+}
+
+// The subscriptions whose names contain the query, those starting with it first, then Reddit's
+// results that aren't among them. The subscriptions show at once, without waiting for Reddit.
+private fun searchMatches(
+    query: String,
+    subscriptions: List<Subreddit>,
+    searchResults: List<Subreddit>,
+): List<Subreddit> {
+    if (query.isEmpty()) return emptyList()
+    val subscribed =
+        subscriptions
+            .filter { it.displayName.contains(query, ignoreCase = true) }
+            .sortedByDescending { it.displayName.startsWith(query, ignoreCase = true) }
+    val subscribedNames = subscribed.mapTo(HashSet()) { it.displayName.lowercase() }
+    return subscribed + searchResults.filter { it.displayName.lowercase() !in subscribedNames }
 }
 
 // Searches once the query is at least two characters long.
