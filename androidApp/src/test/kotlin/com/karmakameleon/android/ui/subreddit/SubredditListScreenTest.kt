@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
+import com.karmakameleon.shared.testing.MockReddit
 import com.karmakameleon.shared.testing.listingOf
 import com.karmakameleon.shared.testing.query
 import com.karmakameleon.shared.testing.subredditThing
@@ -168,10 +169,40 @@ class SubredditListScreenTest {
     }
 
     @Test
-    fun saysWhenNoSubscriptionMatches() {
+    fun saysWhenNoSubscriptionMatchesAQueryTooShortToSearch() {
         showList()
-        composeRule.onNode(hasSetTextAction()).performTextInput("zz")
+        composeRule.onNode(hasSetTextAction()).performTextInput("z")
         composeRule.onNodeWithText("No matching subscriptions").assertExists()
         composeRule.onNodeWithText("r/Kotlin").assertDoesNotExist()
+    }
+
+    @Test
+    fun saysWhenRedditFindsNothingEither() {
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("zz")
+        composeRule.onNodeWithText("No subreddits found").assertExists()
+        composeRule.onNodeWithText("r/Kotlin").assertDoesNotExist()
+    }
+
+    @Test
+    fun dropsTheResultsOfTheLastQuery() {
+        fakeReddit.reddit.respond("/subreddits/search", listingOf(subredditThing("KotlinAndroid", nsfw = false, subscribers = 7_000)))
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("ko")
+        assertEquals(listOf("r/Kotlin", "r/KotlinAndroid"), shownSubreddits())
+
+        fakeReddit.reddit.respond("/subreddits/search", MockReddit.EMPTY_LISTING)
+        composeRule.onNode(hasSetTextAction()).performTextInput("x")
+        composeRule.onNodeWithText("No subreddits found").assertExists()
+        assertEquals(emptyList<String>(), shownSubreddits())
+    }
+
+    @Test
+    fun ignoresSpacesAroundTheQuery() {
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("kotlin ")
+        assertEquals(listOf("r/Kotlin"), shownSubreddits())
+        val search = fakeReddit.reddit.requests.last { it.url.encodedPath == "/subreddits/search" }
+        assertEquals("kotlin", search.query()["q"])
     }
 }
