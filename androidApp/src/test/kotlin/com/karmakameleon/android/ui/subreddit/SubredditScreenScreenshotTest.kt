@@ -32,4 +32,12 @@ class SubredditScreenScreenshotTest {
             SubredditScreen(subredditName = "Kotlin", onBackClick = {}, onPostClick = { _, _ -> }, onUserClick = {})
         }
     }
+
+    @Test
+    fun noPosts() {
+        fakeReddit.reddit.respond("/r/Kotlin/about", readFixture("subreddit_about.json"))
+        composeRule.captureScreen("subreddit_screen_no_posts") {
+            SubredditScreen(subredditName = "Kotlin", onBackClick = {}, onPostClick = { _, _ -> }, onUserClick = {})
+        }
+    }
 }

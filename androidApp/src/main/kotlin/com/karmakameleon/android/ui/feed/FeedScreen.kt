@@ -3,13 +3,10 @@ package com.karmakameleon.android.ui.feed
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,14 +16,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -45,8 +40,10 @@ import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FeedPostItem
 import com.karmakameleon.android.ui.components.LoadMoreNearEnd
+import com.karmakameleon.android.ui.components.NoPostsMessage
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
+import com.karmakameleon.android.ui.components.PostListError
 import com.karmakameleon.android.ui.components.PostListItem
 import com.karmakameleon.android.ui.components.PostListScaffold
 import com.karmakameleon.android.ui.components.ScrollToTopAfterRefresh
@@ -168,7 +165,7 @@ private fun FeedTypeMenu(
     }
 }
 
-// A spinner or an error while there are no posts yet, otherwise the posts.
+// A spinner or an error while there are no posts yet, otherwise the posts, or a message when there are none.
 @Composable
 private fun BoxScope.FeedContent(
     postList: PostListState,
@@ -186,19 +183,11 @@ private fun BoxScope.FeedContent(
         }
 
         postList.error != null && postList.posts.isEmpty() -> {
-            Column(
+            PostListError(
+                error = postList.error ?: "Unknown error",
+                onRetry = onRetry,
                 modifier = Modifier.align(Alignment.Center),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = postList.error ?: "Unknown error",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onRetry) {
-                    Text("Retry")
-                }
-            }
+            )
         }
 
         else -> {
@@ -212,6 +201,9 @@ private fun BoxScope.FeedContent(
                     key = { it.id },
                 ) { post ->
                     FeedPostItem(post = post, settings = feedSettings, callbacks = callbacks, isLoggedIn = isLoggedIn)
+                }
+                if (postList.posts.isEmpty() && !postList.isRefreshing) {
+                    item { NoPostsMessage(modifier = Modifier.fillParentMaxSize()) }
                 }
                 if (postList.isLoadingMore) loadingMoreItem()
             }

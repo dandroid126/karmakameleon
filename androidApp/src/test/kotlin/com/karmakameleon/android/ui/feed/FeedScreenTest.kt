@@ -106,4 +106,23 @@ class FeedScreenTest {
         composeRule.onNodeWithText("Retry").performClick()
         composeRule.onNodeWithText(FIRST_POST_TITLE).assertExists()
     }
+
+    // Reddit sends no posts for some sorts, like Top / This Year on r/all (#38).
+    @Test
+    fun noPostsShowsMessage() {
+        composeRule.setContent {
+            KarmaKameleonTheme(dynamicColor = false) {
+                FeedScreen(onPostClick = { _, _ -> }, onSubredditClick = {}, onUserClick = {})
+            }
+        }
+        composeRule.onNodeWithText("No posts to show").assertExists()
+        composeRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    @Test
+    fun postsHideTheNoPostsMessage() {
+        showFeed()
+        composeRule.onNodeWithText(FIRST_POST_TITLE).assertExists()
+        composeRule.onNodeWithText("No posts to show").assertDoesNotExist()
+    }
 }
