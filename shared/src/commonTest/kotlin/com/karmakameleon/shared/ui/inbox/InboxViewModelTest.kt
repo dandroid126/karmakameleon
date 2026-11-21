@@ -331,7 +331,7 @@ class InboxViewModelTest {
         }
 
     @Test
-    fun markAsRead_ofAReadMessageKeepsItReadWhenItFails() =
+    fun markAsRead_skipsAReadMessage() =
         runTest {
             logInWithMessages(createTestMessage(id = "msg1", isNew = false))
             fakeApi.markMessageReadResult = false
@@ -347,6 +347,7 @@ class InboxViewModelTest {
                     .single()
                     .isNew,
             )
+            assertNull(viewModel.uiState.value.actionError)
         }
 
     @Test

@@ -99,7 +99,12 @@ class InboxViewModel(
         loadMessages()
     }
 
-    fun markAsRead(message: Message) = setIsNew(listOf(message.id), isNew = false) { messageRepository.markAsRead(message) }
+    // Opening a message marks it read, so this runs on every tap. Skip read ones, so a failure isn't reported for a
+    // message that didn't change.
+    fun markAsRead(message: Message) {
+        if (!message.isNew) return
+        setIsNew(listOf(message.id), isNew = false) { messageRepository.markAsRead(message) }
+    }
 
     fun markAllAsRead() = setIsNew(_uiState.value.messages.map { it.id }, isNew = false) { messageRepository.markAllAsRead() }
 

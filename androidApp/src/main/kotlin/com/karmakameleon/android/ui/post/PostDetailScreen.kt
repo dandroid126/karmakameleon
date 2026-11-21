@@ -2,7 +2,6 @@ package com.karmakameleon.android.ui.post
 
 import android.content.ClipData
 import android.content.Context
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -100,6 +99,7 @@ import com.karmakameleon.android.ui.components.MarkdownText
 import com.karmakameleon.android.ui.components.MeasureTablesAhead
 import com.karmakameleon.android.ui.components.ProgressiveAsyncImage
 import com.karmakameleon.android.ui.components.ReplyBar
+import com.karmakameleon.android.ui.components.ShowActionErrors
 import com.karmakameleon.android.ui.components.SubredditFlairChip
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.VideoPlayer
@@ -334,21 +334,6 @@ private fun ConsumePendingQuotes(onQuote: (String) -> Unit) {
                 PendingQuote.consume()
                 currentOnQuote(text)
             }
-        }
-    }
-}
-
-@Composable
-private fun ShowActionErrors(
-    actionError: String?,
-    onConsumeError: () -> Unit,
-) {
-    val context = LocalContext.current
-    val currentOnConsumeError by rememberUpdatedState(onConsumeError)
-    SideEffect(actionError) {
-        actionError?.let { error ->
-            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-            currentOnConsumeError()
         }
     }
 }

@@ -16,7 +16,6 @@ import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.testing.form
 import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -95,7 +94,7 @@ class InboxScreenTest {
         showInbox()
         composeRule.onNodeWithContentDescription("Mark all read").performClick()
         composeRule.waitForIdle()
-        assertNotNull(ShadowToast.getTextOfLatestToast())
+        assertEquals("Failed to mark all as read", ShadowToast.getTextOfLatestToast())
     }
 
     @Test
