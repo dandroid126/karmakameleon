@@ -11,6 +11,7 @@ import com.karmakameleon.android.ui.feed.FIRST_POST_TITLE
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.testing.form
 import com.karmakameleon.shared.testing.readFixture
+import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -30,10 +31,13 @@ class SubredditScreenTest {
 
     private val calls = mutableListOf<String>()
 
-    private fun showSubreddit(loggedIn: Boolean = true) {
+    private fun showSubreddit(
+        loggedIn: Boolean = true,
+        posts: String? = postListing(),
+    ) {
         fakeReddit.loggedIn = loggedIn
         fakeReddit.reddit.respond("/r/Kotlin/about", readFixture("subreddit_about.json"))
-        fakeReddit.reddit.respond("/r/Kotlin/hot", postListing())
+        posts?.let { fakeReddit.reddit.respond("/r/Kotlin/hot", it) }
         composeRule.setContent {
             KarmaKameleonTheme(dynamicColor = false) {
                 SubredditScreen(
@@ -83,5 +87,24 @@ class SubredditScreenTest {
         showSubreddit()
         composeRule.onNodeWithContentDescription("Back").performClick()
         assertEquals(listOf("back"), calls)
+    }
+
+    @Test
+    fun noPostsShowsMessage() {
+        showSubreddit(posts = null)
+        composeRule.onNodeWithText("108.9K members").assertExists()
+        composeRule.onNodeWithText("No posts to show").assertExists()
+    }
+
+    @Test
+    fun errorOffersRetry() {
+        fakeReddit.reddit.respond("/r/Kotlin/hot", "", HttpStatusCode.ServiceUnavailable)
+        showSubreddit(posts = null)
+        composeRule.onNodeWithText("Retry").assertExists()
+        composeRule.onNodeWithText("No posts to show").assertDoesNotExist()
+
+        fakeReddit.reddit.respond("/r/Kotlin/hot", postListing())
+        composeRule.onNodeWithText("Retry").performClick()
+        composeRule.onNodeWithText(FIRST_POST_TITLE).assertExists()
     }
 }

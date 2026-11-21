@@ -48,8 +48,10 @@ import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FeedPostItem
 import com.karmakameleon.android.ui.components.LoadMoreNearEnd
+import com.karmakameleon.android.ui.components.NoPostsMessage
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
+import com.karmakameleon.android.ui.components.PostListError
 import com.karmakameleon.android.ui.components.PostListItem
 import com.karmakameleon.android.ui.components.PostListScaffold
 import com.karmakameleon.android.ui.components.ScrollToTopAfterRefresh
@@ -116,6 +118,7 @@ fun SubredditScreen(
             feedSettings = feedSettings,
             callbacks = callbacks,
             onSubscribeClick = viewModel::toggleSubscribe,
+            onRetry = { viewModel.postList.load(forceRefresh = true) },
         )
     }
 }
@@ -141,7 +144,7 @@ private fun SubredditTopBar(
     )
 }
 
-// The subreddit's header, then its posts.
+// The subreddit's header, then its posts, a spinner or an error while there are none yet, or a message when there are none.
 @Composable
 private fun SubredditPostList(
     uiState: SubredditUiState,
@@ -150,6 +153,7 @@ private fun SubredditPostList(
     feedSettings: PostFeedSettings,
     callbacks: PostListCallbacks,
     onSubscribeClick: () -> Unit,
+    onRetry: () -> Unit,
 ) {
     LazyColumn(
         state = listState,
@@ -177,12 +181,25 @@ private fun SubredditPostList(
                     CircularProgressIndicator()
                 }
             }
+        } else if (postList.error != null && postList.posts.isEmpty()) {
+            item {
+                PostListError(
+                    error = postList.error.orEmpty(),
+                    onRetry = onRetry,
+                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                )
+            }
         } else {
             items(
                 items = postList.posts,
                 key = { it.id },
             ) { post ->
                 FeedPostItem(post = post, settings = feedSettings, callbacks = callbacks, isLoggedIn = uiState.isLoggedIn)
+            }
+            if (postList.posts.isEmpty() && !postList.isRefreshing && !postList.isLoadingMore) {
+                item {
+                    NoPostsMessage(modifier = Modifier.fillMaxWidth().padding(32.dp))
+                }
             }
             if (postList.isLoadingMore) loadingMoreItem()
         }
