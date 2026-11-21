@@ -123,8 +123,11 @@ jobs:
             earlier summary instead of adding another. Cover the whole PR as it is now, including which threads you
             marked to be resolved and which you left open and why. If nothing is left worth fixing, the summary says so
             in one line.
+          # Since v1.0.273 the action defaults to auto mode, where a safety check can approve tool calls outside
+          # --allowedTools. The default mode keeps the list strict, since the review reads untrusted PR content.
           claude_args: >-
             --model claude-opus-5-5
+            --permission-mode default
             --allowedTools "Read,Grep,Glob,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Bash(${{ runner.temp }}/review-tools/list-threads.sh),Bash(${{ runner.temp }}/review-tools/resolve-thread.sh:*)"
 
       - name: Upload the threads to resolve
