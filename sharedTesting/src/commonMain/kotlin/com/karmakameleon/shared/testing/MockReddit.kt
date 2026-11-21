@@ -13,6 +13,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.http.headersOf
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -27,6 +28,9 @@ class MockReddit {
 
     private val responses = mutableMapOf<String, Pair<HttpStatusCode, String>>()
 
+    // The paths whose requests wait for letThrough, each holding one permit per call.
+    private val heldPaths = mutableMapOf<String, Channel<Unit>>()
+
     val authManager = FakeAuthManager()
 
     /** The first request made. A page of posts is followed by a lookup of whether its subreddits are NSFW. */
@@ -38,6 +42,16 @@ class MockReddit {
         status: HttpStatusCode = HttpStatusCode.OK,
     ) {
         responses[path] = status to body
+    }
+
+    /** Makes requests for [path] wait until [letThrough] is called, one request per call, to test what shows while one loads. */
+    fun holdRequests(path: String) {
+        heldPaths[path] = Channel(Channel.UNLIMITED)
+    }
+
+    /** Lets the next held request for [path] get its response. */
+    fun letThrough(path: String) {
+        heldPaths.getValue(path).trySend(Unit)
     }
 
     fun api(
@@ -60,6 +74,7 @@ class MockReddit {
                     this.dispatcher = dispatcher
                     addHandler { request ->
                         requests += request
+                        heldPaths[request.url.encodedPath]?.receive()
                         val (status, body) = responses[request.url.encodedPath] ?: (HttpStatusCode.OK to EMPTY_LISTING)
                         respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
                     }

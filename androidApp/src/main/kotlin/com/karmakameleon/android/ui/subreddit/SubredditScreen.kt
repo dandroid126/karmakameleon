@@ -196,7 +196,7 @@ private fun SubredditPostList(
             ) { post ->
                 FeedPostItem(post = post, settings = feedSettings, callbacks = callbacks, isLoggedIn = uiState.isLoggedIn)
             }
-            if (postList.posts.isEmpty() && !postList.isRefreshing) {
+            if (postList.posts.isEmpty() && !postList.isRefreshing && !postList.isLoadingMore) {
                 item {
                     NoPostsMessage(modifier = Modifier.fillMaxWidth().padding(32.dp))
                 }

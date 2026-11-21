@@ -119,6 +119,29 @@ class FeedScreenTest {
         composeRule.onNodeWithText("Retry").assertDoesNotExist()
     }
 
+    // When the filters leave a page empty and Reddit has more, the next page loads straight away. The message waits
+    // for it.
+    @Test
+    fun noPostsMessageWaitsForTheNextPage() {
+        fakeReddit.settings.addBlockedSubreddit("pics")
+        fakeReddit.settings.addBlockedSubreddit("aww")
+        fakeReddit.reddit.respond("/hot", postListing().replace(Regex(""""after": *null"""), "\"after\": \"t3_next\""))
+        fakeReddit.reddit.holdRequests("/hot")
+        fakeReddit.reddit.letThrough("/hot")
+        composeRule.setContent {
+            KarmaKameleonTheme(dynamicColor = false) {
+                FeedScreen(onPostClick = { _, _ -> }, onSubredditClick = {}, onUserClick = {})
+            }
+        }
+        composeRule.waitForIdle()
+        assertEquals(2, requestedPaths().count { it == "/hot" })
+        composeRule.onNodeWithText("No posts to show").assertDoesNotExist()
+
+        fakeReddit.reddit.respond("/hot", postListing())
+        fakeReddit.reddit.letThrough("/hot")
+        composeRule.onNodeWithText("No posts to show").assertExists()
+    }
+
     @Test
     fun postsHideTheNoPostsMessage() {
         showFeed()

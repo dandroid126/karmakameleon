@@ -202,7 +202,7 @@ private fun BoxScope.FeedContent(
                 ) { post ->
                     FeedPostItem(post = post, settings = feedSettings, callbacks = callbacks, isLoggedIn = isLoggedIn)
                 }
-                if (postList.posts.isEmpty() && !postList.isRefreshing) {
+                if (postList.posts.isEmpty() && !postList.isRefreshing && !postList.isLoadingMore) {
                     item { NoPostsMessage(modifier = Modifier.fillParentMaxSize()) }
                 }
                 if (postList.isLoadingMore) loadingMoreItem()
