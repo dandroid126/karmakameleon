@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FeedPostItem
@@ -53,6 +54,7 @@ import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
 import com.karmakameleon.android.ui.components.PostListItem
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
+import com.karmakameleon.android.ui.components.label
 import com.karmakameleon.android.ui.components.loadingMoreItem
 import com.karmakameleon.android.ui.components.rememberCompactPostSelection
 import com.karmakameleon.android.ui.components.rememberPostFeedSettings
@@ -63,6 +65,7 @@ import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.SearchType
+import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.ui.search.SearchUiState
 import com.karmakameleon.shared.ui.search.SearchViewModel
 import com.karmakameleon.shared.util.RedditLink
@@ -84,7 +87,7 @@ fun SearchScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val feedSettings = rememberPostFeedSettings()
-    var showSortMenu by remember { mutableStateOf(false) }
+    var openSheet by remember { mutableStateOf<SearchSheet?>(null) }
 
     // Only post results come in pages.
     val canLoadMore = !uiState.isLoading && uiState.hasMore && uiState.searchType == SearchType.POST
@@ -96,7 +99,8 @@ fun SearchScreen(
             SearchTopBar(
                 uiState = uiState,
                 onQueryChange = viewModel::setQuery,
-                onSortClick = { showSortMenu = true },
+                onSortClick = { openSheet = SearchSheet.SORT },
+                onTimeFilterClick = { openSheet = SearchSheet.TIME },
             )
         },
     ) { padding ->
@@ -121,15 +125,56 @@ fun SearchScreen(
         }
     }
 
-    if (showSortMenu) {
-        SearchSortSheet(
-            currentSort = uiState.searchSort,
-            onSelectSort = {
-                viewModel.setSearchSort(it)
-                showSortMenu = false
-            },
-            onDismiss = { showSortMenu = false },
+    openSheet?.let { sheet ->
+        SearchOptionSheet(
+            sheet = sheet,
+            uiState = uiState,
+            onSelectSort = viewModel::setSearchSort,
+            onSelectTimeFilter = viewModel::setTimeFilter,
+            onDismiss = { openSheet = null },
         )
+    }
+}
+
+private enum class SearchSheet { SORT, TIME }
+
+// The sheet for choosing the sort or the time filter, which closes once one is chosen.
+@Composable
+private fun SearchOptionSheet(
+    sheet: SearchSheet,
+    uiState: SearchUiState,
+    onSelectSort: (SearchSort) -> Unit,
+    onSelectTimeFilter: (TimeFilter) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    when (sheet) {
+        SearchSheet.SORT -> {
+            ChoiceSheet(
+                title = "Sort by",
+                choices = SearchSort.entries,
+                current = uiState.searchSort,
+                label = { it.name.capitalized() },
+                onSelect = {
+                    onSelectSort(it)
+                    onDismiss()
+                },
+                onDismiss = onDismiss,
+            )
+        }
+
+        SearchSheet.TIME -> {
+            ChoiceSheet(
+                title = "Time",
+                choices = TimeFilter.entries,
+                current = uiState.timeFilter,
+                label = { it.label() },
+                onSelect = {
+                    onSelectTimeFilter(it)
+                    onDismiss()
+                },
+                onDismiss = onDismiss,
+            )
+        }
     }
 }
 
@@ -150,7 +195,8 @@ private fun BoxScope.SearchContent(
     val link = uiState.detectedLink
     val error = uiState.error
     when {
-        uiState.query.isEmpty() -> {
+        // Too short to search yet.
+        uiState.query.length < SearchViewModel.MIN_QUERY_LENGTH -> {
             SearchPrompt()
         }
 
@@ -207,6 +253,7 @@ private fun SearchTopBar(
     uiState: SearchUiState,
     onQueryChange: (String) -> Unit,
     onSortClick: () -> Unit,
+    onTimeFilterClick: () -> Unit,
 ) {
     Column {
         UniversalTopAppBar(
@@ -248,8 +295,9 @@ private fun SearchTopBar(
                 )
                 FilterChip(
                     selected = false,
-                    onClick = {},
-                    label = { Text(uiState.timeFilter.name.capitalized()) },
+                    onClick = onTimeFilterClick,
+                    label = { Text(uiState.timeFilter.label()) },
+                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
                 )
             }
         }
@@ -341,6 +389,8 @@ private fun DetectedLinkCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    // The end of a link, like the post's title, says the most, so the middle is what gets cut.
+                    overflow = TextOverflow.MiddleEllipsis,
                 )
             }
         }
@@ -373,30 +423,34 @@ private fun SearchResults(
     }
 }
 
+// A sheet listing [choices] under [title], with a check by the [current] one.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SearchSortSheet(
-    currentSort: SearchSort,
-    onSelectSort: (SearchSort) -> Unit,
+private fun <T> ChoiceSheet(
+    title: String,
+    choices: List<T>,
+    current: T,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.padding(bottom = 32.dp)) {
             Text(
-                "Sort by",
+                title,
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(16.dp),
             )
-            SearchSort.entries.forEach { sort ->
+            choices.forEach { choice ->
                 ListItem(
-                    headlineContent = { Text(sort.name.capitalized()) },
+                    headlineContent = { Text(label(choice)) },
                     leadingContent =
-                        if (sort == currentSort) {
+                        if (choice == current) {
                             { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
                         } else {
                             null
                         },
-                    modifier = Modifier.clickable { onSelectSort(sort) },
+                    modifier = Modifier.clickable { onSelect(choice) },
                 )
             }
         }

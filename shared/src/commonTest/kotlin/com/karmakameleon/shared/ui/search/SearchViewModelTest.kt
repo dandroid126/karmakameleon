@@ -125,6 +125,24 @@ class SearchViewModelTest {
             assertEquals("kotlin", viewModel.uiState.value.query)
         }
 
+    // Loading starts with the query, not after the pause left for more typing, so "No results found" can't show
+    // while the person is still typing (#87). Queries that won't be searched aren't loading.
+    @Test
+    fun setQuery_isLoadingDuringThePauseOnlyWhenItWillSearch() =
+        runTest {
+            viewModel.setQuery("kotlin")
+            assertTrue(viewModel.uiState.value.isLoading)
+            assertEquals(0, fakeApi.searchRequests.size)
+            advanceUntilIdle()
+            assertFalse(viewModel.uiState.value.isLoading)
+
+            viewModel.setQuery("k")
+            assertFalse(viewModel.uiState.value.isLoading)
+
+            viewModel.setQuery("https://www.reddit.com/r/Kotlin/")
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
+
     @Test
     fun setQuery_redditLink_detectsLink() =
         runTest {

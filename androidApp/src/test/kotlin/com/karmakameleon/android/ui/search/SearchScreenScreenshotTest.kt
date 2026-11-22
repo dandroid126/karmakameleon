@@ -52,9 +52,17 @@ class SearchScreenScreenshotTest {
         captureSearch("search_screen_results", "halloween")
     }
 
-    // A short link: a long one is cut off mid-word (#87). Add one with the fix.
     @Test
     fun redditLink() {
         captureSearch("search_screen_link", "https://www.reddit.com/r/Kotlin/")
+    }
+
+    // A link too long for the card loses its middle, so the end, which says the most, still shows (#87).
+    @Test
+    fun longRedditLink() {
+        captureSearch(
+            "search_screen_long_link",
+            "https://www.reddit.com/r/Kotlin/comments/1abc23/kotlin_2_4_is_out_with_a_new_compiler/",
+        )
     }
 }
