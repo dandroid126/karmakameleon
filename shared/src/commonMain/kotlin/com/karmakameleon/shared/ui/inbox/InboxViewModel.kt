@@ -7,6 +7,7 @@ import com.karmakameleon.shared.data.repository.MessageRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.domain.model.Message
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +38,8 @@ class InboxViewModel(
     private val _uiState = MutableStateFlow(InboxUiState())
     val uiState: StateFlow<InboxUiState> = _uiState.asStateFlow()
 
+    private var loadJob: Job? = null
+
     init {
         viewModelScope.launch {
             userRepository.isLoggedIn.collect { isLoggedIn ->
@@ -56,47 +59,55 @@ class InboxViewModel(
     fun loadMessages(forceRefresh: Boolean = false) {
         if (!_uiState.value.isLoggedIn) return
         if (_uiState.value.isLoading && !forceRefresh) return
-
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = !forceRefresh,
-                    isRefreshing = forceRefresh,
-                    error = null,
-                )
-            }
-
-            val result = messageRepository.getInbox(_uiState.value.currentFilter)
-
-            result.fold(
-                onSuccess = { listing ->
-                    _uiState.update {
-                        it.copy(
-                            messages = listing.items,
-                            after = listing.after,
-                            hasMore = listing.after != null,
-                            isLoading = false,
-                            isRefreshing = false,
-                        )
-                    }
-                },
-                onFailure = { error ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            isRefreshing = false,
-                            error = error.message,
-                        )
-                    }
-                },
-            )
-        }
+        startLoading(forceRefresh)
     }
 
+    // Cancels the load still running, so only the newest one sets the messages. Its answer could be for another filter.
+    private fun startLoading(forceRefresh: Boolean) {
+        loadJob?.cancel()
+        loadJob =
+            viewModelScope.launch {
+                _uiState.update {
+                    it.copy(
+                        isLoading = !forceRefresh,
+                        isRefreshing = forceRefresh,
+                        error = null,
+                    )
+                }
+
+                val result = messageRepository.getInbox(_uiState.value.currentFilter)
+
+                result.fold(
+                    onSuccess = { listing ->
+                        _uiState.update {
+                            it.copy(
+                                messages = listing.items,
+                                after = listing.after,
+                                hasMore = listing.after != null,
+                                isLoading = false,
+                                isRefreshing = false,
+                            )
+                        }
+                    },
+                    onFailure = { error ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                isRefreshing = false,
+                                error = error.message,
+                            )
+                        }
+                    },
+                )
+            }
+    }
+
+    // A load still running is for the old filter, so it's replaced rather than waited for (#87). Opening the inbox from
+    // a notification sets the Unread filter while the first load, of all messages, is running.
     fun setFilter(filter: InboxFilter) {
         if (_uiState.value.currentFilter == filter) return
         _uiState.update { it.copy(currentFilter = filter, messages = emptyList(), after = null) }
-        loadMessages()
+        if (_uiState.value.isLoggedIn) startLoading(forceRefresh = false)
     }
 
     // Opening a message marks it read, so this runs on every tap. Skip read ones, so a failure isn't reported for a

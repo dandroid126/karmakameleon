@@ -32,13 +32,16 @@ import kotlin.test.assertTrue
 class ProfileViewModelContentTest {
     private val fakeAuthManager = FakeAuthManager()
     private val fakeApi = FakeRedditApi(fakeAuthManager)
-    private val viewModel =
+
+    // Made on first use, after setup sets the Main dispatcher, which the view model starts collecting on.
+    private val viewModel by lazy {
         ProfileViewModel(
             UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main)),
             PostRepository(fakeApi, MarkdownRepository()),
             CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)),
             fakeAuthManager,
         )
+    }
 
     @BeforeTest
     fun setup() {

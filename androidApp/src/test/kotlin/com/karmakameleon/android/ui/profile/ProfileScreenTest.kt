@@ -9,6 +9,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
 import androidx.compose.ui.test.isPopup
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -124,8 +126,18 @@ class ProfileScreenTest {
         assertEquals(listOf("post pics 1x65iks"), calls)
     }
 
-    // That you can vote and reply on someone else's profile is left out until it's fixed: the profile treats you as
-    // logged out (#87).
+    // Someone else's profile used to treat you as logged out, which turned off voting and replying (#87).
+    @Test
+    fun otherProfileCanBeVotedOn() {
+        showOtherProfile()
+        composeRule
+            .onAllNodesWithContentDescription("Upvote")
+            .onFirst()
+            .assertIsEnabled()
+            .performClick()
+        composeRule.waitForIdle()
+        assertEquals("1", requests("/api/vote").single().form()["dir"])
+    }
 
     @Test
     fun choosingSortReloadsPosts() {
