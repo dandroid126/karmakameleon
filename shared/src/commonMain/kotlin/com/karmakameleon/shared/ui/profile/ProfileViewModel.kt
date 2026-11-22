@@ -93,10 +93,19 @@ class ProfileViewModel(
 
     private var pendingLoginState: String? = null
 
+    // Follows the account, like the other screens, so another user's profile can be voted on and replied to too (#87).
+    init {
+        viewModelScope.launch {
+            userRepository.isLoggedIn.collect { isLoggedIn -> _uiState.update { it.copy(isLoggedIn = isLoggedIn) } }
+        }
+    }
+
+    // Clearing the data keeps whether you're logged in, which is about the account, not the profile shown.
     private fun initialState() =
         ProfileUiState(
             clientId = authManager.getClientId(),
             redirectUri = authManager.getRedirectUri(),
+            isLoggedIn = userRepository.isLoggedIn.value,
         )
 
     fun clearAllData() {
@@ -128,7 +137,6 @@ class ProfileViewModel(
                     isLoading = !forceRefresh,
                     isRefreshing = forceRefresh,
                     isOwnProfile = true,
-                    isLoggedIn = true,
                 )
             }
             val result = userRepository.loadCurrentUser()

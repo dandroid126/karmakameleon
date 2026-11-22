@@ -13,6 +13,7 @@ import com.karmakameleon.android.testing.lastPage
 import com.karmakameleon.android.testing.postListing
 import com.karmakameleon.android.ui.post.submittedComment
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
+import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.testing.form
 import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
@@ -116,8 +117,21 @@ class InboxScreenTest {
         assertEquals("/message/comments", requestedPaths().last())
     }
 
-    // Opening the inbox at a filter, as a notification does, is left out until it's fixed: the filter is ignored while
-    // the first load runs, so it shows every message (#87).
+    // A notification opens the inbox at Unread while the first load, of all messages, is running. It used to keep that
+    // load and never ask for the unread ones, so the list showed every message under the Unread filter (#87).
+    @Test
+    fun openingAtAFilterLoadsIt() {
+        fakeReddit.loggedIn = true
+        fakeReddit.reddit.respond("/message/inbox", messageListing())
+        fakeReddit.reddit.respond("/message/unread", messageListing())
+        composeRule.setContent {
+            KarmaKameleonTheme(dynamicColor = false) {
+                InboxScreen(initialFilter = InboxFilter.UNREAD)
+            }
+        }
+        composeRule.onNodeWithText(FIRST_MESSAGE).assertExists()
+        assertEquals("/message/unread", requestedPaths().last())
+    }
 
     @Test
     fun replying() {
