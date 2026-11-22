@@ -2,10 +2,10 @@ package com.karmakameleon.android.ui.profile
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.testing.captureScreen
+import com.karmakameleon.android.testing.clickWithoutRipple
 import com.karmakameleon.android.testing.saveScreenshot
 import com.karmakameleon.android.testing.showScreen
 import com.karmakameleon.android.ui.components.FakeImagesRule
@@ -49,14 +49,14 @@ class ProfileScreenScreenshotTest {
     @Test
     fun comments() {
         showOwnProfile()
-        composeRule.onNodeWithText("Comments").performClick()
+        composeRule.onNodeWithText("Comments").clickWithoutRipple()
         composeRule.saveScreenshot("profile_screen_comments")
     }
 
     @Test
     fun about() {
         showOwnProfile()
-        composeRule.onNodeWithText("About").performScrollTo().performClick()
+        composeRule.onNodeWithText("About").performScrollTo().clickWithoutRipple()
         composeRule.saveScreenshot("profile_screen_about")
     }
 
