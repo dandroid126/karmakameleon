@@ -32,7 +32,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.karmakameleon.android.ui.theme.postFlairColors
 import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.VoteState
@@ -46,15 +45,14 @@ internal val Post.hasFlairs: Boolean
 /** The NSFW, spoiler and pinned chips, then the subreddit's flair. */
 @Composable
 internal fun RowScope.PostFlairChips(post: Post) {
-    val postFlairColors = postFlairColors()
     if (post.isNsfw) {
-        FlairChip(text = "NSFW", color = postFlairColors.nsfwColor)
+        NsfwChip()
     }
     if (post.isSpoiler) {
-        FlairChip(text = "Spoiler", color = postFlairColors.spoilerColor)
+        SpoilerChip()
     }
     if (post.isStickied) {
-        FlairChip(text = "Pinned", color = postFlairColors.pinnedColor)
+        PinnedChip()
     }
     post.linkFlairText?.let { flair ->
         SubredditFlairChip(text = flair, backgroundColor = post.linkFlairBackgroundColor)

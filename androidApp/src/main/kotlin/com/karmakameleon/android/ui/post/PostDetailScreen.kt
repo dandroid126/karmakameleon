@@ -92,7 +92,6 @@ import com.karmakameleon.android.data.PendingQuote
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.CommentActions
 import com.karmakameleon.android.ui.components.CommentItem
-import com.karmakameleon.android.ui.components.FlairChip
 import com.karmakameleon.android.ui.components.FullScreenImageViewer
 import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
@@ -110,7 +109,6 @@ import com.karmakameleon.android.ui.components.gifMenuItems
 import com.karmakameleon.android.ui.components.imageMenuItems
 import com.karmakameleon.android.ui.components.showShortToast
 import com.karmakameleon.android.ui.components.videoMenuItems
-import com.karmakameleon.android.ui.theme.postFlairColors
 import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.SettingsRepository
