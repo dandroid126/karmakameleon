@@ -4,9 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
+import com.karmakameleon.shared.data.repository.CommentImageRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
+import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
@@ -17,6 +19,7 @@ import com.karmakameleon.shared.ui.comment.FlatCommentItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -49,12 +52,14 @@ class PostDetailViewModel(
     private val userRepository: UserRepository,
     commentDraftRepository: CommentDraftRepository,
     private val settingsRepository: SettingsRepository,
+    private val subredditRepository: SubredditRepository? = null,
+    commentImageRepository: CommentImageRepository? = null,
 ) : ViewModel() {
     private val subreddit = target.subreddit
     private val postId = target.postId
     private val commentId = target.commentId
     private val context = target.context
-    val commentViewModel = CommentViewModel(commentRepository, commentDraftRepository)
+    val commentViewModel = CommentViewModel(commentRepository, commentDraftRepository, commentImageRepository)
 
     private val _uiState =
         MutableStateFlow(
@@ -83,8 +88,18 @@ class PostDetailViewModel(
         if (userRepository.isLoggedIn.value && userRepository.currentAccount.value == null) {
             viewModelScope.launch { userRepository.loadCurrentUser() }
         }
+        loadCommentMediaRules()
         _uiState.update { it.copy(focusedCommentId = commentId) }
         loadPostWithComments()
+    }
+
+    // What the subreddit allows in comments, which decides whether replies can have images. Only a logged-in user replies.
+    private fun loadCommentMediaRules() {
+        val repository = subredditRepository ?: return
+        viewModelScope.launch {
+            userRepository.isLoggedIn.first { it }
+            repository.getSubreddit(subreddit).onSuccess(commentViewModel::setCommentSubreddit)
+        }
     }
 
     fun navigateToComment(newCommentId: String) = reloadComments(focusedCommentId = newCommentId, errorMessage = "Failed to load comment")

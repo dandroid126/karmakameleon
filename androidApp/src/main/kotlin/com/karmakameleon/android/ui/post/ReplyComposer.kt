@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.karmakameleon.android.ui.components.ReplyBar
+import com.karmakameleon.android.ui.components.ReplyImageActions
 import com.karmakameleon.shared.ui.comment.CommentUiState
 
 /** Whether closing the reply or edit in progress would lose text that isn't saved as a draft. */
@@ -71,6 +72,11 @@ internal data class ReplyActions(
     val requestClose: () -> Unit,
     val saveDraft: () -> Unit,
     val loadDraft: (String) -> Unit,
+    val attachImage: (location: String, mimeType: String?, linkUrl: String?) -> String? = { _, _, _ -> null },
+    val attachImageFromUrl: (String) -> String? = { null },
+    val retryImage: (String) -> Unit = {},
+    val removeImage: (String) -> Unit = {},
+    val explainImagesDisabled: () -> Unit = {},
 )
 
 /** The reply bar, while a reply or an edit is in progress. */
@@ -93,6 +99,21 @@ internal fun PostReplyBar(
         hasDraft = draft != null,
         showDraftControls = true,
         placeholder = if (isEditing) "Edit comment..." else "Write a reply...",
+        images =
+            if (commentState.supportsImages) {
+                ReplyImageActions(
+                    images = commentState.replyImages,
+                    showsButton = commentState.showsImageButton,
+                    canAddImages = commentState.canAddImages,
+                    explainDisabled = actions.explainImagesDisabled,
+                    attachImage = actions.attachImage,
+                    attachImageFromUrl = actions.attachImageFromUrl,
+                    retryImage = actions.retryImage,
+                    removeImage = actions.removeImage,
+                )
+            } else {
+                null
+            },
     )
 }
 

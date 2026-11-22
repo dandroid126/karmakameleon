@@ -158,6 +158,7 @@ fun PostDetailScreen(
         listOfNotNull(uiState.post?.selfText) + commentState.comments.commentBodies()
     }
     ShowActionErrors(uiState.actionError, onConsumeError = viewModel::clearActionError)
+    ShowActionErrors(commentState.imageMessage, onConsumeError = viewModel.commentViewModel::clearImageMessage)
     ConsumePendingQuotes { text -> viewModel.handleQuote(text, commentState) }
     val replyActions = viewModel.replyActions(commentState, screen.draftDialogs, context)
     val isReplying = commentState.editingCommentId != null || commentState.replyingTo != null
@@ -264,6 +265,11 @@ private fun PostDetailViewModel.replyActions(
         showShortToast(context, "Draft saved")
     },
     loadDraft = { draft -> dialogs.requestLoadDraft(draft, commentState.replyText, commentViewModel::applyDraft) },
+    attachImage = commentViewModel::attachImage,
+    attachImageFromUrl = commentViewModel::attachImageFromUrl,
+    retryImage = commentViewModel::retryImage,
+    removeImage = commentViewModel::removeImage,
+    explainImagesDisabled = commentViewModel::explainImagesDisabled,
 )
 
 // Voting again in the same direction removes the vote.

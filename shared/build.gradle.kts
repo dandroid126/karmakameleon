@@ -58,6 +58,7 @@ kotlin {
             implementation(libs.ktor.http)
             implementation(libs.ktor.serialization)
             implementation(libs.ktor.utils)
+            implementation(libs.ktor.io)
             implementation(libs.napier)
         }
 

@@ -26,6 +26,8 @@ data class CommentDto(
     val likes: Boolean? = null,
     val depth: Int = 0,
     val replies: JsonElement? = null, // Can be empty string or object
+    // Images uploaded into the comment, by their asset ID.
+    @SerialName("media_metadata") val mediaMetadata: Map<String, MediaMetadataDto>? = null,
     @SerialName("author_flair_text") val authorFlairText: String? = null,
     @SerialName("author_flair_background_color") val authorFlairBackgroundColor: String? = null,
     @SerialName("author_flair_richtext") val authorFlairRichtext: List<FlairRichtextDto>? = null,

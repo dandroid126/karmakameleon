@@ -37,6 +37,7 @@ import com.karmakameleon.shared.domain.model.Subreddit
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
 import com.karmakameleon.shared.domain.model.UserSubreddit
+import com.karmakameleon.shared.domain.model.withProcessedMedia
 import com.karmakameleon.shared.util.RedditLink
 import com.karmakameleon.shared.util.markdown.decodeHtmlEntities
 import com.karmakameleon.shared.util.parseRedditLink
@@ -67,6 +68,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.doubleOrNull
@@ -211,7 +213,11 @@ internal class RedditParser(
                 null
             } else {
                 // The action has no scheme, like "//reddit-uploaded-media.s3-accelerate.amazonaws.com".
-                UploadLease(uploadUrl = if (action.startsWith("//")) "https:$action" else action, fields = fields, assetId = assetId)
+                UploadLease(
+                    uploadUrl = if (action.startsWith("//")) "https:$action" else action,
+                    fields = fields,
+                    assetId = assetId,
+                )
             }
         } catch (e: IllegalArgumentException) {
             Napier.e("Failed to parse upload lease", e)
@@ -400,6 +406,17 @@ internal class RedditParser(
                 },
         )
 
+    // The comment's images that Reddit has finished processing, by media ID: the GIF itself for a GIF.
+    private fun readyMedia(mediaMetadata: Map<String, MediaMetadataDto>?): Map<String, String> =
+        mediaMetadata
+            .orEmpty()
+            .mapNotNull { (id, media) ->
+                media.s
+                    ?.let { it.gif ?: it.u }
+                    ?.takeIf { media.status == "valid" }
+                    ?.let { id to it }
+            }.toMap()
+
     private fun mapComment(
         dto: CommentDto,
         depth: Int,
@@ -407,6 +424,7 @@ internal class RedditParser(
         val replies = parseReplies(dto.replies, depth + 1)
         val commentReplies = replies.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
         val moreReplies = replies.filterIsInstance<CommentOrMore.More>().firstOrNull()?.more
+        val readyMedia = readyMedia(dto.mediaMetadata)
 
         return Comment(
             id = dto.id,
@@ -414,7 +432,9 @@ internal class RedditParser(
             parentId = dto.parentId,
             linkId = dto.linkId,
             author = dto.author,
-            body = dto.body,
+            body = dto.body.withProcessedMedia(readyMedia),
+            sourceBody = dto.body,
+            readyMedia = readyMedia,
             bodyHtml = dto.bodyHtml,
             score = dto.score,
             created = dto.created.toLong(),

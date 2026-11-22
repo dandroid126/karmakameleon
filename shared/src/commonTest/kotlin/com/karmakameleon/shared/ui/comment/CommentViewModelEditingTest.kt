@@ -20,6 +20,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -28,7 +29,8 @@ import kotlin.test.assertTrue
 class CommentViewModelEditingTest {
     private val fakeApi = FakeRedditApi()
     private val draftRepo = CommentDraftRepository(MapSettings())
-    private val viewModel = CommentViewModel(CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)), draftRepo)
+    private val markdown = MarkdownRepository(Dispatchers.Main)
+    private val viewModel = CommentViewModel(CommentRepository(fakeApi, markdown), draftRepo)
     private val more = createTestMoreComments(id = "m1", name = "t1_m1", parentId = "t3_abc123", depth = 0)
 
     @BeforeTest
@@ -138,6 +140,39 @@ class CommentViewModelEditingTest {
             assertNull(viewModel.uiState.value.editingCommentId)
             assertEquals("", viewModel.uiState.value.replyText)
             assertNull(draftRepo.loadDraft("c2"))
+        }
+
+    @Test
+    fun submitEdit_keepsShowingImagesThatWerePlaceholders() =
+        runTest {
+            val stuck =
+                comment("c3").copy(
+                    body = "Look ![img](https://i.redd.it/a.gif)",
+                    sourceBody = "Look *Processing img a...*",
+                    readyMedia = mapOf("a" to "https://i.redd.it/a.gif"),
+                )
+            viewModel.setComments(listOf(CommentOrMore.CommentItem(stuck)))
+            viewModel.startEditComment(stuck)
+            viewModel.setReplyText("Look here *Processing img a...*")
+
+            viewModel.submitEdit()
+            advanceUntilIdle()
+
+            assertEquals(listOf("t1_c3" to "Look here *Processing img a...*"), fakeApi.editedComments)
+            val edited = viewModel.findCommentById("c3")
+            assertEquals("Look here ![img](https://i.redd.it/a.gif)", edited?.body)
+            assertEquals("Look here *Processing img a...*", edited?.sourceBody)
+            // Parsed as shown, so the comment's view doesn't wait for it.
+            assertNotNull(markdown.cached("Look here ![img](https://i.redd.it/a.gif)"))
+        }
+
+    @Test
+    fun startEditComment_startsFromRedditsText() =
+        runTest {
+            viewModel.startEditComment(comment("c1").copy(body = "![img](https://i.redd.it/a.gif)", sourceBody = "*Processing img a...*"))
+
+            assertEquals("*Processing img a...*", viewModel.uiState.value.replyText)
+            assertEquals("*Processing img a...*", viewModel.uiState.value.editingOriginalText)
         }
 
     @Test
