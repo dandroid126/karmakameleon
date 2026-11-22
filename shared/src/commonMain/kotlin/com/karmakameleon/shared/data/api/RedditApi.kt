@@ -42,6 +42,7 @@ import com.karmakameleon.shared.util.parseRedditLink
 import com.karmakameleon.shared.util.runSuspendCatching
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.forms.formData
@@ -96,6 +97,8 @@ open class RedditApi(
         const val BASE_URL = "https://oauth.reddit.com"
         const val WWW_URL = "https://www.reddit.com"
         const val AUTH_URL = "https://www.reddit.com/api/v1"
+
+        private const val UPLOAD_TIMEOUT_MILLIS = 5 * 60 * 1000L
 
         // Reddit's /api/info returns at most 100 items per request.
         private const val MAX_SUBREDDITS_PER_INFO_REQUEST = 100
@@ -475,7 +478,10 @@ open class RedditApi(
                             },
                         )
                     },
-            )
+            ) {
+                // The client's 30-second limit is for API calls. A 20 MB image on a slow connection takes longer.
+                timeout { requestTimeoutMillis = UPLOAD_TIMEOUT_MILLIS }
+            }
         response.bodyAsText() // Always read the body, which releases the connection.
         check(response.status.isSuccess()) { "Couldn't upload the image (HTTP ${response.status.value})" }
         return lease.assetId

@@ -3,6 +3,7 @@ package com.karmakameleon.shared.data.api
 import com.karmakameleon.shared.testing.MockReddit
 import com.karmakameleon.shared.testing.form
 import io.ktor.client.engine.mock.toByteArray
+import io.ktor.client.plugins.HttpTimeoutCapability
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -44,6 +45,8 @@ class RedditApiCommentImageTest {
             )
             assertEquals(MockReddit.UPLOAD_URL, upload.url.toString())
             assertNull(upload.headers[HttpHeaders.Authorization])
+            // Longer than API calls get, for big images on slow connections.
+            assertEquals(5 * 60 * 1000L, upload.getCapabilityOrNull(HttpTimeoutCapability)?.requestTimeoutMillis)
             // The lease's fields come first, in order, then the file.
             val body = upload.body.toByteArray().decodeToString()
             val key = body.indexOf("name=\"key\"")
