@@ -33,6 +33,8 @@ data class Comment(
     val edited: Long?, // timestamp if edited, null if not
     val subreddit: String,
     val permalink: String,
+    // Reddit's text, which an edit starts from. [body] can differ: it shows images in place of their placeholders.
+    val sourceBody: String = body,
 ) {
     val voteState: VoteState get() =
         when (likes) {

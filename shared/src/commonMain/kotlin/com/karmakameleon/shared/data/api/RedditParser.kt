@@ -439,6 +439,7 @@ internal class RedditParser(
             linkId = dto.linkId,
             author = dto.author,
             body = withProcessedMedia(dto.body, dto.mediaMetadata),
+            sourceBody = dto.body,
             bodyHtml = dto.bodyHtml,
             score = dto.score,
             created = dto.created.toLong(),

@@ -207,6 +207,14 @@ class RedditParserCommentTest {
     }
 
     @Test
+    fun comment_keepsRedditsTextForEditing() {
+        assertEquals(
+            "Look: *Processing img 2sh3c89s183i1...*\n\n*Processing img abc...* *Processing img gone...*",
+            commentWithPlaceholder(status = "valid").sourceBody,
+        )
+    }
+
+    @Test
     fun comment_keepsThePlaceholderOfAnImageThatIsntReady() {
         assertTrue(commentWithPlaceholder(status = "unprocessed").body.startsWith("Look: *Processing img 2sh3c89s183i1...*"))
     }

@@ -69,7 +69,7 @@ class CommentRepository(
         runSuspendCatching {
             check(redditApi.editComment(comment.name, text)) { "Edit failed" }
             markdownRepository.parse(text)
-            comment.copy(body = text)
+            comment.copy(body = text, sourceBody = text)
         }
 
     suspend fun deleteComment(comment: Comment): Result<Unit> =

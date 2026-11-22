@@ -237,9 +237,9 @@ class CommentViewModel(
         _uiState.update {
             it.copy(
                 editingCommentId = comment.id,
-                editingOriginalText = comment.body,
+                editingOriginalText = comment.sourceBody,
                 replyingTo = null,
-                replyText = comment.body,
+                replyText = comment.sourceBody,
                 savedDraftText = draft,
                 // Images can't be added to an edit, so the reply's are dropped.
                 replyImages = emptyList(),

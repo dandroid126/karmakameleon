@@ -141,6 +141,15 @@ class CommentViewModelEditingTest {
         }
 
     @Test
+    fun startEditComment_startsFromRedditsText() =
+        runTest {
+            viewModel.startEditComment(comment("c1").copy(body = "![img](https://i.redd.it/a.gif)", sourceBody = "*Processing img a...*"))
+
+            assertEquals("*Processing img a...*", viewModel.uiState.value.replyText)
+            assertEquals("*Processing img a...*", viewModel.uiState.value.editingOriginalText)
+        }
+
+    @Test
     fun submitEdit_keepsEditingWhenItFails() =
         runTest {
             fakeApi.editCommentResult = false
