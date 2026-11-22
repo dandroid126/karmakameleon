@@ -1,6 +1,7 @@
 package com.karmakameleon.android.ui.post
 
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -8,6 +9,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.replaceText
 import androidx.test.espresso.matcher.ViewMatchers.withHint
@@ -25,11 +28,13 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.core.context.GlobalContext
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 // The post and comments in post_with_comments.json.
 const val POST_TITLE = "First day of the NBA season... Hit it, Mr. Tesh!"
@@ -89,7 +94,7 @@ class PostDetailScreenTest {
     fun showsThePostAndItsComments() {
         showPost()
         composeRule.onNodeWithText(POST_TITLE).assertExists()
-        composeRule.onNodeWithText("68 comments").assertExists()
+        composeRule.onNodeWithContentDescription("68 comments").assertExists()
         composeRule.onNodeWithText(FIRST_COMMENT, substring = true).assertExists()
         composeRule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Load 1 more reply"))
     }
@@ -134,6 +139,16 @@ class PostDetailScreenTest {
         composeRule.onNodeWithText("r/nba").performClick()
         composeRule.onNodeWithText("u/user18").performClick()
         assertEquals(listOf("subreddit nba", "user user18"), calls)
+    }
+
+    // On a 360 dp screen, the tests' size, the row of post actions ran past the edge, which cut off all but a sliver
+    // of the Reply button (#87). Text only takes its real width with native graphics, as in the screenshot tests.
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun replyButtonFitsOnANarrowScreen() {
+        showPost()
+        val reply = composeRule.onNodeWithContentDescription("Reply").getBoundsInRoot()
+        assertTrue("Reply is ${reply.width} wide", reply.width >= 40.dp)
     }
 
     @Test
