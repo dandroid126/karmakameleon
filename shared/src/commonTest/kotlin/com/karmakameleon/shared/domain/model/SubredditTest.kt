@@ -29,4 +29,24 @@ class SubredditTest {
         assertFalse(sub.isPublic)
         assertFalse(sub.isPrivate)
     }
+
+    @Test
+    fun allowsCommentImage_needsStaticForImagesAndAnimatedForGifs() {
+        val staticOnly = createTestSubreddit(allowedMediaInComments = setOf("static", "giphy"))
+        assertTrue(staticOnly.allowsCommentImage("image/jpeg"))
+        assertTrue(staticOnly.allowsCommentImage("IMAGE/PNG"))
+        // GIPHY's GIFs are a different thing from an uploaded GIF.
+        assertFalse(staticOnly.allowsCommentImage("image/gif"))
+
+        val animatedOnly = createTestSubreddit(allowedMediaInComments = setOf("animated"))
+        assertTrue(animatedOnly.allowsCommentImage("image/gif"))
+        assertFalse(animatedOnly.allowsCommentImage("image/webp"))
+    }
+
+    @Test
+    fun allowsCommentImage_falseForWhatIsntAnImage() {
+        val sub = createTestSubreddit(allowedMediaInComments = setOf("static", "animated", "video"))
+        assertFalse(sub.allowsCommentImage("video/mp4"))
+        assertFalse(createTestSubreddit().allowsCommentImage("image/jpeg"))
+    }
 }

@@ -1,10 +1,12 @@
 package com.karmakameleon.android.di
 
 import com.karmakameleon.android.data.ContentResolverBackupFiles
+import com.karmakameleon.android.data.ContentResolverImageFiles
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.TableColumnWidths
 import com.karmakameleon.android.ui.menu.GlobalMenuManager
 import com.karmakameleon.shared.data.backup.BackupFiles
+import com.karmakameleon.shared.data.media.ImageFiles
 import com.karmakameleon.shared.di.platformModule
 import com.karmakameleon.shared.di.sharedModule
 import com.karmakameleon.shared.ui.feed.FeedViewModel
@@ -23,6 +25,7 @@ val androidModule =
         single { GlobalMenuManager() }
         single { TableColumnWidths() }
         single<BackupFiles> { ContentResolverBackupFiles(androidContext().contentResolver) }
+        single<ImageFiles> { ContentResolverImageFiles(androidContext().contentResolver) }
         // ViewModels (Android-specific registration using viewModel DSL)
         viewModel { FeedViewModel(get(), get(), get()) }
         viewModel { params -> PostDetailViewModel(params.get(), get(), get(), get(), get(), get()) }

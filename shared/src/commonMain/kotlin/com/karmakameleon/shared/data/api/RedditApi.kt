@@ -42,8 +42,11 @@ import com.karmakameleon.shared.util.parseRedditLink
 import com.karmakameleon.shared.util.runSuspendCatching
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.forms.FormDataContent
+import io.ktor.client.request.forms.formData
+import io.ktor.client.request.forms.submitFormWithBinaryData
 import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.parameter
@@ -52,6 +55,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -93,6 +97,8 @@ open class RedditApi(
         const val BASE_URL = "https://oauth.reddit.com"
         const val WWW_URL = "https://www.reddit.com"
         const val AUTH_URL = "https://www.reddit.com/api/v1"
+
+        private const val UPLOAD_TIMEOUT_MILLIS = 5 * 60 * 1000L
 
         // Reddit's /api/info returns at most 100 items per request.
         private const val MAX_SUBREDDITS_PER_INFO_REQUEST = 100
@@ -417,12 +423,72 @@ open class RedditApi(
     open suspend fun submitComment(
         parentId: String,
         text: String,
+    ): Comment? = postComment(parentId, "text" to text)
+
+    /** Submits a comment as a richtext document from [convertToRichtext], which is how a comment gets an uploaded image. */
+    open suspend fun submitRichtextComment(
+        parentId: String,
+        richtext: JsonObject,
+    ): Comment? = postComment(parentId, "richtext_json" to richtext.toString())
+
+    private suspend fun postComment(
+        parentId: String,
+        content: Pair<String, String>,
     ): Comment? {
-        val response = postForm("/api/comment", "api_type" to "json", "thing_id" to parentId, "text" to text)
+        val response = postForm("/api/comment", "api_type" to "json", "thing_id" to parentId, content)
         // Reddit reports errors such as rate limits in the body, with a success status too.
         parser.parseApiErrors(response.body)?.let { throw it }
         return if (response.isSuccess) parser.submittedComment(response.body) else null
     }
+
+    /**
+     * Converts a comment's markdown to Reddit's richtext document. An uploaded image goes in the markdown as
+     * `![img](<asset ID>)`, the ID [uploadCommentImage] returns.
+     */
+    open suspend fun convertToRichtext(markdown: String): JsonObject {
+        val response = postForm("/api/convert_rte_body_format", "output_mode" to "rtjson", "markdown_text" to markdown)
+        parser.parseApiErrors(response.body)?.let { throw it }
+        check(response.isSuccess) { "Couldn't prepare the comment's images (HTTP error)" }
+        return parser.richtextDocument(response.body) ?: error("Couldn't prepare the comment's images")
+    }
+
+    /** Uploads an image to put in a comment, and returns its asset ID. */
+    open suspend fun uploadCommentImage(
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray,
+    ): String {
+        val leaseResponse = postForm("/api/media/asset.json", "filepath" to fileName, "mimetype" to mimeType)
+        parser.parseApiErrors(leaseResponse.body)?.let { throw it }
+        check(leaseResponse.isSuccess) { "Reddit didn't accept the image upload" }
+        val lease = parser.uploadLease(leaseResponse.body) ?: error("Reddit didn't accept the image upload")
+        // The upload goes to Amazon S3, so it must not carry the Reddit token that authenticatedRequest adds.
+        val response =
+            httpClient.submitFormWithBinaryData(
+                url = lease.uploadUrl,
+                formData =
+                    formData {
+                        lease.fields.forEach { (name, value) -> append(name, value) }
+                        append(
+                            "file",
+                            bytes,
+                            Headers.build {
+                                append(HttpHeaders.ContentType, mimeType)
+                                append(HttpHeaders.ContentDisposition, "filename=\"${fileName.toSafeFileName()}\"")
+                            },
+                        )
+                    },
+            ) {
+                // The client's 30-second limit is for API calls. A 20 MB image on a slow connection takes longer.
+                timeout { requestTimeoutMillis = UPLOAD_TIMEOUT_MILLIS }
+            }
+        response.bodyAsText() // Always read the body, which releases the connection.
+        check(response.status.isSuccess()) { "Couldn't upload the image (HTTP ${response.status.value})" }
+        return lease.assetId
+    }
+
+    // The name goes in a quoted header value, so drop what would end it or the header.
+    private fun String.toSafeFileName(): String = filterNot { it == '"' || it == '\\' || it == '\r' || it == '\n' }.ifEmpty { "image" }
 
     open suspend fun editComment(
         thingId: String,

@@ -57,6 +57,7 @@ class RedditParserTest {
         assertEquals("public", subreddit.subredditType)
         assertTrue(subreddit.allowImages)
         assertFalse(subreddit.allowVideos)
+        assertEquals(setOf("video"), subreddit.allowedMediaInComments)
     }
 
     @Test

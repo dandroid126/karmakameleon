@@ -30,6 +30,7 @@ data class SubredditDto(
     @SerialName("allow_images") val allowImages: Boolean = true,
     @SerialName("allow_videos") val allowVideos: Boolean = true,
     @SerialName("allow_polls") val allowPolls: Boolean = true,
+    @SerialName("allowed_media_in_comments") val allowedMediaInComments: List<String> = emptyList(),
     @SerialName("spoilers_enabled") val spoilersEnabled: Boolean = true,
     @SerialName("user_is_moderator") val userIsModerator: Boolean = false,
     @SerialName("user_is_banned") val userIsBanned: Boolean = false,

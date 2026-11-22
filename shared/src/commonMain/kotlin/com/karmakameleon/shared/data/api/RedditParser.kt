@@ -165,25 +165,72 @@ internal class RedditParser(
             null
         }
 
-    /** The comment in a response to submitting one, or null if it can't be read. */
+    /**
+     * The comment in a response to submitting one, or null if it can't be read. A comment sent as richtext comes back as
+     * the bare comment object, not wrapped in `json.data.things` like one sent as text.
+     */
     fun submittedComment(body: String): Comment? =
         try {
-            val data =
-                json
-                    .parseToJsonElement(body)
-                    .jsonObject["json"]
-                    ?.jsonObject
-                    ?.get("data")
-                    ?.jsonObject
-            val thing =
-                data
-                    ?.get("things")
-                    ?.jsonArray
-                    ?.firstOrNull()
-                    ?.jsonObject
-            thing?.get("data")?.let { comment(it) }
+            val response = json.parseToJsonElement(body).jsonObject
+            val wrapped = response["json"]
+            if (wrapped == null) {
+                response.takeIf { it["name"]?.jsonPrimitive?.content?.startsWith("t1_") == true }?.let { comment(it) }
+            } else {
+                val thing =
+                    wrapped.jsonObject["data"]
+                        ?.jsonObject
+                        ?.get("things")
+                        ?.jsonArray
+                        ?.firstOrNull()
+                        ?.jsonObject
+                thing?.get("data")?.let { comment(it) }
+            }
         } catch (e: IllegalArgumentException) {
             Napier.e("Failed to parse comment response", e)
+            null
+        }
+
+    /** Where and how to upload a comment's image, from the response to asking for an upload lease, or null if it can't be read. */
+    fun uploadLease(body: String): UploadLease? =
+        try {
+            val response = json.parseToJsonElement(body).jsonObject
+            val args = response["args"]?.jsonObject
+            val action = args?.get("action")?.jsonPrimitive?.content
+            val assetId =
+                response["asset"]
+                    ?.jsonObject
+                    ?.get("asset_id")
+                    ?.jsonPrimitive
+                    ?.content
+            val fields =
+                args?.get("fields")?.jsonArray?.map {
+                    val field = it.jsonObject
+                    field.getValue("name").jsonPrimitive.content to field.getValue("value").jsonPrimitive.content
+                }
+            if (action == null || assetId == null || fields == null) {
+                null
+            } else {
+                // The action has no scheme, like "//reddit-uploaded-media.s3-accelerate.amazonaws.com".
+                UploadLease(uploadUrl = if (action.startsWith("//")) "https:$action" else action, fields = fields, assetId = assetId)
+            }
+        } catch (e: IllegalArgumentException) {
+            Napier.e("Failed to parse upload lease", e)
+            null
+        } catch (e: NoSuchElementException) {
+            Napier.e("Upload lease field without a name or value", e)
+            null
+        }
+
+    /** The richtext document in a response to converting markdown, or null if it can't be read. */
+    fun richtextDocument(body: String): JsonObject? =
+        try {
+            json
+                .parseToJsonElement(body)
+                .jsonObject["output"]
+                ?.jsonObject
+                ?.takeIf { it["document"] != null }
+        } catch (e: IllegalArgumentException) {
+            Napier.e("Failed to parse converted richtext", e)
             null
         }
 
@@ -491,6 +538,7 @@ internal class RedditParser(
             userIsBanned = dto.userIsBanned,
             userIsContributor = dto.userIsContributor,
             userIsMuted = dto.userIsMuted,
+            allowedMediaInComments = dto.allowedMediaInComments.toSet(),
         )
 
     private fun mapUser(dto: UserDto): User =
