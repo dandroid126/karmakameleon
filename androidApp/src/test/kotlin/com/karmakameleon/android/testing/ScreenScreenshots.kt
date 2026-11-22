@@ -38,8 +38,9 @@ fun ComposeContentTestRule.saveScreenshot(name: String) {
 }
 
 /**
- * Clicks the node without touching the screen, for a click just before [saveScreenshot]. A touch starts a ripple, and
- * on Robolectric the ripple keeps growing instead of fading out, so it would show in the screenshot.
+ * Clicks the node without touching the screen, for a click just before [saveScreenshot] or [saveScreenshotWithDialog].
+ * A touch starts a ripple, and on Robolectric the ripple keeps growing instead of fading out, so it would show in the
+ * screenshot.
  */
 fun SemanticsNodeInteraction.clickWithoutRipple() {
     performSemanticsAction(SemanticsActions.OnClick)
