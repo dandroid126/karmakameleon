@@ -134,6 +134,40 @@ class InboxViewModelTest {
 
     // ==================== Filtering ====================
 
+    // A notification opens the inbox at Unread while the first load, of all messages, is still running (#87). That
+    // load is cancelled, so its answer can't land after the switch and replace the unread messages.
+    @Test
+    fun setFilter_whileTheFirstLoadRuns_dropsItsAnswer() =
+        runTest {
+            fakeApi.responseDelayMillis = 1_000
+            fakeApi.inboxResult = createTestListing(items = listOf(createTestMessage(id = "all")))
+            fakeApi.meResult = createTestUser()
+            userRepo.loadCurrentUser()
+            advanceTimeBy(500)
+            runCurrent()
+            assertEquals(listOf(InboxFilter.ALL), fakeApi.inboxRequests)
+
+            fakeApi.inboxResult = createTestListing(items = listOf(createTestMessage(id = "unread")))
+            viewModel.setFilter(InboxFilter.UNREAD)
+            // Past the moment the first load's answer would have come.
+            advanceTimeBy(600)
+            runCurrent()
+            assertTrue(
+                viewModel.uiState.value.messages
+                    .isEmpty(),
+            )
+            assertTrue(viewModel.uiState.value.isLoading)
+
+            advanceUntilIdle()
+            assertEquals(listOf(InboxFilter.ALL, InboxFilter.UNREAD), fakeApi.inboxRequests)
+            assertEquals(
+                listOf("unread"),
+                viewModel.uiState.value.messages
+                    .map { it.id },
+            )
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
+
     @Test
     fun setFilter_loadsThatFilter() =
         runTest {

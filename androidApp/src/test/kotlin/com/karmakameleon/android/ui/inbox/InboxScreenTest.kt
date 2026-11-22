@@ -119,6 +119,7 @@ class InboxScreenTest {
 
     // A notification opens the inbox at Unread while the first load, of all messages, is running. It used to keep that
     // load and never ask for the unread ones, so the list showed every message under the Unread filter (#87).
+    // InboxViewModelTest checks that the first load's answer is dropped.
     @Test
     fun openingAtAFilterLoadsIt() {
         fakeReddit.loggedIn = true
