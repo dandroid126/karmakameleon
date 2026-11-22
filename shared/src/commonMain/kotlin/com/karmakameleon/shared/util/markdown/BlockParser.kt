@@ -47,6 +47,25 @@ fun parseMarkdownBlocks(markdown: String): List<MarkdownBlock> {
     return if (firstPass.found.isEmpty()) blocks else parseBlocks(lines, LinkReferences(known = firstPass.found))
 }
 
+/**
+ * The first [maxChars] of [markdown], parsed with the link definitions from all of it, for a preview that only shows
+ * the start. Definitions usually come at the end of a post, past the cut, and without them `[text][1]` stays as it is.
+ * They're found with a line match instead of a full parse, which is what the cut saves.
+ */
+internal fun parseMarkdownStart(
+    markdown: String,
+    maxChars: Int,
+): List<MarkdownBlock> {
+    if (markdown.length <= maxChars) return parseMarkdownBlocks(markdown)
+    val definitions = mutableMapOf<String, String>()
+    markdown
+        .lineSequence()
+        .filter { "]:" in it }
+        .mapNotNull { linkDefinitionRegex.matchEntire(it)?.destructured }
+        .forEach { (label, url) -> definitions.getOrPut(normalizeLinkLabel(label)) { decodeLinkUrl(url) } }
+    return parseBlocks(markdown.take(maxChars).lines(), LinkReferences(known = definitions))
+}
+
 // The URLs of reference links, by normalized label: the known ones, which links use, and the ones found while
 // parsing. Like on Reddit, the first definition of a label wins.
 private class LinkReferences(

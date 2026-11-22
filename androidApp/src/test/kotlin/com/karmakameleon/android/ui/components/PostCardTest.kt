@@ -129,7 +129,7 @@ class PostCardTest {
         composeRule.onNodeWithContentDescription("Upvote").performClick()
         assertEquals("This post is locked and cannot be voted on", ShadowToast.getTextOfLatestToast())
 
-        composeRule.onNodeWithText("56").performClick()
+        composeRule.onNodeWithContentDescription("56 comments").performClick()
         assertEquals("This post is locked and cannot be commented on", ShadowToast.getTextOfLatestToast())
         assertCalls()
     }

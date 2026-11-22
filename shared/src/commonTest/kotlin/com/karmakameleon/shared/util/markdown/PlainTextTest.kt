@@ -29,6 +29,13 @@ class PlainTextTest {
         assertEquals("See the wiki.", markdownPreviewText("See [the wiki][1].\n\n[1]: https://example.com/wiki"))
     }
 
+    // Definitions usually come at the end of a post, past the part that's parsed.
+    @Test
+    fun referenceLinksInALongPostLoseTheirLabels() {
+        val post = "See [the wiki][1].\n\n" + "More text. ".repeat(200) + "\n\n[1]: https://example.com/wiki"
+        assertTrue(markdownPreviewText(post).startsWith("See the wiki.\n"))
+    }
+
     @Test
     fun spoilersStayHidden() {
         val preview = markdownPreviewText("The killer is >!the butler!<.")

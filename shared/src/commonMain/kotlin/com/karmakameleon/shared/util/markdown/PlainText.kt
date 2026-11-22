@@ -16,7 +16,7 @@ internal const val HIDDEN_SPOILER = "[spoiler]"
  * horizontal rules and blank lines are left out (#87).
  */
 fun markdownPreviewText(markdown: String): String =
-    parseMarkdownBlocks(markdown.take(PREVIEW_SOURCE_CHARS))
+    parseMarkdownStart(markdown, PREVIEW_SOURCE_CHARS)
         .mapNotNull { it.plainText()?.trim() }
         .filter { it.isNotEmpty() }
         .joinToString("\n")
