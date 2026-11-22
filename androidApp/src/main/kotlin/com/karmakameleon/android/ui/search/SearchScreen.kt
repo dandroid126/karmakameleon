@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FeedPostItem
+import com.karmakameleon.android.ui.components.LoadError
 import com.karmakameleon.android.ui.components.LoadMoreNearEnd
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
@@ -114,6 +115,7 @@ fun SearchScreen(
                 onSubredditClick = onSubredditClick,
                 onUserClick = onUserClick,
                 onLinkClick = onLinkClick,
+                onRetry = viewModel::search,
                 navigationHandler = navigationHandler,
             )
         }
@@ -131,7 +133,7 @@ fun SearchScreen(
     }
 }
 
-// A prompt before anything is typed, a way to open a pasted Reddit link, or the results.
+// A prompt before anything is typed, a way to open a pasted Reddit link, the error from a failed search, or the results.
 @Composable
 private fun BoxScope.SearchContent(
     uiState: SearchUiState,
@@ -142,9 +144,11 @@ private fun BoxScope.SearchContent(
     onSubredditClick: (String) -> Unit,
     onUserClick: (String) -> Unit,
     onLinkClick: (String) -> Unit,
+    onRetry: () -> Unit,
     navigationHandler: NavigationHandler,
 ) {
     val link = uiState.detectedLink
+    val error = uiState.error
     when {
         uiState.query.isEmpty() -> {
             SearchPrompt()
@@ -164,6 +168,11 @@ private fun BoxScope.SearchContent(
 
         uiState.isLoading && uiState.posts.isEmpty() -> {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        }
+
+        // Only a new search sets the error, so any posts left are from an earlier query.
+        error != null -> {
+            LoadError(error = error, onRetry = onRetry, modifier = Modifier.align(Alignment.Center))
         }
 
         uiState.posts.isEmpty() -> {

@@ -39,11 +39,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FeedPostItem
+import com.karmakameleon.android.ui.components.LoadError
 import com.karmakameleon.android.ui.components.LoadMoreNearEnd
 import com.karmakameleon.android.ui.components.NoPostsMessage
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
-import com.karmakameleon.android.ui.components.PostListError
 import com.karmakameleon.android.ui.components.PostListItem
 import com.karmakameleon.android.ui.components.PostListScaffold
 import com.karmakameleon.android.ui.components.ScrollToTopAfterRefresh
@@ -183,7 +183,7 @@ private fun BoxScope.FeedContent(
         }
 
         postList.error != null && postList.posts.isEmpty() -> {
-            PostListError(
+            LoadError(
                 error = postList.error ?: "Unknown error",
                 onRetry = onRetry,
                 modifier = Modifier.align(Alignment.Center),

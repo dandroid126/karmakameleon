@@ -55,7 +55,8 @@ class SearchViewModel(
                 null
             }
 
-        _uiState.update { it.copy(query = query, detectedLink = link) }
+        // An error is about the query it was for.
+        _uiState.update { it.copy(query = query, detectedLink = link, error = null) }
 
         if (link != null) {
             searchJob?.cancel()

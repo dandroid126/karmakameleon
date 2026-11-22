@@ -252,6 +252,19 @@ class SearchViewModelTest {
             assertFalse(viewModel.uiState.value.isLoading)
         }
 
+    // The error is about the query it was for, so it goes when the query changes, even before the next search runs.
+    @Test
+    fun setQuery_clearsTheError() =
+        runTest {
+            fakeApi.shouldThrow = Exception("No connection")
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            viewModel.setQuery("k")
+
+            assertNull(viewModel.uiState.value.error)
+        }
+
     // ==================== Sort and time filter ====================
 
     @Test
