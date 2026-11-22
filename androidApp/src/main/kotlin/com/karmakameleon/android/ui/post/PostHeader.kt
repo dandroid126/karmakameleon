@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
+import com.karmakameleon.android.ui.components.CommentCountLabel
 import com.karmakameleon.android.ui.components.KeptWhenCollapsed
 import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
@@ -434,11 +435,8 @@ private fun PostHeaderActionRow(
             scoreStyle = MaterialTheme.typography.labelLarge,
         )
 
-        Text(
-            text = "${formatNumber(post.numComments)} comments",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        // An icon and the number, like the feed's cards, so the row fits on a 360 dp screen with the Reply button (#87).
+        CommentCountLabel(count = post.numComments, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
         Spacer(modifier = Modifier.weight(1f))
 

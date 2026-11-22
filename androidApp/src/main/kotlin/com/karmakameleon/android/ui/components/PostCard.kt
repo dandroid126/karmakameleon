@@ -56,6 +56,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -67,7 +69,7 @@ import com.karmakameleon.shared.domain.model.NsfwPreviewMode
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.VoteState
 import com.karmakameleon.shared.util.flairNeedsDarkText
-import com.karmakameleon.shared.util.markdown.decodeHtmlEntities
+import com.karmakameleon.shared.util.markdown.markdownPreviewText
 import com.karmakameleon.shared.util.parseFlairColor
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -215,12 +217,13 @@ private fun PostCardPreview(
                 PostPreviewImage(post = post, lowResUrl = lowResUrl, highResUrl = highResUrl, nsfwPreviewMode = nsfwPreviewMode)
             }
 
-            // Self text preview (plain text, no clickable links), with entities like &amp; shown as their characters
+            // Self text preview: plain text without the markdown syntax, so it has no clickable links
             val selfText = post.selfText
-            if (post.isTextPost && !selfText.isNullOrBlank()) {
+            val preview = remember(selfText) { selfText?.let(::markdownPreviewText).orEmpty() }
+            if (post.isTextPost && preview.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = remember(selfText) { decodeHtmlEntities(selfText) },
+                    text = preview,
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 6,
                     overflow = TextOverflow.Ellipsis,
@@ -364,6 +367,21 @@ private fun PostCommentCount(post: Post) {
                     },
                 ),
     ) {
+        CommentCountLabel(count = post.numComments, color = color)
+    }
+}
+
+/** A chat bubble and the number of comments, read out as "N comments". The feed's cards and the post screen use it. */
+@Composable
+fun CommentCountLabel(
+    count: Int,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.clearAndSetSemantics { contentDescription = "${formatNumber(count)} comments" },
+    ) {
         Icon(
             imageVector = Icons.Outlined.ChatBubbleOutline,
             contentDescription = null,
@@ -372,7 +390,7 @@ private fun PostCommentCount(post: Post) {
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text = formatNumber(post.numComments),
+            text = formatNumber(count),
             style = MaterialTheme.typography.labelMedium,
             color = color,
         )
