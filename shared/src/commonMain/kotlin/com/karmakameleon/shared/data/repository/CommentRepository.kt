@@ -2,6 +2,7 @@ package com.karmakameleon.shared.data.repository
 
 import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.domain.model.withProcessedMedia
 import com.karmakameleon.shared.util.runSuspendCatching
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -69,7 +70,7 @@ class CommentRepository(
         runSuspendCatching {
             check(redditApi.editComment(comment.name, text)) { "Edit failed" }
             markdownRepository.parse(text)
-            comment.copy(body = text, sourceBody = text)
+            comment.copy(body = text.withProcessedMedia(comment.readyMedia), sourceBody = text)
         }
 
     suspend fun deleteComment(comment: Comment): Result<Unit> =

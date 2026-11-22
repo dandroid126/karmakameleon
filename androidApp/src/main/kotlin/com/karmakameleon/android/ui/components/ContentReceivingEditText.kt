@@ -69,9 +69,3 @@ internal class ContentReceivingEditText(
         }
     }
 }
-
-/** The markdown link for an image that can't go in a reply, like the one a keyboard gives for its GIFs. */
-internal fun imageLink(
-    mimeType: String?,
-    linkUrl: String,
-): String = "[${if (mimeType.equals("image/gif", ignoreCase = true)) "GIF" else "image"}]($linkUrl)"

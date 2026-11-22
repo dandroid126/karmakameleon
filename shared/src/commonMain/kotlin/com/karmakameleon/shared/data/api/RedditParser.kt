@@ -37,6 +37,7 @@ import com.karmakameleon.shared.domain.model.Subreddit
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
 import com.karmakameleon.shared.domain.model.UserSubreddit
+import com.karmakameleon.shared.domain.model.withProcessedMedia
 import com.karmakameleon.shared.util.RedditLink
 import com.karmakameleon.shared.util.markdown.decodeHtmlEntities
 import com.karmakameleon.shared.util.parseRedditLink
@@ -77,10 +78,6 @@ import kotlinx.serialization.json.jsonPrimitive
 
 // "%" and two hex digits.
 private const val PERCENT_ESCAPE_LENGTH = 3
-
-// How Reddit writes an uploaded image it hadn't finished processing into a comment's text, like
-// "*Processing img 2sh3c89s183i1...*".
-private val processingPlaceholder = Regex("""\*Processing \w+ ([A-Za-z0-9]+)\.\.\.\*""")
 
 /** Turns Reddit's JSON into the app's models. */
 internal class RedditParser(
@@ -409,20 +406,16 @@ internal class RedditParser(
                 },
         )
 
-    // Reddit writes a comment's text when it's posted. An image it hadn't finished processing by then stays as
-    // "*Processing img <ID>...*" for good, though its media_metadata gets the image once it's ready. This puts the image
-    // in place of each such placeholder whose image is ready.
-    private fun withProcessedMedia(
-        body: String,
-        mediaMetadata: Map<String, MediaMetadataDto>?,
-    ): String {
-        if (mediaMetadata.isNullOrEmpty()) return body
-        return processingPlaceholder.replace(body) { match ->
-            val media = mediaMetadata[match.groupValues[1]]?.takeIf { it.status == "valid" }
-            val url = media?.s?.let { it.gif ?: it.u }
-            if (url != null) "![img]($url)" else match.value
-        }
-    }
+    // The comment's images that Reddit has finished processing, by media ID: the GIF itself for a GIF.
+    private fun readyMedia(mediaMetadata: Map<String, MediaMetadataDto>?): Map<String, String> =
+        mediaMetadata
+            .orEmpty()
+            .mapNotNull { (id, media) ->
+                media.s
+                    ?.let { it.gif ?: it.u }
+                    ?.takeIf { media.status == "valid" }
+                    ?.let { id to it }
+            }.toMap()
 
     private fun mapComment(
         dto: CommentDto,
@@ -431,6 +424,7 @@ internal class RedditParser(
         val replies = parseReplies(dto.replies, depth + 1)
         val commentReplies = replies.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
         val moreReplies = replies.filterIsInstance<CommentOrMore.More>().firstOrNull()?.more
+        val readyMedia = readyMedia(dto.mediaMetadata)
 
         return Comment(
             id = dto.id,
@@ -438,8 +432,9 @@ internal class RedditParser(
             parentId = dto.parentId,
             linkId = dto.linkId,
             author = dto.author,
-            body = withProcessedMedia(dto.body, dto.mediaMetadata),
+            body = dto.body.withProcessedMedia(readyMedia),
             sourceBody = dto.body,
+            readyMedia = readyMedia,
             bodyHtml = dto.bodyHtml,
             score = dto.score,
             created = dto.created.toLong(),

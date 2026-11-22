@@ -46,4 +46,10 @@ internal fun String.replacingImageToken(
     replacement: String = "",
 ): String = IMAGE_TOKEN.replace(this) { match -> if (match.groupValues[1] == key) replacement else match.value }
 
+/** A link to an image that can't be put in the comment itself, like a keyboard's GIF where the subreddit refuses GIFs. */
+fun imageLink(
+    mimeType: String?,
+    linkUrl: String,
+): String = "[${if (isGif(mimeType)) "GIF" else "image"}]($linkUrl)"
+
 internal fun isGif(mimeType: String?) = mimeType.equals("image/gif", ignoreCase = true)

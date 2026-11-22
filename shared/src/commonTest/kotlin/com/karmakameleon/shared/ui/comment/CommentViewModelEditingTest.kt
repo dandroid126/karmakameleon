@@ -141,6 +141,28 @@ class CommentViewModelEditingTest {
         }
 
     @Test
+    fun submitEdit_keepsShowingImagesThatWerePlaceholders() =
+        runTest {
+            val stuck =
+                comment("c3").copy(
+                    body = "Look ![img](https://i.redd.it/a.gif)",
+                    sourceBody = "Look *Processing img a...*",
+                    readyMedia = mapOf("a" to "https://i.redd.it/a.gif"),
+                )
+            viewModel.setComments(listOf(CommentOrMore.CommentItem(stuck)))
+            viewModel.startEditComment(stuck)
+            viewModel.setReplyText("Look here *Processing img a...*")
+
+            viewModel.submitEdit()
+            advanceUntilIdle()
+
+            assertEquals(listOf("t1_c3" to "Look here *Processing img a...*"), fakeApi.editedComments)
+            val edited = viewModel.findCommentById("c3")
+            assertEquals("Look here ![img](https://i.redd.it/a.gif)", edited?.body)
+            assertEquals("Look here *Processing img a...*", edited?.sourceBody)
+        }
+
+    @Test
     fun startEditComment_startsFromRedditsText() =
         runTest {
             viewModel.startEditComment(comment("c1").copy(body = "![img](https://i.redd.it/a.gif)", sourceBody = "*Processing img a...*"))

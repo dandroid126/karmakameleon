@@ -502,7 +502,7 @@ class CommentViewModel(
             return null
         }
         _uiState.update { it.copy(imageMessage = "$refusal, so it was added as a link") }
-        return "[${if (isGif(mimeType)) "GIF" else "image"}]($linkUrl)"
+        return imageLink(mimeType, linkUrl)
     }
 
     // Reads an image, then uploads it if the subreddit allows its type, and returns the token for it.
