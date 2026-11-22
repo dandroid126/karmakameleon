@@ -109,6 +109,41 @@ class SearchScreenTest {
         assertEquals("new", searches().last().query()["sort"])
     }
 
+    // The chip used to do nothing (#87).
+    @Test
+    fun choosingTimeFilterSearchesAgain() {
+        fakeReddit.reddit.respond("/search", postListing())
+        showSearch()
+        type("halloween")
+
+        composeRule.onNodeWithText("All Time").performClick()
+        composeRule.onNodeWithText("This Week").performClick()
+        composeRule.waitForIdle()
+        assertEquals("week", searches().last().query()["t"])
+        composeRule.onNodeWithText("This Week").assertExists()
+    }
+
+    // During the pause before the search runs, the screen shows it's searching instead of "No results found" (#87).
+    @Test
+    fun noResultsMessageWaitsForTheSearch() {
+        showSearch()
+        composeRule.onNode(hasSetTextAction()).performTextInput("zzzz")
+        composeRule.onNodeWithText("No results found").assertDoesNotExist()
+        assertEquals(emptyList<Any>(), searches())
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+        composeRule.onNodeWithText("No results found").assertExists()
+    }
+
+    // One letter isn't searched, so it isn't "No results found" either.
+    @Test
+    fun oneLetterShowsThePrompt() {
+        showSearch()
+        type("z")
+        composeRule.onNodeWithText("Search for posts").assertExists()
+        composeRule.onNodeWithText("No results found").assertDoesNotExist()
+    }
+
     @Test
     fun clearingGoesBackToThePrompt() {
         showSearch()

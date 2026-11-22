@@ -49,15 +49,16 @@ private val sortChoices =
         SortChoice(PostSort.CONTROVERSIAL, Icons.Default.Forum, "Controversial"),
     )
 
-private val timeFilterLabels =
-    listOf(
-        TimeFilter.HOUR to "Now",
-        TimeFilter.DAY to "Today",
-        TimeFilter.WEEK to "This Week",
-        TimeFilter.MONTH to "This Month",
-        TimeFilter.YEAR to "This Year",
-        TimeFilter.ALL to "All Time",
-    )
+/** The name the sort and search sheets show for the time filter. */
+fun TimeFilter.label(): String =
+    when (this) {
+        TimeFilter.HOUR -> "Now"
+        TimeFilter.DAY -> "Today"
+        TimeFilter.WEEK -> "This Week"
+        TimeFilter.MONTH -> "This Month"
+        TimeFilter.YEAR -> "This Year"
+        TimeFilter.ALL -> "All Time"
+    }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,9 +101,9 @@ fun SortBottomSheet(
                     )
                 }
             } else {
-                timeFilterLabels.forEach { (timeFilter, label) ->
+                TimeFilter.entries.forEach { timeFilter ->
                     SortSheetOption(
-                        text = label,
+                        text = timeFilter.label(),
                         selected = currentTimeFilter == timeFilter,
                         onClick = {
                             onSelectTimeFilter(timeFilter)

@@ -55,16 +55,19 @@ class SearchViewModel(
                 null
             }
 
-        // Any search still running is for the old query, so it's cancelled below, and its error goes with it.
+        // Any search still running is for the old query, so it's cancelled below, and its error goes with it. A
+        // query that will be searched counts as loading straight away, so the screen doesn't say "No results found"
+        // during the pause left for more typing.
         searchJob?.cancel()
-        _uiState.update { it.copy(query = query, detectedLink = link, error = null, isLoading = false) }
+        val willSearch = link == null && query.length >= MIN_QUERY_LENGTH
+        _uiState.update { it.copy(query = query, detectedLink = link, error = null, isLoading = willSearch) }
 
         if (link != null) {
             _uiState.update { it.copy(posts = emptyList(), subreddits = emptyList()) }
             return
         }
 
-        if (query.length >= 2) {
+        if (query.length >= MIN_QUERY_LENGTH) {
             searchJob =
                 viewModelScope.launch {
                     delay(SEARCH_DEBOUNCE_MILLIS)
@@ -77,7 +80,7 @@ class SearchViewModel(
 
     // Replaces any search still running, so only the latest one can set the results or the error.
     fun search() {
-        if (_uiState.value.query.length < 2) return
+        if (_uiState.value.query.length < MIN_QUERY_LENGTH) return
         searchJob?.cancel()
         searchJob = viewModelScope.launch { runSearch() }
     }
@@ -152,7 +155,7 @@ class SearchViewModel(
                 after = null,
             )
         }
-        if (_uiState.value.query.length >= 2) {
+        if (_uiState.value.query.length >= MIN_QUERY_LENGTH) {
             search()
         }
     }
@@ -205,6 +208,8 @@ class SearchViewModel(
     }
 
     companion object {
+        /** Shorter queries aren't searched. */
+        const val MIN_QUERY_LENGTH = 2
         private const val SEARCH_DEBOUNCE_MILLIS = 300L
     }
 }
