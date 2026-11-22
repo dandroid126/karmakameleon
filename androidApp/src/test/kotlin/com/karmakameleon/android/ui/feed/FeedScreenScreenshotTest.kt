@@ -5,6 +5,7 @@ import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.testing.captureScreen
 import com.karmakameleon.android.testing.postListing
 import com.karmakameleon.android.ui.components.FakeImagesRule
+import io.ktor.http.HttpStatusCode
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,6 +49,11 @@ class FeedScreenScreenshotTest {
         captureFeed("feed_screen_no_posts")
     }
 
-    // No screenshot of the error yet: its message is laid out edge to edge (#87). FeedScreenTest checks the message
-    // and that Retry works. Add the screenshot with the fix.
+    // The message is centered above Retry and kept off the screen's edges (#87). FeedScreenTest checks that Retry
+    // works.
+    @Test
+    fun error() {
+        fakeReddit.reddit.respond("/hot", "", HttpStatusCode.ServiceUnavailable)
+        captureFeed("feed_screen_error")
+    }
 }

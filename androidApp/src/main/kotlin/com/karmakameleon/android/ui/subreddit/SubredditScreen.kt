@@ -47,11 +47,11 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FeedPostItem
+import com.karmakameleon.android.ui.components.LoadError
 import com.karmakameleon.android.ui.components.LoadMoreNearEnd
 import com.karmakameleon.android.ui.components.NoPostsMessage
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
-import com.karmakameleon.android.ui.components.PostListError
 import com.karmakameleon.android.ui.components.PostListItem
 import com.karmakameleon.android.ui.components.PostListScaffold
 import com.karmakameleon.android.ui.components.ScrollToTopAfterRefresh
@@ -183,10 +183,10 @@ private fun SubredditPostList(
             }
         } else if (postList.error != null && postList.posts.isEmpty()) {
             item {
-                PostListError(
+                LoadError(
                     error = postList.error.orEmpty(),
                     onRetry = onRetry,
-                    modifier = Modifier.fillMaxWidth().padding(32.dp),
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
                 )
             }
         } else {

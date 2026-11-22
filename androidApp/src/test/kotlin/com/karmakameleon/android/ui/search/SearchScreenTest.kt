@@ -13,6 +13,7 @@ import com.karmakameleon.android.ui.components.FakeImagesRule
 import com.karmakameleon.android.ui.feed.FIRST_POST_TITLE
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.testing.query
+import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -79,6 +80,21 @@ class SearchScreenTest {
         type("zzzz")
         composeRule.onNodeWithText("No results found").assertExists()
         assertEquals("zzzz", searches().single().query()["q"])
+    }
+
+    // A failed search used to look like one with no results (#87).
+    @Test
+    fun errorOffersRetry() {
+        fakeReddit.reddit.respond("/search", "", HttpStatusCode.ServiceUnavailable)
+        showSearch()
+        type("halloween")
+        composeRule.onNodeWithText("Reddit is unavailable right now. Try again later.").assertExists()
+        composeRule.onNodeWithText("No results found").assertDoesNotExist()
+
+        fakeReddit.reddit.respond("/search", postListing())
+        composeRule.onNodeWithText("Retry").performClick()
+        composeRule.onNodeWithText(FIRST_POST_TITLE).assertExists()
+        assertEquals(2, searches().size)
     }
 
     @Test

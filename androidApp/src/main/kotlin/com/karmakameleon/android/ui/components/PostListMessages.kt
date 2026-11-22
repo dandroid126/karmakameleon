@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,15 +35,22 @@ fun NoPostsMessage(modifier: Modifier = Modifier) {
     }
 }
 
-/** The error from loading the posts, with a button that loads them again, for when there are no posts to show. */
+/**
+ * The error from a load that left nothing to show, like the posts or the post, with a button that loads it again.
+ * The message is centered and kept off the screen's edges, so a long one wraps under the button instead of running
+ * from edge to edge (#87).
+ */
 @Composable
-fun PostListError(
+fun LoadError(
     error: String,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = error, style = MaterialTheme.typography.bodyLarge)
+    Column(
+        modifier = modifier.padding(horizontal = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(text = error, style = MaterialTheme.typography.bodyLarge, textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(16.dp))
         Button(onClick = onRetry) {
             Text("Retry")

@@ -42,7 +42,6 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -93,6 +92,7 @@ import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.CommentActions
 import com.karmakameleon.android.ui.components.CommentItem
 import com.karmakameleon.android.ui.components.FullScreenImageViewer
+import com.karmakameleon.android.ui.components.LoadError
 import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
 import com.karmakameleon.android.ui.components.MeasureTablesAhead
@@ -576,16 +576,11 @@ private fun PostDetailBody(
                 }
 
                 uiState.error != null && post == null -> {
-                    Column(
+                    LoadError(
+                        error = uiState.error.orEmpty(),
+                        onRetry = listActions.onRetry,
                         modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(uiState.error ?: "Unknown error")
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = listActions.onRetry) {
-                            Text("Retry")
-                        }
-                    }
+                    )
                 }
 
                 post != null -> {

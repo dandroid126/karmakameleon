@@ -17,6 +17,7 @@ import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -250,6 +251,67 @@ class SearchViewModelTest {
 
             assertEquals("No connection", viewModel.uiState.value.error)
             assertFalse(viewModel.uiState.value.isLoading)
+        }
+
+    // The error is about the query it was for, so it goes when the query changes, even before the next search runs.
+    @Test
+    fun setQuery_clearsTheError() =
+        runTest {
+            fakeApi.shouldThrow = Exception("No connection")
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            viewModel.setQuery("k")
+
+            assertNull(viewModel.uiState.value.error)
+        }
+
+    // A search still running when the query changes is cancelled, so its late answer can't bring back an error or
+    // posts for the old query.
+    @Test
+    fun setQuery_cancelsTheSearchStillRunning() =
+        runTest {
+            fakeApi.responseDelayMillis = 1_000
+            fakeApi.shouldThrow = Exception("No connection")
+            viewModel.setQuery("kotlin")
+            advanceTimeBy(500)
+            runCurrent()
+            assertTrue(viewModel.uiState.value.isLoading)
+
+            viewModel.setQuery("k")
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.error)
+            assertFalse(viewModel.uiState.value.isLoading)
+        }
+
+    @Test
+    fun search_replacesTheSearchStillRunning() =
+        runTest {
+            fakeApi.responseDelayMillis = 1_000
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "old")))
+            viewModel.setQuery("kotlin")
+            advanceTimeBy(500)
+            runCurrent()
+
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "new")))
+            viewModel.search()
+            // Past the moment the first search's answer would have come.
+            advanceTimeBy(900)
+            runCurrent()
+            assertTrue(
+                viewModel.uiState.value.posts
+                    .isEmpty(),
+            )
+
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("new"),
+                viewModel.uiState.value.posts
+                    .map { it.id },
+            )
+            assertEquals(2, fakeApi.searchRequests.size)
         }
 
     // ==================== Sort and time filter ====================
