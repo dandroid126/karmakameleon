@@ -36,6 +36,10 @@ internal fun String.imageKeys(): Set<String> = IMAGE_TOKEN.findAll(this).map { i
 internal fun String.withAssetIds(assetIds: Map<String, String>): String =
     IMAGE_TOKEN.replace(this) { match -> assetIds[match.groupValues[1]]?.let { "![img]($it)" } ?: match.value }
 
+/** This text without the image tokens whose keys aren't in [keys]. */
+internal fun String.keepingImageTokens(keys: Set<String>): String =
+    IMAGE_TOKEN.replace(this) { match -> if (match.groupValues[1] in keys) match.value else "" }
+
 /** This text with the token for [key] replaced, or removed. */
 internal fun String.replacingImageToken(
     key: String,

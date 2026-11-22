@@ -241,6 +241,8 @@ class CommentViewModel(
                 replyingTo = null,
                 replyText = comment.body,
                 savedDraftText = draft,
+                // Images can't be added to an edit, so the reply's are dropped.
+                replyImages = emptyList(),
             )
         }
     }
@@ -282,8 +284,9 @@ class CommentViewModel(
         }
     }
 
+    // Images aren't kept in drafts, so a draft's tokens for images that are gone are taken out.
     fun applyDraft(draft: String) {
-        _uiState.update { it.copy(replyText = draft) }
+        _uiState.update { state -> state.copy(replyText = draft.keepingImageTokens(state.replyImages.map { it.key }.toSet())) }
     }
 
     private fun deleteDraft(parentId: String) {
@@ -374,12 +377,17 @@ class CommentViewModel(
     // starts out upvoted with a score of 1 like Reddit shows it, or null when there's no reply to post.
     private suspend fun submitReply(): Pair<String, Result<Comment>>? {
         val parentId = _uiState.value.replyingTo ?: return null
-        val text = _uiState.value.replyText.trim()
+        // A token with no image behind it, like a typed one, isn't posted as text.
+        val replyImages = _uiState.value.replyImages
+        val text =
+            _uiState.value.replyText
+                .keepingImageTokens(replyImages.map { it.key }.toSet())
+                .trim()
         if (text.isEmpty()) return null
 
         // Only the images still in the text are sent; ones the user deleted the token of are dropped.
         val keys = text.imageKeys()
-        val images = _uiState.value.replyImages.filter { it.key in keys }
+        val images = replyImages.filter { it.key in keys }
         val notReady = images.firstOrNull { it.status !is ReplyImageStatus.Uploaded }
         if (notReady != null) {
             val message =
@@ -499,7 +507,12 @@ class CommentViewModel(
 
     // Reads an image, then uploads it if the subreddit allows its type, and returns the token for it.
     private fun startImage(read: suspend () -> Result<ImageFile>): String {
-        val key = "img-${nextImageNumber++}"
+        // Skips the keys of tokens already in the text, like ones a draft brought in.
+        val textKeys = _uiState.value.replyText.imageKeys()
+        var key: String
+        do {
+            key = "img-${nextImageNumber++}"
+        } while (key in textKeys)
         _uiState.update { it.copy(replyImages = it.replyImages + ReplyImage(key, ReplyImageStatus.Reading)) }
         viewModelScope.launch {
             read().fold(

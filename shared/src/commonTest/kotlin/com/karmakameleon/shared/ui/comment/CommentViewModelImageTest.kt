@@ -203,6 +203,40 @@ class CommentViewModelImageTest {
             assertTrue(viewModel.images.isEmpty())
         }
 
+    @Test
+    fun startEditComment_dropsTheReplysImages() =
+        runTest {
+            reddit.respondToImageUpload("asset1")
+            val viewModel = viewModel()
+            viewModel.attachAndInsert("content://photo")
+
+            viewModel.startEditComment(createTestComment(id = "c1", body = "Old text"))
+
+            assertTrue(viewModel.images.isEmpty())
+        }
+
+    @Test
+    fun applyDraft_takesOutTokensForImagesThatAreGone() =
+        runTest {
+            reddit.respondToImageUpload("asset1")
+            val viewModel = viewModel()
+            viewModel.attachAndInsert("content://photo")
+
+            viewModel.applyDraft("Old ![image](img-1) and ![image](img-7)")
+
+            assertEquals("Old ![image](img-1) and ", viewModel.uiState.value.replyText)
+        }
+
+    @Test
+    fun attachImage_skipsKeysAlreadyInTheText() =
+        runTest {
+            reddit.respondToImageUpload("asset1")
+            val viewModel = viewModel()
+            viewModel.setReplyText("Typed ![image](img-1)")
+
+            assertEquals("![image](img-2)", viewModel.attachImage("content://photo"))
+        }
+
     // ==================== Where images aren't allowed ====================
 
     @Test
@@ -357,5 +391,21 @@ class CommentViewModelImageTest {
 
             val post = reddit.requests.single { it.url.encodedPath == "/api/comment" }
             assertEquals("Changed my mind", post.form()["text"])
+        }
+
+    @Test
+    fun submitReply_leavesOutATokenWithNoImage() =
+        runTest {
+            reddit.respond(
+                "/api/comment",
+                """{"json": {"errors": [], "data": {"things": [{"kind": "t1", "data": ${thing("user_comments.json", "phx2cm1")}}]}}}""",
+            )
+            val viewModel = viewModel()
+            viewModel.setReplyText("From a draft ![image](img-1)")
+
+            assertNull(viewModel.submitReplyWithError(isReplyToPost = true))
+
+            val post = reddit.requests.single { it.url.encodedPath == "/api/comment" }
+            assertEquals("From a draft", post.form()["text"])
         }
 }
