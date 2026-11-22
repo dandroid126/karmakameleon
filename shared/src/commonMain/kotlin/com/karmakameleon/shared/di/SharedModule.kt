@@ -7,6 +7,7 @@ import com.karmakameleon.shared.data.api.createHttpClientWithConfig
 import com.karmakameleon.shared.data.backup.BackupFileStore
 import com.karmakameleon.shared.data.repository.BackupRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
+import com.karmakameleon.shared.data.repository.CommentImageRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.InboxPoller
 import com.karmakameleon.shared.data.repository.MarkdownRepository
@@ -38,6 +39,7 @@ val sharedModule =
         single { SubredditRepository(get(), get()) }
         single { UserRepository(get(), get(), get()) }
         single { CommentRepository(get(), get()) }
+        single { CommentImageRepository(get(), get()) }
         single { MessageRepository(get()) }
         single { InboxPoller(get(), get()) }
         single { ReadPostsRepository(get()) }

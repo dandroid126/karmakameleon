@@ -44,6 +44,22 @@ class MockReddit {
         responses[path] = status to body
     }
 
+    /**
+     * Answers an image upload: the lease gives [assetId] and an upload URL at [UPLOAD_URL], the way Reddit's lacks a
+     * scheme, and the upload there succeeds.
+     */
+    fun respondToImageUpload(assetId: String) {
+        respond(
+            "/api/media/asset.json",
+            """
+            {"args": {"action": "${UPLOAD_URL.removePrefix("https:")}",
+                      "fields": [{"name": "key", "value": "uploads/$assetId"}, {"name": "policy", "value": "signed"}]},
+             "asset": {"asset_id": "$assetId"}}
+            """.trimIndent(),
+        )
+        respond(UPLOAD_PATH, "", HttpStatusCode.Created)
+    }
+
     /** Makes requests for [path] wait until [letThrough] is called, one request per call, to test what shows while one loads. */
     fun holdRequests(path: String) {
         heldPaths[path] = Channel(Channel.UNLIMITED)
@@ -84,6 +100,10 @@ class MockReddit {
 
     companion object {
         const val EMPTY_LISTING = """{"kind": "Listing", "data": {"children": []}}"""
+
+        /** Where [respondToImageUpload] has images uploaded to, standing in for Reddit's bucket on Amazon S3. */
+        const val UPLOAD_PATH = "/uploads"
+        const val UPLOAD_URL = "https://uploads.test$UPLOAD_PATH"
     }
 }
 

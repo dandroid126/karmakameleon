@@ -196,6 +196,7 @@ fun createTestSubreddit(
     userIsBanned: Boolean = false,
     userIsContributor: Boolean = false,
     userIsMuted: Boolean = false,
+    allowedMediaInComments: Set<String> = emptySet(),
 ) = Subreddit(
     id = id,
     name = name,
@@ -227,6 +228,7 @@ fun createTestSubreddit(
     userIsBanned = userIsBanned,
     userIsContributor = userIsContributor,
     userIsMuted = userIsMuted,
+    allowedMediaInComments = allowedMediaInComments,
 )
 
 fun createTestUser(

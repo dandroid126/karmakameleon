@@ -34,7 +34,18 @@ data class Subreddit(
     val userIsBanned: Boolean,
     val userIsContributor: Boolean,
     val userIsMuted: Boolean,
+    // What comments can hold, like "static" (uploaded images) and "animated" (uploaded GIFs). Also seen: "giphy", "video"
+    // and "expression", whose meaning isn't known. A user's profile can have none.
+    val allowedMediaInComments: Set<String> = emptySet(),
 ) {
+    /** Whether a comment here can have an uploaded image of this MIME type: a GIF needs "animated", any other image "static". */
+    fun allowsCommentImage(mimeType: String): Boolean =
+        when {
+            mimeType.equals("image/gif", ignoreCase = true) -> "animated" in allowedMediaInComments
+            mimeType.startsWith("image/", ignoreCase = true) -> "static" in allowedMediaInComments
+            else -> false
+        }
+
     val isPublic: Boolean get() = subredditType == "public"
     val isPrivate: Boolean get() = subredditType == "private"
     val isRestricted: Boolean get() = subredditType == "restricted"
