@@ -56,6 +56,52 @@ class RedditApiReadTest {
             assertTrue(reddit.requests.isEmpty())
         }
 
+    // Reddit answers an outage with an empty body or an HTML page, which isn't JSON (#87).
+    @Test
+    fun errorStatus_failsWithTheStatusInsteadOfAParserError() =
+        runTest {
+            reddit.respond("/hot", "", HttpStatusCode.ServiceUnavailable)
+
+            val error = assertFailsWith<RedditHttpException> { api().getPosts() }
+
+            assertEquals(HttpStatusCode.ServiceUnavailable.value, error.status)
+            assertEquals("Reddit is unavailable right now. Try again later.", error.message)
+        }
+
+    @Test
+    fun errorStatus_withAnHtmlPage() =
+        runTest {
+            reddit.respond("/r/Kotlin/about", "<html>Not found</html>", HttpStatusCode.NotFound)
+
+            val error = assertFailsWith<RedditHttpException> { api().getSubreddit("Kotlin") }
+
+            assertEquals(HttpStatusCode.NotFound.value, error.status)
+        }
+
+    @Test
+    fun unauthorized_whenLoggedIn_asksToSignInAgain() =
+        runTest {
+            reddit.authManager.fakeIsLoggedIn = true
+            reddit.respond("/hot", "", HttpStatusCode.Unauthorized)
+
+            val error = assertFailsWith<RedditHttpException> { api().getPosts() }
+
+            assertEquals("Reddit didn't accept your login. Try signing in again.", error.message)
+            assertEquals("fake_token", reddit.authManager.fakeAccessToken)
+        }
+
+    // The anonymous token is kept until it expires, so a rejected one would fail every request until then.
+    @Test
+    fun unauthorized_whenLoggedOut_dropsTheAnonymousToken() =
+        runTest {
+            reddit.respond("/hot", "", HttpStatusCode.Unauthorized)
+
+            val error = assertFailsWith<RedditHttpException> { api().getPosts() }
+
+            assertEquals("Reddit didn't accept the request. Try again.", error.message)
+            assertNull(reddit.authManager.fakeAccessToken)
+        }
+
     // ==================== Posts ====================
 
     @Test

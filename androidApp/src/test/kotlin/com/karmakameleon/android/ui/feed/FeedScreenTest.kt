@@ -101,6 +101,7 @@ class FeedScreenTest {
             }
         }
         composeRule.onNodeWithText(FIRST_POST_TITLE).assertDoesNotExist()
+        composeRule.onNodeWithText("Reddit is unavailable right now. Try again later.").assertExists()
 
         fakeReddit.reddit.respond("/hot", postListing())
         composeRule.onNodeWithText("Retry").performClick()
