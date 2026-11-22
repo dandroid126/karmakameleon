@@ -9,12 +9,21 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+// Whether KarmaKameleonTheme is dark, read from its surface color (always ours, even with dynamic colors). Unlike
+// isSystemInDarkTheme(), this matches the theme when it differs from the system setting, as in the dark screenshot
+// tests.
+@Composable
+@ReadOnlyComposable
+private fun isDarkTheme(): Boolean = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
 // The light and dark palettes share some colors on purpose, so the duplication check skips them.
 // CPD-OFF
@@ -91,16 +100,20 @@ data class VoteColors(
 )
 
 @Composable
-fun voteColors(darkTheme: Boolean = isSystemInDarkTheme()): VoteColors =
+fun voteColors(darkTheme: Boolean = isDarkTheme()): VoteColors =
     VoteColors(
         upvoteColor = if (darkTheme) Color(0xFFFF662E) else Color(0xFFFF4500),
         downvoteColor = Color(0xFF7193FF),
     )
 
 data class PostFlairColors(
-    val nsfwColor: Color,
-    val spoilerColor: Color,
-    val pinnedColor: Color,
+    // The NSFW, Spoiler and Pinned chips are filled with these colors, the same in both themes.
+    val nsfwChipColor: Color,
+    val onNsfwChipColor: Color,
+    val spoilerChipColor: Color,
+    val onSpoilerChipColor: Color,
+    val pinnedChipColor: Color,
+    val onPinnedChipColor: Color,
     // Text on subreddit-colored flairs; whichever contrasts more with the flair is used
     val flairDarkTextColor: Color,
     val flairLightTextColor: Color,
@@ -108,9 +121,12 @@ data class PostFlairColors(
 
 private val PostFlairColorValues =
     PostFlairColors(
-        nsfwColor = Color(0xFFFF4444),
-        spoilerColor = Color(0xFFFFD700),
-        pinnedColor = Color(0xFF00AA00),
+        nsfwChipColor = Color(0xFFD32F2F),
+        onNsfwChipColor = Color.White,
+        spoilerChipColor = Color(0xFFFFD700),
+        onSpoilerChipColor = Color.Black,
+        pinnedChipColor = Color(0xFF2E7D32),
+        onPinnedChipColor = Color.White,
         flairDarkTextColor = Color.Black,
         flairLightTextColor = Color.White,
     )
@@ -183,6 +199,8 @@ data class MediaColors(
     val blurScrimColor: Color, // darkens a blurred preview
     val hiddenPreviewColor: Color, // stands in for a hidden NSFW or spoiler preview
     val hiddenPreviewHintColor: Color, // "Tap to view" on a hidden preview
+    val hiddenNsfwLabelColor: Color, // "NSFW" on a hidden preview
+    val hiddenSpoilerLabelColor: Color, // "Spoiler" on a hidden preview
 )
 
 private val MediaColorValues =
@@ -198,6 +216,8 @@ private val MediaColorValues =
         blurScrimColor = Color.Black.copy(alpha = 0.3f),
         hiddenPreviewColor = Color.Black,
         hiddenPreviewHintColor = Color.Gray,
+        hiddenNsfwLabelColor = Color(0xFFFF4444),
+        hiddenSpoilerLabelColor = Color(0xFFFFD700),
     )
 
 fun mediaColors(): MediaColors = MediaColorValues
@@ -207,7 +227,7 @@ data class ReadStateColors(
 )
 
 @Composable
-fun readStateColors(darkTheme: Boolean = isSystemInDarkTheme()): ReadStateColors =
+fun readStateColors(darkTheme: Boolean = isDarkTheme()): ReadStateColors =
     ReadStateColors(
         readTitleColor = if (darkTheme) Color(0xFF8090B0) else Color(0xFF516181),
     )

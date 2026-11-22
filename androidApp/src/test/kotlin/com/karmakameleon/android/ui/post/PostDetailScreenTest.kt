@@ -53,11 +53,15 @@ class PostDetailScreenTest {
         loggedIn: Boolean = true,
         commentId: String? = null,
         selfText: String = "",
+        nsfwAndSpoiler: Boolean = false,
     ) {
         fakeReddit.loggedIn = loggedIn
         fakeReddit.reddit.respond(
             POST_PATH,
-            postListing("post_with_comments.json").replace("\"selftext\": \"\"", "\"selftext\": \"$selfText\""),
+            postListing("post_with_comments.json")
+                .replace("\"selftext\": \"\"", "\"selftext\": \"$selfText\"")
+                .replace("\"over_18\": false", "\"over_18\": $nsfwAndSpoiler")
+                .replace("\"spoiler\": false", "\"spoiler\": $nsfwAndSpoiler"),
         )
         fakeReddit.reddit.respond("$POST_PATH/comment/phx23wk", postListing("post_with_comments.json"))
         composeRule.setContent {
@@ -88,6 +92,14 @@ class PostDetailScreenTest {
         composeRule.onNodeWithText("68 comments").assertExists()
         composeRule.onNodeWithText(FIRST_COMMENT, substring = true).assertExists()
         composeRule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("Load 1 more reply"))
+    }
+
+    @Test
+    fun nsfwSpoilerPostShowsBothWarnings() {
+        showPost(nsfwAndSpoiler = true)
+        composeRule.onNodeWithText(POST_TITLE).assertExists()
+        composeRule.onNodeWithText("NSFW").assertExists()
+        composeRule.onNodeWithText("Spoiler").assertExists()
     }
 
     @Test

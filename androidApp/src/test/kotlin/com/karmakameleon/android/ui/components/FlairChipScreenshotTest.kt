@@ -12,7 +12,6 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
-import com.karmakameleon.android.ui.theme.postFlairColors
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,10 +58,9 @@ class FlairChipScreenshotTest {
                         modifier = Modifier.padding(8.dp),
                     ) {
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            val colors = postFlairColors()
-                            FlairChip(text = "NSFW", color = colors.nsfwColor)
-                            FlairChip(text = "Spoiler", color = colors.spoilerColor)
-                            FlairChip(text = "Pinned", color = colors.pinnedColor)
+                            NsfwChip()
+                            SpoilerChip()
+                            PinnedChip()
                         }
                         subredditFlairBackgrounds.forEach { (text, color) ->
                             SubredditFlairChip(text = text, backgroundColor = color)

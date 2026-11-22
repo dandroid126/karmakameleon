@@ -38,14 +38,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
-import com.karmakameleon.android.ui.components.FlairChip
 import com.karmakameleon.android.ui.components.KeptWhenCollapsed
 import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
+import com.karmakameleon.android.ui.components.NsfwChip
 import com.karmakameleon.android.ui.components.PostScore
 import com.karmakameleon.android.ui.components.PostVotePill
 import com.karmakameleon.android.ui.components.ProgressiveAsyncImage
 import com.karmakameleon.android.ui.components.SelectableArea
+import com.karmakameleon.android.ui.components.SpoilerChip
 import com.karmakameleon.android.ui.components.SubredditFlairChip
 import com.karmakameleon.android.ui.components.VideoPlayer
 import com.karmakameleon.android.ui.components.YouTubePlayer
@@ -55,7 +56,6 @@ import com.karmakameleon.android.ui.components.gifMenuItems
 import com.karmakameleon.android.ui.components.imageMenuItems
 import com.karmakameleon.android.ui.components.showShortToast
 import com.karmakameleon.android.ui.components.videoMenuItems
-import com.karmakameleon.android.ui.theme.postFlairColors
 import com.karmakameleon.shared.domain.model.GalleryItem
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.util.extractYouTubeVideoId
@@ -98,8 +98,8 @@ internal fun PostHeader(
         Spacer(modifier = Modifier.height(8.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (post.isNsfw) FlairChip("NSFW", postFlairColors().nsfwColor)
-            if (post.isSpoiler) FlairChip("Spoiler", postFlairColors().spoilerColor)
+            if (post.isNsfw) NsfwChip()
+            if (post.isSpoiler) SpoilerChip()
             post.linkFlairText?.let { SubredditFlairChip(it, post.linkFlairBackgroundColor) }
         }
         Spacer(modifier = Modifier.height(8.dp))

@@ -40,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -432,23 +433,42 @@ private fun PostMoreMenu(
     }
 }
 
+// The NSFW, Spoiler and Pinned chips: filled and bold, so the warnings stand out.
+
 @Composable
-fun FlairChip(
+internal fun NsfwChip() {
+    val colors = postFlairColors()
+    StatusChip(text = "NSFW", containerColor = colors.nsfwChipColor, contentColor = colors.onNsfwChipColor)
+}
+
+@Composable
+internal fun SpoilerChip() {
+    val colors = postFlairColors()
+    StatusChip(text = "Spoiler", containerColor = colors.spoilerChipColor, contentColor = colors.onSpoilerChipColor)
+}
+
+@Composable
+internal fun PinnedChip() {
+    val colors = postFlairColors()
+    StatusChip(text = "Pinned", containerColor = colors.pinnedChipColor, contentColor = colors.onPinnedChipColor)
+}
+
+@Composable
+private fun StatusChip(
     text: String,
-    color: Color,
-    modifier: Modifier = Modifier,
+    containerColor: Color,
+    contentColor: Color,
 ) {
     Surface(
-        color = color.copy(alpha = 0.2f),
+        color = containerColor,
         shape = RoundedCornerShape(4.dp),
-        modifier = modifier,
     ) {
         Text(
             text = text,
             style = MaterialTheme.typography.labelSmall,
-            color = color,
+            fontWeight = FontWeight.Bold,
+            color = contentColor,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
         )
     }
@@ -483,6 +503,7 @@ fun SubredditFlairChip(
 }
 
 @Composable
+@ReadOnlyComposable
 private fun subredditFlairColors(backgroundColor: String?): Pair<Color, Color> {
     val argb =
         parseFlairColor(backgroundColor)

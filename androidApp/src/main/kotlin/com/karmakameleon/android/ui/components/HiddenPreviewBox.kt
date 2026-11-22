@@ -22,18 +22,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.ui.theme.mediaColors
-import com.karmakameleon.android.ui.theme.postFlairColors
 
 // Shown in place of a post's preview while it's hidden.
 
 @Composable
 fun NsfwBlackBox(modifier: Modifier = Modifier) {
-    HiddenPreviewBox(label = "NSFW", color = postFlairColors().nsfwColor, modifier = modifier)
+    HiddenPreviewBox(label = "NSFW", color = mediaColors().hiddenNsfwLabelColor, modifier = modifier)
 }
 
 @Composable
 fun SpoilerBlackBox(modifier: Modifier = Modifier) {
-    HiddenPreviewBox(label = "Spoiler", color = postFlairColors().spoilerColor, modifier = modifier)
+    HiddenPreviewBox(label = "Spoiler", color = mediaColors().hiddenSpoilerLabelColor, modifier = modifier)
 }
 
 /** A dark box saying why the preview is hidden ([label], in [color]) and that tapping shows it. */

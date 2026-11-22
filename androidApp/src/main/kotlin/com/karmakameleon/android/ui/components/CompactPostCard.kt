@@ -79,7 +79,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.ui.theme.mediaColors
-import com.karmakameleon.android.ui.theme.postFlairColors
 import com.karmakameleon.android.ui.theme.readStateColors
 import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.shared.domain.model.NsfwPreviewMode
@@ -446,7 +445,7 @@ private fun CompactThumbnail(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val postFlairColors = postFlairColors()
+    val mediaColors = mediaColors()
     val thumbnailUrl = compactThumbnailUrl(post)
 
     Box(
@@ -462,7 +461,7 @@ private fun CompactThumbnail(
             post.isSpoiler && !spoilerPreviewsEnabled -> {
                 HiddenThumbnail(
                     label = "Spoiler",
-                    color = postFlairColors.spoilerColor,
+                    color = mediaColors.hiddenSpoilerLabelColor,
                 )
             }
 
@@ -478,7 +477,7 @@ private fun CompactThumbnail(
             post.isNsfw && nsfwPreviewMode == NsfwPreviewMode.DO_NOT_PREFETCH -> {
                 HiddenThumbnail(
                     label = "NSFW",
-                    color = postFlairColors.nsfwColor,
+                    color = mediaColors.hiddenNsfwLabelColor,
                 )
             }
 
