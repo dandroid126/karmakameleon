@@ -9,10 +9,10 @@ import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import com.karmakameleon.android.testing.FakeActivityResults
 import com.karmakameleon.android.testing.FakeRedditRule
+import com.karmakameleon.android.testing.clickWithoutRipple
 import com.karmakameleon.android.testing.saveScreenshot
 import com.karmakameleon.android.testing.saveScreenshotWithDialog
 import com.karmakameleon.android.testing.showScreen
@@ -63,7 +63,7 @@ class BackupSettingsScreenshotTest {
     }
 
     private fun clickSectionButton(text: String) {
-        composeRule.onNode(hasText(text) and hasClickAction() and !hasAnyAncestor(isDialog())).performClick()
+        composeRule.onNode(hasText(text) and hasClickAction() and !hasAnyAncestor(isDialog())).clickWithoutRipple()
     }
 
     @Test
