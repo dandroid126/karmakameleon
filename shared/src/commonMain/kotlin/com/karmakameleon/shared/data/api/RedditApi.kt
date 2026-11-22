@@ -107,7 +107,8 @@ open class RedditApi(
         }
     }
 
-    // GETs an API path and decodes the response. raw_json=1 stops Reddit from HTML-escaping the text.
+    // GETs an API path and decodes the response. raw_json=1 stops Reddit from HTML-escaping the text. An error status
+    // throws RedditHttpException, since its body is empty or an HTML page that would only give a JSON parser error.
     private suspend inline fun <reified T> getJson(
         path: String,
         crossinline params: HttpRequestBuilder.() -> Unit = {},
@@ -119,7 +120,12 @@ open class RedditApi(
                 params()
                 parameter("raw_json", 1)
             }
-        return json.decodeFromString<T>(response.bodyAsText())
+        val body = response.bodyAsText() // Always read the body, which releases the connection.
+        if (!response.status.isSuccess()) {
+            Napier.w("GET $path failed with HTTP ${response.status.value}")
+            throw RedditHttpException(response.status.value)
+        }
+        return json.decodeFromString<T>(body)
     }
 
     private suspend fun getListing(

@@ -48,6 +48,6 @@ class FeedScreenScreenshotTest {
         captureFeed("feed_screen_no_posts")
     }
 
-    // No screenshot of the error yet: it shows a JSON parser error instead of a message, laid out edge to edge
-    // (#87). FeedScreenTest checks that Retry works. Add the screenshot with the fix.
+    // No screenshot of the error yet: its message is laid out edge to edge (#87). FeedScreenTest checks the message
+    // and that Retry works. Add the screenshot with the fix.
 }
