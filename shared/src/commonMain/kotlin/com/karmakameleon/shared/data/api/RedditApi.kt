@@ -54,6 +54,7 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CoroutineDispatcher
@@ -123,7 +124,10 @@ open class RedditApi(
         val body = response.bodyAsText() // Always read the body, which releases the connection.
         if (!response.status.isSuccess()) {
             Napier.w("GET $path failed with HTTP ${response.status.value}")
-            throw RedditHttpException(response.status.value)
+            val isLoggedIn = authManager.isLoggedIn()
+            // The anonymous token is kept until it expires, so drop one Reddit rejected and let the next request get a new one.
+            if (response.status == HttpStatusCode.Unauthorized && !isLoggedIn) authManager.clearToken()
+            throw RedditHttpException(response.status.value, isLoggedIn)
         }
         return json.decodeFromString<T>(body)
     }

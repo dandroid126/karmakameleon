@@ -5,14 +5,23 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class RedditHttpExceptionTest {
-    private fun message(status: HttpStatusCode) = RedditHttpException(status.value).message
+    private fun message(
+        status: HttpStatusCode,
+        isLoggedIn: Boolean = true,
+    ) = RedditHttpException(status.value, isLoggedIn).message
 
     @Test
     fun messageSaysWhatHappened() {
-        assertEquals("Reddit didn't accept the login. Try signing in again.", message(HttpStatusCode.Unauthorized))
         assertEquals("Reddit doesn't allow access to this.", message(HttpStatusCode.Forbidden))
         assertEquals("Reddit couldn't find this.", message(HttpStatusCode.NotFound))
         assertEquals("Reddit got too many requests. Wait a minute and try again.", message(HttpStatusCode.TooManyRequests))
+    }
+
+    // Logged out, requests use an anonymous token, so there's no login to redo.
+    @Test
+    fun unauthorizedOnlyMentionsSigningInWhenLoggedIn() {
+        assertEquals("Reddit didn't accept your login. Try signing in again.", message(HttpStatusCode.Unauthorized))
+        assertEquals("Reddit didn't accept the request. Try again.", message(HttpStatusCode.Unauthorized, isLoggedIn = false))
     }
 
     @Test

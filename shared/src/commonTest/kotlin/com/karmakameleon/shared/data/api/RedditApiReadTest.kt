@@ -78,6 +78,30 @@ class RedditApiReadTest {
             assertEquals(HttpStatusCode.NotFound.value, error.status)
         }
 
+    @Test
+    fun unauthorized_whenLoggedIn_asksToSignInAgain() =
+        runTest {
+            reddit.authManager.fakeIsLoggedIn = true
+            reddit.respond("/hot", "", HttpStatusCode.Unauthorized)
+
+            val error = assertFailsWith<RedditHttpException> { api().getPosts() }
+
+            assertEquals("Reddit didn't accept your login. Try signing in again.", error.message)
+            assertEquals("fake_token", reddit.authManager.fakeAccessToken)
+        }
+
+    // The anonymous token is kept until it expires, so a rejected one would fail every request until then.
+    @Test
+    fun unauthorized_whenLoggedOut_dropsTheAnonymousToken() =
+        runTest {
+            reddit.respond("/hot", "", HttpStatusCode.Unauthorized)
+
+            val error = assertFailsWith<RedditHttpException> { api().getPosts() }
+
+            assertEquals("Reddit didn't accept the request. Try again.", error.message)
+            assertNull(reddit.authManager.fakeAccessToken)
+        }
+
     // ==================== Posts ====================
 
     @Test
