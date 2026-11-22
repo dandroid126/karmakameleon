@@ -69,8 +69,10 @@ class CommentRepository(
     ): Result<Comment> =
         runSuspendCatching {
             check(redditApi.editComment(comment.name, text)) { "Edit failed" }
-            markdownRepository.parse(text)
-            comment.copy(body = text.withProcessedMedia(comment.readyMedia), sourceBody = text)
+            val shown = text.withProcessedMedia(comment.readyMedia)
+            // Parses the text the comment shows, so its view finds it ready.
+            markdownRepository.parse(shown)
+            comment.copy(body = shown, sourceBody = text)
         }
 
     suspend fun deleteComment(comment: Comment): Result<Unit> =
