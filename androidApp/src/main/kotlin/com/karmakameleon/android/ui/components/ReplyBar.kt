@@ -1,10 +1,10 @@
 package com.karmakameleon.android.ui.components
 
+import android.net.Uri
 import android.os.Build
 import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
-import android.widget.EditText
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -54,7 +54,10 @@ fun ReplyBar(
     onQuote: () -> Unit = {},
     hasDraft: Boolean = false,
     showDraftControls: Boolean = false,
+    images: ReplyImageActions? = null,
 ) {
+    val field = remember { ReplyFieldRef() }
+    val currentImages by rememberUpdatedState(images)
     Surface(
         color = MaterialTheme.colorScheme.surface,
         modifier =
@@ -75,6 +78,7 @@ fun ReplyBar(
                 IconButton(onClick = onCancel) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
                 }
+                if (images?.showsButton == true) AddImageButton(images, onInsert = field::insert)
                 ReplyBarTextActions(
                     canSaveDraft = replyText.isNotBlank(),
                     hasDraft = hasDraft,
@@ -88,15 +92,34 @@ fun ReplyBar(
                     Icon(Icons.AutoMirrored.Default.Send, contentDescription = "Send")
                 }
             }
+            images?.let { ReplyImageTray(it, replyText) }
             SpellCheckedTextField(
                 value = replyText,
                 onValueChange = onReplyTextChange,
                 placeholder = placeholder,
+                fieldRef = field,
+                acceptsImages = images != null,
+                // Where replies can't have images, a keyboard GIF that comes with a link goes in as the link.
+                onReceiveImage = { uri, mimeType, linkUrl ->
+                    currentImages?.attachImage(uri.toString(), mimeType, linkUrl) ?: linkUrl?.let { imageLink(mimeType, it) }
+                },
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .heightIn(max = replyFieldMaxHeight()),
             )
+        }
+    }
+}
+
+// The reply's text field, for putting text at its cursor from outside it.
+private class ReplyFieldRef {
+    var editText: ContentReceivingEditText? = null
+
+    fun insert(text: String) {
+        editText?.apply {
+            insertAtCursor(text)
+            requestFocus()
         }
     }
 }
@@ -153,9 +176,13 @@ private fun SpellCheckedTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String,
+    fieldRef: ReplyFieldRef,
+    acceptsImages: Boolean,
+    onReceiveImage: (location: Uri, mimeType: String?, linkUrl: String?) -> String?,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
+    val currentOnReceiveImage by rememberUpdatedState(onReceiveImage)
     val fontSize = MaterialTheme.typography.bodyLarge.fontSize
     val density = LocalDensity.current
     val currentOnValueChange by rememberUpdatedState(onValueChange)
@@ -163,7 +190,9 @@ private fun SpellCheckedTextField(
 
     AndroidView(
         factory = { context ->
-            EditText(context).apply {
+            ContentReceivingEditText(context).apply {
+                fieldRef.editText = this
+                receiveImages(keepAll = acceptsImages) { uri, mimeType, linkUrl -> currentOnReceiveImage(uri, mimeType, linkUrl) }
                 background = null
                 inputType = InputType.TYPE_CLASS_TEXT or
                     InputType.TYPE_TEXT_FLAG_MULTI_LINE or

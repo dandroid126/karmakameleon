@@ -1,11 +1,13 @@
 package com.karmakameleon.android.testing
 
+import com.karmakameleon.android.data.ContentResolverImageFiles
 import com.karmakameleon.android.di.androidModule
 import com.karmakameleon.android.ui.components.threeHoursAgo
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.data.api.dto.TokenInfo
 import com.karmakameleon.shared.data.backup.BackupFiles
+import com.karmakameleon.shared.data.media.ImageFiles
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.di.sharedModule
@@ -14,12 +16,14 @@ import com.karmakameleon.shared.testing.MockReddit
 import com.karmakameleon.shared.testing.readFixture
 import com.russhwolf.settings.MapSettings
 import com.russhwolf.settings.Settings
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
 import org.junit.rules.ExternalResource
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
+import org.robolectric.RuntimeEnvironment
 import kotlin.time.Duration.Companion.days
 
 /**
@@ -47,6 +51,8 @@ class FakeRedditRule : ExternalResource() {
                     single<BackupFiles> { backupFiles }
                     single<AuthManager> { authManager(loggedIn) }
                     single<RedditApi> { reddit.api(settings, Dispatchers.Main) }
+                    single<HttpClient> { reddit.httpClient(Dispatchers.Main) }
+                    single<ImageFiles> { ContentResolverImageFiles(RuntimeEnvironment.getApplication().contentResolver, Dispatchers.Main) }
                     single { MarkdownRepository(Dispatchers.Main) }
                 },
             )

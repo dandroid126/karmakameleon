@@ -28,7 +28,7 @@ val androidModule =
         single<ImageFiles> { ContentResolverImageFiles(androidContext().contentResolver) }
         // ViewModels (Android-specific registration using viewModel DSL)
         viewModel { FeedViewModel(get(), get(), get()) }
-        viewModel { params -> PostDetailViewModel(params.get(), get(), get(), get(), get(), get()) }
+        viewModel { params -> PostDetailViewModel(params.get(), get(), get(), get(), get(), get(), get(), get()) }
         viewModel { params -> SubredditViewModel(params.get(), get(), get(), get(), get()) }
         viewModel { ProfileViewModel(get(), get(), get(), get()) }
         viewModel { InboxViewModel(get(), get(), get()) }

@@ -26,7 +26,13 @@ import kotlinx.serialization.json.put
 class MockReddit {
     val requests = mutableListOf<HttpRequestData>()
 
-    private val responses = mutableMapOf<String, Pair<HttpStatusCode, String>>()
+    private class Response(
+        val status: HttpStatusCode,
+        val body: String,
+        val contentType: String,
+    )
+
+    private val responses = mutableMapOf<String, Response>()
 
     // The paths whose requests wait for letThrough, each holding one permit per call.
     private val heldPaths = mutableMapOf<String, Channel<Unit>>()
@@ -40,8 +46,9 @@ class MockReddit {
         path: String,
         body: String,
         status: HttpStatusCode = HttpStatusCode.OK,
+        contentType: String = "application/json",
     ) {
-        responses[path] = status to body
+        responses[path] = Response(status, body, contentType)
     }
 
     /**
@@ -82,6 +89,9 @@ class MockReddit {
             createShareLinkClient = { client(ioDispatcher) },
         )
 
+    /** A plain client on this server, like the one the app downloads linked images with. */
+    fun httpClient(dispatcher: CoroutineDispatcher): HttpClient = client(dispatcher)
+
     // Runs on the API's dispatcher, so a test dispatcher also waits for the requests made in the background.
     private fun client(dispatcher: CoroutineDispatcher): HttpClient =
         HttpClient(
@@ -91,8 +101,8 @@ class MockReddit {
                     addHandler { request ->
                         requests += request
                         heldPaths[request.url.encodedPath]?.receive()
-                        val (status, body) = responses[request.url.encodedPath] ?: (HttpStatusCode.OK to EMPTY_LISTING)
-                        respond(body, status, headersOf(HttpHeaders.ContentType, "application/json"))
+                        val response = responses[request.url.encodedPath] ?: Response(HttpStatusCode.OK, EMPTY_LISTING, "application/json")
+                        respond(response.body, response.status, headersOf(HttpHeaders.ContentType, response.contentType))
                     }
                 },
             ),

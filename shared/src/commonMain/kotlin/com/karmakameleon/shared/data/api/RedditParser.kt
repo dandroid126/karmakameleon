@@ -67,6 +67,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.doubleOrNull
@@ -76,6 +77,10 @@ import kotlinx.serialization.json.jsonPrimitive
 
 // "%" and two hex digits.
 private const val PERCENT_ESCAPE_LENGTH = 3
+
+// How Reddit writes an uploaded image it hadn't finished processing into a comment's text, like
+// "*Processing img 2sh3c89s183i1...*".
+private val processingPlaceholder = Regex("""\*Processing \w+ ([A-Za-z0-9]+)\.\.\.\*""")
 
 /** Turns Reddit's JSON into the app's models. */
 internal class RedditParser(
@@ -211,7 +216,11 @@ internal class RedditParser(
                 null
             } else {
                 // The action has no scheme, like "//reddit-uploaded-media.s3-accelerate.amazonaws.com".
-                UploadLease(uploadUrl = if (action.startsWith("//")) "https:$action" else action, fields = fields, assetId = assetId)
+                UploadLease(
+                    uploadUrl = if (action.startsWith("//")) "https:$action" else action,
+                    fields = fields,
+                    assetId = assetId,
+                )
             }
         } catch (e: IllegalArgumentException) {
             Napier.e("Failed to parse upload lease", e)
@@ -400,6 +409,21 @@ internal class RedditParser(
                 },
         )
 
+    // Reddit writes a comment's text when it's posted. An image it hadn't finished processing by then stays as
+    // "*Processing img <ID>...*" for good, though its media_metadata gets the image once it's ready. This puts the image
+    // in place of each such placeholder whose image is ready.
+    private fun withProcessedMedia(
+        body: String,
+        mediaMetadata: Map<String, MediaMetadataDto>?,
+    ): String {
+        if (mediaMetadata.isNullOrEmpty()) return body
+        return processingPlaceholder.replace(body) { match ->
+            val media = mediaMetadata[match.groupValues[1]]?.takeIf { it.status == "valid" }
+            val url = media?.s?.let { it.gif ?: it.u }
+            if (url != null) "![img]($url)" else match.value
+        }
+    }
+
     private fun mapComment(
         dto: CommentDto,
         depth: Int,
@@ -414,7 +438,7 @@ internal class RedditParser(
             parentId = dto.parentId,
             linkId = dto.linkId,
             author = dto.author,
-            body = dto.body,
+            body = withProcessedMedia(dto.body, dto.mediaMetadata),
             bodyHtml = dto.bodyHtml,
             score = dto.score,
             created = dto.created.toLong(),

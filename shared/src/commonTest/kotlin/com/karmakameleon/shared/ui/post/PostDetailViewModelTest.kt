@@ -5,6 +5,7 @@ import com.karmakameleon.shared.FakeRedditApi.CommentsRequest
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.createTestPost
+import com.karmakameleon.shared.createTestSubreddit
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApiException
@@ -13,6 +14,7 @@ import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
+import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
@@ -71,6 +73,7 @@ class PostDetailViewModelTest {
             userRepo,
             draftRepo,
             settingsRepo,
+            SubredditRepository(fakeApi, settingsRepo),
         )
 
     private fun PostDetailViewModel.commentIds(): List<String> =
@@ -186,6 +189,25 @@ class PostDetailViewModelTest {
 
             assertTrue(viewModel.uiState.value.isLoggedIn)
             assertEquals("me", viewModel.uiState.value.loggedInUsername)
+        }
+
+    @Test
+    fun init_loadsWhatTheSubredditAllowsInCommentsForALoggedInUser() =
+        runTest {
+            val userRepo = UserRepository(fakeApi, authManager, MarkdownRepository(Dispatchers.Main))
+            fakeApi.subredditResult = createTestSubreddit(displayName = "kotlin", allowedMediaInComments = setOf("static"))
+
+            val viewModel = createViewModel(userRepo = userRepo)
+            advanceUntilIdle()
+            assertNull(viewModel.commentViewModel.uiState.value.commentSubreddit)
+
+            userRepo.handleAuthCallback("code")
+            advanceUntilIdle()
+            assertEquals(
+                setOf("static"),
+                viewModel.commentViewModel.uiState.value.commentSubreddit
+                    ?.allowedMediaInComments,
+            )
         }
 
     @Test

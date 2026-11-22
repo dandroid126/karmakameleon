@@ -5,6 +5,7 @@ import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.FlairRichtext
 import com.karmakameleon.shared.domain.model.MoreComments
 import com.karmakameleon.shared.testing.readFixture
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
@@ -180,6 +181,34 @@ class RedditParserCommentTest {
         val data = thing("user_comments.json", "phx2cm1").with("body" to JsonPrimitive(body))
 
         assertEquals(body, parser.comment(data).body)
+    }
+
+    // An image Reddit hadn't processed when the comment was posted stays a placeholder in the text.
+    private fun commentWithPlaceholder(status: String): Comment {
+        val metadata =
+            Json.parseToJsonElement(
+                """
+                {"2sh3c89s183i1": {"status": "$status", "e": "AnimatedImage", "m": "image/gif",
+                  "s": {"x": 220, "y": 165, "gif": "https://i.redd.it/2sh3c89s183i1.gif", "mp4": "https://preview.redd.it/v.mp4"}},
+                 "abc": {"status": "valid", "e": "Image", "m": "image/png", "s": {"x": 1, "y": 1, "u": "https://preview.redd.it/abc.png?s=1"}}}
+                """.trimIndent(),
+            )
+        val body = "Look: *Processing img 2sh3c89s183i1...*\n\n*Processing img abc...* *Processing img gone...*"
+        val data = thing("user_comments.json", "phx2cm1").with("body" to JsonPrimitive(body), "media_metadata" to metadata)
+        return parser.comment(data)
+    }
+
+    @Test
+    fun comment_showsAProcessedImageInPlaceOfItsPlaceholder() {
+        assertEquals(
+            "Look: ![img](https://i.redd.it/2sh3c89s183i1.gif)\n\n![img](https://preview.redd.it/abc.png?s=1) *Processing img gone...*",
+            commentWithPlaceholder(status = "valid").body,
+        )
+    }
+
+    @Test
+    fun comment_keepsThePlaceholderOfAnImageThatIsntReady() {
+        assertTrue(commentWithPlaceholder(status = "unprocessed").body.startsWith("Look: *Processing img 2sh3c89s183i1...*"))
     }
 
     @Test
