@@ -55,42 +55,44 @@ class SearchViewModel(
                 null
             }
 
-        // An error is about the query it was for.
-        _uiState.update { it.copy(query = query, detectedLink = link, error = null) }
+        // Any search still running is for the old query, so it's cancelled below, and its error goes with it.
+        searchJob?.cancel()
+        _uiState.update { it.copy(query = query, detectedLink = link, error = null, isLoading = false) }
 
         if (link != null) {
-            searchJob?.cancel()
             _uiState.update { it.copy(posts = emptyList(), subreddits = emptyList()) }
             return
         }
 
-        searchJob?.cancel()
         if (query.length >= 2) {
             searchJob =
                 viewModelScope.launch {
                     delay(SEARCH_DEBOUNCE_MILLIS)
-                    search()
+                    runSearch()
                 }
         } else {
             _uiState.update { it.copy(posts = emptyList(), subreddits = emptyList()) }
         }
     }
 
+    // Replaces any search still running, so only the latest one can set the results or the error.
     fun search() {
+        if (_uiState.value.query.length < 2) return
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch { runSearch() }
+    }
+
+    private suspend fun runSearch() {
         val query = _uiState.value.query
-        if (query.length < 2) return
+        _uiState.update { it.copy(isLoading = true, error = null) }
 
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+        when (_uiState.value.searchType) {
+            SearchType.POST -> {
+                searchPosts(query)
+            }
 
-            when (_uiState.value.searchType) {
-                SearchType.POST -> {
-                    searchPosts(query)
-                }
-
-                SearchType.SUBREDDIT -> {
-                    searchSubreddits(query)
-                }
+            SearchType.SUBREDDIT -> {
+                searchSubreddits(query)
             }
         }
     }
