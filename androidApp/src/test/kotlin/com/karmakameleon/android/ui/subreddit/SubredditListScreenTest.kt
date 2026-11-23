@@ -171,8 +171,17 @@ class SubredditListScreenTest {
         composeRule.onNode(hasSetTextAction()).performTextInput("kot")
         composeRule.onNodeWithText("Your Subscriptions").assertExists()
         composeRule.onNodeWithText("Search Results").assertExists()
-        // The bottom section is all that Reddit found, so a subscription can show in both, and comes first there.
-        assertEquals(listOf("r/Kotlin", "r/Kotlin", "r/KotlinAndroid"), shownSubreddits())
+        // r/Kotlin shows once, as a subscription.
+        assertEquals(listOf("r/Kotlin", "r/KotlinAndroid"), shownSubreddits())
+    }
+
+    @Test
+    fun saysWhenRedditFoundOnlyTheSubscriptions() {
+        fakeReddit.reddit.respond("/subreddits/search", listingOf(subredditThing("Kotlin", nsfw = false, subscribers = 108_935)))
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.onNodeWithText("Only your subscriptions matched").assertExists()
+        assertEquals(listOf("r/Kotlin"), shownSubreddits())
     }
 
     @Test
@@ -226,7 +235,20 @@ class SubredditListScreenTest {
         showList()
         composeRule.onNode(hasSetTextAction()).performTextInput("kot")
         composeRule.onNodeWithText("Couldn't reach Reddit. Check your connection and try again.").assertExists()
-        composeRule.onNodeWithText("Retry").assertExists()
+
+        fakeReddit.reddit.respond("/subreddits/search", listingOf(subredditThing("KotlinAndroid", nsfw = false, subscribers = 7_000)))
+        composeRule.onNodeWithText("Retry").performClick()
+        composeRule.waitForIdle()
+        assertEquals(listOf("r/Kotlin", "r/KotlinAndroid"), shownSubreddits())
+    }
+
+    // Like having no client ID, which RedditApi reports before making the request.
+    @Test
+    fun showsTheMessageOfAnyOtherError() {
+        fakeReddit.reddit.fail("/subreddits/search", IllegalStateException("No Reddit Client ID configured."))
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.onNodeWithText("No Reddit Client ID configured.").assertExists()
     }
 
     @Test

@@ -47,7 +47,7 @@ class SubredditListScreenScreenshotTest {
         composeRule.waitForIdle()
     }
 
-    // The matching subscriptions show above all that Reddit found.
+    // The matching subscriptions show above the rest of what Reddit found.
     @Test
     fun searchResults() {
         fakeReddit.reddit.respond(

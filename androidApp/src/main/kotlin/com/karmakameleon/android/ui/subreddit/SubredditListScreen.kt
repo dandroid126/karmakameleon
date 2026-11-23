@@ -51,6 +51,7 @@ import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Subreddit
+import kotlinx.serialization.SerializationException
 import org.koin.compose.koinInject
 import java.io.IOException
 
@@ -131,6 +132,8 @@ private fun SubredditSections(
     search: RedditSearch?,
     subredditItem: @Composable (Subreddit) -> Unit,
 ) {
+    val showsSubscriptions = !isLoadingSubscriptions && isLoggedIn
+    val shownAbove = if (showsSubscriptions) subscriptions.mapTo(HashSet()) { it.displayName.lowercase() } else emptySet()
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         sectionTitle("Your Subscriptions")
         when {
@@ -141,7 +144,7 @@ private fun SubredditSections(
         }
         if (search != null) {
             sectionTitle("Search Results")
-            searchResults(search, subredditItem)
+            searchResults(search, shownAbove, subredditItem)
         }
     }
 }
@@ -167,10 +170,11 @@ private fun LazyListScope.sectionMessage(text: String) {
     }
 }
 
-// Reddit's results as Reddit sent them, with the subscriptions among them first, so a subscription can show in both
-// sections: the bottom one is only what Reddit found.
+// Reddit's results, without the subscriptions listed above. When those were all Reddit found, it says so, so that
+// isn't mistaken for Reddit finding nothing.
 private fun LazyListScope.searchResults(
     search: RedditSearch,
+    shownAbove: Set<String>,
     subredditItem: @Composable (Subreddit) -> Unit,
 ) {
     when (val state = search.state) {
@@ -193,10 +197,11 @@ private fun LazyListScope.searchResults(
         }
 
         is RedditSearch.State.Found -> {
-            if (state.results.isEmpty()) {
-                sectionMessage("No subreddits found")
-            } else {
-                items(state.results, key = { "result-${it.id}" }) { subredditItem(it) }
+            val results = state.results.filter { it.displayName.lowercase() !in shownAbove }
+            when {
+                state.results.isEmpty() -> sectionMessage("No subreddits found")
+                results.isEmpty() -> sectionMessage("Only your subscriptions matched")
+                else -> items(results, key = { "result-${it.id}" }) { subredditItem(it) }
             }
         }
     }
@@ -306,13 +311,15 @@ private fun searchSubreddits(
     return RedditSearch(state, retry = { attempt++ })
 }
 
-// Reddit's error says what went wrong. Anything else that stops a request, like a timeout or no network, is an
-// IOException.
+// Reddit's error says what went wrong. A timeout or no network is an IOException, and an answer that isn't the JSON
+// expected is a SerializationException. Anything else, like having no client ID, has its own message, as on the other
+// screens.
 private fun searchErrorMessage(error: Throwable): String =
     when (error) {
         is RedditHttpException -> error.message.orEmpty()
         is IOException -> "Couldn't reach Reddit. Check your connection and try again."
-        else -> "Reddit's answer couldn't be read. Try again."
+        is SerializationException -> "Reddit's answer couldn't be read. Try again."
+        else -> error.message ?: "Couldn't search Reddit. Try again."
     }
 
 @Composable

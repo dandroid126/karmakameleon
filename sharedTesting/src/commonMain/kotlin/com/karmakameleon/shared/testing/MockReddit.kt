@@ -50,6 +50,8 @@ class MockReddit {
         status: HttpStatusCode = HttpStatusCode.OK,
         contentType: String = "application/json",
     ) {
+        // The latest call for a path wins, so a test can fail a request and then let a retry succeed.
+        failures.remove(path)
         responses[path] = Response(status, body, contentType)
     }
 
@@ -74,6 +76,7 @@ class MockReddit {
         path: String,
         error: Throwable,
     ) {
+        responses.remove(path)
         failures[path] = error
     }
 
