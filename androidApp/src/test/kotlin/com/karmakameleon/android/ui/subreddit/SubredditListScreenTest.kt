@@ -1,6 +1,7 @@
 package com.karmakameleon.android.ui.subreddit
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -16,11 +17,15 @@ import com.karmakameleon.shared.testing.MockReddit
 import com.karmakameleon.shared.testing.listingOf
 import com.karmakameleon.shared.testing.query
 import com.karmakameleon.shared.testing.subredditThing
+import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.IOException
+
+private val isProgressIndicator = SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)
 
 // Subscriptions in the order Reddit sends them, which isn't the order the screen shows them in.
 val subscriptions =
@@ -153,7 +158,7 @@ class SubredditListScreenTest {
     }
 
     @Test
-    fun addsRedditsResultsAfterTheMatchingSubscriptions() {
+    fun showsRedditsResultsBelowTheMatchingSubscriptions() {
         fakeReddit.reddit.respond(
             "/subreddits/search",
             listingOf(
@@ -164,8 +169,81 @@ class SubredditListScreenTest {
         showList()
 
         composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.onNodeWithText("Your Subscriptions").assertExists()
+        composeRule.onNodeWithText("Search Results").assertExists()
+        // The bottom section is all that Reddit found, so a subscription can show in both, and comes first there.
+        assertEquals(listOf("r/Kotlin", "r/Kotlin", "r/KotlinAndroid"), shownSubreddits())
+    }
+
+    @Test
+    fun showsASpinnerWhileRedditSearches() {
+        fakeReddit.reddit.respond("/subreddits/search", listingOf(subredditThing("KotlinAndroid", nsfw = false, subscribers = 7_000)))
+        fakeReddit.reddit.holdRequests("/subreddits/search")
+        showList()
+
+        composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.onNode(isProgressIndicator).assertExists()
+        assertEquals(listOf("r/Kotlin"), shownSubreddits())
+
+        fakeReddit.reddit.letThrough("/subreddits/search")
+        composeRule.waitUntil { shownSubreddits().size == 2 }
+        composeRule.onNode(isProgressIndicator).assertDoesNotExist()
+    }
+
+    @Test
+    fun showsASpinnerWhileTheSubscriptionsLoad() {
+        fakeReddit.reddit.holdRequests("/subreddits/mine/subscriber")
+        showList()
+        composeRule.onNode(isProgressIndicator).assertExists()
+
+        // Searching keeps the subscriptions' spinner in their own section.
+        composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.onNodeWithText("Your Subscriptions").assertExists()
+        composeRule.onNode(isProgressIndicator).assertExists()
+        fakeReddit.reddit.letThrough("/subreddits/mine/subscriber")
+    }
+
+    @Test
+    fun explainsAFailedSearchAndRetriesIt() {
+        fakeReddit.reddit.respond("/subreddits/search", "", HttpStatusCode.ServiceUnavailable)
+        showList()
+
+        composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.onNodeWithText("Reddit is unavailable right now. Try again later.").assertExists()
+        // The error is Reddit's search's alone, so the matching subscriptions still show.
+        assertEquals(listOf("r/Kotlin"), shownSubreddits())
+
+        fakeReddit.reddit.respond("/subreddits/search", listingOf(subredditThing("KotlinAndroid", nsfw = false, subscribers = 7_000)))
+        composeRule.onNodeWithText("Retry").performClick()
         composeRule.waitForIdle()
         assertEquals(listOf("r/Kotlin", "r/KotlinAndroid"), shownSubreddits())
+        composeRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    @Test
+    fun saysWhenRedditCantBeReached() {
+        fakeReddit.reddit.fail("/subreddits/search", IOException("Connection reset"))
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.onNodeWithText("Couldn't reach Reddit. Check your connection and try again.").assertExists()
+        composeRule.onNodeWithText("Retry").assertExists()
+    }
+
+    @Test
+    fun saysWhenRedditsAnswerCantBeRead() {
+        fakeReddit.reddit.respond("/subreddits/search", "<html>")
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.onNodeWithText("Reddit's answer couldn't be read. Try again.").assertExists()
+    }
+
+    @Test
+    fun searchingLoggedOutStillAsksToLogInForSubscriptions() {
+        fakeReddit.reddit.respond("/subreddits/search", listingOf(subredditThing("Kotlin", nsfw = false, subscribers = 108_935)))
+        showList(loggedIn = false)
+        composeRule.onNode(hasSetTextAction()).performTextInput("kot")
+        composeRule.onNodeWithText("Log in to see your subscriptions").assertExists()
+        assertEquals(listOf("r/Kotlin"), shownSubreddits())
     }
 
     @Test
@@ -173,6 +251,7 @@ class SubredditListScreenTest {
         showList()
         composeRule.onNode(hasSetTextAction()).performTextInput("z")
         composeRule.onNodeWithText("No matching subscriptions").assertExists()
+        composeRule.onNodeWithText("Type at least 2 characters to search Reddit").assertExists()
         composeRule.onNodeWithText("r/Kotlin").assertDoesNotExist()
     }
 

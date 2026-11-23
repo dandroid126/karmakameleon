@@ -34,6 +34,8 @@ class MockReddit {
 
     private val responses = mutableMapOf<String, Response>()
 
+    private val failures = mutableMapOf<String, Throwable>()
+
     // The paths whose requests wait for letThrough, each holding one permit per call.
     private val heldPaths = mutableMapOf<String, Channel<Unit>>()
 
@@ -65,6 +67,14 @@ class MockReddit {
             """.trimIndent(),
         )
         respond(UPLOAD_PATH, "", HttpStatusCode.Created)
+    }
+
+    /** Makes requests for [path] throw [error] instead of getting a response, like a dropped connection does. */
+    fun fail(
+        path: String,
+        error: Throwable,
+    ) {
+        failures[path] = error
     }
 
     /** Makes requests for [path] wait until [letThrough] is called, one request per call, to test what shows while one loads. */
@@ -101,6 +111,7 @@ class MockReddit {
                     addHandler { request ->
                         requests += request
                         heldPaths[request.url.encodedPath]?.receive()
+                        failures[request.url.encodedPath]?.let { throw it }
                         val response = responses[request.url.encodedPath] ?: Response(HttpStatusCode.OK, EMPTY_LISTING, "application/json")
                         respond(response.body, response.status, headersOf(HttpHeaders.ContentType, response.contentType))
                     }

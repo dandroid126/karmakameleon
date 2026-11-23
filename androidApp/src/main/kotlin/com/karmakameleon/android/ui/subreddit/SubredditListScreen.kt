@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -30,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,13 +43,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.karmakameleon.android.ui.components.LoadError
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.formatNumber
+import com.karmakameleon.shared.data.api.RedditHttpException
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Subreddit
 import org.koin.compose.koinInject
+import java.io.IOException
 
 @Composable
 fun SubredditListScreen(
@@ -67,14 +72,13 @@ fun SubredditListScreen(
     val isLoading = loadSubscriptionsOnLogin(isLoggedIn, hasSubscriptions = subscribedSubreddits.isNotEmpty(), subredditRepository)
     val search = searchSubreddits(query, includeOver18 = nsfwEnabled && nsfwSearchEnabled, subredditRepository)
     val visibleSubscriptions = remember(subscribedSubreddits, nsfwEnabled) { subscribedSubreddits.filter { nsfwEnabled || !it.isNsfw } }
-    val matches = rememberSearchMatches(query, visibleSubscriptions, search)
-    val section = @Composable { title: String, subreddits: List<Subreddit> ->
-        SubredditSection(
-            title = title,
-            subreddits = subreddits,
-            favoriteSubreddits = favoriteSubreddits,
-            onFavoriteClick = settingsRepository::toggleFavoriteSubreddit,
-            onSubredditClick = onSubredditClick,
+    val matchingSubscriptions = remember(query, visibleSubscriptions) { matchingSubscriptions(query, visibleSubscriptions) }
+    val subredditItem = @Composable { subreddit: Subreddit ->
+        SubredditListItem(
+            subreddit = subreddit,
+            isFavorite = subreddit.displayName.lowercase() in favoriteSubreddits,
+            onFavoriteClick = { settingsRepository.toggleFavoriteSubreddit(subreddit.displayName) },
+            onClick = { onSubredditClick(subreddit.displayName) },
         )
     }
 
@@ -91,34 +95,108 @@ fun SubredditListScreen(
             SubredditSearchField(query = searchQuery, onQueryChange = { searchQuery = it })
 
             when {
-                isLoading -> {
+                isLoading && query.isEmpty() -> {
                     LoadingIndicator()
                 }
 
-                query.isNotEmpty() && matches.isNotEmpty() -> {
-                    section("Search Results", matches)
-                }
-
-                query.length >= MIN_SEARCH_LENGTH && search.isDoneFor(query) -> {
-                    CenteredMessage("No subreddits found")
-                }
-
-                !isLoggedIn -> {
+                !isLoggedIn && query.isEmpty() -> {
                     CenteredMessage("Log in to see your subscriptions", "Use search to find subreddits")
                 }
 
-                // While Reddit's search is running, or before the query is long enough for one.
-                query.isNotEmpty() -> {
-                    CenteredMessage("No matching subscriptions")
-                }
-
-                visibleSubscriptions.isEmpty() -> {
+                visibleSubscriptions.isEmpty() && query.isEmpty() -> {
                     CenteredMessage("No subscriptions yet")
                 }
 
                 else -> {
-                    section("Your Subscriptions", visibleSubscriptions)
+                    SubredditSections(
+                        subscriptions = if (query.isEmpty()) visibleSubscriptions else matchingSubscriptions,
+                        isLoadingSubscriptions = isLoading,
+                        isLoggedIn = isLoggedIn,
+                        search = search.takeIf { query.isNotEmpty() },
+                        subredditItem = subredditItem,
+                    )
                 }
+            }
+        }
+    }
+}
+
+// The subscriptions, or those matching the query, and below them Reddit's search for it, if there's a query. Each
+// section says when it has nothing, so an empty search isn't mistaken for one still running or one that failed.
+@Composable
+private fun SubredditSections(
+    subscriptions: List<Subreddit>,
+    isLoadingSubscriptions: Boolean,
+    isLoggedIn: Boolean,
+    search: RedditSearch?,
+    subredditItem: @Composable (Subreddit) -> Unit,
+) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        sectionTitle("Your Subscriptions")
+        when {
+            isLoadingSubscriptions -> item(key = "subscriptions-loading") { LoadingIndicator() }
+            !isLoggedIn -> sectionMessage("Log in to see your subscriptions")
+            subscriptions.isEmpty() -> sectionMessage("No matching subscriptions")
+            else -> items(subscriptions, key = { "subscription-${it.id}" }) { subredditItem(it) }
+        }
+        if (search != null) {
+            sectionTitle("Search Results")
+            searchResults(search, subredditItem)
+        }
+    }
+}
+
+private fun LazyListScope.sectionTitle(title: String) {
+    item(key = "title-$title") {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+private fun LazyListScope.sectionMessage(text: String) {
+    item(key = "message-$text") {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+    }
+}
+
+// Reddit's results as Reddit sent them, with the subscriptions among them first, so a subscription can show in both
+// sections: the bottom one is only what Reddit found.
+private fun LazyListScope.searchResults(
+    search: RedditSearch,
+    subredditItem: @Composable (Subreddit) -> Unit,
+) {
+    when (val state = search.state) {
+        RedditSearch.State.TooShort -> {
+            sectionMessage("Type at least $MIN_SEARCH_LENGTH characters to search Reddit")
+        }
+
+        RedditSearch.State.Searching -> {
+            item(key = "results-loading") { LoadingIndicator() }
+        }
+
+        is RedditSearch.State.Failed -> {
+            item(key = "results-error") {
+                LoadError(
+                    error = state.message,
+                    onRetry = search.retry,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                )
+            }
+        }
+
+        is RedditSearch.State.Found -> {
+            if (state.results.isEmpty()) {
+                sectionMessage("No subreddits found")
+            } else {
+                items(state.results, key = { "result-${it.id}" }) { subredditItem(it) }
             }
         }
     }
@@ -162,91 +240,80 @@ private fun loadSubscriptionsOnLogin(
 
 private const val MIN_SEARCH_LENGTH = 2
 
-// Reddit's results for a query, or none yet while the search is running.
+// Reddit's search for the query the screen shows, and a way to run it again after it failed.
 private class RedditSearch(
-    val query: String,
-    val results: List<Subreddit>,
-    val isDone: Boolean,
+    val state: State,
+    val retry: () -> Unit,
 ) {
-    // Whether this search is for the query and has finished. Right after the query changes,
-    // the search for the old one is still here until the new one starts.
-    fun isDoneFor(query: String): Boolean = this.query == query && isDone
+    sealed interface State {
+        // The query is too short for Reddit to search.
+        data object TooShort : State
+
+        data object Searching : State
+
+        data class Found(
+            val results: List<Subreddit>,
+        ) : State
+
+        data class Failed(
+            val message: String,
+        ) : State
+    }
 }
 
-// The subscriptions whose names contain the query, those starting with it first, then Reddit's
-// results that aren't among them. The subscriptions show at once, without waiting for Reddit.
-// Subreddit names can't contain spaces, so the subscriptions are matched without the query's
-// spaces: "baby big" finds r/babybigcatgifs. Reddit gets the query as typed, since it also
-// searches titles and descriptions.
-@Composable
-private fun rememberSearchMatches(
+// The subscriptions whose names contain the query, those starting with it first. They show at once, without waiting
+// for Reddit. Subreddit names can't contain spaces, so they're matched without the query's spaces: "baby big" finds
+// r/babybigcatgifs. Reddit gets the query as typed, since it also searches titles and descriptions.
+private fun matchingSubscriptions(
     query: String,
     subscriptions: List<Subreddit>,
-    search: RedditSearch,
-): List<Subreddit> = remember(query, subscriptions, search) { searchMatches(query, subscriptions, search) }
-
-private fun searchMatches(
-    query: String,
-    subscriptions: List<Subreddit>,
-    search: RedditSearch,
 ): List<Subreddit> {
     if (query.isEmpty()) return emptyList()
-    val searchResults = if (search.query == query) search.results else emptyList()
     val name = query.filterNot(Char::isWhitespace)
-    val subscribed =
-        subscriptions
-            .filter { it.displayName.contains(name, ignoreCase = true) }
-            .sortedByDescending { it.displayName.startsWith(name, ignoreCase = true) }
-    val subscribedNames = subscribed.mapTo(HashSet()) { it.displayName.lowercase() }
-    return subscribed + searchResults.filter { it.displayName.lowercase() !in subscribedNames }
+    return subscriptions
+        .filter { it.displayName.contains(name, ignoreCase = true) }
+        .sortedByDescending { it.displayName.startsWith(name, ignoreCase = true) }
 }
 
-// Searches Reddit once the query is at least MIN_SEARCH_LENGTH characters long. A failed search counts as
-// finding nothing.
+// Searches Reddit once the query is at least MIN_SEARCH_LENGTH characters long. The state is always for the query
+// passed in: right after the query changes, the old query's results aren't shown while the new search starts.
 @Composable
 private fun searchSubreddits(
     query: String,
     includeOver18: Boolean,
     subredditRepository: SubredditRepository,
 ): RedditSearch {
-    var search by remember { mutableStateOf(RedditSearch("", emptyList(), isDone = true)) }
-    LaunchedEffect(query, includeOver18) {
-        val searchesReddit = query.length >= MIN_SEARCH_LENGTH
-        search = RedditSearch(query, emptyList(), isDone = !searchesReddit)
-        if (searchesReddit) {
-            val results = subredditRepository.searchSubreddits(query, includeOver18 = includeOver18).getOrDefault(emptyList())
-            search = RedditSearch(query, results, isDone = true)
+    var attempt by remember { mutableIntStateOf(0) }
+    var finished by remember { mutableStateOf<Pair<String, RedditSearch.State>?>(null) }
+    LaunchedEffect(query, includeOver18, attempt) {
+        finished = null
+        if (query.length >= MIN_SEARCH_LENGTH) {
+            val state =
+                subredditRepository.searchSubreddits(query, includeOver18 = includeOver18).fold(
+                    onSuccess = { RedditSearch.State.Found(it) },
+                    onFailure = { RedditSearch.State.Failed(searchErrorMessage(it)) },
+                )
+            finished = query to state
         }
     }
-    return search
+    val done = finished
+    val state =
+        when {
+            query.length < MIN_SEARCH_LENGTH -> RedditSearch.State.TooShort
+            done != null && done.first == query -> done.second
+            else -> RedditSearch.State.Searching
+        }
+    return RedditSearch(state, retry = { attempt++ })
 }
 
-@Composable
-private fun SubredditSection(
-    title: String,
-    subreddits: List<Subreddit>,
-    favoriteSubreddits: Set<String>,
-    onFavoriteClick: (String) -> Unit,
-    onSubredditClick: (String) -> Unit,
-) {
-    LazyColumn {
-        item {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(16.dp),
-            )
-        }
-        items(items = subreddits, key = { it.id }) { subreddit ->
-            SubredditListItem(
-                subreddit = subreddit,
-                isFavorite = subreddit.displayName.lowercase() in favoriteSubreddits,
-                onFavoriteClick = { onFavoriteClick(subreddit.displayName) },
-                onClick = { onSubredditClick(subreddit.displayName) },
-            )
-        }
+// Reddit's error says what went wrong. Anything else that stops a request, like a timeout or no network, is an
+// IOException.
+private fun searchErrorMessage(error: Throwable): String =
+    when (error) {
+        is RedditHttpException -> error.message.orEmpty()
+        is IOException -> "Couldn't reach Reddit. Check your connection and try again."
+        else -> "Reddit's answer couldn't be read. Try again."
     }
-}
 
 @Composable
 private fun LoadingIndicator() {
