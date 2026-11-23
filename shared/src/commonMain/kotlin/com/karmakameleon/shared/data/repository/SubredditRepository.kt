@@ -4,6 +4,7 @@ import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Subreddit
 import com.karmakameleon.shared.util.runSuspendCatching
+import io.github.aakira.napier.Napier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -101,7 +102,7 @@ class SubredditRepository(
             redditApi
                 .searchSubreddits(query, includeOver18 = includeOver18)
                 .sortedByDescending { it.isSubscribed || it.displayName.lowercase() in subscribed }
-        }
+        }.onFailure { Napier.w("Subreddit search for \"$query\" failed", it) }
 
     suspend fun getPopularSubreddits(after: String? = null): Result<Listing<Subreddit>> =
         runSuspendCatching { redditApi.getPopularSubreddits(after) }

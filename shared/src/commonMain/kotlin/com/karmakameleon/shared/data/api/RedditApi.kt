@@ -318,7 +318,10 @@ open class RedditApi(
                 parameter("include_over_18", includeOver18)
             }
         val subreddits = parser.subredditListing(listing).items
-        return if (includeOver18) subreddits else subreddits.filter { !it.isNsfw }
+        val shown = if (includeOver18) subreddits else subreddits.filter { !it.isNsfw }
+        // Logged so an empty search shows whether Reddit sent nothing or the NSFW filter removed everything.
+        Napier.d("Subreddit search for \"$query\": Reddit sent ${subreddits.size}, ${shown.size} kept")
+        return shown
     }
 
     open suspend fun getPopularSubreddits(
