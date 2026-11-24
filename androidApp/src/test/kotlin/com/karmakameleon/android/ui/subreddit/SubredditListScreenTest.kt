@@ -1,5 +1,6 @@
 package com.karmakameleon.android.ui.subreddit
 
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
@@ -20,10 +21,14 @@ import com.karmakameleon.shared.testing.query
 import com.karmakameleon.shared.testing.subredditThing
 import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import java.io.IOException
 
 private val isProgressIndicator = SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)
@@ -126,6 +131,11 @@ class SubredditListScreenTest {
     }
 
     // The subreddit names shown, top to bottom.
+    private fun isKeyboardShown(): Boolean {
+        val inputMethods = RuntimeEnvironment.getApplication().getSystemService(InputMethodManager::class.java)
+        return shadowOf(inputMethods).isSoftInputVisible
+    }
+
     private fun shownSubreddits(): List<String> =
         composeRule
             .onAllNodes(hasText("r/", substring = true))
@@ -322,10 +332,15 @@ class SubredditListScreenTest {
     @Test
     fun offersNoSubredditForAQueryThatCantBeOne() {
         showList()
+        composeRule.onNode(hasSetTextAction()).performClick()
         composeRule.onNode(hasSetTextAction()).performTextInput("c++")
+        assertTrue(isKeyboardShown())
         composeRule.onNodeWithText("Go to", substring = true).assertDoesNotExist()
         composeRule.onNode(hasSetTextAction()).performImeAction()
         assertEquals(emptyList<String>(), opened)
+        // The keyboard still closes, so the search results under it show.
+        composeRule.waitForIdle()
+        assertFalse(isKeyboardShown())
     }
 
     @Test

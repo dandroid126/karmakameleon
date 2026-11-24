@@ -43,6 +43,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -251,13 +252,15 @@ private fun GoToSubreddit(
     )
 }
 
-// The keyboard's action key opens the subreddit named by the query, like the "Go to" row.
+// The keyboard's action key opens the subreddit named by the query, like the "Go to" row. It also closes the keyboard,
+// as the default action key did, so a query that can't be a subreddit's name still shows the search results under it.
 @Composable
 private fun SubredditSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     onGo: () -> Unit,
 ) {
+    val keyboard = LocalSoftwareKeyboardController.current
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
@@ -269,7 +272,13 @@ private fun SubredditSearchField(
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
         singleLine = true,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
-        keyboardActions = KeyboardActions(onGo = { onGo() }),
+        keyboardActions =
+            KeyboardActions(
+                onGo = {
+                    keyboard?.hide()
+                    onGo()
+                },
+            ),
     )
 }
 
