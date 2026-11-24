@@ -130,12 +130,13 @@ class SubredditListScreenTest {
         assertEquals(listOf("Kotlin"), opened)
     }
 
-    // The subreddit names shown, top to bottom.
+    // Whether the app asked Android to show the keyboard and hasn't asked to hide it since.
     private fun isKeyboardShown(): Boolean {
         val inputMethods = RuntimeEnvironment.getApplication().getSystemService(InputMethodManager::class.java)
         return shadowOf(inputMethods).isSoftInputVisible
     }
 
+    // The subreddit names shown, top to bottom.
     private fun shownSubreddits(): List<String> =
         composeRule
             .onAllNodes(hasText("r/", substring = true))
