@@ -1,9 +1,12 @@
 package com.karmakameleon.android.ui.profile
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDisplayed
@@ -15,12 +18,15 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.testing.lastPage
 import com.karmakameleon.android.testing.postListing
+import com.karmakameleon.android.testing.reversedListing
 import com.karmakameleon.android.ui.components.FakeImagesRule
 import com.karmakameleon.android.ui.feed.FIRST_POST_TITLE
+import com.karmakameleon.android.ui.feed.LAST_POST_TITLE
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.testing.form
@@ -146,6 +152,24 @@ class ProfileScreenTest {
         composeRule.onNodeWithText("New").performClick()
         composeRule.waitForIdle()
         assertEquals("new", requests("/user/someone/submitted").last().query()["sort"])
+    }
+
+    // A new sort used to land on the post that was on screen, partway down the new posts (#127).
+    @Test
+    fun newSortStartsAtTheTop() {
+        fakeReddit.loggedIn = true
+        loadOwnAccount(fakeReddit)
+        respondWithProfile(fakeReddit, "someone")
+        val posts = lastPage(postListing())
+        fakeReddit.reddit.respond("/user/someone/submitted", posts)
+        showProfile("someone")
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(2)
+        composeRule.onNodeWithText(FIRST_POST_TITLE).assertIsNotDisplayed()
+
+        fakeReddit.reddit.respond("/user/someone/submitted", reversedListing(posts))
+        composeRule.onNodeWithContentDescription("Sort").performClick()
+        composeRule.onNodeWithText("New").performClick()
+        composeRule.onNodeWithText(LAST_POST_TITLE).assertIsDisplayed()
     }
 
     @Test

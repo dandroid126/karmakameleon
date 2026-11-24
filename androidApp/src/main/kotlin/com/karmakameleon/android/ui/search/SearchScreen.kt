@@ -53,6 +53,7 @@ import com.karmakameleon.android.ui.components.LoadMoreNearEnd
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
 import com.karmakameleon.android.ui.components.PostListItem
+import com.karmakameleon.android.ui.components.ScrollToTopOnChange
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.label
 import com.karmakameleon.android.ui.components.loadingMoreItem
@@ -92,6 +93,7 @@ fun SearchScreen(
     // Only post results come in pages.
     val canLoadMore = !uiState.isLoading && uiState.hasMore && uiState.searchType == SearchType.POST
     LoadMoreNearEnd(listState, uiState.posts.size, uiState.after, enabled = canLoadMore) { viewModel.loadMore() }
+    ScrollToTopOnChange(listState, uiState.resultsId)
 
     Scaffold(
         modifier = modifier,

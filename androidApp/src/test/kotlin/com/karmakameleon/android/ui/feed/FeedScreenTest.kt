@@ -21,6 +21,11 @@ import org.robolectric.RobolectricTestRunner
 // The first post in the saved listing.
 const val FIRST_POST_TITLE = "Enter the Pics Halloween Photo Contest!"
 
+// The last of the saved listing's four posts.
+const val LAST_POST_TITLE =
+    "Our new kitten is the same color as our dog. " +
+        "This has confused them both into thinking they are mother and son."
+
 @RunWith(RobolectricTestRunner::class)
 class FeedScreenTest {
     @get:Rule

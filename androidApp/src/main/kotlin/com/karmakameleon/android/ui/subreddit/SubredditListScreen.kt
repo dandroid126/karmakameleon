@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -49,6 +50,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.ui.components.LoadError
+import com.karmakameleon.android.ui.components.ScrollToTopOnChange
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.formatNumber
 import com.karmakameleon.shared.data.api.RedditHttpException
@@ -116,6 +118,7 @@ fun SubredditListScreen(
 
                 else -> {
                     SubredditSections(
+                        query = query,
                         subscriptions = if (query.isEmpty()) visibleSubscriptions else matchingSubscriptions,
                         isLoadingSubscriptions = isLoading,
                         isLoggedIn = isLoggedIn,
@@ -132,9 +135,11 @@ fun SubredditListScreen(
 
 // The subscriptions, or those matching the query, and below them Reddit's search for it, if there's a query. Each
 // section says when it has nothing, so an empty search isn't mistaken for one still running or one that failed. A query
-// that could be a subreddit's name can be opened first, without Reddit's search, which sometimes finds nothing.
+// that could be a subreddit's name can be opened first, without Reddit's search, which sometimes finds nothing. Each
+// change to the query starts at the top, so its matches aren't above the screen.
 @Composable
 private fun SubredditSections(
+    query: String,
     subscriptions: List<Subreddit>,
     isLoadingSubscriptions: Boolean,
     isLoggedIn: Boolean,
@@ -145,7 +150,9 @@ private fun SubredditSections(
 ) {
     val showsSubscriptions = !isLoadingSubscriptions && isLoggedIn
     val shownAbove = if (showsSubscriptions) subscriptions.mapTo(HashSet()) { it.displayName.lowercase() } else emptySet()
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    val listState = rememberLazyListState()
+    ScrollToTopOnChange(listState, query)
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         if (typedName != null) {
             item(key = "go") { GoToSubreddit(typedName, onClick = { onGoClick(typedName) }) }
         }

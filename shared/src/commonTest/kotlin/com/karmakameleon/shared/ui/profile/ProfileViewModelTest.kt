@@ -280,6 +280,25 @@ class ProfileViewModelTest {
             )
         }
 
+    // The screen scrolls a list back to the top when its itemsId changes, so only a first page changes it (#127).
+    @Test
+    fun itemsId_changesForANewSortButNotForMore() =
+        runTest {
+            fakeApi.meResult = createTestUser(name = "testuser")
+            fakeApi.userPostsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "token1")
+            viewModel.loadOwnProfile()
+            advanceUntilIdle()
+            val first = viewModel.uiState.value.posts.itemsId
+
+            viewModel.loadMore(ProfileList.POSTS)
+            advanceUntilIdle()
+            assertEquals(first, viewModel.uiState.value.posts.itemsId)
+
+            viewModel.setPostsSort(PostSort.TOP)
+            advanceUntilIdle()
+            assertEquals(first + 1, viewModel.uiState.value.posts.itemsId)
+        }
+
     @Test
     fun sortsAndTimeFilters_beforeAProfileLoadsOnlyChangeTheSetting() =
         runTest {

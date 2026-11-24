@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -149,17 +150,25 @@ fun LoadMoreNearEnd(
     }
 }
 
-/** Scrolls the list back to the top when key changes, but not when it's first shown. */
+/**
+ * Scrolls the list back to the top when [key] changes, but not when it's first shown. [key] should change when new
+ * contents replace the list's, and not when more are added at its end (#127). Otherwise the list keeps whichever item
+ * was first on screen in view, and lands partway down new contents that share an item with the old ones.
+ *
+ * The scroll is requested before the next layout, so new contents that arrive with the change of [key] never show at
+ * the old position, and it applies even while the list isn't shown, so a list hoisted above a spinner or a prompt
+ * starts at the top when it comes back.
+ */
 @Composable
 fun ScrollToTopOnChange(
     listState: LazyListState,
-    key: Any,
+    key: Any?,
 ) {
     var previousKey by remember { mutableStateOf(key) }
-    LaunchedEffect(key) {
+    SideEffect {
         if (key != previousKey) {
-            listState.scrollToItem(0)
             previousKey = key
+            listState.requestScrollToItem(0)
         }
     }
 }

@@ -267,7 +267,9 @@ class ProfileViewModel(
                 val loaded =
                     result.fold(
                         onSuccess = { listing ->
-                            source.update(state) { it.copy(items = listing.items, after = listing.after, hasMore = listing.hasMore) }
+                            source.update(state) {
+                                it.copy(items = listing.items, after = listing.after, hasMore = listing.hasMore, itemsId = it.itemsId + 1)
+                            }
                         },
                         onFailure = { state },
                     )
