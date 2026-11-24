@@ -378,6 +378,24 @@ class SearchViewModelTest {
             assertEquals("t3_p1", fakeApi.searchRequests.last().after)
         }
 
+    // The screen scrolls back to the top when resultsId changes, so only a new search's first page changes it (#127).
+    @Test
+    fun resultsId_changesForNewResultsButNotForMore() =
+        runTest {
+            fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "t3_p1")
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+            val first = viewModel.uiState.value.resultsId
+
+            viewModel.loadMore()
+            advanceUntilIdle()
+            assertEquals(first, viewModel.uiState.value.resultsId)
+
+            viewModel.setQuery("kotlin coroutines")
+            advanceUntilIdle()
+            assertEquals(first + 1, viewModel.uiState.value.resultsId)
+        }
+
     @Test
     fun loadMore_skipsPostsAlreadyInTheList() =
         runTest {

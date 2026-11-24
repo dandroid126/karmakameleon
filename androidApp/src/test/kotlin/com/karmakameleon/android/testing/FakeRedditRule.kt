@@ -19,6 +19,10 @@ import com.russhwolf.settings.Settings
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.rules.ExternalResource
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -85,3 +89,14 @@ fun postListing(fixture: String = "post_listing.json"): String =
 
 /** [listing] without a next page. The fake server answers every page of a path alike, so the next page would repeat it. */
 fun lastPage(listing: String): String = listing.replace(Regex(""""after": *"[^"]*""""), "\"after\": null")
+
+/**
+ * [listing] with its items in the reverse order. Answering a new search, sort or refresh with it gives new contents
+ * that share every item with the old ones, so a list that kept its place would land partway down them (#127).
+ */
+fun reversedListing(listing: String): String {
+    val json = Json.parseToJsonElement(listing).jsonObject
+    val data = json.getValue("data").jsonObject
+    val children = JsonArray(data.getValue("children").jsonArray.reversed())
+    return JsonObject(json + ("data" to JsonObject(data + ("children" to children)))).toString()
+}

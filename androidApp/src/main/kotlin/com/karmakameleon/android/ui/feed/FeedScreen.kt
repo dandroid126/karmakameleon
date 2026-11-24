@@ -47,7 +47,6 @@ import com.karmakameleon.android.ui.components.PostListCallbacks
 import com.karmakameleon.android.ui.components.PostListItem
 import com.karmakameleon.android.ui.components.PostListScaffold
 import com.karmakameleon.android.ui.components.ScrollToTopAfterRefresh
-import com.karmakameleon.android.ui.components.ScrollToTopOnChange
 import com.karmakameleon.android.ui.components.SortBottomSheet
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.loadingMoreItem
@@ -77,8 +76,6 @@ fun FeedScreen(
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
     val feedSettings = rememberPostFeedSettings()
-
-    ScrollToTopOnChange(listState, uiState.currentFeedType)
 
     PostListScaffold(
         postList = viewModel.postList,

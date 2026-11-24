@@ -33,6 +33,11 @@ data class SearchUiState(
     val after: String? = null,
     val hasMore: Boolean = true,
     val detectedLink: RedditLink? = null,
+    /**
+     * Counts the searches whose first page replaced [posts], so the screen can tell new results, which start at the
+     * top, from more of the same ones, which don't.
+     */
+    val resultsId: Int = 0,
 )
 
 class SearchViewModel(
@@ -118,6 +123,7 @@ class SearchViewModel(
                         after = listing.after,
                         hasMore = listing.hasMore,
                         isLoading = false,
+                        resultsId = it.resultsId + 1,
                     )
                 }
             },

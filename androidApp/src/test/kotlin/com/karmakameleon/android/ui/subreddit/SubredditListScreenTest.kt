@@ -3,6 +3,8 @@ package com.karmakameleon.android.ui.subreddit
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -12,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
@@ -375,4 +378,19 @@ class SubredditListScreenTest {
         val search = fakeReddit.reddit.requests.last { it.url.encodedPath == "/subreddits/search" }
         assertEquals("kotlin", search.query()["q"])
     }
+
+    // Typing while scrolled down used to keep the subscription on screen in view, with the "Go to" row and the first
+    // matches above it (#127).
+    @Test
+    fun typingStartsAtTheTop() {
+        showList(subscribed = listingOf(*(10..49).map { subredditThing("sub$it", nsfw = false, subscribers = 1_000) }.toTypedArray()))
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(SUB32_INDEX)
+        composeRule.onNodeWithText("r/sub32").assertIsDisplayed()
+
+        composeRule.onNode(hasSetTextAction()).performTextInput("sub3")
+        composeRule.onNodeWithText("Go to r/sub3").assertIsDisplayed()
+    }
 }
+
+// Below the "Your Subscriptions" title, with sub10 first.
+private const val SUB32_INDEX = 23

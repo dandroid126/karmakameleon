@@ -1,16 +1,24 @@
 package com.karmakameleon.android.ui.search
 
 import android.os.Looper
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.karmakameleon.android.testing.FakeRedditRule
+import com.karmakameleon.android.testing.lastPage
 import com.karmakameleon.android.testing.postListing
+import com.karmakameleon.android.testing.reversedListing
 import com.karmakameleon.android.ui.components.FakeImagesRule
 import com.karmakameleon.android.ui.feed.FIRST_POST_TITLE
+import com.karmakameleon.android.ui.feed.LAST_POST_TITLE
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.testing.query
 import io.ktor.http.HttpStatusCode
@@ -107,6 +115,23 @@ class SearchScreenTest {
         composeRule.onNodeWithText("New").performClick()
         composeRule.waitForIdle()
         assertEquals("new", searches().last().query()["sort"])
+    }
+
+    // A new search used to open partway down when its results shared a post with the old ones the list was scrolled
+    // to (#127).
+    @Test
+    fun newSearchStartsAtTheTop() {
+        val results = lastPage(postListing())
+        fakeReddit.reddit.respond("/search", results)
+        showSearch()
+        type("halloween")
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(2)
+        composeRule.onNodeWithText(FIRST_POST_TITLE).assertIsNotDisplayed()
+
+        fakeReddit.reddit.respond("/search", reversedListing(results))
+        composeRule.onNode(hasSetTextAction()).performTextClearance()
+        type("pets")
+        composeRule.onNodeWithText(LAST_POST_TITLE).assertIsDisplayed()
     }
 
     // The chip used to do nothing (#87).

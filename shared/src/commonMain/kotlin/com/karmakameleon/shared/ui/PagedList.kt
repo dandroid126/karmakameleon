@@ -1,11 +1,15 @@
 package com.karmakameleon.shared.ui
 
-/** A list loaded a page at a time. [after] is Reddit's cursor for the next page. */
+/**
+ * A list loaded a page at a time. [after] is Reddit's cursor for the next page. [itemsId] counts the first pages that
+ * replaced [items], so a screen can tell new items, which start at the top, from more of the same ones, which don't.
+ */
 data class PagedList<T>(
     val items: List<T> = emptyList(),
     val after: String? = null,
     val hasMore: Boolean = true,
     val isLoadingMore: Boolean = false,
+    val itemsId: Int = 0,
 ) {
     val canLoadMore: Boolean get() = !isLoadingMore && hasMore && after != null
 }

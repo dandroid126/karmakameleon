@@ -82,6 +82,7 @@ import com.karmakameleon.android.ui.components.LoadMoreNearEnd
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
 import com.karmakameleon.android.ui.components.ReplyBar
+import com.karmakameleon.android.ui.components.ScrollToTopOnChange
 import com.karmakameleon.android.ui.components.SortBottomSheet
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.formatNumber
@@ -562,6 +563,8 @@ private fun ProfileTabContent(
     val listStates = ProfileList.entries.associateWith { rememberLazyListState() }
     ProfileList.entries.forEach { list ->
         val pagedList = uiState.pagedList(list)
+        // A new sort, time filter or refresh replaces the items, and shouldn't land on one the old ones shared (#127).
+        ScrollToTopOnChange(listStates.getValue(list), pagedList.itemsId)
         LoadMoreNearEnd(
             listStates.getValue(list),
             pagedList.items.size,

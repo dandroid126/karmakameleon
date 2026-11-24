@@ -1,13 +1,19 @@
 package com.karmakameleon.android.ui.feed
 
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import com.karmakameleon.android.testing.FakeRedditRule
+import com.karmakameleon.android.testing.lastPage
 import com.karmakameleon.android.testing.postListing
+import com.karmakameleon.android.testing.reversedListing
 import com.karmakameleon.android.ui.components.FakeImagesRule
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.testing.form
@@ -20,6 +26,11 @@ import org.robolectric.RobolectricTestRunner
 
 // The first post in the saved listing.
 const val FIRST_POST_TITLE = "Enter the Pics Halloween Photo Contest!"
+
+// The last of the saved listing's four posts.
+const val LAST_POST_TITLE =
+    "Our new kitten is the same color as our dog. " +
+        "This has confused them both into thinking they are mother and son."
 
 @RunWith(RobolectricTestRunner::class)
 class FeedScreenTest {
@@ -34,8 +45,8 @@ class FeedScreenTest {
 
     private val calls = mutableListOf<String>()
 
-    private fun showFeed() {
-        fakeReddit.reddit.respond("/hot", postListing())
+    private fun showFeed(hot: String = postListing()) {
+        fakeReddit.reddit.respond("/hot", hot)
         composeRule.setContent {
             KarmaKameleonTheme(dynamicColor = false) {
                 FeedScreen(
@@ -71,6 +82,20 @@ class FeedScreenTest {
         val vote = fakeReddit.reddit.requests.single { it.url.encodedPath == "/api/vote" }
         assertEquals("t3_1x65iks", vote.form()["id"])
         assertEquals("1", vote.form()["dir"])
+    }
+
+    // A new sort used to open on the post that was on screen, partway down the new posts (#127).
+    @Test
+    fun newSortStartsAtTheTop() {
+        val posts = lastPage(postListing())
+        showFeed(hot = posts)
+        composeRule.onNode(hasScrollToIndexAction()).performScrollToIndex(2)
+        composeRule.onNodeWithText(FIRST_POST_TITLE).assertIsNotDisplayed()
+
+        fakeReddit.reddit.respond("/new", reversedListing(posts))
+        composeRule.onNodeWithContentDescription("Sort").performClick()
+        composeRule.onNodeWithText("New").performClick()
+        composeRule.onNodeWithText(LAST_POST_TITLE).assertIsDisplayed()
     }
 
     @Test
