@@ -21,6 +21,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import com.karmakameleon.android.testing.FakeRedditRule
+import com.karmakameleon.android.testing.assertTopIsInList
 import com.karmakameleon.android.testing.lastPage
 import com.karmakameleon.android.testing.postListing
 import com.karmakameleon.android.testing.reversedListing
@@ -33,6 +34,12 @@ import com.karmakameleon.shared.testing.form
 import com.karmakameleon.shared.testing.query
 import com.karmakameleon.shared.testing.readFixture
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -244,6 +251,25 @@ class ProfileScreenTest {
         composeRule.onNodeWithText(OWN_COMMENT, substring = true).assertDoesNotExist()
     }
 
+    // Deleting a long comment after scrolling down to its Delete button used to leave the next comments above the
+    // screen (#179).
+    @Test
+    fun deletingTheCommentOnScreenShowsTheNextAtTheTop() {
+        fakeReddit.loggedIn = true
+        respondWithProfile(fakeReddit, OWN_USERNAME)
+        fakeReddit.reddit.respond("/user/$OWN_USERNAME/comments", longCommentFirst())
+        loadOwnAccount(fakeReddit)
+        showProfile(OWN_USERNAME)
+        composeRule.onNodeWithText("Comments").performClick()
+        composeRule.onNodeWithText(LONG_COMMENT_START, substring = true).performClick()
+        composeRule.onNodeWithContentDescription("Delete").performScrollTo().performClick()
+        composeRule.onNodeWithText("Delete").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText(LONG_COMMENT_START, substring = true).assertDoesNotExist()
+        composeRule.assertTopIsInList(composeRule.onNodeWithText("Short comment 1"))
+    }
+
     @Test
     fun backGoesBack() {
         showOtherProfile()
@@ -264,3 +290,28 @@ fun respondWithProfile(
 
 // More than the times the profile waits for parsing before it shows its comments.
 private const val PARSE_ROUNDS = 5
+
+private const val LONG_COMMENT_START = "Long paragraph 1,"
+
+// The comment in user_comments.json as a long one, taller than the screen, followed by short ones.
+private fun longCommentFirst(): String {
+    val listing = Json.parseToJsonElement(readFixture("user_comments.json")).jsonObject
+    val data = listing.getValue("data").jsonObject
+    val template =
+        data
+            .getValue("children")
+            .jsonArray
+            .first()
+            .jsonObject
+
+    fun comment(
+        id: String,
+        body: String,
+    ): JsonObject {
+        val fields = mapOf("id" to JsonPrimitive(id), "name" to JsonPrimitive("t1_$id"), "body" to JsonPrimitive(body))
+        return JsonObject(template + ("data" to JsonObject(template.getValue("data").jsonObject + fields)))
+    }
+    val long = (1..40).joinToString("\n\n") { "Long paragraph $it, with enough words to wrap across the line." }
+    val comments = listOf(comment("long", long)) + (1..8).map { comment("short$it", "Short comment $it") }
+    return lastPage(JsonObject(listing + ("data" to JsonObject(data + ("children" to JsonArray(comments))))).toString())
+}

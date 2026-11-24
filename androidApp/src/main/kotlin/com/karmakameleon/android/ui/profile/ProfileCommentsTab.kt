@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.ui.components.CommentActions
 import com.karmakameleon.android.ui.components.CommentItem
+import com.karmakameleon.android.ui.components.KeepPlaceOnRemoval
 import com.karmakameleon.android.ui.components.loadingMoreItem
 import com.karmakameleon.android.ui.components.showShortToast
 import com.karmakameleon.shared.domain.model.Comment
@@ -56,6 +57,7 @@ internal fun ProfileCommentsTab(
     emptyText: String = "No comments",
 ) {
     ProfileListContent(isLoadingContent = isLoadingContent, isEmpty = comments.isEmpty(), emptyText = emptyText) {
+        KeepPlaceOnRemoval(listState, comments) { it.id }
         LazyColumn(state = listState) {
             items(comments, key = { it.id }) { comment ->
                 ProfileComment(comment = comment, state = state, callbacks = callbacks)

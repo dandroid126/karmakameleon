@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.width
@@ -16,14 +17,20 @@ import androidx.test.espresso.action.ViewActions.replaceText
 import androidx.test.espresso.matcher.ViewMatchers.withHint
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.testing.FakeRedditRule
+import com.karmakameleon.android.testing.assertTopIsInList
 import com.karmakameleon.android.testing.postListing
 import com.karmakameleon.android.ui.components.FakeImagesRule
+import com.karmakameleon.android.ui.profile.OWN_USERNAME
+import com.karmakameleon.android.ui.profile.loadOwnAccount
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.testing.form
 import com.karmakameleon.shared.testing.query
 import com.karmakameleon.shared.testing.readFixture
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -59,14 +66,17 @@ class PostDetailScreenTest {
         commentId: String? = null,
         selfText: String = "",
         nsfwAndSpoiler: Boolean = false,
+        thread: (String) -> String = { it },
     ) {
         fakeReddit.loggedIn = loggedIn
         fakeReddit.reddit.respond(
             POST_PATH,
-            postListing("post_with_comments.json")
-                .replace("\"selftext\": \"\"", "\"selftext\": \"$selfText\"")
-                .replace("\"over_18\": false", "\"over_18\": $nsfwAndSpoiler")
-                .replace("\"spoiler\": false", "\"spoiler\": $nsfwAndSpoiler"),
+            thread(
+                postListing("post_with_comments.json")
+                    .replace("\"selftext\": \"\"", "\"selftext\": \"$selfText\"")
+                    .replace("\"over_18\": false", "\"over_18\": $nsfwAndSpoiler")
+                    .replace("\"spoiler\": false", "\"spoiler\": $nsfwAndSpoiler"),
+            ),
         )
         fakeReddit.reddit.respond("$POST_PATH/comment/phx23wk", postListing("post_with_comments.json"))
         composeRule.setContent {
@@ -260,6 +270,23 @@ class PostDetailScreenTest {
         composeRule.onNodeWithContentDescription("Reply").assertDoesNotExist()
     }
 
+    // Deleting a long comment after scrolling down to its Delete button used to leave the next comments above the
+    // screen (#179).
+    @Test
+    fun deletingTheCommentOnScreenShowsTheNextAtTheTop() {
+        // Before the account loads, which logs in.
+        fakeReddit.loggedIn = true
+        loadOwnAccount(fakeReddit)
+        showPost(thread = ::ownLongFirstComment)
+        composeRule.onNodeWithText(LONG_COMMENT_START, substring = true).performClick()
+        composeRule.onNodeWithContentDescription("Delete").performScrollTo().performClick()
+        composeRule.onNodeWithText("Delete").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals("t1_phx1a8k", requests("/api/del").single().form()["id"])
+        composeRule.assertTopIsInList(composeRule.onNodeWithText(SECOND_COMMENT, substring = true))
+    }
+
     @Test
     fun backGoesBack() {
         showPost()
@@ -282,4 +309,40 @@ fun submittedComment(id: String): String {
                     .jsonPrimitive.content == id
             }
     return """{"json": {"errors": [], "data": {"things": [$comment]}}}"""
+}
+
+// The start of the comment after the first one and its replies in post_with_comments.json.
+private const val SECOND_COMMENT = "I will always hear Tim Robinson"
+
+private const val LONG_COMMENT_START = "Long paragraph 1,"
+
+// [thread] with its first comment written by the logged in user and taller than the screen, and enough short comments
+// after the next one that the list can stay scrolled down once the first is deleted.
+private fun ownLongFirstComment(thread: String): String {
+    val listings = Json.parseToJsonElement(thread).jsonArray
+    val comments = listings[1].jsonObject
+    val children =
+        comments
+            .getValue("data")
+            .jsonObject
+            .getValue("children")
+            .jsonArray
+    val first = children.first().jsonObject
+    val long = (1..40).joinToString("\n\n") { "Long paragraph $it, with enough words to wrap across the line." }
+    val fields = mapOf("author" to JsonPrimitive(OWN_USERNAME), "body" to JsonPrimitive(long))
+    val ownFirst = JsonObject(first + ("data" to JsonObject(first.getValue("data").jsonObject + fields)))
+    val second = children[1].jsonObject
+    val shortOnes =
+        (1..8).map { n ->
+            val fields =
+                mapOf(
+                    "id" to JsonPrimitive("short$n"),
+                    "name" to JsonPrimitive("t1_short$n"),
+                    "body" to JsonPrimitive("Short comment $n"),
+                )
+            JsonObject(second + ("data" to JsonObject(second.getValue("data").jsonObject + fields)))
+        }
+    val newChildren = JsonArray(listOf(ownFirst, second) + shortOnes + children.drop(2))
+    val newComments = JsonObject(comments + ("data" to JsonObject(comments.getValue("data").jsonObject + ("children" to newChildren))))
+    return JsonArray(listOf(listings[0], newComments)).toString()
 }
