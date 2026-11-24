@@ -1,5 +1,13 @@
 package com.karmakameleon.android.testing
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.junit4.ComposeContentTestRule
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.unit.Dp
 import com.karmakameleon.android.data.ContentResolverImageFiles
 import com.karmakameleon.android.di.androidModule
 import com.karmakameleon.android.ui.components.threeHoursAgo
@@ -99,4 +107,26 @@ fun reversedListing(listing: String): String {
     val data = json.getValue("data").jsonObject
     val children = JsonArray(data.getValue("children").jsonArray.reversed())
     return JsonObject(json + ("data" to JsonObject(data + ("children" to children)))).toString()
+}
+
+/**
+ * Scrolls the list on screen halfway into the item first on screen, which spans [itemTop] to [itemBottom], like
+ * scrolling down to its actions at its bottom.
+ */
+fun ComposeContentTestRule.scrollIntoItem(
+    itemTop: Dp,
+    itemBottom: Dp,
+) {
+    val list = onNode(hasScrollToIndexAction())
+    val distance = with(density) { ((itemBottom - itemTop) / 2 + itemTop - list.getUnclippedBoundsInRoot().top).toPx() }
+    list.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, distance) }
+    waitForIdle()
+}
+
+/** Checks that the node's top is on screen, not above the list, where a removed item used to leave the next one (#179). */
+fun ComposeContentTestRule.assertTopIsInList(node: SemanticsNodeInteraction) {
+    // Clipped bounds stop at the list's edge, so they'd put a node partly above the list at its top.
+    val listTop = onNode(hasScrollToIndexAction()).getUnclippedBoundsInRoot().top
+    val top = node.assertIsDisplayed().getUnclippedBoundsInRoot().top
+    check(top >= listTop) { "The node's top, $top, is above the list's, $listTop" }
 }

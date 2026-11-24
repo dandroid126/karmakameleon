@@ -2,6 +2,7 @@ package com.karmakameleon.android.ui.feed
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -11,9 +12,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import com.karmakameleon.android.testing.FakeRedditRule
+import com.karmakameleon.android.testing.assertTopIsInList
 import com.karmakameleon.android.testing.lastPage
 import com.karmakameleon.android.testing.postListing
 import com.karmakameleon.android.testing.reversedListing
+import com.karmakameleon.android.testing.scrollIntoItem
 import com.karmakameleon.android.ui.components.FakeImagesRule
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.testing.form
@@ -31,6 +34,9 @@ const val FIRST_POST_TITLE = "Enter the Pics Halloween Photo Contest!"
 const val LAST_POST_TITLE =
     "Our new kitten is the same color as our dog. " +
         "This has confused them both into thinking they are mother and son."
+
+// The start of the second post's title in the saved listing.
+const val SECOND_POST_TITLE = "Nice looking cougar headed up the driveway."
 
 @RunWith(RobolectricTestRunner::class)
 class FeedScreenTest {
@@ -96,6 +102,29 @@ class FeedScreenTest {
         composeRule.onNodeWithContentDescription("Sort").performClick()
         composeRule.onNodeWithText("New").performClick()
         composeRule.onNodeWithText(LAST_POST_TITLE).assertIsDisplayed()
+    }
+
+    // Hiding the post on screen used to leave the next one as far above the screen as the list was scrolled into the
+    // hidden one (#179).
+    @Test
+    fun hidingThePostOnScreenShowsTheNextAtTheTop() {
+        showFeed()
+        val firstMenu = composeRule.onAllNodesWithContentDescription("More options").onFirst()
+        composeRule.scrollIntoItem(
+            itemTop = composeRule.onNodeWithText(FIRST_POST_TITLE).getUnclippedBoundsInRoot().top,
+            itemBottom = firstMenu.getUnclippedBoundsInRoot().bottom,
+        )
+        firstMenu.performClick()
+        composeRule.onNodeWithText("Hide").performClick()
+        composeRule.waitForIdle()
+
+        assertEquals(
+            "t3_1x65iks",
+            fakeReddit.reddit.requests
+                .single { it.url.encodedPath == "/api/hide" }
+                .form()["id"],
+        )
+        composeRule.assertTopIsInList(composeRule.onNodeWithText(SECOND_POST_TITLE, substring = true))
     }
 
     @Test

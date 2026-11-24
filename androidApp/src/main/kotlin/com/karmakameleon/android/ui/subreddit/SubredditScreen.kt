@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FeedPostItem
+import com.karmakameleon.android.ui.components.KeepPlaceOnRemoval
 import com.karmakameleon.android.ui.components.LoadError
 import com.karmakameleon.android.ui.components.LoadMoreNearEnd
 import com.karmakameleon.android.ui.components.NoPostsMessage
@@ -155,6 +156,7 @@ private fun SubredditPostList(
     onSubscribeClick: () -> Unit,
     onRetry: () -> Unit,
 ) {
+    KeepPlaceOnRemoval(listState, postList.posts) { it.id }
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),

@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.karmakameleon.android.ui.components.FeedPostItem
+import com.karmakameleon.android.ui.components.KeepPlaceOnRemoval
 import com.karmakameleon.android.ui.components.PostFeedSettings
 import com.karmakameleon.android.ui.components.PostListCallbacks
 import com.karmakameleon.android.ui.components.loadingMoreItem
@@ -31,6 +32,7 @@ internal fun ProfilePostsTab(
     // Each list remembers which compact post is expanded.
     val settings = feedSettings.copy(compactSelection = rememberCompactPostSelection())
     ProfileListContent(isLoadingContent = isLoadingContent, isEmpty = posts.isEmpty(), emptyText = emptyText) {
+        KeepPlaceOnRemoval(listState, posts) { it.id }
         LazyColumn(state = listState) {
             items(posts, key = { it.id }) { post ->
                 FeedPostItem(post = post, settings = settings, callbacks = callbacks, isLoggedIn = isLoggedIn)

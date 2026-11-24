@@ -92,6 +92,7 @@ import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.CommentActions
 import com.karmakameleon.android.ui.components.CommentItem
 import com.karmakameleon.android.ui.components.FullScreenImageViewer
+import com.karmakameleon.android.ui.components.KeepPlaceOnRemoval
 import com.karmakameleon.android.ui.components.LoadError
 import com.karmakameleon.android.ui.components.LongPressMenuBox
 import com.karmakameleon.android.ui.components.MarkdownText
@@ -590,6 +591,7 @@ private fun PostDetailBody(
                 }
 
                 post != null -> {
+                    KeepPlaceOnRemoval(screen.listState, content.flattenedComments) { it.listKey() }
                     LazyColumn(state = screen.listState, modifier = Modifier.fillMaxSize()) {
                         item {
                             PostHeader(
@@ -643,12 +645,7 @@ private fun LazyListScope.commentItems(
     }
     items(
         items = content.flattenedComments,
-        key = { item ->
-            when (item) {
-                is FlatCommentItem.CommentEntry -> item.comment.id
-                is FlatCommentItem.MoreEntry -> "more_${item.more.id}"
-            }
-        },
+        key = { it.listKey() },
     ) { item ->
         when (item) {
             is FlatCommentItem.CommentEntry -> {
@@ -853,3 +850,10 @@ private fun List<CommentOrMore>.commentBodies(): List<String> {
     filterIsInstance<CommentOrMore.CommentItem>().forEach { add(it.comment) }
     return bodies
 }
+
+// A comment's or a "load more" row's key in the thread's list.
+private fun FlatCommentItem.listKey(): Any =
+    when (this) {
+        is FlatCommentItem.CommentEntry -> comment.id
+        is FlatCommentItem.MoreEntry -> "more_${more.id}"
+    }
