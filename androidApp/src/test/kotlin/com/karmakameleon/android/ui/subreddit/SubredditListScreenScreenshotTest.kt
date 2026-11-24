@@ -67,4 +67,10 @@ class SubredditListScreenScreenshotTest {
         showSearch("kot")
         composeRule.saveScreenshot("subreddit_list_screen_search_failed")
     }
+
+    @Test
+    fun searchFoundNothing() {
+        showSearch("zz")
+        composeRule.saveScreenshot("subreddit_list_screen_search_found_nothing")
+    }
 }

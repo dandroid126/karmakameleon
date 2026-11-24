@@ -252,6 +252,28 @@ class RedditApiReadTest {
 
             assertGet("/subreddits/search", mapOf("q" to "kotlin", "limit" to "10", "include_over_18" to "true"))
             assertEquals(listOf("Kotlin", "KotlinNsfw"), subreddits.map { it.displayName })
+            // The search found subreddits, so the autocomplete isn't asked.
+            assertEquals(1, reddit.requests.size)
+        }
+
+    @Test
+    fun searchSubreddits_asksTheAutocompleteWhenTheSearchFindsNothing() =
+        runTest {
+            reddit.respond("/subreddits/search", MockReddit.EMPTY_LISTING)
+            reddit.respond(
+                "/api/subreddit_autocomplete_v2",
+                listingOf(subredditThing("Kotlin", nsfw = false), subredditThing("KotlinNsfw", nsfw = true)),
+            )
+
+            val subreddits = api().searchSubreddits("kotlin", limit = 25, includeOver18 = false)
+
+            val autocomplete = reddit.requests.last()
+            assertEquals("/api/subreddit_autocomplete_v2", autocomplete.url.encodedPath)
+            assertEquals(
+                mapOf("query" to "kotlin", "limit" to "10", "include_over_18" to "false", "include_profiles" to "false"),
+                autocomplete.query(),
+            )
+            assertEquals(listOf("Kotlin"), subreddits.map { it.displayName })
         }
 
     @Test
@@ -266,6 +288,15 @@ class RedditApiReadTest {
 
             assertGet("/subreddits/search", mapOf("q" to "kotlin", "limit" to "5", "include_over_18" to "false"))
             assertEquals(listOf("Kotlin"), subreddits.map { it.displayName })
+        }
+
+    @Test
+    fun searchSubreddits_findsNothingWhenTheAutocompleteFails() =
+        runTest {
+            reddit.respond("/subreddits/search", MockReddit.EMPTY_LISTING)
+            reddit.respond("/api/subreddit_autocomplete_v2", "", HttpStatusCode.InternalServerError)
+
+            assertEquals(emptyList(), api().searchSubreddits("kotlin"))
         }
 
     // ==================== Users ====================

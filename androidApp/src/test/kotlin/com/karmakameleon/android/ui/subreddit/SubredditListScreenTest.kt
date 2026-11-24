@@ -1,5 +1,6 @@
 package com.karmakameleon.android.ui.subreddit
 
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasSetTextAction
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
@@ -19,10 +21,14 @@ import com.karmakameleon.shared.testing.query
 import com.karmakameleon.shared.testing.subredditThing
 import io.ktor.http.HttpStatusCode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
 import java.io.IOException
 
 private val isProgressIndicator = SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)
@@ -122,6 +128,12 @@ class SubredditListScreenTest {
         assertEquals("kot", search.query()["q"])
         assertEquals("false", search.query()["include_over_18"])
         assertEquals(listOf("Kotlin"), opened)
+    }
+
+    // Whether the app asked Android to show the keyboard and hasn't asked to hide it since.
+    private fun isKeyboardShown(): Boolean {
+        val inputMethods = RuntimeEnvironment.getApplication().getSystemService(InputMethodManager::class.java)
+        return shadowOf(inputMethods).isSoftInputVisible
     }
 
     // The subreddit names shown, top to bottom.
@@ -274,6 +286,7 @@ class SubredditListScreenTest {
         composeRule.onNode(hasSetTextAction()).performTextInput("z")
         composeRule.onNodeWithText("No matching subscriptions").assertExists()
         composeRule.onNodeWithText("Type at least 2 characters to search Reddit").assertExists()
+        composeRule.onNodeWithText("Go to", substring = true).assertDoesNotExist()
         composeRule.onNodeWithText("r/Kotlin").assertDoesNotExist()
     }
 
@@ -283,6 +296,52 @@ class SubredditListScreenTest {
         composeRule.onNode(hasSetTextAction()).performTextInput("zz")
         composeRule.onNodeWithText("No subreddits found").assertExists()
         composeRule.onNodeWithText("r/Kotlin").assertDoesNotExist()
+    }
+
+    // Reddit's search sometimes finds nothing for a while, so finding nothing can be retried.
+    @Test
+    fun retriesASearchThatFoundNothing() {
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("zz")
+        composeRule.onNodeWithText("No subreddits found").assertExists()
+
+        fakeReddit.reddit.respond("/subreddits/search", listingOf(subredditThing("zzz", nsfw = false, subscribers = 12)))
+        composeRule.onNodeWithText("Retry").performClick()
+        composeRule.waitForIdle()
+        assertEquals(listOf("r/zzz"), shownSubreddits())
+        composeRule.onNodeWithText("No subreddits found").assertDoesNotExist()
+    }
+
+    // Reddit's search sometimes finds nothing, so a subreddit whose name is known can be opened without it.
+    @Test
+    fun goesToTheTypedSubredditWhateverRedditFinds() {
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("r/AskHockey")
+        composeRule.onNodeWithText("No subreddits found").assertExists()
+        composeRule.onNodeWithText("Go to r/AskHockey").performClick()
+        assertEquals(listOf("AskHockey"), opened)
+    }
+
+    @Test
+    fun goesToTheTypedSubredditFromTheKeyboard() {
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput(" ask hockey ")
+        composeRule.onNode(hasSetTextAction()).performImeAction()
+        assertEquals(listOf("askhockey"), opened)
+    }
+
+    @Test
+    fun offersNoSubredditForAQueryThatCantBeOne() {
+        showList()
+        composeRule.onNode(hasSetTextAction()).performClick()
+        composeRule.onNode(hasSetTextAction()).performTextInput("c++")
+        assertTrue(isKeyboardShown())
+        composeRule.onNodeWithText("Go to", substring = true).assertDoesNotExist()
+        composeRule.onNode(hasSetTextAction()).performImeAction()
+        assertEquals(emptyList<String>(), opened)
+        // The keyboard still closes, so the search results under it show.
+        composeRule.waitForIdle()
+        assertFalse(isKeyboardShown())
     }
 
     @Test

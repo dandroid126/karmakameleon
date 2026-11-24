@@ -13,7 +13,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.FavoriteBorder
@@ -40,7 +43,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.ui.components.LoadError
@@ -74,6 +79,7 @@ fun SubredditListScreen(
     val search = searchSubreddits(query, includeOver18 = nsfwEnabled && nsfwSearchEnabled, subredditRepository)
     val visibleSubscriptions = remember(subscribedSubreddits, nsfwEnabled) { subscribedSubreddits.filter { nsfwEnabled || !it.isNsfw } }
     val matchingSubscriptions = remember(query, visibleSubscriptions) { matchingSubscriptions(query, visibleSubscriptions) }
+    val typedName = remember(query) { typedSubredditName(query) }
     val subredditItem = @Composable { subreddit: Subreddit ->
         SubredditListItem(
             subreddit = subreddit,
@@ -93,7 +99,7 @@ fun SubredditListScreen(
                     .fillMaxSize()
                     .padding(padding),
         ) {
-            SubredditSearchField(query = searchQuery, onQueryChange = { searchQuery = it })
+            SubredditSearchField(query = searchQuery, onQueryChange = { searchQuery = it }, onGo = { typedName?.let(onSubredditClick) })
 
             when {
                 isLoading && query.isEmpty() -> {
@@ -114,6 +120,8 @@ fun SubredditListScreen(
                         isLoadingSubscriptions = isLoading,
                         isLoggedIn = isLoggedIn,
                         search = search.takeIf { query.isNotEmpty() },
+                        typedName = typedName,
+                        onGoClick = onSubredditClick,
                         subredditItem = subredditItem,
                     )
                 }
@@ -123,18 +131,24 @@ fun SubredditListScreen(
 }
 
 // The subscriptions, or those matching the query, and below them Reddit's search for it, if there's a query. Each
-// section says when it has nothing, so an empty search isn't mistaken for one still running or one that failed.
+// section says when it has nothing, so an empty search isn't mistaken for one still running or one that failed. A query
+// that could be a subreddit's name can be opened first, without Reddit's search, which sometimes finds nothing.
 @Composable
 private fun SubredditSections(
     subscriptions: List<Subreddit>,
     isLoadingSubscriptions: Boolean,
     isLoggedIn: Boolean,
     search: RedditSearch?,
+    typedName: String?,
+    onGoClick: (String) -> Unit,
     subredditItem: @Composable (Subreddit) -> Unit,
 ) {
     val showsSubscriptions = !isLoadingSubscriptions && isLoggedIn
     val shownAbove = if (showsSubscriptions) subscriptions.mapTo(HashSet()) { it.displayName.lowercase() } else emptySet()
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (typedName != null) {
+            item(key = "go") { GoToSubreddit(typedName, onClick = { onGoClick(typedName) }) }
+        }
         sectionTitle("Your Subscriptions")
         when {
             isLoadingSubscriptions -> item(key = "subscriptions-loading") { LoadingIndicator() }
@@ -187,31 +201,66 @@ private fun LazyListScope.searchResults(
         }
 
         is RedditSearch.State.Failed -> {
-            item(key = "results-error") {
-                LoadError(
-                    error = state.message,
-                    onRetry = search.retry,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                )
-            }
+            retryableMessage(state.message, search.retry)
         }
 
         is RedditSearch.State.Found -> {
             val results = state.results.filter { it.displayName.lowercase() !in shownAbove }
             when {
-                state.results.isEmpty() -> sectionMessage("No subreddits found")
+                // Reddit's search sometimes finds nothing for a while, and a subreddit made since the search wasn't
+                // there yet, so finding nothing can be retried too.
+                state.results.isEmpty() -> retryableMessage("No subreddits found", search.retry)
+
                 results.isEmpty() -> sectionMessage("Only your subscriptions matched")
+
                 else -> items(results, key = { "result-${it.id}" }) { subredditItem(it) }
             }
         }
     }
 }
 
+private fun LazyListScope.retryableMessage(
+    text: String,
+    onRetry: () -> Unit,
+) {
+    item(key = "results-retry") {
+        LoadError(
+            error = text,
+            onRetry = onRetry,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        )
+    }
+}
+
+@Composable
+private fun GoToSubreddit(
+    name: String,
+    onClick: () -> Unit,
+) {
+    ListItem(
+        headlineContent = { Text("Go to r/$name", fontWeight = FontWeight.Medium) },
+        leadingContent = {
+            Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+        },
+        modifier = Modifier.clickable(onClick = onClick),
+    )
+}
+
+// The keyboard's action key opens the subreddit named by the query, like the "Go to" row. It also closes the keyboard,
+// as the default action key did, so a query that can't be a subreddit's name still shows the search results under it.
 @Composable
 private fun SubredditSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
+    onGo: () -> Unit,
 ) {
+    val keyboard = LocalSoftwareKeyboardController.current
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,
@@ -222,6 +271,14 @@ private fun SubredditSearchField(
         placeholder = { Text("Search subreddits") },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
         singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
+        keyboardActions =
+            KeyboardActions(
+                onGo = {
+                    keyboard?.hide()
+                    onGo()
+                },
+            ),
     )
 }
 
@@ -244,6 +301,21 @@ private fun loadSubscriptionsOnLogin(
 }
 
 private const val MIN_SEARCH_LENGTH = 2
+
+// Reddit's subreddit names are letters, digits and underscores, 21 at most. A few old ones have only 2, like r/tv.
+private val SUBREDDIT_NAME = Regex("[A-Za-z0-9_]{2,21}")
+
+// The subreddit name the query could be, without spaces and without an "r/" or "/r/" in front, or null if it can't be
+// one. It's opened as typed, since Reddit doesn't mind the case of a subreddit's name.
+private fun typedSubredditName(query: String): String? {
+    val name =
+        query
+            .filterNot(Char::isWhitespace)
+            .removePrefix("/")
+            .removePrefix("r/")
+            .removePrefix("R/")
+    return name.takeIf { SUBREDDIT_NAME.matches(it) }
+}
 
 // Reddit's search for the query the screen shows, and a way to run it again after it failed.
 private class RedditSearch(

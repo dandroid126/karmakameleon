@@ -102,6 +102,9 @@ open class RedditApi(
 
         // Reddit's /api/info returns at most 100 items per request.
         private const val MAX_SUBREDDITS_PER_INFO_REQUEST = 100
+
+        // The most results the subreddit autocomplete gives.
+        private const val AUTOCOMPLETE_LIMIT = 10
     }
 
     private suspend fun authenticatedRequest(block: HttpRequestBuilder.() -> Unit): HttpResponse {
@@ -306,22 +309,54 @@ open class RedditApi(
     open suspend fun unsubscribe(subredditName: String): Boolean =
         postForm("/api/subscribe", "action" to "unsub", "sr_name" to subredditName).isSuccess
 
+    // Reddit's subreddit search sometimes answers with an empty listing for a few minutes at a time, even for queries
+    // like "hockey". When it finds nothing, the subreddit autocomplete, which the search box on reddit.com uses, is
+    // asked instead.
     open suspend fun searchSubreddits(
         query: String,
         limit: Int = 10,
         includeOver18: Boolean = true,
     ): List<Subreddit> {
-        val listing =
-            getListing("/subreddits/search") {
-                parameter("q", query)
-                parameter("limit", limit)
-                parameter("include_over_18", includeOver18)
+        val searched =
+            subredditSearchListing(
+                "search",
+                query,
+                getListing("/subreddits/search") {
+                    parameter("q", query)
+                    parameter("limit", limit)
+                    parameter("include_over_18", includeOver18)
+                },
+            )
+        // The autocomplete is only a fallback, so its failing leaves the search's empty result rather than failing it.
+        val subreddits =
+            searched.ifEmpty {
+                runSuspendCatching {
+                    subredditSearchListing(
+                        "autocomplete",
+                        query,
+                        getListing("/api/subreddit_autocomplete_v2") {
+                            parameter("query", query)
+                            parameter("limit", limit.coerceAtMost(AUTOCOMPLETE_LIMIT))
+                            parameter("include_over_18", includeOver18)
+                            parameter("include_profiles", false)
+                        },
+                    )
+                }.onFailure { Napier.w("Subreddit autocomplete for \"$query\" failed", it) }
+                    .getOrDefault(emptyList())
             }
-        val subreddits = parser.subredditListing(listing).items
-        val shown = if (includeOver18) subreddits else subreddits.filter { !it.isNsfw }
-        // Logged so an empty search shows whether Reddit sent nothing or the NSFW filter removed everything.
-        Napier.d("Subreddit search for \"$query\": Reddit sent ${subreddits.size}, ${shown.size} kept")
-        return shown
+        return if (includeOver18) subreddits else subreddits.filter { !it.isNsfw }
+    }
+
+    // A listing of subreddits. It's logged, so an empty search shows whether Reddit sent nothing or sent things that
+    // aren't subreddits.
+    private fun subredditSearchListing(
+        source: String,
+        query: String,
+        listing: ListingData,
+    ): List<Subreddit> {
+        val kinds = listing.children.groupingBy { it.kind }.eachCount()
+        Napier.d("Subreddit $source for \"$query\": Reddit sent ${listing.children.size} $kinds")
+        return parser.subredditListing(listing).items
     }
 
     open suspend fun getPopularSubreddits(
