@@ -187,23 +187,34 @@ private fun LazyListScope.searchResults(
         }
 
         is RedditSearch.State.Failed -> {
-            item(key = "results-error") {
-                LoadError(
-                    error = state.message,
-                    onRetry = search.retry,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                )
-            }
+            retryableMessage(state.message, search.retry)
         }
 
         is RedditSearch.State.Found -> {
             val results = state.results.filter { it.displayName.lowercase() !in shownAbove }
             when {
-                state.results.isEmpty() -> sectionMessage("No subreddits found")
+                // Reddit's search sometimes finds nothing for a while, and a subreddit made since the search wasn't
+                // there yet, so finding nothing can be retried too.
+                state.results.isEmpty() -> retryableMessage("No subreddits found", search.retry)
+
                 results.isEmpty() -> sectionMessage("Only your subscriptions matched")
+
                 else -> items(results, key = { "result-${it.id}" }) { subredditItem(it) }
             }
         }
+    }
+}
+
+private fun LazyListScope.retryableMessage(
+    text: String,
+    onRetry: () -> Unit,
+) {
+    item(key = "results-retry") {
+        LoadError(
+            error = text,
+            onRetry = onRetry,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+        )
     }
 }
 

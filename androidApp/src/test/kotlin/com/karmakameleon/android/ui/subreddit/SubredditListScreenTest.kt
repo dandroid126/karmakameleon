@@ -285,6 +285,20 @@ class SubredditListScreenTest {
         composeRule.onNodeWithText("r/Kotlin").assertDoesNotExist()
     }
 
+    // Reddit's search sometimes finds nothing for a while, so finding nothing can be retried.
+    @Test
+    fun retriesASearchThatFoundNothing() {
+        showList()
+        composeRule.onNode(hasSetTextAction()).performTextInput("zz")
+        composeRule.onNodeWithText("No subreddits found").assertExists()
+
+        fakeReddit.reddit.respond("/subreddits/search", listingOf(subredditThing("zzz", nsfw = false, subscribers = 12)))
+        composeRule.onNodeWithText("Retry").performClick()
+        composeRule.waitForIdle()
+        assertEquals(listOf("r/zzz"), shownSubreddits())
+        composeRule.onNodeWithText("No subreddits found").assertDoesNotExist()
+    }
+
     @Test
     fun dropsTheResultsOfTheLastQuery() {
         fakeReddit.reddit.respond("/subreddits/search", listingOf(subredditThing("KotlinAndroid", nsfw = false, subscribers = 7_000)))
