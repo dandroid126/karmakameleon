@@ -37,6 +37,16 @@ The app's tests run on Robolectric, without an emulator. Screenshot tests save t
 
 Fix what the checks report instead of adding it to a baseline or suppressing it. When a suppression really is right, put the reason next to it.
 
+## Reproducing UI bugs
+
+Reproduce a UI bug with a throwaway Robolectric test in `androidApp/src/test` rather than on a device. It's faster, it gives the same result every run, and it can't touch a real account. Set it up like the screen tests:
+
+- `FakeRedditRule` answers each API path with what the test gives it (`fakeReddit.reddit.respond(path, body)`). Any action, like a delete, only records a request.
+- `fakeReddit.loggedIn = true` stores a fake token.
+- The data comes from the saved responses in `sharedTesting/fixtures` or helpers like `listingOf` and `subredditThing`. When you build data from a fixture copy, keep every field the parser needs, or the items silently don't show up.
+
+Drive the screen the way the user did, print what's on screen (`isDisplayed()`, `getBoundsInRoot()`), and run only that test: `./gradlew :androidApp:testDebugUnitTest --tests '*ProbeTest' -i`. Afterwards, delete the test or turn it into the fix's regression test.
+
 ## PR size
 
 Aim for PRs under about 500 changed lines, so the checks' findings and the review stay manageable. When a task looks bigger, propose a split into several PRs before starting. This is a guideline, not a rule: a bigger PR is fine when splitting it wouldn't make it easier to review, like a mechanical change across the codebase (#14 reformatted every file with ktlint). The `PR Size` job in the PR checks warns above 500 lines but doesn't fail.
