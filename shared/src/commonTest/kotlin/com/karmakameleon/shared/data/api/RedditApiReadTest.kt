@@ -290,6 +290,15 @@ class RedditApiReadTest {
             assertEquals(listOf("Kotlin"), subreddits.map { it.displayName })
         }
 
+    @Test
+    fun searchSubreddits_findsNothingWhenTheAutocompleteFails() =
+        runTest {
+            reddit.respond("/subreddits/search", MockReddit.EMPTY_LISTING)
+            reddit.respond("/api/subreddit_autocomplete_v2", "", HttpStatusCode.InternalServerError)
+
+            assertEquals(emptyList(), api().searchSubreddits("kotlin"))
+        }
+
     // ==================== Users ====================
 
     @Test

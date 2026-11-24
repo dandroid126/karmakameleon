@@ -318,35 +318,42 @@ open class RedditApi(
         includeOver18: Boolean = true,
     ): List<Subreddit> {
         val searched =
-            subredditSearchListing("search", query) {
+            subredditSearchListing(
+                "search",
+                query,
                 getListing("/subreddits/search") {
                     parameter("q", query)
                     parameter("limit", limit)
                     parameter("include_over_18", includeOver18)
-                }
-            }
+                },
+            )
+        // The autocomplete is only a fallback, so its failing leaves the search's empty result rather than failing it.
         val subreddits =
             searched.ifEmpty {
-                subredditSearchListing("autocomplete", query) {
-                    getListing("/api/subreddit_autocomplete_v2") {
-                        parameter("query", query)
-                        parameter("limit", limit.coerceAtMost(AUTOCOMPLETE_LIMIT))
-                        parameter("include_over_18", includeOver18)
-                        parameter("include_profiles", false)
-                    }
-                }
+                runSuspendCatching {
+                    subredditSearchListing(
+                        "autocomplete",
+                        query,
+                        getListing("/api/subreddit_autocomplete_v2") {
+                            parameter("query", query)
+                            parameter("limit", limit.coerceAtMost(AUTOCOMPLETE_LIMIT))
+                            parameter("include_over_18", includeOver18)
+                            parameter("include_profiles", false)
+                        },
+                    )
+                }.onFailure { Napier.w("Subreddit autocomplete for \"$query\" failed", it) }
+                    .getOrDefault(emptyList())
             }
         return if (includeOver18) subreddits else subreddits.filter { !it.isNsfw }
     }
 
-    // Gets a listing of subreddits. It's logged, so an empty search shows whether Reddit sent nothing or sent things
-    // that aren't subreddits.
-    private suspend fun subredditSearchListing(
+    // A listing of subreddits. It's logged, so an empty search shows whether Reddit sent nothing or sent things that
+    // aren't subreddits.
+    private fun subredditSearchListing(
         source: String,
         query: String,
-        get: suspend () -> ListingData,
+        listing: ListingData,
     ): List<Subreddit> {
-        val listing = get()
         val kinds = listing.children.groupingBy { it.kind }.eachCount()
         Napier.d("Subreddit $source for \"$query\": Reddit sent ${listing.children.size} $kinds")
         return parser.subredditListing(listing).items
