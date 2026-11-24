@@ -150,6 +150,24 @@ class FeedViewModelTest {
             assertTrue(viewModel.postList.state.value.posts.size >= initialCount)
         }
 
+    // The screen scrolls back to the top when itemsId changes, so only a first page changes it (#127).
+    @Test
+    fun itemsId_changesForANewSortButNotForMore() =
+        runTest {
+            fakeApi.postsResult = createTestListing(items = listOf(createTestPost(id = "p1")), after = "t3_p1")
+            viewModel.postList.load()
+            advanceUntilIdle()
+            val first = viewModel.postList.state.value.itemsId
+
+            viewModel.postList.loadMore()
+            advanceUntilIdle()
+            assertEquals(first, viewModel.postList.state.value.itemsId)
+
+            viewModel.postList.setSort(PostSort.NEW)
+            advanceUntilIdle()
+            assertEquals(first + 1, viewModel.postList.state.value.itemsId)
+        }
+
     @Test
     fun loadMorePosts_preventsLoadWhenNoMore() =
         runTest {

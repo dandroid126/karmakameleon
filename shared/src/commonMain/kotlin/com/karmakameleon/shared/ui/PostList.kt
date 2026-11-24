@@ -26,6 +26,11 @@ data class PostListState(
     val currentTimeFilter: TimeFilter = TimeFilter.DAY,
     val after: String? = null,
     val hasMore: Boolean = true,
+    /**
+     * Counts the first pages that replaced [posts], so a screen can tell new posts, which start at the top, from more of
+     * the same ones, which don't.
+     */
+    val itemsId: Int = 0,
 ) {
     val canLoadMore: Boolean get() = !isLoadingMore && hasMore && after != null
 }
@@ -66,6 +71,7 @@ class PostList internal constructor(
                             hasMore = listing.hasMore,
                             isLoading = false,
                             isRefreshing = false,
+                            itemsId = it.itemsId + 1,
                         )
                     }
                     enrich(listing.items)

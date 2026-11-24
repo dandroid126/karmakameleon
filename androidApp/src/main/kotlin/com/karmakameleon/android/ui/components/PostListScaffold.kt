@@ -20,8 +20,8 @@ import com.karmakameleon.shared.ui.PostListState
 
 /**
  * The screen around a [PostList]: [topBar] (given the action that opens the sort sheet), pull to refresh, loading
- * the next page near the end of [listState], scrolling back to the top after a refresh, and the sort sheet.
- * [content] shows the posts.
+ * the next page near the end of [listState], scrolling back to the top when new posts replace the old ones or after a
+ * refresh, and the sort sheet. [content] shows the posts.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +36,9 @@ fun PostListScaffold(
     var showSortSheet by remember { mutableStateOf(false) }
 
     LoadMoreNearEnd(listState, state.posts.size, state.after, enabled = state.canLoadMore) { postList.loadMore() }
+    // A new sort, time filter or feed shows a spinner while it loads, and the list mustn't open on a post the old and
+    // new posts share (#127).
+    ScrollToTopOnChange(listState, state.itemsId)
     ScrollToTopAfterRefresh(listState, state.isRefreshing)
 
     Scaffold(
