@@ -42,7 +42,7 @@ Fix what the checks report instead of adding it to a baseline or suppressing it.
 Reproduce a UI bug with a throwaway Robolectric test in `androidApp/src/test` rather than on a device. It's faster, it gives the same result every run, and it can't touch a real account. Set it up like the screen tests:
 
 - `FakeRedditRule` answers each API path with what the test gives it (`fakeReddit.reddit.respond(path, body)`). Any action, like a delete, only records a request.
-- `fakeReddit.loggedIn = true` stores a fake token.
+- `fakeReddit.loggedIn = true`, set before the screen is shown, stores a fake token. Set later, it does nothing, and the probe runs logged out.
 - The data comes from the saved responses in `sharedTesting/fixtures` or helpers like `listingOf` and `subredditThing`. When you build data from a fixture copy, keep every field the parser needs, or the items silently don't show up.
 
 Drive the screen the way the user did, print what's on screen (`isDisplayed()`, `getBoundsInRoot()`), and run only that test: `./gradlew :androidApp:testDebugUnitTest --tests '*ProbeTest' -i`. Afterwards, delete the test or turn it into the fix's regression test.
