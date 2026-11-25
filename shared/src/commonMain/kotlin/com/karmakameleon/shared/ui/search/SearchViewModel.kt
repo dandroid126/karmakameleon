@@ -2,9 +2,11 @@ package com.karmakameleon.shared.ui.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
+import com.karmakameleon.shared.data.repository.withPostChanges
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.SearchType
@@ -40,13 +42,22 @@ data class SearchUiState(
     val resultsId: Int = 0,
 )
 
+// Shows the posts with the user's votes, saves and hides from [ActionRepository] on top. A post the user hides stays in
+// the results, marked hidden so it can be unhidden: only the feeds, which hiding is for, leave hidden posts out.
 class SearchViewModel(
     private val postRepository: PostRepository,
+    private val actionRepository: ActionRepository,
     private val subredditRepository: SubredditRepository,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            actionRepository.changes.collect { changes -> _uiState.update { it.copy(posts = it.posts.withPostChanges(changes)) } }
+        }
+    }
 
     private var searchJob: Job? = null
 
@@ -119,7 +130,7 @@ class SearchViewModel(
                 val posts = if (nsfwEnabled) listing.items else listing.items.filter { !it.isNsfw }
                 _uiState.update {
                     it.copy(
-                        posts = posts,
+                        posts = posts.withPostChanges(actionRepository.changes.value),
                         after = listing.after,
                         hasMore = listing.hasMore,
                         isLoading = false,
@@ -199,7 +210,7 @@ class SearchViewModel(
                     val posts = if (nsfwEnabled) listing.items else listing.items.filter { !it.isNsfw }
                     _uiState.update {
                         it.copy(
-                            posts = it.posts.plusNew(posts, Post::id),
+                            posts = it.posts.plusNew(posts.withPostChanges(actionRepository.changes.value), Post::id),
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoading = false,

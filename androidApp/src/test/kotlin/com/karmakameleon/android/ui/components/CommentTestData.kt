@@ -63,6 +63,8 @@ class RecordedCommentActions {
             onNext = { calls += "next" },
             onRoot = { calls += "root" },
             onParent = { calls += "parent" },
+            onTouchStart = {},
+            onInlineImageClick = { calls += "image $it" },
         )
 }
 

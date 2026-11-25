@@ -176,13 +176,14 @@ internal fun SavePostButton(
     }
 }
 
-/** A menu item that blocks the post's subreddit and confirms it with a toast. */
+/** A menu item that blocks the post's subreddit and confirms it with a toast. Left out when [onBlockSubreddit] is null. */
 @Composable
 internal fun BlockSubredditMenuItem(
     post: Post,
-    onBlockSubreddit: () -> Unit,
+    onBlockSubreddit: (() -> Unit)?,
     onDone: () -> Unit,
 ) {
+    if (onBlockSubreddit == null) return
     val context = LocalContext.current
     DropdownMenuItem(
         text = { Text("Block r/${post.subreddit}") },

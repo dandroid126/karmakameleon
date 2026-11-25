@@ -420,7 +420,7 @@ private fun PostMoreMenu(
     post: Post,
     isLoggedIn: Boolean,
     onHide: () -> Unit,
-    onBlockSubreddit: () -> Unit,
+    onBlockSubreddit: (() -> Unit)?,
 ) {
     var showMenu by remember { mutableStateOf(false) }
     Box {

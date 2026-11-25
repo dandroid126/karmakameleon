@@ -6,16 +6,15 @@ import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.repository.ActionRepository
-import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
+import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -35,7 +34,7 @@ class ProfileViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var fakeAuthManager: FakeAuthManager
-    private lateinit var commentRepo: CommentRepository
+    private lateinit var actionRepo: ActionRepository
     private lateinit var userRepo: UserRepository
     private lateinit var viewModel: ProfileViewModel
 
@@ -44,9 +43,9 @@ class ProfileViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakeApi = FakeRedditApi()
         fakeAuthManager = FakeAuthManager()
-        commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
+        actionRepo = testActionRepository(fakeApi)
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
-        viewModel = ProfileViewModel(userRepo, commentRepo, ActionRepository(fakeApi, MutableStateFlow(true)), fakeAuthManager)
+        viewModel = ProfileViewModel(userRepo, actionRepo, fakeAuthManager)
     }
 
     @AfterTest
@@ -324,7 +323,7 @@ class ProfileViewModelTest {
         runTest {
             loadOwnPosts(createTestPost(id = "p1", score = 100, likes = null))
 
-            viewModel.vote(
+            actionRepo.vote(
                 viewModel.uiState.value.posts.items
                     .first(),
                 1,
@@ -343,7 +342,7 @@ class ProfileViewModelTest {
         runTest {
             loadOwnPosts(createTestPost(id = "p1", isSaved = false))
 
-            viewModel.save(
+            actionRepo.toggleSave(
                 viewModel.uiState.value.posts.items
                     .first(),
             )

@@ -5,6 +5,7 @@ import com.karmakameleon.shared.FakeRedditApi.SearchRequest
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestSubreddit
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
@@ -12,6 +13,7 @@ import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.SearchType
 import com.karmakameleon.shared.domain.model.TimeFilter
+import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +38,7 @@ class SearchViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var postRepo: PostRepository
+    private lateinit var actionRepo: ActionRepository
     private lateinit var subredditRepo: SubredditRepository
     private lateinit var settingsRepo: SettingsRepository
     private lateinit var viewModel: SearchViewModel
@@ -48,7 +51,8 @@ class SearchViewModelTest {
         settingsRepo = SettingsRepository(MapSettings())
         postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         subredditRepo = SubredditRepository(fakeApi, settingsRepo)
-        viewModel = SearchViewModel(postRepo, subredditRepo, settingsRepo)
+        actionRepo = testActionRepository(fakeApi)
+        viewModel = SearchViewModel(postRepo, actionRepo, subredditRepo, settingsRepo)
     }
 
     private fun search() {

@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.api.OAuthRedirect
 import com.karmakameleon.shared.data.repository.ActionRepository
-import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.ItemChanges
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.data.repository.withChanges
@@ -88,11 +87,10 @@ enum class SavedContentType(
 // stays in the saved lists until they're reloaded, so tapping save again brings it back.
 class ProfileViewModel(
     private val userRepository: UserRepository,
-    commentRepository: CommentRepository,
     private val actionRepository: ActionRepository,
     private val authManager: AuthManager,
 ) : ViewModel() {
-    val commentViewModel = CommentViewModel(commentRepository, actionRepository)
+    val commentViewModel = CommentViewModel(actionRepository)
 
     private val _uiState = MutableStateFlow(initialState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
@@ -454,28 +452,6 @@ class ProfileViewModel(
         clearAllData()
     }
 
-    fun vote(
-        post: Post,
-        direction: Int,
-    ) = actionRepository.vote(post, direction)
-
-    fun save(post: Post) = actionRepository.toggleSave(post)
-
-    fun voteComment(
-        comment: Comment,
-        direction: Int,
-    ) = actionRepository.vote(comment, direction)
-
-    fun saveComment(comment: Comment) = actionRepository.toggleSave(comment)
-
-    // Puts an edited comment in place of the old one in every list that shows it.
-    private fun updateComment(updated: Comment) {
-        val changed = updated.withChanges(actionRepository.changes.value)
-
-        fun PagedList<Comment>.replaced() = copy(items = items.map { if (it.id == changed.id) changed else it })
-        _uiState.update { it.copy(comments = it.comments.replaced(), savedComments = it.savedComments.replaced()) }
-    }
-
     private fun ProfileUiState.withChanges(changes: Map<String, ItemChanges>): ProfileUiState {
         fun PagedList<Post>.changed() = copy(items = items.withPostChanges(changes))
 
@@ -490,30 +466,11 @@ class ProfileViewModel(
         )
     }
 
-    fun submitReply() {
-        commentViewModel.submitReplyWithCallback { /* Reply submitted, state already cleared */ }
-    }
+    fun submitReply() = commentViewModel.submitReply()
 
-    fun submitEdit() {
-        commentViewModel.submitEditWithCallback(
-            findComment = { findCommentById(it) },
-            onSuccess = { updatedComment ->
-                updateComment(updatedComment)
-            },
-        )
-    }
+    fun submitEdit() = commentViewModel.submitEdit(::findCommentById)
 
-    fun deleteComment(commentId: String) {
-        val comment = findCommentById(commentId) ?: return
-        commentViewModel.deleteCommentWithCallback(comment) {
-            _uiState.update { state ->
-                state.copy(
-                    comments = state.comments.copy(items = state.comments.items.filter { it.id != commentId }),
-                    savedComments = state.savedComments.copy(items = state.savedComments.items.filter { it.id != commentId }),
-                )
-            }
-        }
-    }
+    fun deleteComment(commentId: String) = commentViewModel.deleteComment(commentId, ::findCommentById)
 
     fun findCommentById(commentId: String): Comment? =
         _uiState.value.comments.items

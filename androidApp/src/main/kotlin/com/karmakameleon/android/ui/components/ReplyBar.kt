@@ -50,6 +50,7 @@ fun ReplyBar(
     onCancel: () -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String = "Write a reply...",
+    // Drafts and quoting are only shown with showDraftControls, which the post screen's composer sets.
     onSaveDraft: () -> Unit = {},
     onLoadDraft: () -> Unit = {},
     onQuote: () -> Unit = {},

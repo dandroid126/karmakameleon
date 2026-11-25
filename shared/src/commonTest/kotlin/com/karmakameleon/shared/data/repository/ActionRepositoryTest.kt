@@ -6,6 +6,7 @@ import com.karmakameleon.shared.createTestMessage
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApiException
+import com.karmakameleon.shared.errorsOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.toList
@@ -28,19 +29,18 @@ class ActionRepositoryTest {
     private val isLoggedIn = MutableStateFlow(true)
 
     // Runs in backgroundScope, since it follows the login state for as long as it runs.
-    private fun TestScope.repository() = ActionRepository(api, isLoggedIn, backgroundScope)
+    private fun TestScope.repository() =
+        ActionRepository(
+            api,
+            CommentRepository(api, MarkdownRepository(UnconfinedTestDispatcher(testScheduler))),
+            isLoggedIn,
+            backgroundScope,
+        )
 
     // Runs what's waiting, requests included. advanceUntilIdle doesn't run backgroundScope's work.
     private fun TestScope.settle() {
         advanceTimeBy(60_000)
         runCurrent()
-    }
-
-    // Collects the errors the repository reports while the test runs.
-    private fun TestScope.errorsOf(repository: ActionRepository): List<String> {
-        val errors = mutableListOf<String>()
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.errors.toList(errors) }
-        return errors
     }
 
     // ==================== Votes ====================
@@ -252,6 +252,163 @@ class ActionRepositoryTest {
 
             assertFalse(post.withChanges(repository.changes.value).isHidden)
             assertEquals(listOf("Hide failed"), errors)
+        }
+
+    // ==================== Read state ====================
+
+    @Test
+    fun setIsNew_showsStraightAwayAndIsUndoneWhenRedditRefuses() =
+        runTest {
+            val repository = repository()
+            val errors = errorsOf(repository)
+            val message = createTestMessage(id = "m1", isNew = true)
+
+            repository.setIsNew(message, isNew = false)
+            assertFalse(message.withChanges(repository.changes.value).isNew)
+            settle()
+            assertEquals(listOf("read t4_m1"), api.actions)
+
+            api.markMessageUnreadResult = false
+            repository.setIsNew(message.withChanges(repository.changes.value), isNew = true)
+            settle()
+
+            assertFalse(message.withChanges(repository.changes.value).isNew)
+            assertEquals(listOf("Failed to mark as unread"), errors)
+        }
+
+    @Test
+    fun markAllRead_putsBackOnlyTheUnreadOnesWhenRedditRefuses() =
+        runTest {
+            val repository = repository()
+            val errors = errorsOf(repository)
+            api.markAllMessagesReadResult = false
+            val unread = createTestMessage(id = "m1", isNew = true)
+            val read = createTestMessage(id = "m2", isNew = false)
+
+            repository.markAllRead(listOf(unread, read))
+            assertFalse(unread.withChanges(repository.changes.value).isNew)
+            settle()
+
+            assertTrue(unread.withChanges(repository.changes.value).isNew)
+            assertFalse(read.withChanges(repository.changes.value).isNew)
+            assertEquals(listOf("Failed to mark all as read"), errors)
+        }
+
+    // ==================== Replies, edits, deletes and blocks ====================
+
+    @Test
+    fun reply_returnsTheNewCommentUpvoted() =
+        runTest {
+            val repository = repository()
+            api.submitCommentResult = createTestComment(id = "new1", score = 0, likes = null)
+
+            val reply = repository.reply("t1_c1", "Hello")
+
+            assertEquals(listOf("t1_c1" to "Hello"), api.submittedComments)
+            assertEquals(true, reply?.likes)
+            assertEquals(1, reply?.score)
+        }
+
+    @Test
+    fun reply_reportsAFailure() =
+        runTest {
+            val repository = repository()
+            val errors = errorsOf(repository)
+            api.shouldThrow = RedditApiException("RATELIMIT", "Take a break")
+
+            assertNull(repository.reply("t1_c1", "Hello"))
+            assertFalse(repository.reply(createTestMessage(id = "m1"), "Hello"))
+
+            assertEquals(listOf("Take a break", "Take a break"), errors)
+        }
+
+    @Test
+    fun replyToAMessage_postsIt() =
+        runTest {
+            val repository = repository()
+            api.submitCommentResult = createTestComment(id = "new1")
+
+            assertTrue(repository.reply(createTestMessage(id = "m1"), "Thanks"))
+            assertEquals(listOf("t4_m1" to "Thanks"), api.submittedComments)
+        }
+
+    @Test
+    fun edit_showsTheNewTextEverywhere() =
+        runTest {
+            val repository = repository()
+            val comment = createTestComment(id = "c1", body = "Old")
+
+            assertTrue(repository.edit(comment, "New"))
+
+            val shown = comment.withChanges(repository.changes.value)
+            assertEquals("New", shown.body)
+            assertEquals("New", shown.sourceBody)
+        }
+
+    @Test
+    fun edit_reportsAFailureAndKeepsTheText() =
+        runTest {
+            val repository = repository()
+            val errors = errorsOf(repository)
+            api.editCommentResult = false
+            val comment = createTestComment(id = "c1", body = "Old")
+
+            assertFalse(repository.edit(comment, "New"))
+
+            assertEquals("Old", comment.withChanges(repository.changes.value).body)
+            assertEquals(listOf("Edit failed"), errors)
+        }
+
+    @Test
+    fun delete_takesTheCommentOutOfLists() =
+        runTest {
+            val repository = repository()
+            val deleted = createTestComment(id = "c1")
+            val kept = createTestComment(id = "c2")
+
+            assertTrue(repository.delete(deleted))
+
+            assertEquals(listOf(kept), listOf(deleted, kept).withCommentChanges(repository.changes.value))
+            val tree = listOf(CommentOrMore.CommentItem(deleted), CommentOrMore.CommentItem(kept))
+            assertEquals(listOf<CommentOrMore>(CommentOrMore.CommentItem(kept)), tree.withTreeChanges(repository.changes.value))
+        }
+
+    @Test
+    fun delete_reportsAFailure() =
+        runTest {
+            val repository = repository()
+            val errors = errorsOf(repository)
+            api.deleteCommentResult = false
+
+            assertFalse(repository.delete(createTestComment(id = "c1")))
+
+            assertTrue(repository.changes.value.isEmpty())
+            assertEquals(listOf("Delete failed"), errors)
+        }
+
+    @Test
+    fun blockUser_reportsAFailure() =
+        runTest {
+            val repository = repository()
+            val errors = errorsOf(repository)
+
+            assertTrue(repository.blockUser("spammer"))
+            api.blockUserResult = false
+            assertFalse(repository.blockUser("spammer"))
+
+            assertEquals(listOf("spammer", "spammer"), api.blockedUsers)
+            assertEquals(listOf("Failed to block user"), errors)
+        }
+
+    @Test
+    fun reportError_showsIt() =
+        runTest {
+            val repository = repository()
+            val errors = errorsOf(repository)
+
+            repository.reportError("Wait for the images to upload")
+
+            assertEquals(listOf("Wait for the images to upload"), errors)
         }
 
     // ==================== Logging out ====================

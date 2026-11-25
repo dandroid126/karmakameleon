@@ -10,6 +10,8 @@ import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentImageRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
+import com.karmakameleon.shared.errorsOf
+import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.MockReddit
 import com.karmakameleon.shared.testing.form
 import io.ktor.client.HttpClient
@@ -21,7 +23,6 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -74,6 +75,9 @@ class CommentViewModelImageTest {
 
     private val pics = createTestSubreddit(displayNamePrefixed = "r/pics", allowedMediaInComments = setOf("static", "giphy"))
 
+    // The action repository of the last view model made, which reports why a reply wasn't posted.
+    private lateinit var actions: ActionRepository
+
     @BeforeTest
     fun setup() {
         Dispatchers.setMain(StandardTestDispatcher())
@@ -87,9 +91,9 @@ class CommentViewModelImageTest {
     private fun TestScope.viewModel(withImages: Boolean = true): CommentViewModel {
         val api = reddit.api(ioDispatcher = StandardTestDispatcher(testScheduler))
         val images = if (withImages) CommentImageRepository(api, imageFiles, downloads()) else null
+        actions = testActionRepository(api)
         return CommentViewModel(
-            CommentRepository(api, MarkdownRepository(Dispatchers.Main)),
-            ActionRepository(api, MutableStateFlow(true)),
+            actions,
             commentImageRepository = images,
         ).apply {
             setCommentSubreddit(pics)
@@ -348,7 +352,8 @@ class CommentViewModelImageTest {
             viewModel.attachAndInsert("content://photo")
             advanceUntilIdle()
 
-            assertNull(viewModel.submitReplyWithError(isReplyToPost = true))
+            viewModel.submitReply(isReplyToPost = true)
+            advanceUntilIdle()
 
             val convert = reddit.requests.single { it.url.encodedPath == "/api/convert_rte_body_format" }
             assertEquals("Look ![img](asset1)", convert.form()["markdown_text"])
@@ -366,7 +371,10 @@ class CommentViewModelImageTest {
             viewModel.attachAndInsert("content://photo")
             advanceUntilIdle()
 
-            assertEquals("Wait for the images to upload", viewModel.submitReplyWithError(isReplyToPost = true))
+            val errors = errorsOf(actions)
+            viewModel.submitReply(isReplyToPost = true)
+            advanceUntilIdle()
+            assertEquals(listOf("Wait for the images to upload"), errors)
             assertEquals("t3_post", viewModel.uiState.value.replyingTo)
         }
 
@@ -377,7 +385,10 @@ class CommentViewModelImageTest {
             viewModel.attachAndInsert("content://song")
             advanceUntilIdle()
 
-            assertEquals("An image didn't upload. Retry or remove it.", viewModel.submitReplyWithError(isReplyToPost = true))
+            val errors = errorsOf(actions)
+            viewModel.submitReply(isReplyToPost = true)
+            advanceUntilIdle()
+            assertEquals(listOf("An image didn't upload. Retry or remove it."), errors)
         }
 
     @Test
@@ -393,7 +404,8 @@ class CommentViewModelImageTest {
             advanceUntilIdle()
             viewModel.setReplyText("Changed my mind")
 
-            assertNull(viewModel.submitReplyWithError(isReplyToPost = true))
+            viewModel.submitReply(isReplyToPost = true)
+            advanceUntilIdle()
 
             val post = reddit.requests.single { it.url.encodedPath == "/api/comment" }
             assertEquals("Changed my mind", post.form()["text"])
@@ -409,7 +421,8 @@ class CommentViewModelImageTest {
             val viewModel = viewModel()
             viewModel.setReplyText("From a draft ![image](img-1)")
 
-            assertNull(viewModel.submitReplyWithError(isReplyToPost = true))
+            viewModel.submitReply(isReplyToPost = true)
+            advanceUntilIdle()
 
             val post = reddit.requests.single { it.url.encodedPath == "/api/comment" }
             assertEquals("From a draft", post.form()["text"])

@@ -27,7 +27,6 @@ data class PostDetailUiState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
     val error: String? = null,
-    val actionError: String? = null,
     val commentSort: CommentSort = CommentSort.CONFIDENCE,
     val suggestedSort: CommentSort? = null,
     val useSuggestedSort: Boolean = true,
@@ -305,16 +304,6 @@ class PostDetailViewModel(
     fun submitReply() {
         val parentId = commentViewModel.uiState.value.replyingTo ?: return
         val post = _uiState.value.post
-        val isReplyToPost = post != null && parentId == post.name
-        viewModelScope.launch {
-            val error = commentViewModel.submitReplyWithError(isReplyToPost)
-            if (error != null) {
-                _uiState.update { it.copy(actionError = error) }
-            }
-        }
-    }
-
-    fun clearActionError() {
-        _uiState.update { it.copy(actionError = null) }
+        commentViewModel.submitReply(isReplyToPost = post != null && parentId == post.name)
     }
 }

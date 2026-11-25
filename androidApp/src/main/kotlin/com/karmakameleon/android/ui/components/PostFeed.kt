@@ -21,6 +21,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
@@ -64,17 +65,19 @@ fun rememberPostFeedSettings(): PostFeedSettings {
     )
 }
 
-/** What a screen does with the posts in its list. Leave out what the screen doesn't support. */
+/**
+ * What a screen does with the posts in its list. Votes, saves and hides go to [actions], so they're the same on every
+ * screen; the screen gives where taps lead. Blocking a subreddit only hides its posts from the home feed, so only that
+ * list passes [onBlockSubreddit], and the others leave it out of the menu.
+ */
 class PostListCallbacks(
+    val actions: ActionRepository,
     val onPostClick: (subreddit: String, postId: String) -> Unit,
-    val onSubredditClick: (String) -> Unit = {},
-    val onUserClick: (String) -> Unit = {},
-    val onLinkClick: (String) -> Unit = {},
-    val onCrosspostClick: (permalink: String) -> Unit = {},
-    val onVote: (post: Post, direction: Int) -> Unit = { _, _ -> },
-    val onSave: (Post) -> Unit = {},
-    val onHide: (Post) -> Unit = {},
-    val onBlockSubreddit: (String) -> Unit = {},
+    val onSubredditClick: (String) -> Unit,
+    val onUserClick: (String) -> Unit,
+    val onLinkClick: (String) -> Unit,
+    val onCrosspostClick: (permalink: String) -> Unit,
+    val onBlockSubreddit: ((String) -> Unit)? = null,
 )
 
 /** A post in a list, marked read when it's opened. Voting again in the same direction removes the vote. */
@@ -98,11 +101,11 @@ fun FeedPostItem(
                 },
                 onSubredditClick = { callbacks.onSubredditClick(post.subreddit) },
                 onUserClick = { callbacks.onUserClick(post.author) },
-                onUpvote = { callbacks.onVote(post, if (post.likes == true) 0 else 1) },
-                onDownvote = { callbacks.onVote(post, if (post.likes == false) 0 else -1) },
-                onSave = { callbacks.onSave(post) },
-                onHide = { callbacks.onHide(post) },
-                onBlockSubreddit = { callbacks.onBlockSubreddit(post.subreddit) },
+                onUpvote = { callbacks.actions.vote(post, if (post.likes == true) 0 else 1) },
+                onDownvote = { callbacks.actions.vote(post, if (post.likes == false) 0 else -1) },
+                onSave = { callbacks.actions.toggleSave(post) },
+                onHide = { callbacks.actions.toggleHide(post) },
+                onBlockSubreddit = callbacks.onBlockSubreddit?.let { block -> { block(post.subreddit) } },
                 onLinkClick = callbacks.onLinkClick,
                 onCrosspostClick = { post.crosspostParentPermalink?.let { callbacks.onCrosspostClick(it) } },
             ),

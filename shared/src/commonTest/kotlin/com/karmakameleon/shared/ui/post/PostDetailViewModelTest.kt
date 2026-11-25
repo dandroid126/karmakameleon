@@ -9,7 +9,6 @@ import com.karmakameleon.shared.createTestSubreddit
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApiException
-import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
@@ -19,12 +18,13 @@ import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
+import com.karmakameleon.shared.errorsOf
+import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
 import com.karmakameleon.shared.ui.comment.CommentViewModel
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -48,7 +48,7 @@ class PostDetailViewModelTest {
     private val draftRepo = CommentDraftRepository(MapSettings())
 
     // Made on first use, after setup sets the Main dispatcher, which it sends its requests on.
-    private val actionRepo by lazy { ActionRepository(fakeApi, MutableStateFlow(true)) }
+    private val actionRepo by lazy { testActionRepository(fakeApi) }
     private val post = createTestPost(id = "abc123", name = "t3_abc123", title = "A title", selfText = "Some text")
 
     @BeforeTest
@@ -76,7 +76,7 @@ class PostDetailViewModelTest {
             target,
             postRepo,
             actionRepo,
-            CommentViewModel(CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)), actionRepo, draftRepo),
+            CommentViewModel(actionRepo, draftRepo),
             userRepo,
             settingsRepo,
             SubredditRepository(fakeApi, settingsRepo),
@@ -546,6 +546,7 @@ class PostDetailViewModelTest {
     @Test
     fun voteAndSave_doNothingBeforeThePostLoads() =
         runTest {
+            val errors = errorsOf(actionRepo)
             fakeApi.shouldThrow = Exception("No connection")
             val viewModel = createViewModel()
             advanceUntilIdle()
@@ -555,7 +556,7 @@ class PostDetailViewModelTest {
             advanceUntilIdle()
 
             assertNull(viewModel.uiState.value.post)
-            assertNull(viewModel.uiState.value.actionError)
+            assertTrue(errors.isEmpty())
         }
 
     // ==================== Replies ====================
@@ -602,6 +603,7 @@ class PostDetailViewModelTest {
     @Test
     fun submitReply_toThePostAddsItAtTheTop() =
         runTest {
+            val errors = errorsOf(actionRepo)
             fakeApi.submitCommentResult = comment("new1", body = "Hello")
             val viewModel = createViewModel()
             advanceUntilIdle()
@@ -613,12 +615,13 @@ class PostDetailViewModelTest {
 
             assertEquals(listOf("t3_abc123" to "Hello"), fakeApi.submittedComments)
             assertEquals(listOf("new1", "c1"), viewModel.commentIds())
-            assertNull(viewModel.uiState.value.actionError)
+            assertTrue(errors.isEmpty())
         }
 
     @Test
     fun submitReply_showsTheError() =
         runTest {
+            val errors = errorsOf(actionRepo)
             val viewModel = createViewModel()
             advanceUntilIdle()
             viewModel.commentViewModel.setReplyingTo("t1_c1")
@@ -628,7 +631,7 @@ class PostDetailViewModelTest {
             viewModel.submitReply()
             advanceUntilIdle()
 
-            assertEquals("Take a break", viewModel.uiState.value.actionError)
+            assertEquals(listOf("Take a break"), errors)
             assertEquals("Hello", viewModel.commentViewModel.uiState.value.replyText)
         }
 

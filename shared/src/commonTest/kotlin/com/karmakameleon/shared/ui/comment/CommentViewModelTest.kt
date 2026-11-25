@@ -4,14 +4,14 @@ import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.data.api.CommentOrMore
-import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
-import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.CommentEdit
+import com.karmakameleon.shared.data.repository.ItemChanges
 import com.karmakameleon.shared.data.repository.MarkdownRepository
+import com.karmakameleon.shared.testActionRepository
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -27,7 +27,6 @@ import kotlin.test.assertTrue
 class CommentViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
-    private lateinit var commentRepo: CommentRepository
     private lateinit var draftRepo: CommentDraftRepository
     private lateinit var viewModel: CommentViewModel
 
@@ -35,9 +34,8 @@ class CommentViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         fakeApi = FakeRedditApi()
-        commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
         draftRepo = CommentDraftRepository(MapSettings())
-        viewModel = CommentViewModel(commentRepo, ActionRepository(fakeApi, MutableStateFlow(true)), draftRepo)
+        viewModel = CommentViewModel(testActionRepository(fakeApi), draftRepo)
     }
 
     @AfterTest
@@ -315,19 +313,18 @@ class CommentViewModelTest {
     }
 
     @Test
-    fun updateComment_updatesInTree() {
+    fun showChanges_editsACommentInTheTree() {
         val comment = createTestComment(id = "c1", body = "original")
         viewModel.setComments(listOf(CommentOrMore.CommentItem(comment)))
 
-        val updated = comment.copy(body = "updated")
-        viewModel.updateComment(updated)
+        viewModel.showChanges(mapOf("t1_c1" to ItemChanges(edit = CommentEdit("updated", "updated"))))
 
         val result = (viewModel.uiState.value.comments[0] as CommentOrMore.CommentItem).comment
         assertEquals("updated", result.body)
     }
 
     @Test
-    fun removeComment_removesFromTree() {
+    fun showChanges_removesADeletedComment() {
         val c1 = createTestComment(id = "c1")
         val c2 = createTestComment(id = "c2")
         viewModel.setComments(
@@ -337,18 +334,18 @@ class CommentViewModelTest {
             ),
         )
 
-        viewModel.removeComment("c1")
+        viewModel.showChanges(mapOf("t1_c1" to ItemChanges(isDeleted = true)))
         assertEquals(1, viewModel.uiState.value.comments.size)
         assertEquals("c2", (viewModel.uiState.value.comments[0] as CommentOrMore.CommentItem).comment.id)
     }
 
     @Test
-    fun removeComment_removesNestedComment() {
+    fun showChanges_removesADeletedReply() {
         val child = createTestComment(id = "c2", parentId = "t1_c1", depth = 1)
         val parent = createTestComment(id = "c1", replies = listOf(child))
         viewModel.setComments(listOf(CommentOrMore.CommentItem(parent)))
 
-        viewModel.removeComment("c2")
+        viewModel.showChanges(mapOf("t1_c2" to ItemChanges(isDeleted = true)))
         val result = (viewModel.uiState.value.comments[0] as CommentOrMore.CommentItem).comment
         assertTrue(result.replies.isEmpty())
     }

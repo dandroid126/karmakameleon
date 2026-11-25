@@ -28,8 +28,6 @@ data class InboxUiState(
     val selectedMessageId: String? = null,
     val replyingToMessage: Message? = null,
     val replyText: String = "",
-    // A failed action, like marking a message read, shown once and then cleared with [InboxViewModel.clearActionError].
-    val actionError: String? = null,
 )
 
 class InboxViewModel(
@@ -122,46 +120,10 @@ class InboxViewModel(
     // message that didn't change.
     fun markAsRead(message: Message) {
         if (!message.isNew) return
-        setIsNew(listOf(message.id), isNew = false) { messageRepository.markAsRead(message) }
+        actionRepository.setIsNew(message, isNew = false)
     }
 
-    fun markAllAsRead() = setIsNew(_uiState.value.messages.map { it.id }, isNew = false) { messageRepository.markAllAsRead() }
-
-    fun clearActionError() {
-        _uiState.update { it.copy(actionError = null) }
-    }
-
-    // Shows the messages with [ids] as [isNew] straight away, so opening a message doesn't wait for Reddit. If [request]
-    // fails, puts back the messages it changed and reports the error.
-    private fun setIsNew(
-        ids: List<String>,
-        isNew: Boolean,
-        request: suspend () -> Result<Unit>,
-    ) {
-        val idSet = ids.toSet()
-        val changed =
-            _uiState.value.messages
-                .filter { it.id in idSet && it.isNew != isNew }
-                .map { it.id }
-                .toSet()
-        updateIsNew(changed, isNew)
-        viewModelScope.launch {
-            request().onFailure { error ->
-                updateIsNew(changed, !isNew)
-                _uiState.update { it.copy(actionError = error.message) }
-            }
-        }
-    }
-
-    private fun updateIsNew(
-        ids: Set<String>,
-        isNew: Boolean,
-    ) {
-        if (ids.isEmpty()) return
-        _uiState.update { state ->
-            state.copy(messages = state.messages.map { if (it.id in ids) it.copy(isNew = isNew) else it })
-        }
-    }
+    fun markAllAsRead() = actionRepository.markAllRead(_uiState.value.messages)
 
     fun selectMessage(id: String?) {
         _uiState.update { it.copy(selectedMessageId = if (it.selectedMessageId == id) null else id) }
@@ -174,14 +136,12 @@ class InboxViewModel(
 
     fun markAsUnread(message: Message) {
         _uiState.update { it.copy(selectedMessageId = null) }
-        setIsNew(listOf(message.id), isNew = true) { messageRepository.markAsUnread(message) }
+        actionRepository.setIsNew(message, isNew = true)
     }
 
     fun blockUser(username: String) {
         viewModelScope.launch {
-            messageRepository.blockUser(username).onFailure { error ->
-                _uiState.update { it.copy(actionError = error.message) }
-            }
+            actionRepository.blockUser(username)
             _uiState.update { it.copy(selectedMessageId = null) }
         }
     }
@@ -203,8 +163,7 @@ class InboxViewModel(
         val text = _uiState.value.replyText.trim()
         if (text.isEmpty()) return
         viewModelScope.launch {
-            val result = messageRepository.replyToMessage(message, text)
-            result.onSuccess { _ ->
+            if (actionRepository.reply(message, text)) {
                 _uiState.update { it.copy(replyingToMessage = null, replyText = "") }
             }
         }

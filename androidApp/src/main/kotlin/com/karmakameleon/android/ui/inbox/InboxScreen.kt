@@ -46,7 +46,6 @@ import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.MessageActions
 import com.karmakameleon.android.ui.components.MessageItem
 import com.karmakameleon.android.ui.components.ReplyBar
-import com.karmakameleon.android.ui.components.ShowActionErrors
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.domain.model.Message
@@ -71,7 +70,6 @@ fun InboxScreen(
             viewModel.setFilter(initialFilter)
         }
     }
-    ShowActionErrors(uiState.actionError, onConsumeError = viewModel::clearActionError)
 
     Scaffold(
         modifier = modifier,

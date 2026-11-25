@@ -7,7 +7,6 @@ import com.karmakameleon.shared.data.media.ImageFile
 import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentImageRepository
-import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.ItemChanges
 import com.karmakameleon.shared.data.repository.withChanges
 import com.karmakameleon.shared.data.repository.withTreeChanges
@@ -68,7 +67,6 @@ data class CommentUiState(
  * [ActionRepository] on top, made here or on other screens.
  */
 class CommentViewModel(
-    private val commentRepository: CommentRepository,
     private val actionRepository: ActionRepository,
     private val commentDraftRepository: CommentDraftRepository? = null,
     private val commentImageRepository: CommentImageRepository? = null,
@@ -198,20 +196,6 @@ class CommentViewModel(
         return more.copy(children = more.children.filterNot { it in covered })
     }
 
-    fun updateComment(updatedComment: Comment) {
-        val changed = updatedComment.withChanges(actionRepository.changes.value)
-        _uiState.update { state -> state.copy(comments = state.comments.withUpdatedComment(changed)) }
-    }
-
-    fun removeComment(commentId: String) {
-        _uiState.update { state ->
-            state.copy(
-                comments = state.comments.withoutComment(commentId),
-                selectedCommentId = null,
-            )
-        }
-    }
-
     fun addReplyToTree(
         parentId: String,
         newComment: Comment,
@@ -315,7 +299,7 @@ class CommentViewModel(
         commentDraftRepository?.deleteDraft(parentId)
     }
 
-    // ==================== CRUD Operations (Tree-based) ====================
+    // ==================== Actions ====================
 
     fun voteComment(
         comment: Comment,
@@ -324,73 +308,49 @@ class CommentViewModel(
 
     fun saveComment(comment: Comment) = actionRepository.toggleSave(comment)
 
-    suspend fun submitReplyWithError(isReplyToPost: Boolean): String? {
-        val (parentId, result) = submitReply() ?: return null
-        return result.fold(
-            onSuccess = { newComment ->
-                addReplyToTree(parentId, newComment, isReplyToPost)
-                null
-            },
-            onFailure = { error -> error.message },
-        )
-    }
-
-    fun submitEdit() = submitEditWithCallback(::findCommentById, ::updateComment)
-
-    fun deleteComment(commentId: String) {
-        val comment = findCommentById(commentId) ?: return
-        deleteCommentWithCallback(comment) { removeComment(commentId) }
-    }
-
-    // ==================== CRUD Operations (Callback-based for flat lists) ====================
-
-    fun submitReplyWithCallback(onSuccess: (Comment) -> Unit) {
+    /** Posts the reply being written, then adds it to the thread: at the top when it's [isReplyToPost]. */
+    fun submitReply(isReplyToPost: Boolean = false) {
         viewModelScope.launch {
-            submitReply()?.second?.onSuccess(onSuccess)
+            val (parentId, newComment) = postReply() ?: return@launch
+            addReplyToTree(parentId, newComment, isReplyToPost)
         }
     }
 
-    fun submitEditWithCallback(
-        findComment: (String) -> Comment?,
-        onSuccess: (Comment) -> Unit,
-    ) {
+    /** Saves the edit being written to the comment that [findComment] finds by ID, by default in this thread. */
+    fun submitEdit(findComment: (String) -> Comment? = ::findCommentById) {
         val editingId = _uiState.value.editingCommentId ?: return
         val text = _uiState.value.replyText.trim()
         if (text.isEmpty()) return
 
         val comment = findComment(editingId) ?: return
         viewModelScope.launch {
-            val result = commentRepository.editComment(comment, text)
-            result.onSuccess { updatedComment ->
-                deleteDraft(editingId)
-                _uiState.update {
-                    it.copy(
-                        editingCommentId = null,
-                        editingOriginalText = "",
-                        replyText = "",
-                        savedDraftText = null,
-                    )
-                }
-                onSuccess(updatedComment)
+            if (!actionRepository.edit(comment, text)) return@launch
+            deleteDraft(editingId)
+            _uiState.update {
+                it.copy(
+                    editingCommentId = null,
+                    editingOriginalText = "",
+                    replyText = "",
+                    savedDraftText = null,
+                )
             }
         }
     }
 
-    fun deleteCommentWithCallback(
-        comment: Comment,
-        onSuccess: () -> Unit,
+    /** Deletes the comment that [findComment] finds by [commentId], by default in this thread. */
+    fun deleteComment(
+        commentId: String,
+        findComment: (String) -> Comment? = ::findCommentById,
     ) {
+        val comment = findComment(commentId) ?: return
         viewModelScope.launch {
-            val result = commentRepository.deleteComment(comment)
-            result.onSuccess {
-                onSuccess()
-            }
+            if (actionRepository.delete(comment)) _uiState.update { it.copy(selectedCommentId = null) }
         }
     }
 
-    // Posts the reply being written and clears it once it's posted. Returns the parent's ID with the new comment, which
-    // starts out upvoted with a score of 1 like Reddit shows it, or null when there's no reply to post.
-    private suspend fun submitReply(): Pair<String, Result<Comment>>? {
+    // Posts the reply being written and clears it once it's posted. Returns the parent's ID with the new comment, or
+    // null when there's no reply to post or it failed. Reports why a reply can't be posted yet.
+    private suspend fun postReply(): Pair<String, Comment>? {
         val parentId = _uiState.value.replyingTo ?: return null
         // A token with no image behind it, like a typed one, isn't posted as text.
         val replyImages = _uiState.value.replyImages
@@ -411,19 +371,15 @@ class CommentViewModel(
                 } else {
                     "Wait for the images to upload"
                 }
-            return parentId to Result.failure(IllegalStateException(message))
+            actionRepository.reportError(message)
+            return null
         }
         val assetIds = images.associate { it.key to (it.status as ReplyImageStatus.Uploaded).assetId }
 
-        val result =
-            commentRepository
-                .submitComment(parentId, text.withAssetIds(assetIds), assetIds.values.toSet())
-                .map { it.copy(likes = true, score = 1) }
-        if (result.isSuccess) {
-            deleteDraft(parentId)
-            _uiState.update { it.copy(replyingTo = null, replyText = "", savedDraftText = null, replyImages = emptyList()) }
-        }
-        return parentId to result
+        val newComment = actionRepository.reply(parentId, text.withAssetIds(assetIds), assetIds.values.toSet()) ?: return null
+        deleteDraft(parentId)
+        _uiState.update { it.copy(replyingTo = null, replyText = "", savedDraftText = null, replyImages = emptyList()) }
+        return parentId to newComment
     }
 
     // ==================== Images ====================
