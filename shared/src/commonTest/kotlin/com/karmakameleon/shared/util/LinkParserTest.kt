@@ -203,6 +203,41 @@ class LinkParserTest {
     }
 
     @Test
+    fun parseRedditLink_userPageUrls() {
+        for (url in listOf("/user/testuser/", "https://www.reddit.com/user/testuser/submitted", "/u/testuser/comments")) {
+            assertEquals(RedditLink.User("testuser"), parseRedditLink(url), url)
+        }
+    }
+
+    @Test
+    fun parseRedditLink_userPostUrls() {
+        for (url in listOf(
+            "https://www.reddit.com/user/testuser/comments/abc123/some_title/",
+            "https://www.reddit.com/u/testuser/comments/abc123",
+            "/user/testuser/comments/abc123/some_title",
+            "/u/testuser/comments/abc123/some_title/",
+        )) {
+            assertEquals(RedditLink.Post("u_testuser", "abc123"), parseRedditLink(url), url)
+        }
+    }
+
+    @Test
+    fun parseRedditLink_userCommentUrls() {
+        for (url in listOf(
+            "https://www.reddit.com/user/testuser/comments/abc123/some_title/def456/",
+            "https://www.reddit.com/u/testuser/comments/abc123/some_title/def456",
+            "/user/testuser/comments/abc123/some_title/def456",
+            "/u/testuser/comments/abc123/some_title/def456/",
+        )) {
+            assertEquals(RedditLink.Comment("u_testuser", "abc123", "def456"), parseRedditLink(url), url)
+        }
+        assertEquals(
+            RedditLink.Comment("u_testuser", "abc123", "def456", 3),
+            parseRedditLink("/user/testuser/comments/abc123/some_title/def456?context=3"),
+        )
+    }
+
+    @Test
     fun parseRedditLink_postUrl() {
         val result = parseRedditLink("https://www.reddit.com/r/kotlin/comments/abc123/some_title")
         assertTrue(result is RedditLink.Post)
