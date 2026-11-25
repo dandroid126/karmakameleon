@@ -44,21 +44,6 @@ class MessageRepository(
             check(redditApi.blockUser(username)) { "Failed to block user" }
         }
 
-    suspend fun voteOnMessage(
-        message: Message,
-        direction: Int,
-    ): Result<Message> =
-        runSuspendCatching {
-            check(redditApi.vote(message.name, direction)) { "Vote failed" }
-            val newLikes =
-                when (direction) {
-                    1 -> true
-                    -1 -> false
-                    else -> null
-                }
-            message.copy(likes = newLikes)
-        }
-
     suspend fun replyToMessage(
         message: Message,
         text: String,

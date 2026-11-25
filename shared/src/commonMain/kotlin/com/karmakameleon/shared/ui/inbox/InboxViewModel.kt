@@ -2,9 +2,11 @@ package com.karmakameleon.shared.ui.inbox
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.InboxPoller
 import com.karmakameleon.shared.data.repository.MessageRepository
 import com.karmakameleon.shared.data.repository.UserRepository
+import com.karmakameleon.shared.data.repository.withChanges
 import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.domain.model.Message
 import kotlinx.coroutines.Job
@@ -32,6 +34,7 @@ data class InboxUiState(
 
 class InboxViewModel(
     private val messageRepository: MessageRepository,
+    private val actionRepository: ActionRepository,
     private val userRepository: UserRepository,
     private val inboxPoller: InboxPoller,
 ) : ViewModel() {
@@ -47,6 +50,11 @@ class InboxViewModel(
                 if (isLoggedIn) {
                     loadMessages()
                 }
+            }
+        }
+        viewModelScope.launch {
+            actionRepository.changes.collect { changes ->
+                _uiState.update { state -> state.copy(messages = state.messages.map { it.withChanges(changes) }) }
             }
         }
         viewModelScope.launch {
@@ -81,7 +89,7 @@ class InboxViewModel(
                     onSuccess = { listing ->
                         _uiState.update {
                             it.copy(
-                                messages = listing.items,
+                                messages = listing.items.map { message -> message.withChanges(actionRepository.changes.value) },
                                 after = listing.after,
                                 hasMore = listing.after != null,
                                 isLoading = false,
@@ -162,16 +170,7 @@ class InboxViewModel(
     fun voteOnMessage(
         message: Message,
         direction: Int,
-    ) {
-        viewModelScope.launch {
-            val result = messageRepository.voteOnMessage(message, direction)
-            result.onSuccess { updated ->
-                _uiState.update { state ->
-                    state.copy(messages = state.messages.map { if (it.id == updated.id) updated else it })
-                }
-            }
-        }
-    }
+    ) = actionRepository.vote(message, direction)
 
     fun markAsUnread(message: Message) {
         _uiState.update { it.copy(selectedMessageId = null) }

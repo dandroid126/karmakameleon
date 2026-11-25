@@ -4,6 +4,7 @@ import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.data.api.CommentOrMore
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
@@ -35,7 +36,7 @@ class CommentViewModelTest {
         fakeApi = FakeRedditApi()
         commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
         draftRepo = CommentDraftRepository(MapSettings())
-        viewModel = CommentViewModel(commentRepo, draftRepo)
+        viewModel = CommentViewModel(commentRepo, ActionRepository(fakeApi), draftRepo)
     }
 
     @AfterTest

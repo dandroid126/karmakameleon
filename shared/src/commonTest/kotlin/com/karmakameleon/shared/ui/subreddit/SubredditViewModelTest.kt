@@ -5,6 +5,7 @@ import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestSubreddit
 import com.karmakameleon.shared.createTestUser
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
@@ -37,6 +38,7 @@ class SubredditViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var postRepo: PostRepository
+    private lateinit var actionRepo: ActionRepository
     private lateinit var subredditRepo: SubredditRepository
     private lateinit var userRepo: UserRepository
     private lateinit var settingsRepo: SettingsRepository
@@ -51,7 +53,8 @@ class SubredditViewModelTest {
         postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         subredditRepo = SubredditRepository(fakeApi, settingsRepo)
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
-        viewModel = SubredditViewModel("kotlin", subredditRepo, postRepo, userRepo, settingsRepo)
+        actionRepo = ActionRepository(fakeApi)
+        viewModel = SubredditViewModel("kotlin", subredditRepo, postRepo, actionRepo, userRepo, settingsRepo)
     }
 
     @AfterTest
@@ -485,14 +488,14 @@ class SubredditViewModelTest {
 
     // ==================== Post Updates ====================
 
-    // These change the post through the repository, as another screen would, so only the post updates reach the list.
+    // These change the post through the repository, as another screen would, so only its changes reach the list.
 
     @Test
-    fun postUpdates_updatesExistingPost() =
+    fun changesFromOtherScreens_updateThePost() =
         runTest {
             loadPosts(createTestPost(id = "1", likes = null), createTestPost(id = "2", likes = null))
 
-            postRepo.vote(
+            actionRepo.vote(
                 viewModel.postList.state.value.posts
                     .first(),
                 1,
@@ -507,11 +510,11 @@ class SubredditViewModelTest {
         }
 
     @Test
-    fun postUpdates_removesHiddenPost() =
+    fun changesFromOtherScreens_removeAHiddenPost() =
         runTest {
             loadPosts(createTestPost(id = "1"), createTestPost(id = "2"))
 
-            postRepo.hide(
+            actionRepo.toggleHide(
                 viewModel.postList.state.value.posts
                     .first(),
             )
@@ -539,7 +542,8 @@ class SubredditViewModelTest {
             assertTrue(viewModel.uiState.value.isLoggedIn)
         }
 
-    private fun createViewModel(): SubredditViewModel = SubredditViewModel("kotlin", subredditRepo, postRepo, userRepo, settingsRepo)
+    private fun createViewModel(): SubredditViewModel =
+        SubredditViewModel("kotlin", subredditRepo, postRepo, actionRepo, userRepo, settingsRepo)
 
     // Loads the post list with [posts], so the tests that act on a post have one.
     private fun TestScope.loadPosts(vararg posts: Post) {

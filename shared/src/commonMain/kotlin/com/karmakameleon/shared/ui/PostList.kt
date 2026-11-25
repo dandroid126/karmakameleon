@@ -1,7 +1,9 @@
 package com.karmakameleon.shared.ui
 
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
+import com.karmakameleon.shared.data.repository.withPostChanges
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
@@ -37,13 +39,14 @@ data class PostListState(
 
 /**
  * The posts of the home feed or a subreddit, shared by their view models. Loads them a page at a time from [subreddit]
- * (null for the home feed), handles votes, saves and hides, and keeps the posts in step with changes made on other
- * screens. NSFW posts are left out while NSFW is off, and posts from blocked subreddits when [hideBlockedSubreddits]
- * is set. Coroutines run in [scope], the view model's scope.
+ * (null for the home feed), and shows them with the user's votes, saves and hides from [ActionRepository] on top, made
+ * here or on other screens. Hidden posts are left out of the list, as are NSFW posts while NSFW is off, and posts from
+ * blocked subreddits when [hideBlockedSubreddits] is set. Coroutines run in [scope], the view model's scope.
  */
 class PostList internal constructor(
     private val scope: CoroutineScope,
     private val postRepository: PostRepository,
+    private val actionRepository: ActionRepository,
     private val settingsRepository: SettingsRepository,
     private val hideBlockedSubreddits: Boolean,
     private val subreddit: () -> String?,
@@ -51,9 +54,12 @@ class PostList internal constructor(
     private val _state = MutableStateFlow(PostListState())
     val state: StateFlow<PostListState> = _state.asStateFlow()
 
+    // The posts as loaded, hidden ones included, so a hide that Reddit refuses can bring its post back.
+    private var loadedPosts: List<Post> = emptyList()
+
     init {
-        postRepository.postUpdates
-            .onEach { updatedPost -> updatePosts { it.withUpdatedPost(updatedPost) } }
+        actionRepository.changes
+            .onEach { _state.update { state -> state.copy(posts = shownPosts()) } }
             .launchIn(scope)
     }
 
@@ -64,9 +70,10 @@ class PostList internal constructor(
             _state.update { it.copy(isLoading = !forceRefresh, isRefreshing = forceRefresh, error = null) }
             fetchPage(_state.value, after = null).fold(
                 onSuccess = { listing ->
+                    loadedPosts = listing.items
                     _state.update {
                         it.copy(
-                            posts = listing.items,
+                            posts = shownPosts(),
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoading = false,
@@ -93,9 +100,10 @@ class PostList internal constructor(
             _state.update { it.copy(isLoadingMore = true) }
             fetchPage(current, after = current.after).fold(
                 onSuccess = { listing ->
+                    loadedPosts = loadedPosts.plusNew(listing.items, Post::id)
                     _state.update {
                         it.copy(
-                            posts = it.posts.plusNew(listing.items, Post::id),
+                            posts = shownPosts(),
                             after = listing.after,
                             hasMore = listing.hasMore,
                             isLoadingMore = false,
@@ -110,6 +118,7 @@ class PostList internal constructor(
 
     /** Clears the list and loads it again, for when the subreddit it shows has changed. */
     fun reload() {
+        loadedPosts = emptyList()
         _state.update { it.copy(posts = emptyList(), after = null) }
         load()
     }
@@ -129,23 +138,11 @@ class PostList internal constructor(
     fun vote(
         post: Post,
         direction: Int,
-    ) {
-        scope.launch {
-            postRepository.vote(post, direction).onSuccess { updatedPost -> updatePosts { it.withUpdatedPost(updatedPost) } }
-        }
-    }
+    ) = actionRepository.vote(post, direction)
 
-    fun save(post: Post) {
-        scope.launch {
-            postRepository.save(post).onSuccess { updatedPost -> updatePosts { it.withUpdatedPost(updatedPost) } }
-        }
-    }
+    fun save(post: Post) = actionRepository.toggleSave(post)
 
-    fun hide(post: Post) {
-        scope.launch {
-            postRepository.hide(post).onSuccess { _ -> updatePosts { posts -> posts.filter { it.id != post.id } } }
-        }
-    }
+    fun hide(post: Post) = actionRepository.toggleHide(post)
 
     /** Removes the posts that shouldn't be shown any more, after the NSFW setting or the blocked subreddits changed. */
     fun removeHiddenPosts(
@@ -184,9 +181,14 @@ class PostList internal constructor(
         }
     }
 
+    // Changes the loaded posts and shows them.
     private fun updatePosts(transform: (List<Post>) -> List<Post>) {
-        _state.update { it.copy(posts = transform(it.posts)) }
+        loadedPosts = transform(loadedPosts)
+        _state.update { it.copy(posts = shownPosts()) }
     }
+
+    // A hidden post leaves the feed, since the user asked not to see it: that's what hiding is for.
+    private fun shownPosts(): List<Post> = loadedPosts.withPostChanges(actionRepository.changes.value).filterNot { it.isHidden }
 }
 
 // Blocked subreddit names are stored in lowercase.
@@ -194,11 +196,3 @@ private fun Post.isVisible(
     nsfwEnabled: Boolean,
     blockedSubreddits: Set<String>,
 ): Boolean = (nsfwEnabled || !isNsfw) && subreddit.lowercase() !in blockedSubreddits
-
-// Puts [updated] in place of the post with its id, or removes that post if it's now hidden.
-private fun List<Post>.withUpdatedPost(updated: Post): List<Post> =
-    if (updated.isHidden) {
-        filter { it.id != updated.id }
-    } else {
-        map { if (it.id == updated.id) updated else it }
-    }

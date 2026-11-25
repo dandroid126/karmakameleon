@@ -41,7 +41,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,10 +56,8 @@ import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.theme.commentColors
 import com.karmakameleon.android.ui.theme.voteColors
-import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.VoteState
-import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 
 @Composable
@@ -77,14 +74,8 @@ fun CommentItem(
     isSingleThreadMode: Boolean = false,
     showTopControls: Boolean = true,
     showSubreddit: Boolean = false,
-    commentRepository: CommentRepository = koinInject(),
 ) {
-    val scope = rememberCoroutineScope()
     val navigationHandler = koinInject<NavigationHandler>()
-
-    val vote = { direction: Int ->
-        scope.launch { commentRepository.vote(comment, direction).onSuccess(actions.onCommentUpdated) }
-    }
 
     val commentColors = commentColors()
     val depthColor = commentColors.depthColors[comment.depth % commentColors.depthColors.size]
@@ -134,7 +125,7 @@ fun CommentItem(
                         comment = comment,
                         isLoggedIn = isLoggedIn,
                         isOwnComment = loggedInUsername != null && comment.author == loggedInUsername,
-                        onVote = { vote(it) },
+                        onVote = actions.onVote,
                         actions = actions,
                     )
                 }

@@ -454,7 +454,10 @@ private class ThreadComments(
 
     fun hide(comment: Comment) = comments.hideComment(comment.id)
 
-    fun update(comment: Comment) = comments.updateComment(comment)
+    fun vote(
+        comment: Comment,
+        direction: Int,
+    ) = comments.voteComment(comment, direction)
 
     fun reply(comment: Comment) = comments.setReplyingTo(comment.name)
 
@@ -701,7 +704,7 @@ private fun ThreadComment(
                 onEdit = { threadComments.edit(comment) },
                 onDelete = { threadComments.delete(comment) },
                 onSave = { threadComments.save(comment) },
-                onCommentUpdated = threadComments::update,
+                onVote = { threadComments.vote(comment, it) },
                 onGoToCommentNav = onGoToCommentNav,
                 onHide = { threadComments.hide(comment) },
                 onPrev = { threadComments.previous(comment) },

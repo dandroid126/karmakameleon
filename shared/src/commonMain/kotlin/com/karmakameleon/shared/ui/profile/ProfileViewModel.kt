@@ -4,9 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.api.OAuthRedirect
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
-import com.karmakameleon.shared.data.repository.PostRepository
+import com.karmakameleon.shared.data.repository.ItemChanges
 import com.karmakameleon.shared.data.repository.UserRepository
+import com.karmakameleon.shared.data.repository.withChanges
+import com.karmakameleon.shared.data.repository.withCommentChanges
+import com.karmakameleon.shared.data.repository.withPostChanges
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.Listing
 import com.karmakameleon.shared.domain.model.Post
@@ -80,13 +84,15 @@ enum class SavedContentType(
     COMMENTS("Comments"),
 }
 
+// Shows the posts and comments with the user's votes and saves from [ActionRepository] on top. One the user unsaves
+// stays in the saved lists until they're reloaded, so tapping save again brings it back.
 class ProfileViewModel(
     private val userRepository: UserRepository,
-    private val postRepository: PostRepository,
     commentRepository: CommentRepository,
+    private val actionRepository: ActionRepository,
     private val authManager: AuthManager,
 ) : ViewModel() {
-    val commentViewModel = CommentViewModel(commentRepository)
+    val commentViewModel = CommentViewModel(commentRepository, actionRepository)
 
     private val _uiState = MutableStateFlow(initialState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
@@ -97,6 +103,12 @@ class ProfileViewModel(
     init {
         viewModelScope.launch {
             userRepository.isLoggedIn.collect { isLoggedIn -> _uiState.update { it.copy(isLoggedIn = isLoggedIn) } }
+        }
+        viewModelScope.launch {
+            actionRepository.changes.collect { changes ->
+                _uiState.update { it.withChanges(changes) }
+                commentViewModel.showChanges(changes)
+            }
         }
     }
 
@@ -273,7 +285,7 @@ class ProfileViewModel(
                         },
                         onFailure = { state },
                     )
-                loaded.copy(isLoadingContent = false)
+                loaded.copy(isLoadingContent = false).withChanges(actionRepository.changes.value)
             }
         }
     }
@@ -298,19 +310,20 @@ class ProfileViewModel(
             _uiState.update { state -> source.update(state) { it.copy(isLoadingMore = true) } }
             val result = source.fetchPage(username, current.after)
             _uiState.update { state ->
-                source.update(state) { list ->
-                    result.fold(
-                        onSuccess = { listing ->
-                            list.copy(
-                                items = list.items.plusNew(listing.items, source.id),
-                                after = listing.after,
-                                hasMore = listing.hasMore,
-                                isLoadingMore = false,
-                            )
-                        },
-                        onFailure = { list.copy(isLoadingMore = false) },
-                    )
-                }
+                source
+                    .update(state) { list ->
+                        result.fold(
+                            onSuccess = { listing ->
+                                list.copy(
+                                    items = list.items.plusNew(listing.items, source.id),
+                                    after = listing.after,
+                                    hasMore = listing.hasMore,
+                                    isLoadingMore = false,
+                                )
+                            },
+                            onFailure = { list.copy(isLoadingMore = false) },
+                        )
+                    }.withChanges(actionRepository.changes.value)
             }
         }
     }
@@ -444,63 +457,37 @@ class ProfileViewModel(
     fun vote(
         post: Post,
         direction: Int,
-    ) {
-        viewModelScope.launch {
-            val result = postRepository.vote(post, direction)
-            result.onSuccess { updatedPost -> _uiState.update { it.withPost(updatedPost) } }
-        }
+    ) = actionRepository.vote(post, direction)
+
+    fun save(post: Post) = actionRepository.toggleSave(post)
+
+    fun voteComment(
+        comment: Comment,
+        direction: Int,
+    ) = actionRepository.vote(comment, direction)
+
+    fun saveComment(comment: Comment) = actionRepository.toggleSave(comment)
+
+    // Puts an edited comment in place of the old one in every list that shows it.
+    private fun updateComment(updated: Comment) {
+        val changed = updated.withChanges(actionRepository.changes.value)
+
+        fun PagedList<Comment>.replaced() = copy(items = items.map { if (it.id == changed.id) changed else it })
+        _uiState.update { it.copy(comments = it.comments.replaced(), savedComments = it.savedComments.replaced()) }
     }
 
-    fun save(post: Post) {
-        viewModelScope.launch {
-            val result = postRepository.save(post)
-            result.onSuccess { updatedPost -> _uiState.update { it.withPost(updatedPost) } }
-        }
-    }
+    private fun ProfileUiState.withChanges(changes: Map<String, ItemChanges>): ProfileUiState {
+        fun PagedList<Post>.changed() = copy(items = items.withPostChanges(changes))
 
-    // Replaces the post in every list that shows it, and drops it from the saved list once it's unsaved.
-    private fun ProfileUiState.withPost(updated: Post): ProfileUiState {
-        fun PagedList<Post>.replaced() = copy(items = items.map { if (it.id == updated.id) updated else it })
+        fun PagedList<Comment>.changed() = copy(items = items.withCommentChanges(changes))
         return copy(
-            posts = posts.replaced(),
-            savedPosts =
-                if (updated.isSaved) {
-                    savedPosts.replaced()
-                } else {
-                    savedPosts.copy(
-                        items =
-                            savedPosts.items.filter {
-                                it.id !=
-                                    updated.id
-                            },
-                    )
-                },
-            upvotedPosts = upvotedPosts.replaced(),
-            downvotedPosts = downvotedPosts.replaced(),
+            posts = posts.changed(),
+            comments = comments.changed(),
+            savedPosts = savedPosts.changed(),
+            savedComments = savedComments.changed(),
+            upvotedPosts = upvotedPosts.changed(),
+            downvotedPosts = downvotedPosts.changed(),
         )
-    }
-
-    fun updateComment(updatedComment: Comment) {
-        _uiState.update { state ->
-            state.copy(
-                comments = state.comments.copy(items = state.comments.items.map { if (it.id == updatedComment.id) updatedComment else it }),
-                savedComments =
-                    state.savedComments.copy(
-                        items =
-                            if (updatedComment.isSaved) {
-                                state.savedComments.items.map { if (it.id == updatedComment.id) updatedComment else it }
-                            } else {
-                                state.savedComments.items.filter { it.id != updatedComment.id }
-                            },
-                    ),
-            )
-        }
-    }
-
-    fun saveComment(comment: Comment) {
-        commentViewModel.saveCommentWithCallback(comment) { updatedComment ->
-            updateComment(updatedComment)
-        }
     }
 
     fun submitReply() {

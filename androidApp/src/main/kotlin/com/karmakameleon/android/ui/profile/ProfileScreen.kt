@@ -279,7 +279,7 @@ private fun ProfileViewModel.postCallbacks(
 
 private fun ProfileViewModel.commentCallbacks(onOpen: (subreddit: String, postId: String, commentId: String) -> Unit) =
     ProfileCommentCallbacks(
-        onUpdate = ::updateComment,
+        onVote = ::voteComment,
         onReply = { commentViewModel.setReplyingTo(it) },
         onEdit = commentViewModel::startEditComment,
         onDelete = ::deleteComment,

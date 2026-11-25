@@ -15,30 +15,6 @@ class CommentRepository(
     private val redditApi: RedditApi,
     private val markdownRepository: MarkdownRepository,
 ) {
-    suspend fun vote(
-        comment: Comment,
-        direction: Int,
-    ): Result<Comment> =
-        runSuspendCatching {
-            check(redditApi.vote(comment.name, direction)) { "Vote failed" }
-            comment.copy(
-                likes = voteToLikes(direction),
-                score = comment.score + direction - likesToVote(comment.likes),
-            )
-        }
-
-    suspend fun save(comment: Comment): Result<Comment> =
-        runSuspendCatching {
-            val success =
-                if (comment.isSaved) {
-                    redditApi.unsave(comment.name)
-                } else {
-                    redditApi.save(comment.name)
-                }
-            check(success) { "Save failed" }
-            comment.copy(isSaved = !comment.isSaved)
-        }
-
     /**
      * Submits a comment. Images uploaded with [CommentImageRepository.upload] go in [text] as `![img](<asset ID>)`, with
      * their IDs in [imageAssetIds]. A comment with images is sent as richtext, which Reddit converts the markdown to.

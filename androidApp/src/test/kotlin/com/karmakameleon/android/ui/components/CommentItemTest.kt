@@ -8,13 +8,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
-import com.karmakameleon.android.testing.FakeRedditApi
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
-import com.karmakameleon.shared.data.repository.CommentRepository
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.model.Comment
-import com.karmakameleon.shared.testing.FakeAuthManager
-import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +26,6 @@ class CommentItemTest {
     val navigation = NavigationRule()
 
     private val recorded = RecordedCommentActions()
-    private val redditApi = FakeRedditApi(FakeAuthManager())
 
     private fun showComment(
         comment: Comment = testComment(),
@@ -51,7 +45,6 @@ class CommentItemTest {
                     loggedInUsername = "me",
                     isSingleThreadMode = isSingleThreadMode,
                     showSubreddit = showSubreddit,
-                    commentRepository = CommentRepository(redditApi, MarkdownRepository(Dispatchers.Main)),
                 )
             }
         }
@@ -110,28 +103,19 @@ class CommentItemTest {
     }
 
     @Test
-    fun votingUpdatesComment() {
+    fun upvoteVotesUp() {
         showComment()
         composeRule.onNodeWithContentDescription("Upvote").performClick()
-        composeRule.waitForIdle()
 
-        assertEquals(listOf("t1_c1 1"), redditApi.votes)
-        val updated = recorded.updatedComments.single()
-        assertEquals(true, updated.likes)
-        assertEquals(43, updated.score)
+        assertCalls("vote 1")
     }
 
     @Test
     fun votingAgainRemovesVote() {
         showComment(testComment().copy(likes = false))
         composeRule.onNodeWithContentDescription("Downvote").performClick()
-        composeRule.waitForIdle()
 
-        assertEquals(listOf("t1_c1 0"), redditApi.votes)
-        val updated = recorded.updatedComments.single()
-        assertEquals(null, updated.likes)
-        // The downvote had taken one point off, so removing it puts the point back.
-        assertEquals(43, updated.score)
+        assertCalls("vote 0")
     }
 
     @Test

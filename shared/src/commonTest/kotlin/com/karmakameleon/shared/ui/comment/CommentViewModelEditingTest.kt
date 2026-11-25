@@ -4,6 +4,7 @@ import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.data.api.CommentOrMore
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
@@ -30,8 +31,14 @@ class CommentViewModelEditingTest {
     private val fakeApi = FakeRedditApi()
     private val draftRepo = CommentDraftRepository(MapSettings())
     private val markdown = MarkdownRepository(Dispatchers.Main)
-    private val viewModel = CommentViewModel(CommentRepository(fakeApi, markdown), draftRepo)
+
+    // Made on first use, after setup sets the Main dispatcher, which the view model starts collecting on.
+    private val actionRepo by lazy { ActionRepository(fakeApi) }
+    private val viewModel by lazy { CommentViewModel(CommentRepository(fakeApi, markdown), actionRepo, draftRepo) }
     private val more = createTestMoreComments(id = "m1", name = "t1_m1", parentId = "t3_abc123", depth = 0)
+
+    // Passes the user's changes on, as the view model that holds this one does.
+    private fun showChanges() = viewModel.showChanges(actionRepo.changes.value)
 
     @BeforeTest
     fun setup() {
@@ -240,6 +247,7 @@ class CommentViewModelEditingTest {
         runTest {
             viewModel.saveComment(comment("c2", parentId = "t1_c1", depth = 1))
             advanceUntilIdle()
+            showChanges()
 
             assertEquals(true, viewModel.findCommentById("c2")?.isSaved)
             // The more entry after the thread is kept.
@@ -251,12 +259,26 @@ class CommentViewModelEditingTest {
         }
 
     @Test
+    fun voteComment_changesTheReplyAndTheCommentsLoadedLater() =
+        runTest {
+            viewModel.voteComment(comment("c2", parentId = "t1_c1", depth = 1), 1)
+            advanceUntilIdle()
+            showChanges()
+
+            assertEquals(true, viewModel.findCommentById("c2")?.likes)
+            // A thread loaded again, like after changing the sort, still shows the vote.
+            viewModel.setComments(listOf(CommentOrMore.CommentItem(comment("c2", parentId = "t1_c1", depth = 1))))
+            assertEquals(true, viewModel.findCommentById("c2")?.likes)
+        }
+
+    @Test
     fun saveComment_keepsItWhenItFails() =
         runTest {
             fakeApi.saveResult = false
 
             viewModel.saveComment(comment("c1"))
             advanceUntilIdle()
+            showChanges()
 
             assertEquals(false, viewModel.findCommentById("c1")?.isSaved)
         }

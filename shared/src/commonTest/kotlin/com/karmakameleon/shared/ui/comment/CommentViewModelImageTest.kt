@@ -6,6 +6,7 @@ import com.karmakameleon.shared.data.api.thing
 import com.karmakameleon.shared.data.media.ImageFile
 import com.karmakameleon.shared.data.media.ImageFiles
 import com.karmakameleon.shared.data.media.ImageReadException
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentImageRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
@@ -85,7 +86,11 @@ class CommentViewModelImageTest {
     private fun TestScope.viewModel(withImages: Boolean = true): CommentViewModel {
         val api = reddit.api(ioDispatcher = StandardTestDispatcher(testScheduler))
         val images = if (withImages) CommentImageRepository(api, imageFiles, downloads()) else null
-        return CommentViewModel(CommentRepository(api, MarkdownRepository(Dispatchers.Main)), commentImageRepository = images).apply {
+        return CommentViewModel(
+            CommentRepository(api, MarkdownRepository(Dispatchers.Main)),
+            ActionRepository(api),
+            commentImageRepository = images,
+        ).apply {
             setCommentSubreddit(pics)
             setReplyingTo("t3_post")
         }

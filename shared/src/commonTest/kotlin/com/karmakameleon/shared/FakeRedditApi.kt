@@ -80,6 +80,12 @@ class FakeRedditApi(
     val postsRequests = mutableListOf<String?>()
     val subscriptionChanges = mutableListOf<String>()
 
+    /** The votes, saves and hides sent, like "vote t3_p1 1" or "unsave t1_c1". */
+    val actions = mutableListOf<String>()
+
+    /** How long a vote, save or hide takes, so a test can act while one is in flight. */
+    var actionDelayMillis = 0L
+
     /** Results for the threads of particular comments, by comment ID. Other requests get [postWithCommentsResult]. */
     val commentThreadResults = mutableMapOf<String, Pair<Post, List<CommentOrMore>>>()
 
@@ -157,15 +163,25 @@ class FakeRedditApi(
     override suspend fun vote(
         thingId: String,
         direction: Int,
-    ): Boolean = throwOrReturn(voteResult)
+    ): Boolean = act("vote $thingId $direction") { voteResult }
 
-    override suspend fun save(thingId: String): Boolean = throwOrReturn(saveResult)
+    override suspend fun save(thingId: String): Boolean = act("save $thingId") { saveResult }
 
-    override suspend fun unsave(thingId: String): Boolean = throwOrReturn(unsaveResult)
+    override suspend fun unsave(thingId: String): Boolean = act("unsave $thingId") { unsaveResult }
 
-    override suspend fun hide(thingId: String): Boolean = throwOrReturn(hideResult)
+    override suspend fun hide(thingId: String): Boolean = act("hide $thingId") { hideResult }
 
-    override suspend fun unhide(thingId: String): Boolean = throwOrReturn(unhideResult)
+    override suspend fun unhide(thingId: String): Boolean = act("unhide $thingId") { unhideResult }
+
+    // Reads the result once the delay is over, so a test can change it while the request is in flight.
+    private suspend fun act(
+        action: String,
+        result: () -> Boolean,
+    ): Boolean {
+        actions += action
+        if (actionDelayMillis > 0) delay(actionDelayMillis)
+        return throwOrReturn(result())
+    }
 
     override suspend fun getSubreddit(name: String): Subreddit? = throwOrReturn(subredditResult)
 
