@@ -220,6 +220,40 @@ class KarmaKameleonAppTest {
     }
 
     @Test
+    fun shareLinkOpensThePostItRedirectsTo() {
+        showApp()
+        fakeReddit.reddit.redirect("/r/pics/s/AbCdEf", "https://www.reddit.com/r/pics/comments/1x65iks/title/?share_id=x")
+        openLink("https://www.reddit.com/r/pics/s/AbCdEf")
+        assertEquals(DetailScreen.PostDetail.route, route())
+        assertEquals("pics", argument("subreddit"))
+        assertEquals("1x65iks", argument("postId"))
+        assertEquals(null, argument("commentId"))
+    }
+
+    // Reddit serves a profile's share links under /u/<name>/, and this one is for a comment.
+    @Test
+    fun profileShareLinkOpensTheCommentItRedirectsTo() {
+        showApp()
+        fakeReddit.reddit.redirect(
+            "/u/user18/s/AbCdEf",
+            "https://www.reddit.com/user/user18/comments/1x65iks/comment/phx1a8k/?share_id=x",
+        )
+        openLink("https://www.reddit.com/u/user18/s/AbCdEf")
+        assertEquals(DetailScreen.PostDetail.route, route())
+        assertEquals("u_user18", argument("subreddit"))
+        assertEquals("1x65iks", argument("postId"))
+        assertEquals("phx1a8k", argument("commentId"))
+    }
+
+    @Test
+    fun shareLinkThatDoesNotLeadToAPostStaysPut() {
+        showApp()
+        fakeReddit.reddit.redirect("/r/pics/s/AbCdEf", "https://www.reddit.com/r/pics/")
+        openLink("https://www.reddit.com/r/pics/s/AbCdEf")
+        assertEquals("feed", route())
+    }
+
+    @Test
     fun imageLinkOpensTheViewerWithTheSameUrl() {
         showApp()
         val url = "https://i.redd.it/$ENCODED_CHARACTERS.jpg?width=640&s=x"

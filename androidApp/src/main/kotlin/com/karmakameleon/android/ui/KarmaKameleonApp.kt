@@ -64,6 +64,7 @@ import com.karmakameleon.android.ui.subreddit.SubredditScreen
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.InboxFilter
+import com.karmakameleon.shared.util.RedditLink
 import com.karmakameleon.shared.util.extractYouTubeVideoId
 import com.karmakameleon.shared.util.isImageUrl
 import com.karmakameleon.shared.util.isVideoUrl
@@ -236,8 +237,16 @@ private fun BindNavigation(
         globalMenuManager.bindTo(navController)
         navigationHandler.bindTo(navController) { subreddit, shareId ->
             coroutineScope.launch {
-                postRepository.resolveShareLink(subreddit, shareId)?.let { (resolvedSubreddit, postId) ->
-                    navController.openPost(resolvedSubreddit, postId)
+                when (val link = postRepository.resolveShareLink(subreddit, shareId)) {
+                    is RedditLink.Post -> {
+                        navigationHandler.onPostClick(link.subreddit, link.postId)
+                    }
+
+                    is RedditLink.Comment -> {
+                        navigationHandler.onCommentClick(link.subreddit, link.postId, link.commentId, link.context)
+                    }
+
+                    else -> {}
                 }
             }
         }

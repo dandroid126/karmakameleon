@@ -7,6 +7,7 @@ import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.domain.model.CommentSort
+import com.karmakameleon.shared.util.RedditLink
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -103,9 +104,9 @@ class PostRepositoryTest {
     fun resolveShareLink_returnsThePostFromTheApi() =
         runTest {
             val (repo, api) = createRepo()
-            api.resolveShareLinkResult = "Kotlin" to "abc123"
+            api.resolveShareLinkResult = RedditLink.Post("Kotlin", "abc123")
 
-            assertEquals("Kotlin" to "abc123", repo.resolveShareLink("kotlin", "AbCdEf"))
+            assertEquals(RedditLink.Post("Kotlin", "abc123"), repo.resolveShareLink("kotlin", "AbCdEf"))
         }
 
     // ==================== getPostWithComments ====================

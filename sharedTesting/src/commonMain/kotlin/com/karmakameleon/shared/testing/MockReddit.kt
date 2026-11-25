@@ -11,7 +11,7 @@ import io.ktor.client.request.forms.FormDataContent
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.Parameters
-import io.ktor.http.headersOf
+import io.ktor.http.headers
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
 import kotlinx.serialization.json.JsonArray
@@ -30,6 +30,7 @@ class MockReddit {
         val status: HttpStatusCode,
         val body: String,
         val contentType: String,
+        val location: String? = null,
     )
 
     private val responses = mutableMapOf<String, Response>()
@@ -53,6 +54,15 @@ class MockReddit {
         // The latest call for a path wins, so a test can fail a request and then let a retry succeed.
         failures.remove(path)
         responses[path] = Response(status, body, contentType)
+    }
+
+    /** Answers requests for [path] with a redirect to [location], the way Reddit answers a share link. */
+    fun redirect(
+        path: String,
+        location: String,
+    ) {
+        failures.remove(path)
+        responses[path] = Response(HttpStatusCode.MovedPermanently, "", "text/html", location)
     }
 
     /**
@@ -99,14 +109,17 @@ class MockReddit {
             authManager,
             settingsRepository,
             ioDispatcher,
-            createShareLinkClient = { client(ioDispatcher) },
+            createShareLinkClient = { client(ioDispatcher, followRedirects = false) },
         )
 
     /** A plain client on this server, like the one the app downloads linked images with. */
     fun httpClient(dispatcher: CoroutineDispatcher): HttpClient = client(dispatcher)
 
     // Runs on the API's dispatcher, so a test dispatcher also waits for the requests made in the background.
-    private fun client(dispatcher: CoroutineDispatcher): HttpClient =
+    private fun client(
+        dispatcher: CoroutineDispatcher,
+        followRedirects: Boolean = true,
+    ): HttpClient =
         HttpClient(
             MockEngine(
                 MockEngineConfig().apply {
@@ -116,11 +129,16 @@ class MockReddit {
                         heldPaths[request.url.encodedPath]?.receive()
                         failures[request.url.encodedPath]?.let { throw it }
                         val response = responses[request.url.encodedPath] ?: Response(HttpStatusCode.OK, EMPTY_LISTING, "application/json")
-                        respond(response.body, response.status, headersOf(HttpHeaders.ContentType, response.contentType))
+                        val headers =
+                            headers {
+                                append(HttpHeaders.ContentType, response.contentType)
+                                response.location?.let { append(HttpHeaders.Location, it) }
+                            }
+                        respond(response.body, response.status, headers)
                     }
                 },
             ),
-        )
+        ) { this.followRedirects = followRedirects }
 
     companion object {
         const val EMPTY_LISTING = """{"kind": "Listing", "data": {"children": []}}"""

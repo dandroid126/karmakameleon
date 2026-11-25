@@ -10,6 +10,7 @@ import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.TimeFilter
+import com.karmakameleon.shared.util.RedditLink
 import com.karmakameleon.shared.util.runSuspendCatching
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -79,7 +80,7 @@ class PostRepository(
     suspend fun resolveShareLink(
         subreddit: String,
         shareId: String,
-    ): Pair<String, String>? = redditApi.resolveShareLink(subreddit, shareId)
+    ): RedditLink? = redditApi.resolveShareLink(subreddit, shareId)
 
     suspend fun getPostWithComments(
         subreddit: String,
