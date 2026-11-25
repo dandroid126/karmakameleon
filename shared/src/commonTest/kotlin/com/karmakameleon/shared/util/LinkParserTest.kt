@@ -204,7 +204,7 @@ class LinkParserTest {
 
     @Test
     fun parseRedditLink_userPageUrls() {
-        for (url in listOf("/user/testuser/", "https://www.reddit.com/user/testuser/submitted", "/u/testuser/comments")) {
+        for (url in listOf("/user/testuser/", "https://www.reddit.com/user/testuser/submitted", "/u/testuser/comments", "/u/testuser/s")) {
             assertEquals(RedditLink.User("testuser"), parseRedditLink(url), url)
         }
     }
@@ -235,6 +235,13 @@ class LinkParserTest {
             RedditLink.Comment("u_testuser", "abc123", "def456", 3),
             parseRedditLink("/user/testuser/comments/abc123/some_title/def456?context=3"),
         )
+    }
+
+    @Test
+    fun parseRedditLink_userShareUrls() {
+        for (url in listOf("https://www.reddit.com/u/testuser/s/abc", "/user/testuser/s/abc")) {
+            assertEquals(RedditLink.ShareLink("u_testuser", "abc"), parseRedditLink(url), url)
+        }
     }
 
     @Test

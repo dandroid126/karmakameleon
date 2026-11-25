@@ -114,13 +114,13 @@ private fun redditLinkFromPath(
     }
 }
 
-// A link under /user/<name>/: a post or comment on the profile, which lives in its u_<name> subreddit, or else the profile.
+// A link under /user/<name>/: a post, comment or share link on the profile, which lives in its u_<name> subreddit, or else the profile.
 private fun userPathLink(
     name: String,
     pathSegments: List<String>,
     context: Int?,
 ): RedditLink {
-    if (pathSegments.getOrNull(2) != "comments") return RedditLink.User(name)
+    if (pathSegments.getOrNull(2) !in setOf("comments", "s")) return RedditLink.User(name)
     val link = subredditPathLink("u_$name", pathSegments, context)
     return if (link is RedditLink.Subreddit) RedditLink.User(name) else link
 }
