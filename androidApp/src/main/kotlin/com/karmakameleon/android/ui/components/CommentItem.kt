@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.theme.commentColors
 import com.karmakameleon.android.ui.theme.voteColors
+import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.VoteState
 import org.koin.compose.koinInject
@@ -110,7 +111,7 @@ fun CommentItem(
 
                 if (!isHidden) {
                     CommentBody(
-                        body = comment.body,
+                        body = comment.bodyBlocks,
                         selectionVersion = selectionVersion,
                         onTouchStart = actions.onTouchStart,
                         onTextClick = actions.onSelect,
@@ -142,7 +143,7 @@ private fun Modifier.depthBar(color: Color): Modifier =
 
 @Composable
 private fun CommentBody(
-    body: String,
+    body: List<MarkdownBlock>,
     selectionVersion: Int,
     onTouchStart: () -> Unit,
     onTextClick: () -> Unit,
@@ -155,7 +156,7 @@ private fun CommentBody(
         modifier = Modifier.padding(top = 4.dp),
     ) {
         MarkdownText(
-            markdown = body,
+            blocks = body,
             style = MaterialTheme.typography.bodyMedium,
             onTextClick = onTextClick,
             renderInlineImages = renderInlineImages,

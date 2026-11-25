@@ -14,6 +14,7 @@ import com.karmakameleon.shared.domain.model.Preview
 import com.karmakameleon.shared.domain.model.Subreddit
 import com.karmakameleon.shared.domain.model.User
 import com.karmakameleon.shared.domain.model.UserSubreddit
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 
 fun createTestPost(
     id: String = "abc123",
@@ -141,6 +142,7 @@ fun createTestComment(
     linkId = linkId,
     author = author,
     body = body,
+    bodyBlocks = parseMarkdownBlocks(body),
     bodyHtml = bodyHtml,
     score = score,
     created = created,

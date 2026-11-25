@@ -116,6 +116,7 @@ import com.karmakameleon.android.ui.components.videoMenuItems
 import com.karmakameleon.android.ui.theme.voteColors
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.SettingsRepository
+import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.MoreComments
@@ -158,8 +159,8 @@ fun PostDetailScreen(
     var isBodyExpanded by rememberSaveable { mutableStateOf(true) }
 
     // The post body and the comments are shown in bodyMedium, in PostHeader and CommentItem.
-    MeasureTablesAhead(key = uiState.post?.selfText to commentState.comments, style = MaterialTheme.typography.bodyMedium) {
-        listOfNotNull(uiState.post?.selfText) + commentState.comments.commentBodies()
+    MeasureTablesAhead(key = uiState.post?.selfTextBlocks to commentState.comments, style = MaterialTheme.typography.bodyMedium) {
+        listOfNotNull(uiState.post?.selfTextBlocks) + commentState.comments.commentBodies()
     }
     ShowActionErrors(commentState.imageMessage, onConsumeError = viewModel.commentViewModel::clearImageMessage)
     ConsumePendingQuotes { text -> viewModel.handleQuote(text, commentState) }
@@ -827,11 +828,11 @@ private fun MoreCommentsButton(
 }
 
 // The text of the comments and all their replies.
-private fun List<CommentOrMore>.commentBodies(): List<String> {
-    val bodies = mutableListOf<String>()
+private fun List<CommentOrMore>.commentBodies(): List<List<MarkdownBlock>> {
+    val bodies = mutableListOf<List<MarkdownBlock>>()
 
     fun add(comment: Comment) {
-        bodies += comment.body
+        bodies += comment.bodyBlocks
         comment.replies.forEach(::add)
     }
     filterIsInstance<CommentOrMore.CommentItem>().forEach { add(it.comment) }

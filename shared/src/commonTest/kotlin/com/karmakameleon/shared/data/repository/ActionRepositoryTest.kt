@@ -7,6 +7,7 @@ import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApiException
 import com.karmakameleon.shared.errorsOf
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.toList
@@ -32,7 +33,7 @@ class ActionRepositoryTest {
     private fun TestScope.repository() =
         ActionRepository(
             api,
-            CommentRepository(api, MarkdownRepository(UnconfinedTestDispatcher(testScheduler))),
+            CommentRepository(api, MarkdownParser(UnconfinedTestDispatcher(testScheduler))),
             isLoggedIn,
             backgroundScope,
         )

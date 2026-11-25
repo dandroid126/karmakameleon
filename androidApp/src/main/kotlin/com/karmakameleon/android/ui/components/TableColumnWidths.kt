@@ -14,7 +14,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.resolveDefaults
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.markdown.MarkdownInline
 import com.karmakameleon.shared.domain.markdown.TableAlignment
@@ -47,8 +46,8 @@ internal data class TableTextEnvironment(
  * table measures them itself, and keeps them, when they aren't ready.
  *
  * Use it from the main thread. Only the measuring runs elsewhere, so the widths kept need no lock. It keeps the widths
- * of the [maxEntries] tables used most recently, by table: the same parsed text gives the same table, from
- * MarkdownRepository's cache, while it's kept there.
+ * of the [maxEntries] tables used most recently, by table: a post or comment keeps the blocks of its text, so it shows
+ * the same table each time.
  */
 internal class TableColumnWidths(
     private val measureDispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -147,25 +146,22 @@ internal fun tableCellStyle(
 /**
  * Measures the columns of the tables in [texts] in the background, so they're ready by the time the texts scroll on
  * screen. A comment comes on screen a frame or two after it's composed, too soon to measure them then. [texts] are
- * the markdown a screen is about to show in [style], and they're measured again when [key] changes.
+ * the parsed texts a screen is about to show in [style], and they're measured again when [key] changes.
  */
 @Composable
 internal fun MeasureTablesAhead(
     key: Any?,
     style: TextStyle,
-    markdownRepository: MarkdownRepository = koinInject(),
     columnWidths: TableColumnWidths = koinInject(),
-    texts: () -> List<String>,
+    texts: () -> List<List<MarkdownBlock>>,
 ) {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
     val fontFamilyResolver = LocalFontFamilyResolver.current
     val currentTexts by rememberUpdatedState(texts)
     LaunchedEffect(key, style, density, layoutDirection, fontFamilyResolver) {
-        // Parsed already, by the repository that loaded them, so this only looks them up.
-        val blocks = markdownRepository.parseAll(currentTexts())
         val tables =
-            blocks.values.flatMap { textBlocks ->
+            currentTexts().flatMap { textBlocks ->
                 tablesIn(textBlocks, style).map { (table, tableStyle) ->
                     table to TableTextEnvironment(tableStyle, density, layoutDirection, fontFamilyResolver)
                 }

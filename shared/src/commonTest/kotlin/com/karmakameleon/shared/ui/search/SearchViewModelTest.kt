@@ -6,7 +6,6 @@ import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestSubreddit
 import com.karmakameleon.shared.data.repository.ActionRepository
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
@@ -15,6 +14,7 @@ import com.karmakameleon.shared.domain.model.SearchType
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,7 +49,7 @@ class SearchViewModelTest {
         val fakeAuthManager = FakeAuthManager()
         fakeApi = FakeRedditApi(fakeAuthManager)
         settingsRepo = SettingsRepository(MapSettings())
-        postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
+        postRepo = PostRepository(fakeApi, MarkdownParser(testDispatcher))
         subredditRepo = SubredditRepository(fakeApi, settingsRepo)
         actionRepo = testActionRepository(fakeApi)
         viewModel = SearchViewModel(postRepo, actionRepo, subredditRepo, settingsRepo)

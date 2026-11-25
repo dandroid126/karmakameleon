@@ -3,17 +3,16 @@ package com.karmakameleon.shared.data.repository
 import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.withProcessedMedia
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import com.karmakameleon.shared.util.runSuspendCatching
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-// Parses the text of the comments it returns with new text, a reply or an edit, so the screen shows it on its first
-// frame without parsing it while drawing.
 class CommentRepository(
     private val redditApi: RedditApi,
-    private val markdownRepository: MarkdownRepository,
+    private val markdownParser: MarkdownParser,
 ) {
     /**
      * Submits a comment. Images uploaded with [CommentImageRepository.upload] go in [text] as `![img](<asset ID>)`, with
@@ -34,9 +33,7 @@ class CommentRepository(
                     check(richtextImageIds(richtext).containsAll(imageAssetIds)) { "An image is missing from the comment's text" }
                     redditApi.submitRichtextComment(parentId, richtext)
                 }
-            val comment = submitted ?: error("Failed to submit comment")
-            markdownRepository.parse(comment.body)
-            comment
+            submitted ?: error("Failed to submit comment")
         }
 
     suspend fun editComment(
@@ -46,9 +43,7 @@ class CommentRepository(
         runSuspendCatching {
             check(redditApi.editComment(comment.name, text)) { "Edit failed" }
             val shown = text.withProcessedMedia(comment.readyMedia)
-            // Parses the text the comment shows, so its view finds it ready.
-            markdownRepository.parse(shown)
-            comment.copy(body = shown, sourceBody = text)
+            comment.copy(body = shown, bodyBlocks = markdownParser.parse(shown), sourceBody = text)
         }
 
     suspend fun deleteComment(comment: Comment): Result<Unit> =

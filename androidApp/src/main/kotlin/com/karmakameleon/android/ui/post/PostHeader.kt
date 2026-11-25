@@ -189,12 +189,12 @@ private fun PostBody(
                 PostMedia(post = post, onImageClick = actions.onImageClick, navigationHandler = navigationHandler)
             }
 
-            val selfText = post.selfText
-            if (!selfText.isNullOrBlank()) {
+            val selfText = post.selfTextBlocks
+            if (selfText != null && !post.selfText.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
                 SelectableArea(selectionVersion = selectionVersion, onTouchStart = actions.onTouchStart) {
                     MarkdownText(
-                        markdown = selfText,
+                        blocks = selfText,
                         style = MaterialTheme.typography.bodyMedium,
                         renderInlineImages = renderInlineImages,
                         onImageClick = actions.onInlineImageClick,

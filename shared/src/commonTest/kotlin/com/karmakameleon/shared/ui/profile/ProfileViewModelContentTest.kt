@@ -5,11 +5,11 @@ import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -35,7 +35,7 @@ class ProfileViewModelContentTest {
     // Made on first use, after setup sets the Main dispatcher, which the view model starts collecting on.
     private val actionRepo by lazy { testActionRepository(fakeApi) }
     private val viewModel by lazy {
-        ProfileViewModel(UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main)), actionRepo, fakeAuthManager)
+        ProfileViewModel(UserRepository(fakeApi, fakeAuthManager), actionRepo, fakeAuthManager)
     }
 
     @BeforeTest

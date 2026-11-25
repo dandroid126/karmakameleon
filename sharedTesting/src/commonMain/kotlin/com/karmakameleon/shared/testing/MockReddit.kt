@@ -109,6 +109,8 @@ class MockReddit {
             authManager,
             settingsRepository,
             ioDispatcher,
+            // Comments are read on it too, so a test dispatcher waits for that as well.
+            parseDispatcher = ioDispatcher,
             createShareLinkClient = { client(ioDispatcher, followRedirects = false) },
         )
 

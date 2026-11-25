@@ -1,7 +1,10 @@
 package com.karmakameleon.shared.domain.model
 
+import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.util.extractYouTubeVideoId
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlin.time.Instant
 
 @Serializable
@@ -14,6 +17,9 @@ data class Post(
     val subredditId: String,
     val selfText: String?,
     val selfTextHtml: String?,
+    // [selfText] parsed, or null until it is: only the post's own page shows its text in full, so a feed, which shows
+    // the start of it, doesn't parse it. See [withParsedSelfText].
+    @Transient val selfTextBlocks: List<MarkdownBlock>? = null,
     val url: String,
     val permalink: String,
     val thumbnail: String?,
@@ -178,3 +184,6 @@ enum class TimeFilter(
     YEAR("year"),
     ALL("all"),
 }
+
+/** The post with its text parsed, for its own page. Parsing a long post takes a while, so call it off the main thread. */
+fun Post.withParsedSelfText(): Post = copy(selfTextBlocks = selfText?.let(::parseMarkdownBlocks))

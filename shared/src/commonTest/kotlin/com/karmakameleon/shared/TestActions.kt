@@ -3,7 +3,7 @@ package com.karmakameleon.shared
 import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
-import com.karmakameleon.shared.data.repository.MarkdownRepository
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +18,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
  */
 fun testActionRepository(
     api: RedditApi,
-    markdown: MarkdownRepository = MarkdownRepository(Dispatchers.Main),
+    markdown: MarkdownParser = MarkdownParser(Dispatchers.Main),
 ): ActionRepository = ActionRepository(api, CommentRepository(api, markdown), MutableStateFlow(true))
 
 /** The errors [repository] reports while the test runs, collected as they come. */

@@ -2,6 +2,8 @@ package com.karmakameleon.shared.data.repository
 
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestComment
+import com.karmakameleon.shared.util.markdown.MarkdownParser
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -15,7 +17,7 @@ import kotlin.test.assertTrue
 class CommentRepositoryTest {
     // Parses as soon as it's asked to, so the texts are cached by the time a call returns.
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val markdown = MarkdownRepository(UnconfinedTestDispatcher())
+    private val markdown = MarkdownParser(UnconfinedTestDispatcher())
 
     private fun createRepo(api: FakeRedditApi = FakeRedditApi()) = CommentRepository(api, markdown) to api
 
@@ -31,8 +33,6 @@ class CommentRepositoryTest {
             val result = repo.submitComment("t3_parent", "New comment")
             assertTrue(result.isSuccess)
             assertEquals("new1", result.getOrThrow().id)
-            // So the reply shows its text on its first frame.
-            assertNotNull(markdown.cached("New comment"))
         }
 
     @Test
@@ -67,7 +67,8 @@ class CommentRepositoryTest {
             val result = repo.editComment(comment, "new text")
             assertTrue(result.isSuccess)
             assertEquals("new text", result.getOrThrow().body)
-            assertNotNull(markdown.cached("new text"))
+            // So the comment shows its new text on its first frame.
+            assertEquals(parseMarkdownBlocks("new text"), result.getOrThrow().bodyBlocks)
         }
 
     @Test

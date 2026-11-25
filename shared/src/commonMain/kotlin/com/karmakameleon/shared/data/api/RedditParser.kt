@@ -40,6 +40,7 @@ import com.karmakameleon.shared.domain.model.UserSubreddit
 import com.karmakameleon.shared.domain.model.withProcessedMedia
 import com.karmakameleon.shared.util.RedditLink
 import com.karmakameleon.shared.util.markdown.decodeHtmlEntities
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import com.karmakameleon.shared.util.parseRedditLink
 import com.karmakameleon.shared.util.runSuspendCatching
 import io.github.aakira.napier.Napier
@@ -79,7 +80,10 @@ import kotlinx.serialization.json.jsonPrimitive
 // "%" and two hex digits.
 private const val PERCENT_ESCAPE_LENGTH = 3
 
-/** Turns Reddit's JSON into the app's models. */
+/**
+ * Turns Reddit's JSON into the app's models. A comment's text is parsed with it, which takes a while for a long thread,
+ * so read comments off the main thread.
+ */
 internal class RedditParser(
     private val settingsRepository: SettingsRepository?,
 ) {
@@ -425,6 +429,7 @@ internal class RedditParser(
         val commentReplies = replies.filterIsInstance<CommentOrMore.CommentItem>().map { it.comment }
         val moreReplies = replies.filterIsInstance<CommentOrMore.More>().firstOrNull()?.more
         val readyMedia = readyMedia(dto.mediaMetadata)
+        val body = dto.body.withProcessedMedia(readyMedia)
 
         return Comment(
             id = dto.id,
@@ -432,7 +437,8 @@ internal class RedditParser(
             parentId = dto.parentId,
             linkId = dto.linkId,
             author = dto.author,
-            body = dto.body.withProcessedMedia(readyMedia),
+            body = body,
+            bodyBlocks = parseMarkdownBlocks(body),
             sourceBody = dto.body,
             readyMedia = readyMedia,
             bodyHtml = dto.bodyHtml,

@@ -7,10 +7,11 @@ import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.errorsOf
 import com.karmakameleon.shared.testActionRepository
+import com.karmakameleon.shared.util.markdown.MarkdownParser
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,7 +35,7 @@ import kotlin.test.assertTrue
 class CommentViewModelEditingTest {
     private val fakeApi = FakeRedditApi()
     private val draftRepo = CommentDraftRepository(MapSettings())
-    private val markdown = MarkdownRepository(Dispatchers.Main)
+    private val markdown = MarkdownParser(Dispatchers.Main)
 
     // Made on first use, after setup sets the Main dispatcher, which the view model starts collecting on.
     private val actionRepo by lazy { testActionRepository(fakeApi, markdown) }
@@ -177,7 +178,7 @@ class CommentViewModelEditingTest {
             assertEquals("Look here ![img](https://i.redd.it/a.gif)", edited?.body)
             assertEquals("Look here *Processing img a...*", edited?.sourceBody)
             // Parsed as shown, so the comment's view doesn't wait for it.
-            assertNotNull(markdown.cached("Look here ![img](https://i.redd.it/a.gif)"))
+            assertEquals(parseMarkdownBlocks("Look here ![img](https://i.redd.it/a.gif)"), edited?.bodyBlocks)
         }
 
     @Test

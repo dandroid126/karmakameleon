@@ -38,7 +38,7 @@ class BackupRepositoryTest {
     private val draftRepository = CommentDraftRepository(settings)
     private val dispatcher = UnconfinedTestDispatcher()
     private val userRepository =
-        UserRepository(reddit.api(ioDispatcher = dispatcher), authManager, MarkdownRepository(dispatcher), CoroutineScope(dispatcher))
+        UserRepository(reddit.api(ioDispatcher = dispatcher), authManager, CoroutineScope(dispatcher))
 
     private val repository =
         BackupRepository(

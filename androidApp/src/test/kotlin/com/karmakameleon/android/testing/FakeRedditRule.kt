@@ -16,12 +16,12 @@ import com.karmakameleon.shared.data.api.RedditApi
 import com.karmakameleon.shared.data.api.dto.TokenInfo
 import com.karmakameleon.shared.data.backup.BackupFiles
 import com.karmakameleon.shared.data.media.ImageFiles
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.di.sharedModule
 import com.karmakameleon.shared.testing.FakeBackupFiles
 import com.karmakameleon.shared.testing.MockReddit
 import com.karmakameleon.shared.testing.readFixture
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import com.russhwolf.settings.MapSettings
 import com.russhwolf.settings.Settings
 import io.ktor.client.HttpClient
@@ -65,7 +65,7 @@ class FakeRedditRule : ExternalResource() {
                     single<RedditApi> { reddit.api(settings, Dispatchers.Main) }
                     single<HttpClient> { reddit.httpClient(Dispatchers.Main) }
                     single<ImageFiles> { ContentResolverImageFiles(RuntimeEnvironment.getApplication().contentResolver, Dispatchers.Main) }
-                    single { MarkdownRepository(Dispatchers.Main) }
+                    single { MarkdownParser(Dispatchers.Main) }
                 },
             )
         }

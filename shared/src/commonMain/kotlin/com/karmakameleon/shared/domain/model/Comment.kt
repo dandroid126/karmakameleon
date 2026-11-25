@@ -1,9 +1,9 @@
 package com.karmakameleon.shared.domain.model
 
+import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import kotlinx.serialization.Serializable
 import kotlin.time.Instant
 
-@Serializable
 data class Comment(
     val id: String,
     val name: String, // fullname e.g., t1_xxxxx
@@ -11,6 +11,9 @@ data class Comment(
     val linkId: String,
     val author: String,
     val body: String,
+    // [body] parsed, so the comment's text shows on its first frame. It's parsed with the comment, off the main thread,
+    // and again whenever [body] changes, like after an edit.
+    val bodyBlocks: List<MarkdownBlock>,
     val bodyHtml: String,
     val score: Int,
     val created: Long,

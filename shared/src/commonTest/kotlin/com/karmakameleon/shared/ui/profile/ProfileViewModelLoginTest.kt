@@ -3,12 +3,12 @@ package com.karmakameleon.shared.ui.profile
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.ActionRepository
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -42,7 +42,7 @@ class ProfileViewModelLoginTest {
         fakeApi = FakeRedditApi()
         fakeAuthManager = FakeAuthManager()
         actionRepo = testActionRepository(fakeApi)
-        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
+        userRepo = UserRepository(fakeApi, fakeAuthManager)
         viewModel = ProfileViewModel(userRepo, actionRepo, fakeAuthManager)
     }
 

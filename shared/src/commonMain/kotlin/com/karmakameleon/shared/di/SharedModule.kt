@@ -11,13 +11,13 @@ import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentImageRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.InboxPoller
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.MessageRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import com.russhwolf.settings.Settings
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
@@ -39,7 +39,7 @@ val sharedModule =
         single { PostRepository(get(), get()) }
         single { ActionRepository(get(), get(), get<UserRepository>().isLoggedIn) }
         single { SubredditRepository(get(), get()) }
-        single { UserRepository(get(), get(), get()) }
+        single { UserRepository(get(), get()) }
         single { CommentRepository(get(), get()) }
         single { CommentImageRepository(get(), get(), get()) }
         single { MessageRepository(get()) }
@@ -48,5 +48,5 @@ val sharedModule =
         single { CommentDraftRepository(get()) }
         single { BackupFileStore(get(), get()) }
         single { BackupRepository(get(), get(), get(), get(), get(), get()) }
-        single { MarkdownRepository() }
+        single { MarkdownParser() }
     }
