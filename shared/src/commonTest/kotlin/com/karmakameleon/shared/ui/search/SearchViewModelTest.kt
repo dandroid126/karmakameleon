@@ -228,6 +228,53 @@ class SearchViewModelTest {
     // ==================== Results ====================
 
     @Test
+    fun changesMadeAnywhere_showOnTheResultsAndAHiddenPostStays() =
+        runTest {
+            val post = createTestPost(id = "p1", score = 10, likes = null, isHidden = false)
+            fakeApi.searchResult = createTestListing(items = listOf(post, createTestPost(id = "p2")))
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            actionRepo.vote(post, 1)
+            actionRepo.toggleHide(post)
+            advanceUntilIdle()
+
+            val shown = viewModel.uiState.value.posts
+            assertEquals(listOf("p1", "p2"), shown.map { it.id })
+            assertEquals(true, shown.first().likes)
+            assertEquals(11, shown.first().score)
+            assertTrue(shown.first().isHidden)
+        }
+
+    @Test
+    fun aChangeMadeBeforeSearching_showsOnTheResults() =
+        runTest {
+            val post = createTestPost(id = "p1", isSaved = false)
+            actionRepo.toggleSave(post)
+            advanceUntilIdle()
+            fakeApi.searchResult = createTestListing(items = listOf(post), after = "t3_p1")
+
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+            assertTrue(
+                viewModel.uiState.value.posts
+                    .single()
+                    .isSaved,
+            )
+
+            val more = createTestPost(id = "p2", likes = null)
+            actionRepo.vote(more, -1)
+            advanceUntilIdle()
+            fakeApi.searchResult = createTestListing(items = listOf(more))
+            viewModel.loadMore()
+            advanceUntilIdle()
+
+            val shown = viewModel.uiState.value.posts
+            assertEquals(listOf("p1", "p2"), shown.map { it.id })
+            assertEquals(false, shown.last().likes)
+        }
+
+    @Test
     fun search_leavesOutNsfwPostsUnlessEnabled() =
         runTest {
             fakeApi.searchResult = createTestListing(items = listOf(createTestPost(id = "p1"), createTestPost(id = "p2", isNsfw = true)))
