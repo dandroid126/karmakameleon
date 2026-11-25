@@ -1,6 +1,7 @@
 package com.karmakameleon.shared.data.api
 
 import com.karmakameleon.shared.testing.FakeAuthManager
+import com.karmakameleon.shared.util.RedditLink
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -41,8 +42,29 @@ class RedditApiShareLinkTest {
         runTest {
             val api = createApi { redirectTo("https://www.reddit.com/r/Kotlin/comments/abc123/some_title/?share_id=x") }
 
-            assertEquals("Kotlin" to "abc123", api.resolveShareLink("kotlin", "AbCdEf"))
+            assertEquals(RedditLink.Post("Kotlin", "abc123"), api.resolveShareLink("kotlin", "AbCdEf"))
             assertEquals("https://www.reddit.com/r/kotlin/s/AbCdEf", requests.single().url.toString())
+        }
+
+    @Test
+    fun resolveShareLink_returnsTheCommentItRedirectsTo() =
+        runTest {
+            val api = createApi { redirectTo("https://www.reddit.com/r/Kotlin/comments/abc123/comment/def456/?share_id=x") }
+
+            assertEquals(RedditLink.Comment("Kotlin", "abc123", "def456"), api.resolveShareLink("kotlin", "AbCdEf"))
+        }
+
+    // Reddit only serves a profile's share links under /u/<name>/: /r/u_<name>/s/<id> redirects to the profile.
+    @Test
+    fun resolveShareLink_asksForAProfileShareLinkUnderTheProfile() =
+        runTest {
+            val api =
+                createApi {
+                    redirectTo("https://www.reddit.com/user/testuser/comments/abc123/comment/def456/?share_id=x")
+                }
+
+            assertEquals(RedditLink.Comment("u_testuser", "abc123", "def456"), api.resolveShareLink("u_testuser", "AbCdEf"))
+            assertEquals("https://www.reddit.com/u/testuser/s/AbCdEf", requests.single().url.toString())
         }
 
     @Test
@@ -54,7 +76,7 @@ class RedditApiShareLinkTest {
         }
 
     @Test
-    fun resolveShareLink_returnsNullWhenTheRedirectIsNotAPost() =
+    fun resolveShareLink_returnsNullWhenTheRedirectIsNotAPostOrComment() =
         runTest {
             val api = createApi { redirectTo("https://www.reddit.com/r/Kotlin/") }
 

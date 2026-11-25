@@ -15,6 +15,7 @@ import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.testing.FakeBackupFiles
+import com.karmakameleon.shared.util.RedditLink
 import com.russhwolf.settings.MapSettings
 import com.russhwolf.settings.Settings
 import io.ktor.client.HttpClient
@@ -125,7 +126,7 @@ class SharedModuleTest {
         runTest {
             val api = koin.get<RedditApi>()
 
-            assertEquals("Kotlin" to "abc123", api.resolveShareLink("kotlin", "AbCdEf"))
+            assertEquals(RedditLink.Post("Kotlin", "abc123"), api.resolveShareLink("kotlin", "AbCdEf"))
             // The main client follows redirects, and the share link client, made on first use, doesn't.
             assertEquals(listOf(true, false), clientsMade)
         }

@@ -14,6 +14,7 @@ import com.karmakameleon.shared.domain.model.Subreddit
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.domain.model.User
 import com.karmakameleon.shared.testing.FakeAuthManager
+import com.karmakameleon.shared.util.RedditLink
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -61,7 +62,7 @@ class FakeRedditApi(
     var markAllMessagesReadResult: Boolean = true
     var submitPostResult: String? = null
     var fetchPostsByIdsResult: List<Post> = emptyList()
-    var resolveShareLinkResult: Pair<String, String>? = null
+    var resolveShareLinkResult: RedditLink? = null
 
     var shouldThrow: Exception? = null
 
@@ -133,7 +134,7 @@ class FakeRedditApi(
     override suspend fun resolveShareLink(
         subreddit: String,
         shareId: String,
-    ): Pair<String, String>? = throwOrReturn(resolveShareLinkResult)
+    ): RedditLink? = throwOrReturn(resolveShareLinkResult)
 
     override suspend fun getPost(
         subreddit: String,

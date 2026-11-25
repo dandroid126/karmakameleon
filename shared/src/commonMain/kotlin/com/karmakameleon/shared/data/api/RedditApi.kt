@@ -96,6 +96,7 @@ open class RedditApi(
     companion object {
         const val BASE_URL = "https://oauth.reddit.com"
         const val WWW_URL = "https://www.reddit.com"
+        private const val PROFILE_SUBREDDIT_PREFIX = "u_"
         const val AUTH_URL = "https://www.reddit.com/api/v1"
 
         private const val UPLOAD_TIMEOUT_MILLIS = 5 * 60 * 1000L
@@ -613,20 +614,20 @@ open class RedditApi(
         }
     }
 
+    // The post or comment a share link redirects to. A profile's share links are only served under /u/<name>/, not /r/u_<name>/.
     open suspend fun resolveShareLink(
         subreddit: String,
         shareId: String,
-    ): Pair<String, String>? =
+    ): RedditLink? =
         runSuspendCatching {
+            val profile = subreddit.removePrefix(PROFILE_SUBREDDIT_PREFIX).takeIf { it != subreddit }
+            val path = if (profile != null) "u/$profile" else "r/$subreddit"
             val response =
-                shareLinkClient.get("$WWW_URL/r/$subreddit/s/$shareId") {
+                shareLinkClient.get("$WWW_URL/$path/s/$shareId") {
                     header(HttpHeaders.UserAgent, REDDIT_USER_AGENT)
                 }
             val locationUrl = response.headers[HttpHeaders.Location] ?: return null
-            when (val parsed = parseRedditLink(locationUrl)) {
-                is RedditLink.Post -> Pair(parsed.subreddit, parsed.postId)
-                else -> null
-            }
+            parseRedditLink(locationUrl).takeIf { it is RedditLink.Post || it is RedditLink.Comment }
         }.getOrNull()
 }
 
