@@ -326,7 +326,7 @@ class FakeRedditApi(
         body: String,
     ): Boolean = throwOrReturn(sendMessageResult)
 
-    override suspend fun markMessageRead(thingId: String): Boolean = throwOrReturn(markMessageReadResult)
+    override suspend fun markMessageRead(thingId: String): Boolean = act("read $thingId") { markMessageReadResult }
 
     override suspend fun markMessageUnread(thingId: String): Boolean {
         messagesMarkedUnread += thingId

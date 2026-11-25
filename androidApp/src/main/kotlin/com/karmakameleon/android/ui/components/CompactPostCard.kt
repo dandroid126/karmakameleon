@@ -402,7 +402,7 @@ private fun CompactMoreMenu(
     post: Post,
     iconTint: Color,
     onUserClick: () -> Unit,
-    onBlockSubreddit: () -> Unit,
+    onBlockSubreddit: (() -> Unit)?,
 ) {
     var showMenu by remember { mutableStateOf(false) }
     Box {

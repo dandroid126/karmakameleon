@@ -5,6 +5,7 @@ import com.karmakameleon.shared.FakeRedditApi.SearchRequest
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestSubreddit
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
@@ -12,6 +13,7 @@ import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.SearchType
 import com.karmakameleon.shared.domain.model.TimeFilter
+import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +38,7 @@ class SearchViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var postRepo: PostRepository
+    private lateinit var actionRepo: ActionRepository
     private lateinit var subredditRepo: SubredditRepository
     private lateinit var settingsRepo: SettingsRepository
     private lateinit var viewModel: SearchViewModel
@@ -48,7 +51,8 @@ class SearchViewModelTest {
         settingsRepo = SettingsRepository(MapSettings())
         postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         subredditRepo = SubredditRepository(fakeApi, settingsRepo)
-        viewModel = SearchViewModel(postRepo, subredditRepo, settingsRepo)
+        actionRepo = testActionRepository(fakeApi)
+        viewModel = SearchViewModel(postRepo, actionRepo, subredditRepo, settingsRepo)
     }
 
     private fun search() {
@@ -222,6 +226,53 @@ class SearchViewModelTest {
         }
 
     // ==================== Results ====================
+
+    @Test
+    fun changesMadeAnywhere_showOnTheResultsAndAHiddenPostStays() =
+        runTest {
+            val post = createTestPost(id = "p1", score = 10, likes = null, isHidden = false)
+            fakeApi.searchResult = createTestListing(items = listOf(post, createTestPost(id = "p2")))
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+
+            actionRepo.vote(post, 1)
+            actionRepo.toggleHide(post)
+            advanceUntilIdle()
+
+            val shown = viewModel.uiState.value.posts
+            assertEquals(listOf("p1", "p2"), shown.map { it.id })
+            assertEquals(true, shown.first().likes)
+            assertEquals(11, shown.first().score)
+            assertTrue(shown.first().isHidden)
+        }
+
+    @Test
+    fun aChangeMadeBeforeSearching_showsOnTheResults() =
+        runTest {
+            val post = createTestPost(id = "p1", isSaved = false)
+            actionRepo.toggleSave(post)
+            advanceUntilIdle()
+            fakeApi.searchResult = createTestListing(items = listOf(post), after = "t3_p1")
+
+            viewModel.setQuery("kotlin")
+            advanceUntilIdle()
+            assertTrue(
+                viewModel.uiState.value.posts
+                    .single()
+                    .isSaved,
+            )
+
+            val more = createTestPost(id = "p2", likes = null)
+            actionRepo.vote(more, -1)
+            advanceUntilIdle()
+            fakeApi.searchResult = createTestListing(items = listOf(more))
+            viewModel.loadMore()
+            advanceUntilIdle()
+
+            val shown = viewModel.uiState.value.posts
+            assertEquals(listOf("p1", "p2"), shown.map { it.id })
+            assertEquals(false, shown.last().likes)
+        }
 
     @Test
     fun search_leavesOutNsfwPostsUnlessEnabled() =

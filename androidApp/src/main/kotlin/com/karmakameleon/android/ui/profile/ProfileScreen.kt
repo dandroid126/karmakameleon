@@ -89,6 +89,7 @@ import com.karmakameleon.android.ui.components.formatNumber
 import com.karmakameleon.android.ui.components.formatTimeAgo
 import com.karmakameleon.android.ui.components.rememberPostFeedSettings
 import com.karmakameleon.shared.data.api.AuthManager
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
@@ -121,6 +122,7 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = koinViewModel(),
     userRepository: UserRepository = koinInject(),
     navigationHandler: NavigationHandler = koinInject(),
+    actionRepository: ActionRepository = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val commentState by viewModel.commentViewModel.uiState.collectAsState()
@@ -173,8 +175,8 @@ fun ProfileScreen(
             loginActions = viewModel.loginActions(),
             onRefresh = viewModel::refresh,
             actions = viewModel.tabActions(),
-            postCallbacks = viewModel.postCallbacks(onPostClick, onSubredditClick, onLinkClick, navigationHandler),
-            commentCallbacks = viewModel.commentCallbacks(onOpen = onCommentClick),
+            postCallbacks = postCallbacks(actionRepository, onPostClick, onSubredditClick, onLinkClick, navigationHandler),
+            commentCallbacks = viewModel.commentCallbacks(onOpen = onCommentClick, navigationHandler),
         )
     }
 }
@@ -263,29 +265,30 @@ private fun ProfileViewModel.tabActions() =
         onSetSavedContentType = ::setSavedContentType,
     )
 
-private fun ProfileViewModel.postCallbacks(
+private fun postCallbacks(
+    actionRepository: ActionRepository,
     onPostClick: (subreddit: String, postId: String) -> Unit,
     onSubredditClick: (String) -> Unit,
     onLinkClick: (String) -> Unit,
     navigationHandler: NavigationHandler,
 ) = PostListCallbacks(
+    actions = actionRepository,
     onPostClick = onPostClick,
     onSubredditClick = onSubredditClick,
+    onUserClick = { navigationHandler.onUserClick(it) },
     onLinkClick = onLinkClick,
     onCrosspostClick = navigationHandler::handleLink,
-    onVote = ::vote,
-    onSave = ::save,
 )
 
-private fun ProfileViewModel.commentCallbacks(onOpen: (subreddit: String, postId: String, commentId: String) -> Unit) =
-    ProfileCommentCallbacks(
-        onVote = ::voteComment,
-        onReply = { commentViewModel.setReplyingTo(it) },
-        onEdit = commentViewModel::startEditComment,
-        onDelete = ::deleteComment,
-        onSave = ::saveComment,
-        onOpen = onOpen,
-    )
+private fun ProfileViewModel.commentCallbacks(
+    onOpen: (subreddit: String, postId: String, commentId: String) -> Unit,
+    navigationHandler: NavigationHandler,
+) = ProfileCommentCallbacks(
+    comments = commentViewModel,
+    onDelete = ::deleteComment,
+    onOpen = onOpen,
+    onImageClick = { navigationHandler.onImageLinkClick(it) },
+)
 
 // The bar for writing a reply or editing a comment, while one is in progress.
 @Composable

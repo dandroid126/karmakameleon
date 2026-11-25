@@ -3,16 +3,15 @@ package com.karmakameleon.shared.ui.profile
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.data.api.AuthManager
 import com.karmakameleon.shared.data.repository.ActionRepository
-import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
+import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
 import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -33,7 +32,7 @@ class ProfileViewModelLoginTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var fakeAuthManager: FakeAuthManager
-    private lateinit var commentRepo: CommentRepository
+    private lateinit var actionRepo: ActionRepository
     private lateinit var userRepo: UserRepository
     private lateinit var viewModel: ProfileViewModel
 
@@ -42,9 +41,9 @@ class ProfileViewModelLoginTest {
         Dispatchers.setMain(testDispatcher)
         fakeApi = FakeRedditApi()
         fakeAuthManager = FakeAuthManager()
-        commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
+        actionRepo = testActionRepository(fakeApi)
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
-        viewModel = ProfileViewModel(userRepo, commentRepo, ActionRepository(fakeApi, MutableStateFlow(true)), fakeAuthManager)
+        viewModel = ProfileViewModel(userRepo, actionRepo, fakeAuthManager)
     }
 
     @AfterTest
@@ -102,7 +101,7 @@ class ProfileViewModelLoginTest {
     @Test
     fun init_loadsSavedRedirectUri() {
         fakeAuthManager.setRedirectUri("myclient://callback")
-        val newViewModel = ProfileViewModel(userRepo, commentRepo, ActionRepository(fakeApi, MutableStateFlow(true)), fakeAuthManager)
+        val newViewModel = ProfileViewModel(userRepo, actionRepo, fakeAuthManager)
 
         assertEquals("myclient://callback", newViewModel.uiState.value.redirectUri)
     }

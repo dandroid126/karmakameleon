@@ -9,11 +9,14 @@ import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.errorsOf
+import com.karmakameleon.shared.testActionRepository
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -34,8 +37,8 @@ class CommentViewModelEditingTest {
     private val markdown = MarkdownRepository(Dispatchers.Main)
 
     // Made on first use, after setup sets the Main dispatcher, which the view model starts collecting on.
-    private val actionRepo by lazy { ActionRepository(fakeApi, MutableStateFlow(true)) }
-    private val viewModel by lazy { CommentViewModel(CommentRepository(fakeApi, markdown), actionRepo, draftRepo) }
+    private val actionRepo by lazy { testActionRepository(fakeApi, markdown) }
+    private val viewModel by lazy { CommentViewModel(actionRepo, draftRepo) }
     private val more = createTestMoreComments(id = "m1", name = "t1_m1", parentId = "t3_abc123", depth = 0)
 
     // Passes the user's changes on, as the view model that holds this one does.
@@ -66,16 +69,16 @@ class CommentViewModelEditingTest {
     // ==================== Replies ====================
 
     @Test
-    fun submitReplyWithError_addsTheReplyUnderItsParent() =
+    fun submitReply_addsTheReplyUnderItsParent() =
         runTest {
             fakeApi.submitCommentResult = comment("new1", parentId = "t1_c1")
             draftRepo.saveDraft("t1_c1", "Draft")
             viewModel.setReplyingTo("t1_c1")
             viewModel.setReplyText("  Hello  ")
 
-            val error = viewModel.submitReplyWithError(isReplyToPost = false)
+            viewModel.submitReply()
+            advanceUntilIdle()
 
-            assertNull(error)
             assertEquals(listOf("t1_c1" to "Hello"), fakeApi.submittedComments)
             assertEquals(listOf("c1", "new1", "c2"), commentIds())
             // A new comment starts out upvoted with a score of 1, like Reddit shows it.
@@ -90,45 +93,46 @@ class CommentViewModelEditingTest {
         }
 
     @Test
-    fun submitReplyWithError_returnsTheErrorAndKeepsTheText() =
+    fun submitReply_reportsTheErrorAndKeepsTheText() =
         runTest {
+            val errors = errorsOf(actionRepo)
             viewModel.setReplyingTo("t1_c1")
             viewModel.setReplyText("Hello")
 
-            val error = viewModel.submitReplyWithError(isReplyToPost = false)
+            viewModel.submitReply()
+            advanceUntilIdle()
 
-            assertEquals("Failed to submit comment", error)
+            assertEquals(listOf("Failed to submit comment"), errors)
             assertEquals("Hello", viewModel.uiState.value.replyText)
             assertEquals("t1_c1", viewModel.uiState.value.replyingTo)
         }
 
     @Test
-    fun submitReplyWithError_skipsABlankReply() =
+    fun submitReply_skipsABlankReply() =
         runTest {
             viewModel.setReplyingTo("t1_c1")
             viewModel.setReplyText("   ")
 
-            assertNull(viewModel.submitReplyWithError(isReplyToPost = false))
+            viewModel.submitReply()
             // Nothing is being replied to.
             viewModel.setReplyingTo(null)
-            assertNull(viewModel.submitReplyWithError(isReplyToPost = false))
+            viewModel.submitReply()
+            advanceUntilIdle()
+
             assertTrue(fakeApi.submittedComments.isEmpty())
         }
 
     @Test
-    fun submitReplyWithCallback_passesOnTheNewComment() =
+    fun submitReply_toThePostPutsItFirst() =
         runTest {
-            fakeApi.submitCommentResult = comment("new1", parentId = "t1_c1")
-            viewModel.setReplyingTo("t1_c1")
+            fakeApi.submitCommentResult = comment("new1")
+            viewModel.setReplyingTo("t3_abc123")
             viewModel.setReplyText("Hello")
-            val posted = mutableListOf<Comment>()
 
-            viewModel.submitReplyWithCallback { posted += it }
+            viewModel.submitReply(isReplyToPost = true)
             advanceUntilIdle()
 
-            assertEquals(listOf("new1"), posted.map { it.id })
-            // The callback is for flat lists, so the tree isn't changed.
-            assertEquals(listOf("c1", "c2"), commentIds())
+            assertEquals(listOf("new1", "c1", "c2"), commentIds())
         }
 
     // ==================== Edits ====================
@@ -142,6 +146,7 @@ class CommentViewModelEditingTest {
 
             viewModel.submitEdit()
             advanceUntilIdle()
+            showChanges()
 
             assertEquals(listOf("t1_c2" to "Edited"), fakeApi.editedComments)
             assertEquals("Edited", viewModel.findCommentById("c2")?.body)
@@ -165,6 +170,7 @@ class CommentViewModelEditingTest {
 
             viewModel.submitEdit()
             advanceUntilIdle()
+            showChanges()
 
             assertEquals(listOf("t1_c3" to "Look here *Processing img a...*"), fakeApi.editedComments)
             val edited = viewModel.findCommentById("c3")
@@ -289,6 +295,7 @@ class CommentViewModelEditingTest {
         runTest {
             viewModel.deleteComment("c2")
             advanceUntilIdle()
+            showChanges()
 
             assertEquals(listOf("t1_c2"), fakeApi.deletedComments)
             assertEquals(listOf("c1"), commentIds())
@@ -307,6 +314,7 @@ class CommentViewModelEditingTest {
             viewModel.deleteComment("c1")
             viewModel.deleteComment("gone")
             advanceUntilIdle()
+            showChanges()
 
             assertEquals(listOf("t1_c1"), fakeApi.deletedComments)
             assertEquals(listOf("c1", "c2"), commentIds())

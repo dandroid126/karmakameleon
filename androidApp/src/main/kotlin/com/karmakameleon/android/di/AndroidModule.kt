@@ -31,12 +31,12 @@ val androidModule =
         // ViewModels (Android-specific registration using viewModel DSL)
         viewModel { FeedViewModel(get(), get(), get(), get()) }
         // A post screen's comments, which its view model holds.
-        factory { CommentViewModel(get(), get(), get(), get<CommentImageRepository>()) }
+        factory { CommentViewModel(get(), get(), get<CommentImageRepository>()) }
         viewModel { params -> PostDetailViewModel(params.get(), get(), get(), get(), get(), get(), get()) }
         viewModel { params -> SubredditViewModel(params.get(), get(), get(), get(), get(), get()) }
-        viewModel { ProfileViewModel(get(), get(), get(), get()) }
+        viewModel { ProfileViewModel(get(), get(), get()) }
         viewModel { InboxViewModel(get(), get(), get(), get()) }
-        viewModel { SearchViewModel(get(), get(), get()) }
+        viewModel { SearchViewModel(get(), get(), get(), get()) }
     }
 
 // Every module the app starts Koin with.

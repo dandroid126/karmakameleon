@@ -135,15 +135,6 @@ class PostList internal constructor(
         reload()
     }
 
-    fun vote(
-        post: Post,
-        direction: Int,
-    ) = actionRepository.vote(post, direction)
-
-    fun save(post: Post) = actionRepository.toggleSave(post)
-
-    fun hide(post: Post) = actionRepository.toggleHide(post)
-
     /** Removes the posts that shouldn't be shown any more, after the NSFW setting or the blocked subreddits changed. */
     fun removeHiddenPosts(
         nsfwEnabled: Boolean,

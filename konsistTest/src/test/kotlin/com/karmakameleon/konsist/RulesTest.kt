@@ -72,6 +72,29 @@ class RulesTest {
     }
 
     @Test
+    fun itemActionOutsideOwner_matchesActionsOnOtherRepositories() {
+        listOf(
+            "postRepository.vote(post, 1)",
+            "commentRepository.deleteComment(comment)",
+            "messageRepository.blockUser(name)",
+            "repository.toggleSave(post)",
+            "private val commentRepository: CommentRepository,",
+        ).forEach { assertTrue(Rules.itemActionOutsideOwner.containsMatchIn(it), it) }
+    }
+
+    @Test
+    fun itemActionOutsideOwner_allowsTheOwnerAndOtherCalls() {
+        listOf(
+            "actionRepository.vote(post, 1)",
+            "actionRepository.deleteComment(comment)",
+            "viewModel.deleteComment(commentId)",
+            "settings.readPostsRepository.markAsRead(post, mode)",
+            "settingsRepository.blockedSubreddits.value",
+            "backupRepository.delete(location)",
+        ).forEach { assertFalse(Rules.itemActionOutsideOwner.containsMatchIn(it), it) }
+    }
+
+    @Test
     fun runCatchingCall_matchesOnlyRunCatching() {
         assertTrue(Rules.runCatchingCall.containsMatchIn("runCatching { load() }"))
         assertTrue(Rules.runCatchingCall.containsMatchIn("value.runCatching { parse() }"))

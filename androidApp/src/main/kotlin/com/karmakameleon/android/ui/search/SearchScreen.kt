@@ -59,6 +59,7 @@ import com.karmakameleon.android.ui.components.label
 import com.karmakameleon.android.ui.components.loadingMoreItem
 import com.karmakameleon.android.ui.components.rememberCompactPostSelection
 import com.karmakameleon.android.ui.components.rememberPostFeedSettings
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
@@ -193,6 +194,7 @@ private fun BoxScope.SearchContent(
     onLinkClick: (String) -> Unit,
     onRetry: () -> Unit,
     navigationHandler: NavigationHandler,
+    actionRepository: ActionRepository = koinInject(),
 ) {
     val link = uiState.detectedLink
     val error = uiState.error
@@ -230,7 +232,6 @@ private fun BoxScope.SearchContent(
         }
 
         else -> {
-            // Results can't be voted on, saved or hidden here.
             SearchResults(
                 posts = uiState.posts,
                 isLoading = uiState.isLoading,
@@ -238,6 +239,7 @@ private fun BoxScope.SearchContent(
                 feedSettings = feedSettings,
                 callbacks =
                     PostListCallbacks(
+                        actions = actionRepository,
                         onPostClick = onPostClick,
                         onSubredditClick = onSubredditClick,
                         onUserClick = onUserClick,

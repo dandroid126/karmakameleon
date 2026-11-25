@@ -5,15 +5,13 @@ import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
-import com.karmakameleon.shared.data.repository.ActionRepository
-import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -35,13 +33,9 @@ class ProfileViewModelContentTest {
     private val fakeApi = FakeRedditApi(fakeAuthManager)
 
     // Made on first use, after setup sets the Main dispatcher, which the view model starts collecting on.
+    private val actionRepo by lazy { testActionRepository(fakeApi) }
     private val viewModel by lazy {
-        ProfileViewModel(
-            UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main)),
-            CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)),
-            ActionRepository(fakeApi, MutableStateFlow(true)),
-            fakeAuthManager,
-        )
+        ProfileViewModel(UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main)), actionRepo, fakeAuthManager)
     }
 
     @BeforeTest
@@ -98,7 +92,7 @@ class ProfileViewModelContentTest {
             viewModel.setSelectedTab(ProfileTab.UPVOTED)
             advanceUntilIdle()
 
-            viewModel.save(post)
+            actionRepo.toggleSave(post)
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
@@ -128,7 +122,7 @@ class ProfileViewModelContentTest {
             viewModel.setSelectedTab(ProfileTab.DOWNVOTED)
             advanceUntilIdle()
 
-            viewModel.vote(post, -1)
+            actionRepo.vote(post, -1)
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
@@ -148,8 +142,8 @@ class ProfileViewModelContentTest {
             fakeApi.voteResult = false
             fakeApi.saveResult = false
 
-            viewModel.vote(post, 1)
-            viewModel.save(post)
+            actionRepo.vote(post, 1)
+            actionRepo.toggleSave(post)
             advanceUntilIdle()
 
             assertEquals(
@@ -166,7 +160,7 @@ class ProfileViewModelContentTest {
         runTest {
             loadComments(listOf(comment("c1")))
 
-            viewModel.saveComment(comment("c1"))
+            actionRepo.toggleSave(comment("c1"))
             advanceUntilIdle()
 
             assertTrue(
@@ -181,7 +175,7 @@ class ProfileViewModelContentTest {
         runTest {
             loadComments(listOf(comment("c1")), saved = listOf(comment("c1", isSaved = true)))
 
-            viewModel.voteComment(comment("c1"), 1)
+            actionRepo.vote(comment("c1"), 1)
             advanceUntilIdle()
 
             val state = viewModel.uiState.value

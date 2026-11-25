@@ -11,8 +11,10 @@ import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.testing.FakeRedditRule
 import com.karmakameleon.android.testing.lastPage
 import com.karmakameleon.android.testing.postListing
+import com.karmakameleon.android.ui.components.ShowActionErrors
 import com.karmakameleon.android.ui.post.submittedComment
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.testing.form
 import io.ktor.http.HttpStatusCode
@@ -20,6 +22,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.koin.compose.koinInject
 import org.koin.core.context.GlobalContext
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowToast
@@ -43,6 +46,8 @@ class InboxScreenTest {
         composeRule.setContent {
             KarmaKameleonTheme(dynamicColor = false) {
                 InboxScreen(onBackClick = { calls += "back" })
+                // The app shows failed actions, wherever they were made.
+                ShowActionErrors(koinInject<ActionRepository>().errors)
             }
         }
     }

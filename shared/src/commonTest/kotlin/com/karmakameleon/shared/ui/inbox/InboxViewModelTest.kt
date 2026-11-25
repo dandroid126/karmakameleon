@@ -12,10 +12,11 @@ import com.karmakameleon.shared.data.repository.MessageRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.InboxFilter
 import com.karmakameleon.shared.domain.model.Message
+import com.karmakameleon.shared.errorsOf
+import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -38,6 +39,7 @@ class InboxViewModelTest {
     private val fakeAuthManager = FakeAuthManager()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var messageRepo: MessageRepository
+    private lateinit var actionRepo: ActionRepository
     private lateinit var userRepo: UserRepository
     private lateinit var inboxPoller: InboxPoller
     private lateinit var viewModel: InboxViewModel
@@ -47,9 +49,10 @@ class InboxViewModelTest {
         Dispatchers.setMain(testDispatcher)
         fakeApi = FakeRedditApi(fakeAuthManager)
         messageRepo = MessageRepository(fakeApi)
+        actionRepo = testActionRepository(fakeApi)
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
         inboxPoller = InboxPoller(messageRepo, fakeAuthManager)
-        viewModel = InboxViewModel(messageRepo, ActionRepository(fakeApi, MutableStateFlow(true)), userRepo, inboxPoller)
+        viewModel = InboxViewModel(messageRepo, actionRepo, userRepo, inboxPoller)
     }
 
     @AfterTest
@@ -209,7 +212,7 @@ class InboxViewModelTest {
     fun newMessages_reloadTheInbox() =
         runTest {
             val poller = InboxPoller(messageRepo, fakeAuthManager, backgroundScope)
-            val viewModel = InboxViewModel(messageRepo, ActionRepository(fakeApi, MutableStateFlow(true)), userRepo, poller)
+            val viewModel = InboxViewModel(messageRepo, actionRepo, userRepo, poller)
             logInWithMessages(createTestMessage(id = "msg1"))
             fakeAuthManager.fakeIsLoggedIn = true
             poller.start()
@@ -333,11 +336,13 @@ class InboxViewModelTest {
     fun markAsRead_showsItReadBeforeRedditAnswers() =
         runTest {
             logInWithMessages(createTestMessage(id = "msg1", isNew = true))
+            fakeApi.actionDelayMillis = 1_000
 
             viewModel.markAsRead(
                 viewModel.uiState.value.messages
                     .first(),
             )
+            runCurrent()
 
             assertFalse(
                 viewModel.uiState.value.messages
@@ -349,6 +354,7 @@ class InboxViewModelTest {
     @Test
     fun markAsRead_putsItBackAndReportsTheErrorWhenItFails() =
         runTest {
+            val errors = errorsOf(actionRepo)
             logInWithMessages(createTestMessage(id = "msg1", isNew = true), createTestMessage(id = "msg2", isNew = true))
             fakeApi.markMessageReadResult = false
 
@@ -363,12 +369,13 @@ class InboxViewModelTest {
                 viewModel.uiState.value.messages
                     .map { it.isNew },
             )
-            assertEquals("Failed to mark as read", viewModel.uiState.value.actionError)
+            assertEquals(listOf("Failed to mark as read"), errors)
         }
 
     @Test
     fun markAsRead_skipsAReadMessage() =
         runTest {
+            val errors = errorsOf(actionRepo)
             logInWithMessages(createTestMessage(id = "msg1", isNew = false))
             fakeApi.markMessageReadResult = false
 
@@ -383,12 +390,13 @@ class InboxViewModelTest {
                     .single()
                     .isNew,
             )
-            assertNull(viewModel.uiState.value.actionError)
+            assertTrue(errors.isEmpty())
         }
 
     @Test
     fun markAllAsRead_putsBackOnlyTheUnreadOnesWhenItFails() =
         runTest {
+            val errors = errorsOf(actionRepo)
             logInWithMessages(createTestMessage(id = "msg1", isNew = true), createTestMessage(id = "msg2", isNew = false))
             fakeApi.markAllMessagesReadResult = false
 
@@ -400,23 +408,7 @@ class InboxViewModelTest {
                 viewModel.uiState.value.messages
                     .map { it.isNew },
             )
-            assertEquals("Failed to mark all as read", viewModel.uiState.value.actionError)
-        }
-
-    @Test
-    fun clearActionError_clearsIt() =
-        runTest {
-            logInWithMessages(createTestMessage(id = "msg1", isNew = true))
-            fakeApi.markMessageReadResult = false
-            viewModel.markAsRead(
-                viewModel.uiState.value.messages
-                    .first(),
-            )
-            advanceUntilIdle()
-
-            viewModel.clearActionError()
-
-            assertNull(viewModel.uiState.value.actionError)
+            assertEquals(listOf("Failed to mark all as read"), errors)
         }
 
     // ==================== Voting ====================
@@ -486,6 +478,7 @@ class InboxViewModelTest {
     @Test
     fun markAsUnread_putsItBackAndReportsTheErrorWhenItFails() =
         runTest {
+            val errors = errorsOf(actionRepo)
             logInWithMessages(createTestMessage(id = "msg1", isNew = false))
             fakeApi.markMessageUnreadResult = false
 
@@ -500,7 +493,7 @@ class InboxViewModelTest {
                     .single()
                     .isNew,
             )
-            assertEquals("Failed to mark as unread", viewModel.uiState.value.actionError)
+            assertEquals(listOf("Failed to mark as unread"), errors)
         }
 
     @Test
@@ -519,6 +512,7 @@ class InboxViewModelTest {
     @Test
     fun blockUser_reportsTheErrorWhenItFails() =
         runTest {
+            val errors = errorsOf(actionRepo)
             logInWithMessages(createTestMessage(id = "msg1"))
             viewModel.selectMessage("msg1")
             fakeApi.blockUserResult = false
@@ -526,7 +520,7 @@ class InboxViewModelTest {
             viewModel.blockUser("sender")
             advanceUntilIdle()
 
-            assertEquals("Failed to block user", viewModel.uiState.value.actionError)
+            assertEquals(listOf("Failed to block user"), errors)
             assertNull(viewModel.uiState.value.selectedMessageId)
         }
 

@@ -62,6 +62,7 @@ import com.karmakameleon.android.ui.components.formatNumber
 import com.karmakameleon.android.ui.components.loadingMoreItem
 import com.karmakameleon.android.ui.components.rememberCompactPostSelection
 import com.karmakameleon.android.ui.components.rememberPostFeedSettings
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
@@ -84,6 +85,7 @@ fun SubredditScreen(
     onLinkClick: (String) -> Unit = {},
     viewModel: SubredditViewModel = koinViewModel { parametersOf(subredditName) },
     navigationHandler: NavigationHandler = koinInject(),
+    actionRepository: ActionRepository = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -91,13 +93,13 @@ fun SubredditScreen(
     // Posts here are all in this subreddit, so tapping their subreddit does nothing and blocking isn't offered.
     val callbacks =
         PostListCallbacks(
+            actions = actionRepository,
             onPostClick = onPostClick,
+            // Every post here is in this subreddit, which is already open.
+            onSubredditClick = {},
             onUserClick = onUserClick,
             onLinkClick = onLinkClick,
             onCrosspostClick = navigationHandler::handleLink,
-            onVote = viewModel.postList::vote,
-            onSave = viewModel.postList::save,
-            onHide = viewModel.postList::hide,
         )
 
     PostListScaffold(

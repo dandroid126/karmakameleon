@@ -32,6 +32,16 @@ object Rules {
     // Using the API client or making HTTP calls from UI code. Screens and view models go through a repository.
     val apiClientUse = Regex("""\bRedditApi\b|\bio\.ktor\.""")
 
+    // Acting on a post, comment or message from UI code other than through ActionRepository: calling an action, like
+    // vote or deleteComment, on another repository, or using CommentRepository, whose functions are all actions.
+    // ActionRepository's reply, edit and delete aren't listed: other repositories have functions with those names.
+    val itemActionOutsideOwner =
+        Regex(
+            """\bCommentRepository\b|\b(?!action[Rr]epository\b)\w*[Rr]epository\s*\.\s*""" +
+                """(vote|voteOnMessage|save|unsave|toggleSave|hide|unhide|toggleHide|submitComment|editComment|deleteComment|""" +
+                """replyToMessage|blockUser|setIsNew|markAllRead|markAllAsRead|markAsUnread)\(""",
+        )
+
     // runCatching catches the CancellationException that stops a cancelled coroutine. runSuspendCatching doesn't.
     val runCatchingCall = Regex("""\brunCatching\b""")
 

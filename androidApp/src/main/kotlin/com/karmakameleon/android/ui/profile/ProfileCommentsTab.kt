@@ -20,22 +20,22 @@ import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.karmakameleon.android.ui.components.CommentActions
 import com.karmakameleon.android.ui.components.CommentItem
+import com.karmakameleon.android.ui.components.CommentLinks
+import com.karmakameleon.android.ui.components.CommentScreenActions
 import com.karmakameleon.android.ui.components.KeepPlaceOnRemoval
+import com.karmakameleon.android.ui.components.commentActions
 import com.karmakameleon.android.ui.components.loadingMoreItem
-import com.karmakameleon.android.ui.components.showShortToast
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.ui.comment.CommentViewModel
 import kotlinx.coroutines.launch
 
-/** What the profile's comment lists do with a comment. */
+/** What the profile's comment lists do with a comment, besides what [commentActions] gives every comment. */
 internal data class ProfileCommentCallbacks(
-    val onVote: (Comment, direction: Int) -> Unit,
-    val onReply: (commentName: String) -> Unit,
-    val onEdit: (Comment) -> Unit,
+    val comments: CommentViewModel,
     val onDelete: (commentId: String) -> Unit,
-    val onSave: (Comment) -> Unit,
     val onOpen: (subreddit: String, postId: String, commentId: String) -> Unit,
+    val onImageClick: (url: String) -> Unit,
 )
 
 /** State the profile's comment lists share: who's logged in and which comment is selected. */
@@ -83,26 +83,29 @@ private fun ProfileComment(
         isSelected = isSelected,
         isHidden = false,
         actions =
-            CommentActions(
-                onSelect = { state.onSelectComment(if (isSelected) null else comment.id) },
-                onDone = { state.onSelectComment(null) },
-                onShare = {
-                    coroutineScope.launch {
-                        clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", "https://reddit.com${comment.permalink}")))
-                    }
-                },
-                onReply = { callbacks.onReply(comment.name) },
-                onEdit = { callbacks.onEdit(comment) },
-                onDelete = { callbacks.onDelete(comment.id) },
-                onSave = {
-                    callbacks.onSave(comment)
-                    showShortToast(context, if (comment.isSaved) "Unsaved comment" else "Saved comment")
-                },
-                onVote = { callbacks.onVote(comment, it) },
-                onGoToCommentNav = { commentId ->
-                    val postId = comment.linkId.removePrefix("t3_")
-                    callbacks.onOpen(comment.subreddit, postId, commentId)
-                },
+            commentActions(
+                comment = comment,
+                comments = callbacks.comments,
+                context = context,
+                screen =
+                    CommentScreenActions(
+                        select = { state.onSelectComment(if (isSelected) null else it.id) },
+                        deselect = { state.onSelectComment(null) },
+                        confirmDelete = { callbacks.onDelete(it.id) },
+                        links =
+                            CommentLinks(
+                                copyLink = { link ->
+                                    coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) }
+                                },
+                                openThread = { linked, commentId ->
+                                    callbacks.onOpen(linked.subreddit, linked.linkId.removePrefix("t3_"), commentId)
+                                },
+                                openImage = callbacks.onImageClick,
+                            ),
+                        // Touching a comment marks what a quote goes into, which only the thread on the post screen offers.
+                        onTouchStart = {},
+                        thread = null,
+                    ),
             ),
         isLoggedIn = state.isLoggedIn,
         loggedInUsername = state.loggedInUsername,

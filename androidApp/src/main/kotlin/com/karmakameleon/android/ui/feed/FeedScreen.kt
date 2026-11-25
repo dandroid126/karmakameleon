@@ -53,6 +53,7 @@ import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.loadingMoreItem
 import com.karmakameleon.android.ui.components.rememberCompactPostSelection
 import com.karmakameleon.android.ui.components.rememberPostFeedSettings
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.ReadPostsRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.domain.model.NsfwHistoryMode
@@ -73,6 +74,7 @@ fun FeedScreen(
     onLinkClick: (String) -> Unit = {},
     viewModel: FeedViewModel = koinViewModel(),
     navigationHandler: NavigationHandler = koinInject(),
+    actionRepository: ActionRepository = koinInject(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -97,14 +99,12 @@ fun FeedScreen(
             feedSettings = feedSettings,
             callbacks =
                 PostListCallbacks(
+                    actions = actionRepository,
                     onPostClick = onPostClick,
                     onSubredditClick = onSubredditClick,
                     onUserClick = onUserClick,
                     onLinkClick = onLinkClick,
                     onCrosspostClick = navigationHandler::handleLink,
-                    onVote = viewModel.postList::vote,
-                    onSave = viewModel.postList::save,
-                    onHide = viewModel.postList::hide,
                     onBlockSubreddit = viewModel::blockSubreddit,
                 ),
             onRetry = { viewModel.postList.load(forceRefresh = true) },

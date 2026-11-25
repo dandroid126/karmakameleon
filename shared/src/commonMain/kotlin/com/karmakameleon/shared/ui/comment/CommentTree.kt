@@ -105,12 +105,6 @@ internal fun List<CommentOrMore>.withMoreComments(
     }
 }
 
-/** Replaces a comment's own fields, keeping the replies already in the tree. */
-internal fun List<CommentOrMore>.withUpdatedComment(updated: Comment): List<CommentOrMore> =
-    replaceComments { comment ->
-        if (comment.id == updated.id) updated.copy(replies = comment.replies, moreReplies = comment.moreReplies) else null
-    }
-
 /** Adds a reply as the first reply of the comment named parentName. */
 internal fun List<CommentOrMore>.withReply(
     parentName: String,
@@ -119,26 +113,6 @@ internal fun List<CommentOrMore>.withReply(
     replaceComments { comment ->
         if (comment.name == parentName) comment.copy(replies = listOf(reply.copy(depth = comment.depth + 1)) + comment.replies) else null
     }
-
-internal fun List<CommentOrMore>.withoutComment(commentId: String): List<CommentOrMore> =
-    mapNotNull { item ->
-        when (item) {
-            is CommentOrMore.CommentItem -> {
-                item.comment.takeIf { it.id != commentId }?.let {
-                    CommentOrMore.CommentItem(
-                        it.withoutReply(commentId),
-                    )
-                }
-            }
-
-            is CommentOrMore.More -> {
-                item
-            }
-        }
-    }
-
-private fun Comment.withoutReply(commentId: String): Comment =
-    copy(replies = replies.filter { it.id != commentId }.map { it.withoutReply(commentId) })
 
 // Rebuilds every comment in the tree. replace returns a comment's replacement, or null to keep the comment and look
 // through its replies.

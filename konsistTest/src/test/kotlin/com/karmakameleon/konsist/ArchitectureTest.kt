@@ -52,6 +52,18 @@ class ArchitectureTest {
             ) { Rules.apiClientUse.containsMatchIn(it.text) }
     }
 
+    @Test
+    fun uiCodeActsOnItemsOnlyThroughActionRepository() {
+        productionScope.files
+            .withPackage("..ui..")
+            .assertFalse(
+                strict = true,
+                additionalMessage =
+                    "Votes, saves, hides, replies, edits, deletes, blocks and read states go through ActionRepository, " +
+                        "so they work the same on every screen (see CLAUDE.md).",
+            ) { Rules.itemActionOutsideOwner.containsMatchIn(it.text) }
+    }
+
     // A main source set that only declares sharedTesting, without importing it, fails buildHealth as an unused
     // dependency instead.
     @Test

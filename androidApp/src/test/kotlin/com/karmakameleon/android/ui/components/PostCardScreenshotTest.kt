@@ -19,7 +19,18 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
 
 val noPostActions =
-    PostActions(onClick = {}, onSubredditClick = {}, onUserClick = {}, onUpvote = {}, onDownvote = {}, onSave = {}, onHide = {})
+    PostActions(
+        onClick = {},
+        onSubredditClick = {},
+        onUserClick = {},
+        onUpvote = {},
+        onDownvote = {},
+        onSave = {},
+        onHide = {},
+        onBlockSubreddit = {},
+        onLinkClick = {},
+        onCrosspostClick = {},
+    )
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

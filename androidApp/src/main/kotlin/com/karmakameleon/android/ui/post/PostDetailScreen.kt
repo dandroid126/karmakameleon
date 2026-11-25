@@ -89,8 +89,9 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.data.PendingQuote
 import com.karmakameleon.android.navigation.NavigationHandler
-import com.karmakameleon.android.ui.components.CommentActions
 import com.karmakameleon.android.ui.components.CommentItem
+import com.karmakameleon.android.ui.components.CommentLinks
+import com.karmakameleon.android.ui.components.CommentScreenActions
 import com.karmakameleon.android.ui.components.FullScreenImageViewer
 import com.karmakameleon.android.ui.components.KeepPlaceOnRemoval
 import com.karmakameleon.android.ui.components.LoadError
@@ -101,9 +102,11 @@ import com.karmakameleon.android.ui.components.ProgressiveAsyncImage
 import com.karmakameleon.android.ui.components.ReplyBar
 import com.karmakameleon.android.ui.components.ShowActionErrors
 import com.karmakameleon.android.ui.components.SubredditFlairChip
+import com.karmakameleon.android.ui.components.ThreadNavigation
 import com.karmakameleon.android.ui.components.UniversalTopAppBar
 import com.karmakameleon.android.ui.components.VideoPlayer
 import com.karmakameleon.android.ui.components.YouTubePlayer
+import com.karmakameleon.android.ui.components.commentActions
 import com.karmakameleon.android.ui.components.formatNumber
 import com.karmakameleon.android.ui.components.formatTimeAgo
 import com.karmakameleon.android.ui.components.gifMenuItems
@@ -158,7 +161,6 @@ fun PostDetailScreen(
     MeasureTablesAhead(key = uiState.post?.selfText to commentState.comments, style = MaterialTheme.typography.bodyMedium) {
         listOfNotNull(uiState.post?.selfText) + commentState.comments.commentBodies()
     }
-    ShowActionErrors(uiState.actionError, onConsumeError = viewModel::clearActionError)
     ShowActionErrors(commentState.imageMessage, onConsumeError = viewModel.commentViewModel::clearImageMessage)
     ConsumePendingQuotes { text -> viewModel.handleQuote(text, commentState) }
     val replyActions = viewModel.replyActions(commentState, screen.draftDialogs, context)
@@ -188,8 +190,9 @@ fun PostDetailScreen(
             screen = screen,
             isBodyExpanded = isBodyExpanded,
             headerActions = viewModel.headerActions(uiState.post, screen, onToggleBodyExpanded = { isBodyExpanded = !isBodyExpanded }),
-            threadComments = viewModel.threadComments(screen, isSingleThread = uiState.focusedCommentId != null, clipboard, context),
-            listActions = viewModel.listActions(onGoToCommentNav),
+            threadComments =
+                viewModel.threadComments(screen, isSingleThread = uiState.focusedCommentId != null, clipboard, context, onGoToCommentNav),
+            listActions = viewModel.listActions(),
             nsfwEnabled = nsfwEnabled,
         )
     }
@@ -298,6 +301,7 @@ private fun PostDetailViewModel.threadComments(
     isSingleThread: Boolean,
     clipboard: Clipboard,
     context: Context,
+    onGoToCommentNav: (commentId: String) -> Unit,
 ) = ThreadComments(
     viewModel = this,
     isSingleThread = isSingleThread,
@@ -311,9 +315,27 @@ private fun PostDetailViewModel.threadComments(
             )
         }
     },
-    onCopyLink = { link -> screen.coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) } },
-    onConfirmDelete = { screen.deleteConfirmCommentId = it },
-    onSaved = { comment -> showShortToast(context, if (comment.isSaved) "Unsaved comment" else "Saved comment") },
+    context = context,
+    screenActions = { thread ->
+        CommentScreenActions(
+            select = { commentViewModel.selectComment(it.id) },
+            deselect = { commentViewModel.selectComment(null) },
+            confirmDelete = { screen.deleteConfirmCommentId = it.id },
+            links =
+                CommentLinks(
+                    copyLink = { link ->
+                        screen.coroutineScope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("", link))) }
+                    },
+                    openThread = { _, commentId -> onGoToCommentNav(commentId) },
+                    openImage = { url -> screen.openImages(listOf(url)) },
+                ),
+            onTouchStart = { comment ->
+                screen.selection.onSelectableTouched()
+                commentViewModel.setLastTouchedComment(comment.name)
+            },
+            thread = thread,
+        )
+    },
 )
 
 // Puts quoted text into the reply in progress, or starts a reply with it to the last touched comment (or the post).
@@ -442,37 +464,24 @@ private class ThreadComments(
     private val viewModel: PostDetailViewModel,
     private val isSingleThread: Boolean,
     private val scrollTo: (commentId: String) -> Unit,
-    private val onCopyLink: (String) -> Unit,
-    private val onConfirmDelete: (commentId: String) -> Unit,
-    private val onSaved: (Comment) -> Unit,
+    private val context: Context,
+    // What the screen does with a comment, given how to move around the thread.
+    screenActions: (ThreadNavigation) -> CommentScreenActions,
 ) {
     private val comments get() = viewModel.commentViewModel
 
-    fun select(comment: Comment) = comments.selectComment(comment.id)
+    private val screenActions =
+        screenActions(
+            ThreadNavigation(
+                hide = { comments.hideComment(it.id) },
+                previous = ::previous,
+                next = ::next,
+                root = ::root,
+                parent = ::parent,
+            ),
+        )
 
-    fun deselect() = comments.selectComment(null)
-
-    fun hide(comment: Comment) = comments.hideComment(comment.id)
-
-    fun vote(
-        comment: Comment,
-        direction: Int,
-    ) = comments.voteComment(comment, direction)
-
-    fun reply(comment: Comment) = comments.setReplyingTo(comment.name)
-
-    fun edit(comment: Comment) = comments.startEditComment(comment)
-
-    fun delete(comment: Comment) = onConfirmDelete(comment.id)
-
-    fun share(comment: Comment) = onCopyLink("https://www.reddit.com${comment.permalink}")
-
-    fun save(comment: Comment) {
-        comments.saveComment(comment)
-        onSaved(comment)
-    }
-
-    fun touched(comment: Comment?) = comments.setLastTouchedComment(comment?.name)
+    fun actionsFor(comment: Comment) = commentActions(comment, comments, context, screenActions)
 
     fun previous(comment: Comment) {
         comments.findPrevRootCommentId(comment.id)?.let(scrollTo)
@@ -538,13 +547,12 @@ private class ThreadContent(
     val renderInlineImages: Boolean,
 )
 
-private fun PostDetailViewModel.listActions(onGoToCommentNav: (commentId: String) -> Unit) =
+private fun PostDetailViewModel.listActions() =
     PostDetailListActions(
         onRefresh = { loadPostWithComments(forceRefresh = true) },
         onRetry = { loadPostWithComments() },
         onViewAllComments = ::viewAllComments,
         onLoadMoreComments = ::loadMoreComments,
-        onGoToCommentNav = onGoToCommentNav,
     )
 
 // What the list asks the view model to do.
@@ -553,7 +561,6 @@ private class PostDetailListActions(
     val onRetry: () -> Unit,
     val onViewAllComments: () -> Unit,
     val onLoadMoreComments: (MoreComments) -> Unit,
-    val onGoToCommentNav: (commentId: String) -> Unit,
 )
 
 // A spinner or an error until the post loads, then the post and its comments, under pull to refresh.
@@ -662,7 +669,6 @@ private fun LazyListScope.commentItems(
                     threadComments = threadComments,
                     screen = screen,
                     renderInlineImages = content.renderInlineImages,
-                    onGoToCommentNav = listActions.onGoToCommentNav,
                 )
             }
 
@@ -689,34 +695,12 @@ private fun ThreadComment(
     threadComments: ThreadComments,
     screen: PostDetailScreenState,
     renderInlineImages: Boolean,
-    onGoToCommentNav: (commentId: String) -> Unit,
 ) {
     CommentItem(
         comment = comment,
         isSelected = isSelected,
         isHidden = isHidden,
-        actions =
-            CommentActions(
-                onSelect = { threadComments.select(comment) },
-                onDone = threadComments::deselect,
-                onShare = { threadComments.share(comment) },
-                onReply = { threadComments.reply(comment) },
-                onEdit = { threadComments.edit(comment) },
-                onDelete = { threadComments.delete(comment) },
-                onSave = { threadComments.save(comment) },
-                onVote = { threadComments.vote(comment, it) },
-                onGoToCommentNav = onGoToCommentNav,
-                onHide = { threadComments.hide(comment) },
-                onPrev = { threadComments.previous(comment) },
-                onNext = { threadComments.next(comment) },
-                onRoot = { threadComments.root(comment) },
-                onParent = { threadComments.parent(comment) },
-                onTouchStart = {
-                    screen.selection.onSelectableTouched()
-                    threadComments.touched(comment)
-                },
-                onInlineImageClick = { url -> screen.openImages(listOf(url)) },
-            ),
+        actions = threadComments.actionsFor(comment),
         isLoggedIn = isLoggedIn,
         loggedInUsername = loggedInUsername,
         selectionVersion = screen.selection.version,
