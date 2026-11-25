@@ -173,6 +173,20 @@ class PostDetailViewModelTest {
         }
 
     @Test
+    fun setCommentSort_keepsTheBlocksOfCommentsWhoseTextIsUnchanged() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+            val blocks = viewModel.commentViewModel.findCommentById("c1")?.bodyBlocks
+
+            viewModel.setCommentSort(CommentSort.NEW)
+            advanceUntilIdle()
+
+            assertNotNull(blocks)
+            assertSame(blocks, viewModel.commentViewModel.findCommentById("c1")?.bodyBlocks)
+        }
+
+    @Test
     fun init_opensTheThreadOfTheTargetComment() =
         runTest {
             val viewModel = createViewModel(PostDetailTarget("kotlin", "abc123", commentId = "c1", context = 3))

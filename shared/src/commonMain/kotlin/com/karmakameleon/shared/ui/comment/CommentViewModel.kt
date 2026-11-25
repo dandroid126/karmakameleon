@@ -86,14 +86,20 @@ class CommentViewModel(
         _uiState.update { it.copy(comments = it.comments.withTreeChanges(changes)) }
     }
 
+    // The comments cleared to load others, like another sort of the thread, until those are set. Those that come back
+    // with the same text keep the blocks they had.
+    private var cleared: Map<String, Comment> = emptyMap()
+
     fun setComments(comments: List<CommentOrMore>) {
         _uiState.update { state ->
-            val shown = state.comments.commentsByName()
+            val shown = cleared + state.comments.commentsByName()
             state.copy(comments = comments.map { it.keepingBlocksOf(shown) }.withTreeChanges(actionRepository.changes.value))
         }
+        cleared = emptyMap()
     }
 
     fun clearComments() {
+        cleared = cleared + _uiState.value.comments.commentsByName()
         _uiState.update {
             it.copy(
                 comments = emptyList(),
