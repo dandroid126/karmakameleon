@@ -30,6 +30,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -37,7 +38,9 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -126,6 +129,47 @@ class PostDetailViewModelTest {
             advanceUntilIdle()
 
             assertEquals(post.withParsedSelfText(), viewModel.uiState.value.post)
+        }
+
+    // A table's widths are kept by table, so blocks parsed again would measure it again.
+    @Test
+    fun init_keepsTheBlocksOfAPostFromAFeedOnceItLoads() =
+        runTest {
+            fakeApi.postsResult = createTestListing(items = listOf(post))
+            postRepo.getPosts("kotlin")
+            val viewModel = createViewModel()
+            runCurrent()
+            val blocks =
+                viewModel.uiState.value.post
+                    ?.selfTextBlocks
+
+            advanceUntilIdle()
+
+            assertNotNull(blocks)
+            assertSame(
+                blocks,
+                viewModel.uiState.value.post
+                    ?.selfTextBlocks,
+            )
+        }
+
+    @Test
+    fun refresh_keepsTheBlocksOfTextThatIsUnchanged() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+            val blocks =
+                viewModel.uiState.value.post
+                    ?.selfTextBlocks
+
+            viewModel.loadPostWithComments(forceRefresh = true)
+            advanceUntilIdle()
+
+            assertSame(
+                blocks,
+                viewModel.uiState.value.post
+                    ?.selfTextBlocks,
+            )
         }
 
     @Test

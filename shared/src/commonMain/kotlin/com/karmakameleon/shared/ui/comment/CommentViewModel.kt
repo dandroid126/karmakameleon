@@ -87,7 +87,10 @@ class CommentViewModel(
     }
 
     fun setComments(comments: List<CommentOrMore>) {
-        _uiState.update { it.copy(comments = comments.withTreeChanges(actionRepository.changes.value)) }
+        _uiState.update { state ->
+            val shown = state.comments.commentsByName()
+            state.copy(comments = comments.map { it.keepingBlocksOf(shown) }.withTreeChanges(actionRepository.changes.value))
+        }
     }
 
     fun clearComments() {
@@ -531,4 +534,25 @@ class CommentViewModel(
     ) {
         _uiState.update { state -> state.copy(replyImages = state.replyImages.map { if (it.key == key) change(it) else it }) }
     }
+}
+
+private fun List<CommentOrMore>.commentsByName(): Map<String, Comment> {
+    val byName = mutableMapOf<String, Comment>()
+
+    fun add(comment: Comment) {
+        byName[comment.name] = comment
+        comment.replies.forEach(::add)
+    }
+    filterIsInstance<CommentOrMore.CommentItem>().forEach { add(it.comment) }
+    return byName
+}
+
+// Comments reloaded with the text they had keep the blocks they're shown with: the widths of their tables are kept by
+// table, so new ones would be measured again, on the main thread for those on screen.
+private fun CommentOrMore.keepingBlocksOf(shown: Map<String, Comment>): CommentOrMore =
+    if (this is CommentOrMore.CommentItem) CommentOrMore.CommentItem(comment.keepingBlocksOf(shown)) else this
+
+private fun Comment.keepingBlocksOf(shown: Map<String, Comment>): Comment {
+    val blocks = shown[name]?.takeIf { it.body == body }?.bodyBlocks ?: bodyBlocks
+    return copy(bodyBlocks = blocks, replies = replies.map { it.keepingBlocksOf(shown) })
 }

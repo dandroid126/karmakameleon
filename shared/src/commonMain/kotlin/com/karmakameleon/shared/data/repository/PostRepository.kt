@@ -88,8 +88,7 @@ class PostRepository(
         runSuspendCatching {
             val result = redditApi.getPostWithComments(subreddit, postId, sort, commentId = commentId, context = context)
             // Its comments' text is parsed already, as they were read.
-            val post = markdownParser.withParsedSelfText(preserveCachedPreviewData(result.first))
-            cachedPosts.update { it + (postId to post) }
+            val post = parsed(preserveCachedPreviewData(result.first))
             post to result.second
         }
 
@@ -219,7 +218,16 @@ class PostRepository(
     fun getCachedPost(postId: String): Post? = cachedPosts.value[postId]
 
     /** [post] with its text parsed, like a post [getPostWithComments] returns, for a post that came from a feed. */
-    suspend fun withParsedSelfText(post: Post): Post = markdownParser.withParsedSelfText(post)
+    suspend fun withParsedSelfText(post: Post): Post = parsed(post)
+
+    // The post with its text parsed, and kept parsed for the next time it loads. When its text hasn't changed since,
+    // it keeps the same blocks: the widths of its tables are kept by table, so new ones would be measured again.
+    private suspend fun parsed(post: Post): Post {
+        val known = cachedPosts.value[post.id]?.takeIf { it.selfText == post.selfText }?.selfTextBlocks
+        val parsed = if (known != null) post.copy(selfTextBlocks = known) else markdownParser.withParsedSelfText(post)
+        cachedPosts.update { it + (post.id to parsed) }
+        return parsed
+    }
 }
 
 // How many requests one tap on a "load more" button can make, and how many of them run at a time.

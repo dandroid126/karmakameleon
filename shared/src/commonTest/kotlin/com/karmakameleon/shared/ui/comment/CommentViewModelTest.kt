@@ -22,6 +22,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -51,6 +52,26 @@ class CommentViewModelTest {
         val comment = createTestComment(id = "c1")
         viewModel.setComments(listOf(CommentOrMore.CommentItem(comment)))
         assertEquals(1, viewModel.uiState.value.comments.size)
+    }
+
+    // A table's widths are kept by table, so blocks parsed again would measure it again.
+    @Test
+    fun setComments_keepsTheBlocksOfCommentsWhoseTextIsUnchanged() {
+        val reply = createTestComment(id = "c2", name = "t1_c2", body = "a | b")
+        val comment = createTestComment(id = "c1", name = "t1_c1", body = "same", replies = listOf(reply))
+        viewModel.setComments(listOf(CommentOrMore.CommentItem(comment)))
+
+        val reloadedReply = createTestComment(id = "c2", name = "t1_c2", body = "a | b")
+        val edited = createTestComment(id = "c1", name = "t1_c1", body = "changed", replies = listOf(reloadedReply))
+        viewModel.setComments(listOf(CommentOrMore.CommentItem(edited)))
+
+        val shown =
+            (
+                viewModel.uiState.value.comments
+                    .single() as CommentOrMore.CommentItem
+            ).comment
+        assertSame(edited.bodyBlocks, shown.bodyBlocks)
+        assertSame(reply.bodyBlocks, shown.replies.single().bodyBlocks)
     }
 
     @Test
