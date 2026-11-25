@@ -283,6 +283,7 @@ class ActionRepositoryTest {
             repository.vote(post.withChanges(repository.changes.value), -1)
 
             isLoggedIn.value = false
+            runCurrent()
             settle()
 
             assertEquals(listOf("vote t3_p1 1"), api.actions)
@@ -298,10 +299,17 @@ class ActionRepositoryTest {
             repository.vote(post, 1)
             advanceTimeBy(500)
 
+            // Each change is collected before the next, as a real logout and login are far apart.
             isLoggedIn.value = false
+            runCurrent()
             isLoggedIn.value = true
-            advanceTimeBy(1)
+            runCurrent()
             repository.vote(post, -1)
+
+            // Only the new account's vote is left, and it's sent while the old account's request is still running.
+            assertEquals(mapOf("t3_p1" to ItemChanges(vote = -1)), repository.changes.value)
+            runCurrent()
+            assertEquals(listOf("vote t3_p1 1", "vote t3_p1 -1"), api.actions)
             settle()
 
             assertEquals(listOf("vote t3_p1 1", "vote t3_p1 -1"), api.actions)
