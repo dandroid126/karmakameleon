@@ -178,6 +178,8 @@ class PostDetailViewModelTest {
             val viewModel = createViewModel()
             advanceUntilIdle()
             val blocks = viewModel.commentViewModel.findCommentById("c1")?.bodyBlocks
+            // The same comment read again, parsed again.
+            fakeApi.postWithCommentsResult = post to listOf(CommentOrMore.CommentItem(comment("c1")))
 
             viewModel.setCommentSort(CommentSort.NEW)
             advanceUntilIdle()
