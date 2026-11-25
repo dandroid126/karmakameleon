@@ -18,6 +18,7 @@ import com.karmakameleon.shared.testing.FakeAuthManager
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -53,7 +54,7 @@ class SubredditViewModelTest {
         postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         subredditRepo = SubredditRepository(fakeApi, settingsRepo)
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
-        actionRepo = ActionRepository(fakeApi)
+        actionRepo = ActionRepository(fakeApi, MutableStateFlow(true))
         viewModel = SubredditViewModel("kotlin", subredditRepo, postRepo, actionRepo, userRepo, settingsRepo)
     }
 

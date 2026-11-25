@@ -24,6 +24,7 @@ import com.karmakameleon.shared.ui.comment.CommentViewModel
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -47,7 +48,7 @@ class PostDetailViewModelTest {
     private val draftRepo = CommentDraftRepository(MapSettings())
 
     // Made on first use, after setup sets the Main dispatcher, which it sends its requests on.
-    private val actionRepo by lazy { ActionRepository(fakeApi) }
+    private val actionRepo by lazy { ActionRepository(fakeApi, MutableStateFlow(true)) }
     private val post = createTestPost(id = "abc123", name = "t3_abc123", title = "A title", selfText = "Some text")
 
     @BeforeTest
@@ -502,7 +503,11 @@ class PostDetailViewModelTest {
             actionRepo.vote(post, -1)
             advanceUntilIdle()
 
-            assertEquals(false, viewModel.uiState.value.post?.likes)
+            assertEquals(
+                false,
+                viewModel.uiState.value.post
+                    ?.likes,
+            )
         }
 
     @Test

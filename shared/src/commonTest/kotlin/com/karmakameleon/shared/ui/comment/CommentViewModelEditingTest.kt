@@ -12,6 +12,7 @@ import com.karmakameleon.shared.domain.model.Comment
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -33,7 +34,7 @@ class CommentViewModelEditingTest {
     private val markdown = MarkdownRepository(Dispatchers.Main)
 
     // Made on first use, after setup sets the Main dispatcher, which the view model starts collecting on.
-    private val actionRepo by lazy { ActionRepository(fakeApi) }
+    private val actionRepo by lazy { ActionRepository(fakeApi, MutableStateFlow(true)) }
     private val viewModel by lazy { CommentViewModel(CommentRepository(fakeApi, markdown), actionRepo, draftRepo) }
     private val more = createTestMoreComments(id = "m1", name = "t1_m1", parentId = "t3_abc123", depth = 0)
 

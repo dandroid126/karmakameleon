@@ -37,7 +37,7 @@ val sharedModule =
 
         // Repositories
         single { PostRepository(get(), get()) }
-        single { ActionRepository(get()) }
+        single { ActionRepository(get(), get<UserRepository>().isLoggedIn) }
         single { SubredditRepository(get(), get()) }
         single { UserRepository(get(), get(), get()) }
         single { CommentRepository(get(), get()) }

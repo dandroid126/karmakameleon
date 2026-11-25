@@ -15,6 +15,7 @@ import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -45,7 +46,7 @@ class ProfileViewModelTest {
         fakeAuthManager = FakeAuthManager()
         commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
-        viewModel = ProfileViewModel(userRepo, commentRepo, ActionRepository(fakeApi), fakeAuthManager)
+        viewModel = ProfileViewModel(userRepo, commentRepo, ActionRepository(fakeApi, MutableStateFlow(true)), fakeAuthManager)
     }
 
     @AfterTest

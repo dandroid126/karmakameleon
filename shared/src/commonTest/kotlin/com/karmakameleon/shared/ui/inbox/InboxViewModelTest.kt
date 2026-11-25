@@ -15,6 +15,7 @@ import com.karmakameleon.shared.domain.model.Message
 import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
@@ -48,7 +49,7 @@ class InboxViewModelTest {
         messageRepo = MessageRepository(fakeApi)
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
         inboxPoller = InboxPoller(messageRepo, fakeAuthManager)
-        viewModel = InboxViewModel(messageRepo, ActionRepository(fakeApi), userRepo, inboxPoller)
+        viewModel = InboxViewModel(messageRepo, ActionRepository(fakeApi, MutableStateFlow(true)), userRepo, inboxPoller)
     }
 
     @AfterTest
@@ -208,7 +209,7 @@ class InboxViewModelTest {
     fun newMessages_reloadTheInbox() =
         runTest {
             val poller = InboxPoller(messageRepo, fakeAuthManager, backgroundScope)
-            val viewModel = InboxViewModel(messageRepo, ActionRepository(fakeApi), userRepo, poller)
+            val viewModel = InboxViewModel(messageRepo, ActionRepository(fakeApi, MutableStateFlow(true)), userRepo, poller)
             logInWithMessages(createTestMessage(id = "msg1"))
             fakeAuthManager.fakeIsLoggedIn = true
             poller.start()

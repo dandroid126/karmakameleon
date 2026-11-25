@@ -12,6 +12,7 @@ import com.karmakameleon.shared.testing.FakeAuthManager
 import io.ktor.http.Url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -43,7 +44,7 @@ class ProfileViewModelLoginTest {
         fakeAuthManager = FakeAuthManager()
         commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
-        viewModel = ProfileViewModel(userRepo, commentRepo, ActionRepository(fakeApi), fakeAuthManager)
+        viewModel = ProfileViewModel(userRepo, commentRepo, ActionRepository(fakeApi, MutableStateFlow(true)), fakeAuthManager)
     }
 
     @AfterTest
@@ -101,7 +102,7 @@ class ProfileViewModelLoginTest {
     @Test
     fun init_loadsSavedRedirectUri() {
         fakeAuthManager.setRedirectUri("myclient://callback")
-        val newViewModel = ProfileViewModel(userRepo, commentRepo, ActionRepository(fakeApi), fakeAuthManager)
+        val newViewModel = ProfileViewModel(userRepo, commentRepo, ActionRepository(fakeApi, MutableStateFlow(true)), fakeAuthManager)
 
         assertEquals("myclient://callback", newViewModel.uiState.value.redirectUri)
     }

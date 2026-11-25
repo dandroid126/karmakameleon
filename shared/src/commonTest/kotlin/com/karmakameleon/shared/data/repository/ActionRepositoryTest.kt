@@ -7,12 +7,13 @@ import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApiException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
-import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,9 +25,16 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class ActionRepositoryTest {
     private val api = FakeRedditApi()
+    private val isLoggedIn = MutableStateFlow(true)
 
-    // Runs its requests in the test's scope, which advanceUntilIdle runs, unlike backgroundScope.
-    private fun TestScope.repository() = ActionRepository(api, this)
+    // Runs in backgroundScope, since it follows the login state for as long as it runs.
+    private fun TestScope.repository() = ActionRepository(api, isLoggedIn, backgroundScope)
+
+    // Runs what's waiting, requests included. advanceUntilIdle doesn't run backgroundScope's work.
+    private fun TestScope.settle() {
+        advanceTimeBy(60_000)
+        runCurrent()
+    }
 
     // Collects the errors the repository reports while the test runs.
     private fun TestScope.errorsOf(repository: ActionRepository): List<String> {
@@ -48,7 +56,7 @@ class ActionRepositoryTest {
             val shown = post.withChanges(repository.changes.value)
             assertEquals(true, shown.likes)
             assertEquals(11, shown.score)
-            advanceUntilIdle()
+            settle()
             assertEquals(listOf("vote t3_p1 1"), api.actions)
             assertEquals(true, post.withChanges(repository.changes.value).likes)
         }
@@ -81,7 +89,7 @@ class ActionRepositoryTest {
             val post = createTestPost(id = "p1", score = 10, likes = null)
 
             repository.vote(post, 1)
-            advanceUntilIdle()
+            settle()
 
             val shown = post.withChanges(repository.changes.value)
             assertNull(shown.likes)
@@ -97,7 +105,7 @@ class ActionRepositoryTest {
             api.shouldThrow = RedditApiException("THREAD_LOCKED", "you are not allowed to do that")
 
             repository.vote(createTestPost(id = "p1"), 1)
-            advanceUntilIdle()
+            settle()
 
             assertEquals(listOf("you are not allowed to do that"), errors)
         }
@@ -108,7 +116,7 @@ class ActionRepositoryTest {
             val repository = repository()
 
             repository.vote(createTestPost(id = "p1", likes = true), 1)
-            advanceUntilIdle()
+            settle()
 
             assertTrue(api.actions.isEmpty())
             assertTrue(repository.changes.value.isEmpty())
@@ -124,7 +132,7 @@ class ActionRepositoryTest {
             repository.vote(post, 1)
             advanceTimeBy(500)
             repository.vote(post.withChanges(repository.changes.value), -1)
-            advanceUntilIdle()
+            settle()
 
             assertEquals(listOf("vote t3_p1 1", "vote t3_p1 -1"), api.actions)
             assertEquals(9, post.withChanges(repository.changes.value).score)
@@ -140,7 +148,7 @@ class ActionRepositoryTest {
             repository.vote(post, 1)
             repository.vote(post.withChanges(repository.changes.value), -1)
             repository.vote(post.withChanges(repository.changes.value), 1)
-            advanceUntilIdle()
+            settle()
 
             assertEquals(listOf("vote t3_p1 1"), api.actions)
         }
@@ -159,7 +167,7 @@ class ActionRepositoryTest {
             repository.vote(post.withChanges(repository.changes.value), -1)
             advanceTimeBy(600)
             api.voteResult = true
-            advanceUntilIdle()
+            settle()
 
             assertEquals(listOf("vote t3_p1 1", "vote t3_p1 -1"), api.actions)
             assertEquals(false, post.withChanges(repository.changes.value).likes)
@@ -175,7 +183,7 @@ class ActionRepositoryTest {
 
             repository.vote(comment, -1)
             repository.vote(message, 1)
-            advanceUntilIdle()
+            settle()
 
             assertEquals(4, comment.withChanges(repository.changes.value).score)
             assertEquals(true, message.withChanges(repository.changes.value).likes)
@@ -193,7 +201,7 @@ class ActionRepositoryTest {
 
             repository.toggleSave(post)
             repository.toggleSave(comment)
-            advanceUntilIdle()
+            settle()
 
             assertTrue(post.withChanges(repository.changes.value).isSaved)
             assertFalse(comment.withChanges(repository.changes.value).isSaved)
@@ -209,7 +217,7 @@ class ActionRepositoryTest {
             val post = createTestPost(id = "p1", isSaved = false)
 
             repository.toggleSave(post)
-            advanceUntilIdle()
+            settle()
 
             assertFalse(post.withChanges(repository.changes.value).isSaved)
             assertEquals(listOf("Save failed"), errors)
@@ -222,10 +230,10 @@ class ActionRepositoryTest {
             val post = createTestPost(id = "p1", isHidden = false)
 
             repository.toggleHide(post)
-            advanceUntilIdle()
+            settle()
             assertTrue(post.withChanges(repository.changes.value).isHidden)
             repository.toggleHide(post)
-            advanceUntilIdle()
+            settle()
 
             assertFalse(post.withChanges(repository.changes.value).isHidden)
             assertEquals(listOf("hide t3_p1", "unhide t3_p1"), api.actions)
@@ -240,10 +248,64 @@ class ActionRepositoryTest {
             val post = createTestPost(id = "p1", isHidden = false)
 
             repository.toggleHide(post)
-            advanceUntilIdle()
+            settle()
 
             assertFalse(post.withChanges(repository.changes.value).isHidden)
             assertEquals(listOf("Hide failed"), errors)
+        }
+
+    // ==================== Logging out ====================
+
+    @Test
+    fun loggingOut_dropsTheChanges() =
+        runTest {
+            val repository = repository()
+            val post = createTestPost(id = "p1", isHidden = false, likes = null)
+            repository.toggleHide(post)
+            repository.vote(post, 1)
+            settle()
+
+            isLoggedIn.value = false
+            settle()
+
+            assertTrue(repository.changes.value.isEmpty())
+            assertEquals(post, post.withChanges(repository.changes.value))
+        }
+
+    @Test
+    fun loggingOut_stopsSendingWaitingChanges() =
+        runTest {
+            val repository = repository()
+            api.actionDelayMillis = 1_000
+            val post = createTestPost(id = "p1", likes = null)
+            repository.vote(post, 1)
+            advanceTimeBy(500)
+            repository.vote(post.withChanges(repository.changes.value), -1)
+
+            isLoggedIn.value = false
+            settle()
+
+            assertEquals(listOf("vote t3_p1 1"), api.actions)
+            assertTrue(repository.changes.value.isEmpty())
+        }
+
+    @Test
+    fun voteAfterLoggingIn_isSentWhileTheOldAccountsRequestFinishes() =
+        runTest {
+            val repository = repository()
+            api.actionDelayMillis = 1_000
+            val post = createTestPost(id = "p1", likes = null)
+            repository.vote(post, 1)
+            advanceTimeBy(500)
+
+            isLoggedIn.value = false
+            isLoggedIn.value = true
+            advanceTimeBy(1)
+            repository.vote(post, -1)
+            settle()
+
+            assertEquals(listOf("vote t3_p1 1", "vote t3_p1 -1"), api.actions)
+            assertEquals(false, post.withChanges(repository.changes.value).likes)
         }
 
     // ==================== Applying changes ====================

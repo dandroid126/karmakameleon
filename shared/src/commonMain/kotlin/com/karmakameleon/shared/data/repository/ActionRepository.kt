@@ -15,6 +15,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -34,13 +37,15 @@ data class ItemChanges(
  * every screen shows what it loaded with these changes on top, so a change made on one screen shows on all of them.
  * Then Reddit is told. If Reddit refuses, the change is undone and the error goes to [errors], which the app shows.
  *
- * A change stays in [changes] for as long as the app runs, so a list loaded before it, or Reddit's cached copy of
- * one, still shows it. Applying a change to an item that already has it changes nothing.
+ * A change stays in [changes] until the user logs in or out, so a list loaded before it, or Reddit's cached copy of
+ * one, still shows it. Applying a change to an item that already has it changes nothing. Logging in or out drops them
+ * all, since they were another account's, and stops sending any still waiting.
  *
  * Runs on the main thread, which keeps its bookkeeping free of locks: each request suspends instead of blocking it.
  */
 class ActionRepository(
     redditApi: RedditApi,
+    isLoggedIn: StateFlow<Boolean>,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
 ) {
     private val _changes = MutableStateFlow<Map<String, ItemChanges>>(emptyMap())
@@ -72,6 +77,15 @@ class ActionRepository(
             failure = "Hide failed",
             send = { name, hidden -> if (hidden) redditApi.hide(name) else redditApi.unhide(name) },
         )
+
+    init {
+        isLoggedIn.drop(1).onEach { forgetChanges() }.launchIn(scope)
+    }
+
+    private fun forgetChanges() {
+        listOf(votes, saves, hides).forEach { it.forget() }
+        _changes.value = emptyMap()
+    }
 
     /** Votes on [post] in [direction] (1 up, -1 down, 0 none). */
     fun vote(
@@ -120,6 +134,14 @@ class ActionRepository(
         // What Reddit has for each item with a request running.
         private val confirmed = mutableMapOf<String, T>()
 
+        // Counts the times the account changed, so a request for the old one stops once it's answered.
+        private var account = 0
+
+        fun forget() {
+            confirmed.clear()
+            account++
+        }
+
         fun change(
             name: String,
             shown: T,
@@ -133,11 +155,13 @@ class ActionRepository(
         }
 
         private suspend fun sync(name: String) {
+            val startAccount = account
             try {
                 var wanted = unsent(name)
                 while (wanted != null) {
                     val before = confirmed.getValue(name)
                     val result = runSuspendCatching { check(send(name, wanted)) { failure } }
+                    if (account != startAccount) break
                     if (result.isSuccess) {
                         confirmed[name] = wanted
                     } else if (_changes.value[name]?.let(read) == wanted) {
@@ -148,7 +172,8 @@ class ActionRepository(
                     wanted = unsent(name)
                 }
             } finally {
-                confirmed.remove(name)
+                // After the account changed, the entry is a request for the new one, if there is one.
+                if (account == startAccount) confirmed.remove(name)
             }
         }
 

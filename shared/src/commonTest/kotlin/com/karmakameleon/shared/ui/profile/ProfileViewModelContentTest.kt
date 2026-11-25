@@ -13,6 +13,7 @@ import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -38,7 +39,7 @@ class ProfileViewModelContentTest {
         ProfileViewModel(
             UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main)),
             CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)),
-            ActionRepository(fakeApi),
+            ActionRepository(fakeApi, MutableStateFlow(true)),
             fakeAuthManager,
         )
     }

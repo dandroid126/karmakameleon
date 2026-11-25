@@ -21,6 +21,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -88,7 +89,7 @@ class CommentViewModelImageTest {
         val images = if (withImages) CommentImageRepository(api, imageFiles, downloads()) else null
         return CommentViewModel(
             CommentRepository(api, MarkdownRepository(Dispatchers.Main)),
-            ActionRepository(api),
+            ActionRepository(api, MutableStateFlow(true)),
             commentImageRepository = images,
         ).apply {
             setCommentSubreddit(pics)

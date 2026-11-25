@@ -11,6 +11,7 @@ import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -36,7 +37,7 @@ class CommentViewModelTest {
         fakeApi = FakeRedditApi()
         commentRepo = CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main))
         draftRepo = CommentDraftRepository(MapSettings())
-        viewModel = CommentViewModel(commentRepo, ActionRepository(fakeApi), draftRepo)
+        viewModel = CommentViewModel(commentRepo, ActionRepository(fakeApi, MutableStateFlow(true)), draftRepo)
     }
 
     @AfterTest

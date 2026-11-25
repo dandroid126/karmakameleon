@@ -15,6 +15,7 @@ import com.karmakameleon.shared.testing.FakeAuthManager
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -48,7 +49,7 @@ class FeedViewModelTest {
         settingsRepo = SettingsRepository(MapSettings())
         postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
-        actionRepo = ActionRepository(fakeApi)
+        actionRepo = ActionRepository(fakeApi, MutableStateFlow(true))
         viewModel = FeedViewModel(postRepo, actionRepo, userRepo, settingsRepo)
     }
 
