@@ -5,14 +5,15 @@ import com.karmakameleon.shared.createTestComment
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
-import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.testing.FakeAuthManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -37,8 +38,8 @@ class ProfileViewModelContentTest {
     private val viewModel by lazy {
         ProfileViewModel(
             UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main)),
-            PostRepository(fakeApi, MarkdownRepository()),
             CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)),
+            ActionRepository(fakeApi, MutableStateFlow(true)),
             fakeAuthManager,
         )
     }
@@ -83,8 +84,9 @@ class ProfileViewModelContentTest {
 
     // ==================== Posts ====================
 
+    // It stays in the saved list, so tapping save again brings it back.
     @Test
-    fun unsavingAPost_dropsItFromTheSavedList() =
+    fun unsavingAPost_unsavesItInEveryList() =
         runTest {
             val post = createTestPost(id = "p1", isSaved = true)
             fakeApi.userPostsResult = createTestListing(items = listOf(post))
@@ -100,7 +102,7 @@ class ProfileViewModelContentTest {
             advanceUntilIdle()
 
             val state = viewModel.uiState.value
-            assertEquals(listOf("p2"), state.savedPosts.items.map { it.id })
+            assertEquals(listOf(false, true), state.savedPosts.items.map { it.isSaved })
             assertFalse(
                 state.posts.items
                     .single()
@@ -175,36 +177,16 @@ class ProfileViewModelContentTest {
         }
 
     @Test
-    fun updateComment_unsavedDropsItFromTheSavedList() =
+    fun voteComment_updatesItInBothLists() =
         runTest {
-            loadComments(
-                listOf(comment("c1", isSaved = true)),
-                saved = listOf(comment("c1", isSaved = true), comment("c2", isSaved = true)),
-            )
+            loadComments(listOf(comment("c1")), saved = listOf(comment("c1", isSaved = true)))
 
-            viewModel.updateComment(comment("c1", isSaved = false))
+            viewModel.voteComment(comment("c1"), 1)
+            advanceUntilIdle()
 
-            assertFalse(
-                viewModel.uiState.value.comments.items
-                    .single()
-                    .isSaved,
-            )
-            assertEquals(listOf("c2"), savedCommentIds())
-        }
-
-    @Test
-    fun updateComment_savedReplacesItInTheSavedList() =
-        runTest {
-            loadComments(emptyList(), saved = listOf(comment("c2", isSaved = true)))
-
-            viewModel.updateComment(comment("c2", isSaved = true).copy(body = "Edited"))
-
-            assertEquals(
-                "Edited",
-                viewModel.uiState.value.savedComments.items
-                    .single()
-                    .body,
-            )
+            val state = viewModel.uiState.value
+            assertEquals(listOf(true), state.comments.items.map { it.likes })
+            assertEquals(listOf(true), state.savedComments.items.map { it.likes })
         }
 
     @Test

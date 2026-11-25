@@ -50,6 +50,7 @@ import com.karmakameleon.android.data.PendingNotificationAction
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.android.ui.components.FullScreenImageViewer
 import com.karmakameleon.android.ui.components.FullScreenVideoScreen
+import com.karmakameleon.android.ui.components.ShowActionErrors
 import com.karmakameleon.android.ui.components.WebBrowserScreen
 import com.karmakameleon.android.ui.components.YouTubeVideoScreen
 import com.karmakameleon.android.ui.feed.FeedScreen
@@ -61,6 +62,7 @@ import com.karmakameleon.android.ui.search.SearchScreen
 import com.karmakameleon.android.ui.settings.SettingsScreen
 import com.karmakameleon.android.ui.subreddit.SubredditListScreen
 import com.karmakameleon.android.ui.subreddit.SubredditScreen
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.InboxFilter
@@ -162,6 +164,8 @@ fun KarmaKameleonApp(
         loadCurrentUser = { userRepository.loadCurrentUser() },
     )
     BindNavigation(navController)
+    // Actions on posts, comments and messages report their failures here, whichever screen they were made on.
+    ShowActionErrors(koinInject<ActionRepository>().errors)
 
     Scaffold(
         modifier = modifier,

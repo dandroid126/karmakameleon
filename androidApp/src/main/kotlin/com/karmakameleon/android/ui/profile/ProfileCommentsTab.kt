@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 
 /** What the profile's comment lists do with a comment. */
 internal data class ProfileCommentCallbacks(
-    val onUpdate: (Comment) -> Unit,
+    val onVote: (Comment, direction: Int) -> Unit,
     val onReply: (commentName: String) -> Unit,
     val onEdit: (Comment) -> Unit,
     val onDelete: (commentId: String) -> Unit,
@@ -98,7 +98,7 @@ private fun ProfileComment(
                     callbacks.onSave(comment)
                     showShortToast(context, if (comment.isSaved) "Unsaved comment" else "Saved comment")
                 },
-                onCommentUpdated = callbacks.onUpdate,
+                onVote = { callbacks.onVote(comment, it) },
                 onGoToCommentNav = { commentId ->
                     val postId = comment.linkId.removePrefix("t3_")
                     callbacks.onOpen(comment.subreddit, postId, commentId)

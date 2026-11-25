@@ -3,13 +3,12 @@ package com.karmakameleon.shared.ui.post
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.karmakameleon.shared.data.api.CommentOrMore
-import com.karmakameleon.shared.data.repository.CommentDraftRepository
-import com.karmakameleon.shared.data.repository.CommentImageRepository
-import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
+import com.karmakameleon.shared.data.repository.withChanges
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.domain.model.MoreComments
@@ -48,18 +47,17 @@ data class PostDetailTarget(
 class PostDetailViewModel(
     target: PostDetailTarget,
     private val postRepository: PostRepository,
-    commentRepository: CommentRepository,
+    private val actionRepository: ActionRepository,
+    // The post's comments and the reply being written. Nothing clears it, so this view model collects its changes for it.
+    val commentViewModel: CommentViewModel,
     private val userRepository: UserRepository,
-    commentDraftRepository: CommentDraftRepository,
     private val settingsRepository: SettingsRepository,
     private val subredditRepository: SubredditRepository? = null,
-    commentImageRepository: CommentImageRepository? = null,
 ) : ViewModel() {
     private val subreddit = target.subreddit
     private val postId = target.postId
     private val commentId = target.commentId
     private val context = target.context
-    val commentViewModel = CommentViewModel(commentRepository, commentDraftRepository, commentImageRepository)
 
     private val _uiState =
         MutableStateFlow(
@@ -73,7 +71,13 @@ class PostDetailViewModel(
 
     init {
         postRepository.getCachedPost(postId)?.let { cachedPost ->
-            _uiState.update { it.copy(post = cachedPost) }
+            _uiState.update { it.copy(post = shown(cachedPost)) }
+        }
+        viewModelScope.launch {
+            actionRepository.changes.collect { changes ->
+                _uiState.update { it.copy(post = it.post?.withChanges(changes)) }
+                commentViewModel.showChanges(changes)
+            }
         }
         viewModelScope.launch {
             userRepository.isLoggedIn.collect { isLoggedIn ->
@@ -123,7 +127,7 @@ class PostDetailViewModel(
                 )
             result.fold(
                 onSuccess = { (post, comments) ->
-                    _uiState.update { it.copy(post = post, isLoading = false) }
+                    _uiState.update { it.copy(post = shown(post), isLoading = false) }
                     commentViewModel.setComments(comments)
                 },
                 onFailure = { error ->
@@ -170,7 +174,7 @@ class PostDetailViewModel(
                     isInitialLoad = false
                     _uiState.update {
                         it.copy(
-                            post = post,
+                            post = shown(post),
                             isLoading = false,
                             isRefreshing = false,
                             suggestedSort = suggestedSort,
@@ -233,28 +237,16 @@ class PostDetailViewModel(
 
     fun votePost(direction: Int) {
         val post = _uiState.value.post ?: return
-        viewModelScope.launch {
-            val result = postRepository.vote(post, direction)
-            result.fold(
-                onSuccess = { updatedPost ->
-                    _uiState.update { it.copy(post = updatedPost) }
-                },
-                onFailure = { error ->
-                    _uiState.update { it.copy(actionError = error.message) }
-                },
-            )
-        }
+        actionRepository.vote(post, direction)
     }
 
     fun savePost() {
         val post = _uiState.value.post ?: return
-        viewModelScope.launch {
-            val result = postRepository.save(post)
-            result.onSuccess { updatedPost ->
-                _uiState.update { it.copy(post = updatedPost) }
-            }
-        }
+        actionRepository.toggleSave(post)
     }
+
+    // The post with the user's votes and saves on top, made here or on other screens.
+    private fun shown(post: Post): Post = post.withChanges(actionRepository.changes.value)
 
     fun navigateToParentRoot(commentId: String) {
         val loaded = commentViewModel.getFlattenedComments().filterIsInstance<FlatCommentItem.CommentEntry>().map { it.comment }
@@ -267,7 +259,7 @@ class PostDetailViewModel(
             commentViewModel.clearComments()
             val thread = loadTopLevelThread(top.parentId.removePrefix("t1_"))
             if (thread != null) {
-                _uiState.update { it.copy(focusedCommentId = thread.topComment.id, post = thread.post, isLoading = false) }
+                _uiState.update { it.copy(focusedCommentId = thread.topComment.id, post = shown(thread.post), isLoading = false) }
                 commentViewModel.setComments(thread.comments)
             } else {
                 _uiState.update { it.copy(isLoading = false) }

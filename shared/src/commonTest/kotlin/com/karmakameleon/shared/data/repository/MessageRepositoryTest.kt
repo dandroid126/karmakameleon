@@ -172,55 +172,6 @@ class MessageRepositoryTest {
             assertTrue(result.isFailure)
         }
 
-    // ==================== voteOnMessage ====================
-
-    @Test
-    fun voteOnMessage_upvote() =
-        runTest {
-            val (repo, api) = createRepo()
-            val message = createTestMessage(id = "m1", likes = null)
-            api.voteResult = true
-
-            val result = repo.voteOnMessage(message, 1)
-            assertTrue(result.isSuccess)
-            assertEquals(true, result.getOrThrow().likes)
-        }
-
-    @Test
-    fun voteOnMessage_downvote() =
-        runTest {
-            val (repo, api) = createRepo()
-            val message = createTestMessage(id = "m1", likes = null)
-            api.voteResult = true
-
-            val result = repo.voteOnMessage(message, -1)
-            assertTrue(result.isSuccess)
-            assertEquals(false, result.getOrThrow().likes)
-        }
-
-    @Test
-    fun voteOnMessage_removeVote() =
-        runTest {
-            val (repo, api) = createRepo()
-            val message = createTestMessage(id = "m1", likes = true)
-            api.voteResult = true
-
-            val result = repo.voteOnMessage(message, 0)
-            assertTrue(result.isSuccess)
-            assertNull(result.getOrThrow().likes)
-        }
-
-    @Test
-    fun voteOnMessage_failureReturnsError() =
-        runTest {
-            val (repo, api) = createRepo()
-            val message = createTestMessage(id = "m1")
-            api.voteResult = false
-
-            val result = repo.voteOnMessage(message, 1)
-            assertTrue(result.isFailure)
-        }
-
     // ==================== replyToMessage ====================
 
     @Test

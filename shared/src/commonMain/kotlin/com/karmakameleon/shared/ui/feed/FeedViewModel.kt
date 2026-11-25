@@ -2,6 +2,7 @@ package com.karmakameleon.shared.ui.feed
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
@@ -30,6 +31,7 @@ data class FeedUiState(
 
 class FeedViewModel(
     postRepository: PostRepository,
+    actionRepository: ActionRepository,
     private val userRepository: UserRepository,
     private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
@@ -37,7 +39,7 @@ class FeedViewModel(
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
 
     val postList =
-        PostList(viewModelScope, postRepository, settingsRepository, hideBlockedSubreddits = true) {
+        PostList(viewModelScope, postRepository, actionRepository, settingsRepository, hideBlockedSubreddits = true) {
             _uiState.value.currentSubreddit
         }
 

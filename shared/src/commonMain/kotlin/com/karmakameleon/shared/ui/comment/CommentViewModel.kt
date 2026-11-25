@@ -4,9 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.media.ImageFile
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentImageRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
+import com.karmakameleon.shared.data.repository.ItemChanges
+import com.karmakameleon.shared.data.repository.withChanges
+import com.karmakameleon.shared.data.repository.withTreeChanges
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.MoreComments
 import com.karmakameleon.shared.domain.model.Subreddit
@@ -59,8 +63,13 @@ data class CommentUiState(
                 commentSubreddit?.let { it.allowsCommentImage("image/jpeg") || it.allowsCommentImage("image/gif") } == true
 }
 
+/**
+ * A comment thread and the reply or edit being written in it. Shows the comments with the user's votes and saves from
+ * [ActionRepository] on top, made here or on other screens.
+ */
 class CommentViewModel(
     private val commentRepository: CommentRepository,
+    private val actionRepository: ActionRepository,
     private val commentDraftRepository: CommentDraftRepository? = null,
     private val commentImageRepository: CommentImageRepository? = null,
 ) : ViewModel() {
@@ -71,8 +80,16 @@ class CommentViewModel(
 
     // ==================== Comment State ====================
 
+    /**
+     * Shows the user's latest votes and saves from [ActionRepository.changes]. The view model that holds this one calls
+     * it, since only that one is cleared, which stops its collecting.
+     */
+    fun showChanges(changes: Map<String, ItemChanges>) {
+        _uiState.update { it.copy(comments = it.comments.withTreeChanges(changes)) }
+    }
+
     fun setComments(comments: List<CommentOrMore>) {
-        _uiState.update { it.copy(comments = comments) }
+        _uiState.update { it.copy(comments = comments.withTreeChanges(actionRepository.changes.value)) }
     }
 
     fun clearComments() {
@@ -165,7 +182,11 @@ class CommentViewModel(
     ) {
         _uiState.update { state ->
             state.copy(
-                comments = state.comments.withMoreComments(more, newComments.withoutDuplicates(state.comments)),
+                comments =
+                    state.comments.withMoreComments(
+                        more,
+                        newComments.withoutDuplicates(state.comments).withTreeChanges(actionRepository.changes.value),
+                    ),
                 loadingMoreId = null,
             )
         }
@@ -178,7 +199,8 @@ class CommentViewModel(
     }
 
     fun updateComment(updatedComment: Comment) {
-        _uiState.update { state -> state.copy(comments = state.comments.withUpdatedComment(updatedComment)) }
+        val changed = updatedComment.withChanges(actionRepository.changes.value)
+        _uiState.update { state -> state.copy(comments = state.comments.withUpdatedComment(changed)) }
     }
 
     fun removeComment(commentId: String) {
@@ -295,7 +317,12 @@ class CommentViewModel(
 
     // ==================== CRUD Operations (Tree-based) ====================
 
-    fun saveComment(comment: Comment) = saveCommentWithCallback(comment, ::updateComment)
+    fun voteComment(
+        comment: Comment,
+        direction: Int,
+    ) = actionRepository.vote(comment, direction)
+
+    fun saveComment(comment: Comment) = actionRepository.toggleSave(comment)
 
     suspend fun submitReplyWithError(isReplyToPost: Boolean): String? {
         val (parentId, result) = submitReply() ?: return null
@@ -316,18 +343,6 @@ class CommentViewModel(
     }
 
     // ==================== CRUD Operations (Callback-based for flat lists) ====================
-
-    fun saveCommentWithCallback(
-        comment: Comment,
-        onSuccess: (Comment) -> Unit,
-    ) {
-        viewModelScope.launch {
-            val result = commentRepository.save(comment)
-            result.onSuccess { updatedComment ->
-                onSuccess(updatedComment)
-            }
-        }
-    }
 
     fun submitReplyWithCallback(onSuccess: (Comment) -> Unit) {
         viewModelScope.launch {

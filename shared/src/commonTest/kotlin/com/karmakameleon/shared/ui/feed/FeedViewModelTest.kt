@@ -3,6 +3,7 @@ package com.karmakameleon.shared.ui.feed
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
@@ -14,10 +15,12 @@ import com.karmakameleon.shared.testing.FakeAuthManager
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -33,6 +36,7 @@ class FeedViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var fakeApi: FakeRedditApi
     private lateinit var postRepo: PostRepository
+    private lateinit var actionRepo: ActionRepository
     private lateinit var userRepo: UserRepository
     private lateinit var settingsRepo: SettingsRepository
     private lateinit var viewModel: FeedViewModel
@@ -45,7 +49,8 @@ class FeedViewModelTest {
         settingsRepo = SettingsRepository(MapSettings())
         postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
         userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
-        viewModel = FeedViewModel(postRepo, userRepo, settingsRepo)
+        actionRepo = ActionRepository(fakeApi, MutableStateFlow(true))
+        viewModel = FeedViewModel(postRepo, actionRepo, userRepo, settingsRepo)
     }
 
     @AfterTest
@@ -539,6 +544,32 @@ class FeedViewModelTest {
             )
         }
 
+    @Test
+    fun hide_bringsThePostBackWhenItFails() =
+        runTest {
+            loadPosts(createTestPost(id = "1"), createTestPost(id = "2"))
+            fakeApi.hideResult = false
+            fakeApi.actionDelayMillis = 1_000
+
+            viewModel.postList.hide(
+                viewModel.postList.state.value.posts
+                    .first(),
+            )
+            runCurrent()
+
+            assertEquals(
+                listOf("2"),
+                viewModel.postList.state.value.posts
+                    .map { it.id },
+            )
+            advanceUntilIdle()
+            assertEquals(
+                listOf("1", "2"),
+                viewModel.postList.state.value.posts
+                    .map { it.id },
+            )
+        }
+
     // ==================== Error Handling ====================
 
     @Test
@@ -550,14 +581,14 @@ class FeedViewModelTest {
 
     // ==================== Post Updates ====================
 
-    // These change the post through the repository, as another screen would, so only the post updates reach the list.
+    // These change the post through the repository, as another screen would, so only its changes reach the list.
 
     @Test
-    fun postUpdates_updatesExistingPost() =
+    fun changesFromOtherScreens_updateThePost() =
         runTest {
             loadPosts(createTestPost(id = "1", likes = null), createTestPost(id = "2", likes = null))
 
-            postRepo.vote(
+            actionRepo.vote(
                 viewModel.postList.state.value.posts
                     .first(),
                 1,
@@ -572,11 +603,11 @@ class FeedViewModelTest {
         }
 
     @Test
-    fun postUpdates_removesHiddenPost() =
+    fun changesFromOtherScreens_removeAHiddenPost() =
         runTest {
             loadPosts(createTestPost(id = "1"), createTestPost(id = "2"))
 
-            postRepo.hide(
+            actionRepo.toggleHide(
                 viewModel.postList.state.value.posts
                     .first(),
             )

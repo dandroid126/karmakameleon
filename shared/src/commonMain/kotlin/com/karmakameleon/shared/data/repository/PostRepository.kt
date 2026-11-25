@@ -15,10 +15,7 @@ import com.karmakameleon.shared.util.runSuspendCatching
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.update
 
 class PostRepository(
@@ -26,8 +23,6 @@ class PostRepository(
     private val markdownRepository: MarkdownRepository,
 ) {
     private val cachedPosts = MutableStateFlow<Map<String, Post>>(emptyMap())
-    private val _postUpdates = MutableSharedFlow<Post>(extraBufferCapacity = 16)
-    val postUpdates: SharedFlow<Post> = _postUpdates.asSharedFlow()
 
     suspend fun getPosts(
         subreddit: String? = null,
@@ -216,52 +211,6 @@ class PostRepository(
         comments.filterIsInstance<CommentOrMore.CommentItem>().forEach { addThread(it.comment) }
         markdownRepository.parseAll(texts)
     }
-
-    suspend fun vote(
-        post: Post,
-        direction: Int,
-    ): Result<Post> =
-        runSuspendCatching {
-            check(redditApi.vote(post.name, direction)) { "Vote failed" }
-            val updatedPost =
-                post.copy(
-                    likes = voteToLikes(direction),
-                    score = post.score + direction - likesToVote(post.likes),
-                )
-            cachedPosts.update { it + (post.id to updatedPost) }
-            _postUpdates.emit(updatedPost)
-            updatedPost
-        }
-
-    suspend fun save(post: Post): Result<Post> =
-        runSuspendCatching {
-            val success =
-                if (post.isSaved) {
-                    redditApi.unsave(post.name)
-                } else {
-                    redditApi.save(post.name)
-                }
-            check(success) { "Save failed" }
-            val updatedPost = post.copy(isSaved = !post.isSaved)
-            cachedPosts.update { it + (post.id to updatedPost) }
-            _postUpdates.emit(updatedPost)
-            updatedPost
-        }
-
-    suspend fun hide(post: Post): Result<Post> =
-        runSuspendCatching {
-            val success =
-                if (post.isHidden) {
-                    redditApi.unhide(post.name)
-                } else {
-                    redditApi.hide(post.name)
-                }
-            check(success) { "Hide failed" }
-            val updatedPost = post.copy(isHidden = !post.isHidden)
-            cachedPosts.update { it + (post.id to updatedPost) }
-            _postUpdates.emit(updatedPost)
-            updatedPost
-        }
 
     suspend fun search(
         query: String,

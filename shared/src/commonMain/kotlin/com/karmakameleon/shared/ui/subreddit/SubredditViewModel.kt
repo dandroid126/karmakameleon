@@ -2,6 +2,7 @@ package com.karmakameleon.shared.ui.subreddit
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
@@ -23,13 +24,17 @@ class SubredditViewModel(
     private val subredditName: String,
     private val subredditRepository: SubredditRepository,
     postRepository: PostRepository,
+    actionRepository: ActionRepository,
     private val userRepository: UserRepository,
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SubredditUiState())
     val uiState: StateFlow<SubredditUiState> = _uiState.asStateFlow()
 
-    val postList = PostList(viewModelScope, postRepository, settingsRepository, hideBlockedSubreddits = false) { subredditName }
+    val postList =
+        PostList(viewModelScope, postRepository, actionRepository, settingsRepository, hideBlockedSubreddits = false) {
+            subredditName
+        }
 
     init {
         viewModelScope.launch {

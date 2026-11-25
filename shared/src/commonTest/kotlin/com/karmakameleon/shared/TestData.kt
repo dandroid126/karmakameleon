@@ -17,7 +17,7 @@ import com.karmakameleon.shared.domain.model.UserSubreddit
 
 fun createTestPost(
     id: String = "abc123",
-    name: String = "t3_abc123",
+    name: String = "t3_$id",
     title: String = "Test Post Title",
     author: String = "testuser",
     subreddit: String = "testsubreddit",
@@ -107,7 +107,7 @@ fun createTestPost(
 
 fun createTestComment(
     id: String = "comment1",
-    name: String = "t1_comment1",
+    name: String = "t1_$id",
     parentId: String = "t3_abc123",
     linkId: String = "t3_abc123",
     author: String = "commenter",
@@ -269,7 +269,7 @@ fun createTestUser(
 
 fun createTestMessage(
     id: String = "msg1",
-    name: String = "t4_msg1",
+    name: String = "t4_$id",
     author: String? = "sender",
     dest: String = "testuser",
     subject: String = "Test Subject",

@@ -9,6 +9,7 @@ import com.karmakameleon.shared.createTestSubreddit
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApiException
+import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
 import com.karmakameleon.shared.data.repository.MarkdownRepository
@@ -19,9 +20,11 @@ import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.testing.FakeAuthManager
+import com.karmakameleon.shared.ui.comment.CommentViewModel
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -43,6 +46,9 @@ class PostDetailViewModelTest {
     private val postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
     private val settingsRepo = SettingsRepository(MapSettings())
     private val draftRepo = CommentDraftRepository(MapSettings())
+
+    // Made on first use, after setup sets the Main dispatcher, which it sends its requests on.
+    private val actionRepo by lazy { ActionRepository(fakeApi, MutableStateFlow(true)) }
     private val post = createTestPost(id = "abc123", name = "t3_abc123", title = "A title", selfText = "Some text")
 
     @BeforeTest
@@ -69,9 +75,9 @@ class PostDetailViewModelTest {
         PostDetailViewModel(
             target,
             postRepo,
-            CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)),
+            actionRepo,
+            CommentViewModel(CommentRepository(fakeApi, MarkdownRepository(Dispatchers.Main)), actionRepo, draftRepo),
             userRepo,
-            draftRepo,
             settingsRepo,
             SubredditRepository(fakeApi, settingsRepo),
         )
@@ -463,18 +469,45 @@ class PostDetailViewModelTest {
         }
 
     @Test
-    fun votePost_showsTheError() =
+    fun votePost_isUndoneWhenRedditRefuses() =
         runTest {
             val viewModel = createViewModel()
             advanceUntilIdle()
+            val post = viewModel.uiState.value.post
             fakeApi.shouldThrow = RedditApiException("THREAD_LOCKED", "you are not allowed to do that")
 
             viewModel.votePost(1)
             advanceUntilIdle()
 
-            assertEquals("you are not allowed to do that", viewModel.uiState.value.actionError)
-            viewModel.clearActionError()
-            assertNull(viewModel.uiState.value.actionError)
+            assertEquals(post, viewModel.uiState.value.post)
+        }
+
+    @Test
+    fun voteOnAComment_showsInTheThread() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            viewModel.commentViewModel.voteComment(comment("c1"), 1)
+            advanceUntilIdle()
+
+            assertEquals(true, viewModel.commentViewModel.findCommentById("c1")?.likes)
+        }
+
+    @Test
+    fun voteMadeOnAnotherScreen_showsOnThePost() =
+        runTest {
+            val viewModel = createViewModel()
+            advanceUntilIdle()
+
+            actionRepo.vote(post, -1)
+            advanceUntilIdle()
+
+            assertEquals(
+                false,
+                viewModel.uiState.value.post
+                    ?.likes,
+            )
         }
 
     @Test

@@ -7,8 +7,10 @@ import com.karmakameleon.android.ui.components.TableColumnWidths
 import com.karmakameleon.android.ui.menu.GlobalMenuManager
 import com.karmakameleon.shared.data.backup.BackupFiles
 import com.karmakameleon.shared.data.media.ImageFiles
+import com.karmakameleon.shared.data.repository.CommentImageRepository
 import com.karmakameleon.shared.di.platformModule
 import com.karmakameleon.shared.di.sharedModule
+import com.karmakameleon.shared.ui.comment.CommentViewModel
 import com.karmakameleon.shared.ui.feed.FeedViewModel
 import com.karmakameleon.shared.ui.inbox.InboxViewModel
 import com.karmakameleon.shared.ui.post.PostDetailViewModel
@@ -27,11 +29,13 @@ val androidModule =
         single<BackupFiles> { ContentResolverBackupFiles(androidContext().contentResolver) }
         single<ImageFiles> { ContentResolverImageFiles(androidContext().contentResolver) }
         // ViewModels (Android-specific registration using viewModel DSL)
-        viewModel { FeedViewModel(get(), get(), get()) }
-        viewModel { params -> PostDetailViewModel(params.get(), get(), get(), get(), get(), get(), get(), get()) }
-        viewModel { params -> SubredditViewModel(params.get(), get(), get(), get(), get()) }
+        viewModel { FeedViewModel(get(), get(), get(), get()) }
+        // A post screen's comments, which its view model holds.
+        factory { CommentViewModel(get(), get(), get(), get<CommentImageRepository>()) }
+        viewModel { params -> PostDetailViewModel(params.get(), get(), get(), get(), get(), get(), get()) }
+        viewModel { params -> SubredditViewModel(params.get(), get(), get(), get(), get(), get()) }
         viewModel { ProfileViewModel(get(), get(), get(), get()) }
-        viewModel { InboxViewModel(get(), get(), get()) }
+        viewModel { InboxViewModel(get(), get(), get(), get()) }
         viewModel { SearchViewModel(get(), get(), get()) }
     }
 

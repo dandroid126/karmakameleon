@@ -43,10 +43,9 @@ fun testComment(): Comment {
     )
 }
 
-/** Records which of a comment's actions ran, in order, and the comments it was updated to. */
+/** Records which of a comment's actions ran, in order. */
 class RecordedCommentActions {
     val calls = mutableListOf<String>()
-    val updatedComments = mutableListOf<Comment>()
 
     val actions =
         CommentActions(
@@ -57,7 +56,7 @@ class RecordedCommentActions {
             onEdit = { calls += "edit" },
             onDelete = { calls += "delete" },
             onSave = { calls += "save" },
-            onCommentUpdated = { updatedComments += it },
+            onVote = { calls += "vote $it" },
             onGoToCommentNav = { calls += "go to $it" },
             onHide = { calls += "hide" },
             onPrev = { calls += "prev" },
