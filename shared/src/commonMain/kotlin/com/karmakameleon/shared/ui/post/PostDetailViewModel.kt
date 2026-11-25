@@ -71,6 +71,17 @@ class PostDetailViewModel(
     init {
         postRepository.getCachedPost(postId)?.let { cachedPost ->
             _uiState.update { it.copy(post = shown(cachedPost)) }
+            // A post from a feed has its text unparsed, and parsing it is quicker than loading the post again.
+            if (cachedPost.selfTextBlocks == null) {
+                viewModelScope.launch {
+                    val blocks = postRepository.withParsedSelfText(cachedPost).selfTextBlocks
+                    _uiState.update { state ->
+                        // Unless the post has loaded in the meantime, with its text parsed.
+                        val post = state.post?.takeIf { it.selfTextBlocks == null } ?: return@update state
+                        state.copy(post = post.copy(selfTextBlocks = blocks))
+                    }
+                }
+            }
         }
         viewModelScope.launch {
             actionRepository.changes.collect { changes ->

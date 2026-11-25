@@ -66,6 +66,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -82,6 +83,8 @@ open class RedditApi(
     private val authManager: AuthManager,
     private val settingsRepository: SettingsRepository? = null,
     ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    // Where comments are read, which parses their text: off the main thread, which a long thread would hold up.
+    private val parseDispatcher: CoroutineDispatcher = Dispatchers.Default,
     // Share links are resolved by reading where they redirect to, so this client doesn't follow redirects.
     createShareLinkClient: () -> HttpClient,
 ) {
@@ -268,7 +271,7 @@ open class RedditApi(
             )
         // The second listing holds the comments; it is missing when the post has none.
         val commentChildren = listings.getOrNull(1)?.data?.children
-        val comments = parser.commentsOrMore(commentChildren.orEmpty())
+        val comments = withContext(parseDispatcher) { parser.commentsOrMore(commentChildren.orEmpty()) }
         return post to comments
     }
 
@@ -396,7 +399,7 @@ open class RedditApi(
         timeFilter: TimeFilter? = null,
         after: String? = null,
         limit: Int = 25,
-    ): Listing<Comment> = parser.commentListing(getListing("/user/$username/comments") { userContent(sort, timeFilter, after, limit) })
+    ): Listing<Comment> = readComments(getListing("/user/$username/comments") { userContent(sort, timeFilter, after, limit) })
 
     open suspend fun getSavedPosts(
         username: String,
@@ -415,7 +418,7 @@ open class RedditApi(
         after: String? = null,
         limit: Int = 25,
     ): Listing<Comment> =
-        parser.commentListing(
+        readComments(
             getListing("/user/$username/saved") {
                 parameter("type", "comments")
                 page(after, limit)
@@ -477,8 +480,10 @@ open class RedditApi(
         val response = postForm("/api/comment", "api_type" to "json", "thing_id" to parentId, content)
         // Reddit reports errors such as rate limits in the body, with a success status too.
         parser.parseApiErrors(response.body)?.let { throw it }
-        return if (response.isSuccess) parser.submittedComment(response.body) else null
+        return if (response.isSuccess) withContext(parseDispatcher) { parser.submittedComment(response.body) } else null
     }
+
+    private suspend fun readComments(data: ListingData): Listing<Comment> = withContext(parseDispatcher) { parser.commentListing(data) }
 
     /**
      * Converts a comment's markdown to Reddit's richtext document. An uploaded image goes in the markdown as

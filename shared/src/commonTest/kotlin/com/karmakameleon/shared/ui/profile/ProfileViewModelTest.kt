@@ -6,13 +6,13 @@ import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.repository.ActionRepository
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Post
 import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -44,7 +44,7 @@ class ProfileViewModelTest {
         fakeApi = FakeRedditApi()
         fakeAuthManager = FakeAuthManager()
         actionRepo = testActionRepository(fakeApi)
-        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
+        userRepo = UserRepository(fakeApi, fakeAuthManager)
         viewModel = ProfileViewModel(userRepo, actionRepo, fakeAuthManager)
     }
 

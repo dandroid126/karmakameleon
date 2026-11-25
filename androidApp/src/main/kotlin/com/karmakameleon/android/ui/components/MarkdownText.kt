@@ -20,7 +20,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,27 +56,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import coil3.compose.AsyncImage
 import com.karmakameleon.android.navigation.NavigationHandler
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.markdown.MarkdownInline
 import org.koin.compose.koinInject
 
 @Composable
 fun MarkdownText(
-    markdown: String,
+    blocks: List<MarkdownBlock>,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodyMedium,
     onTextClick: (() -> Unit)? = null,
     renderInlineImages: Boolean = true,
     onImageClick: (String) -> Unit = {},
     navigationHandler: NavigationHandler = koinInject(),
-    markdownRepository: MarkdownRepository = koinInject(),
 ) {
-    // Text that hasn't been parsed yet is parsed off the main thread, and shows once it's ready. Keyed on the text, so
-    // when it changes in place, like an edited comment, the old text isn't shown in the meantime.
-    val parsed = remember(markdown) { mutableStateOf(markdownRepository.cached(markdown)) }
-    LaunchedEffect(markdown) { parsed.value = markdownRepository.parse(markdown) }
-    val blocks by parsed
     // The same objects while only the callbacks change, so a recomposition of the screen around unchanged text (a vote,
     // or hiding the post body) can skip its blocks. Callers usually pass new lambdas each time.
     val currentOnImageClick by rememberUpdatedState(onImageClick)
@@ -95,7 +87,7 @@ fun MarkdownText(
     val hasTextClick = onTextClick != null
     val textClick: (() -> Unit)? = remember(hasTextClick) { if (hasTextClick) ({ currentOnTextClick?.invoke() }) else null }
     Column(modifier = modifier) {
-        for (block in blocks.orEmpty()) {
+        for (block in blocks) {
             RenderBlock(block = block, style = style, rendering = rendering, onTextClick = textClick)
         }
     }

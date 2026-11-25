@@ -11,6 +11,7 @@ import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.SearchSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.util.RedditLink
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import com.karmakameleon.shared.util.runSuspendCatching
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -20,7 +21,7 @@ import kotlinx.coroutines.flow.update
 
 class PostRepository(
     private val redditApi: RedditApi,
-    private val markdownRepository: MarkdownRepository,
+    private val markdownParser: MarkdownParser,
 ) {
     private val cachedPosts = MutableStateFlow<Map<String, Post>>(emptyMap())
 
@@ -86,9 +87,9 @@ class PostRepository(
     ): Result<Pair<Post, List<CommentOrMore>>> =
         runSuspendCatching {
             val result = redditApi.getPostWithComments(subreddit, postId, sort, commentId = commentId, context = context)
-            val post = preserveCachedPreviewData(result.first)
+            // Its comments' text is parsed already, as they were read.
+            val post = markdownParser.withParsedSelfText(preserveCachedPreviewData(result.first))
             cachedPosts.update { it + (postId to post) }
-            parseMarkdown(post, result.second)
             post to result.second
         }
 
@@ -148,7 +149,6 @@ class PostRepository(
                 }
             }
             failure?.takeIf { threads.isEmpty() }?.let { throw it }
-            parseMarkdown(post = null, threads)
             val remaining =
                 more.children
                     .filter { it !in loadedIds && it !in inThreadMoreIds }
@@ -195,23 +195,6 @@ class PostRepository(
             CommentOrMore.More(copy(children = it, count = maxOf(it.size, count - loadedCount)))
         }
 
-    // Parses the text of the post and of the comments and their replies before they're shown, so the screen doesn't
-    // parse them while drawing.
-    private suspend fun parseMarkdown(
-        post: Post?,
-        comments: List<CommentOrMore>,
-    ) {
-        val texts = mutableListOf<String>()
-        post?.selfText?.let(texts::add)
-
-        fun addThread(comment: Comment) {
-            texts += comment.body
-            comment.replies.forEach(::addThread)
-        }
-        comments.filterIsInstance<CommentOrMore.CommentItem>().forEach { addThread(it.comment) }
-        markdownRepository.parseAll(texts)
-    }
-
     suspend fun search(
         query: String,
         subreddit: String? = null,
@@ -234,6 +217,9 @@ class PostRepository(
         }
 
     fun getCachedPost(postId: String): Post? = cachedPosts.value[postId]
+
+    /** [post] with its text parsed, like a post [getPostWithComments] returns, for a post that came from a feed. */
+    suspend fun withParsedSelfText(post: Post): Post = markdownParser.withParsedSelfText(post)
 }
 
 // How many requests one tap on a "load more" button can make, and how many of them run at a time.

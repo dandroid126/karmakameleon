@@ -9,11 +9,11 @@ import com.karmakameleon.shared.data.media.ImageReadException
 import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.CommentImageRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.errorsOf
 import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.MockReddit
 import com.karmakameleon.shared.testing.form
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockEngineConfig

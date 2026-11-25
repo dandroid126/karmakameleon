@@ -7,8 +7,9 @@ import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentEdit
 import com.karmakameleon.shared.data.repository.ItemChanges
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.testActionRepository
+import com.karmakameleon.shared.util.markdown.MarkdownParser
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -317,10 +318,13 @@ class CommentViewModelTest {
         val comment = createTestComment(id = "c1", body = "original")
         viewModel.setComments(listOf(CommentOrMore.CommentItem(comment)))
 
-        viewModel.showChanges(mapOf("t1_c1" to ItemChanges(edit = CommentEdit("updated", "updated"))))
+        viewModel.showChanges(
+            mapOf("t1_c1" to ItemChanges(edit = CommentEdit("**updated**", parseMarkdownBlocks("**updated**"), "**updated**"))),
+        )
 
         val result = (viewModel.uiState.value.comments[0] as CommentOrMore.CommentItem).comment
-        assertEquals("updated", result.body)
+        assertEquals("**updated**", result.body)
+        assertEquals(parseMarkdownBlocks("**updated**"), result.bodyBlocks)
     }
 
     @Test

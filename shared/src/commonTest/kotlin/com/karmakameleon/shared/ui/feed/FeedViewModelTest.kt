@@ -4,7 +4,6 @@ import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.repository.ActionRepository
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.UserRepository
@@ -13,6 +12,7 @@ import com.karmakameleon.shared.domain.model.PostSort
 import com.karmakameleon.shared.domain.model.TimeFilter
 import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,8 +47,8 @@ class FeedViewModelTest {
         val fakeAuthManager = FakeAuthManager()
         fakeApi = FakeRedditApi(fakeAuthManager)
         settingsRepo = SettingsRepository(MapSettings())
-        postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
-        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
+        postRepo = PostRepository(fakeApi, MarkdownParser(testDispatcher))
+        userRepo = UserRepository(fakeApi, fakeAuthManager)
         actionRepo = testActionRepository(fakeApi)
         viewModel = FeedViewModel(postRepo, actionRepo, userRepo, settingsRepo)
     }

@@ -1,8 +1,8 @@
 package com.karmakameleon.android.ui.components
 
 import com.karmakameleon.android.navigation.NavigationHandler
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import kotlinx.coroutines.Dispatchers
 import org.junit.rules.ExternalResource
 import org.koin.core.context.startKoin
@@ -12,13 +12,15 @@ import org.koin.dsl.module
 // A top-level comment. Tests change what they need with copy().
 fun testComment(): Comment {
     val created = threeHoursAgo
+    val body = "Sealed classes are great, but **value classes** are underrated."
     return Comment(
         id = "c1",
         name = "t1_c1",
         parentId = "t3_abc123",
         linkId = "t3_abc123",
         author = "commenter",
-        body = "Sealed classes are great, but **value classes** are underrated.",
+        body = body,
+        bodyBlocks = parseMarkdownBlocks(body),
         bodyHtml = "",
         score = 42,
         created = created,
@@ -69,8 +71,8 @@ class RecordedCommentActions {
 }
 
 /**
- * Gives the components what they get from Koin: a [NavigationHandler] that records where it was asked to go, and a
- * [MarkdownRepository].
+ * Gives the components what they get from Koin: a [NavigationHandler] that records where it was asked to go, and the
+ * tables' [TableColumnWidths].
  */
 class NavigationRule : ExternalResource() {
     val calls = mutableListOf<String>()
@@ -87,9 +89,6 @@ class NavigationRule : ExternalResource() {
             modules(
                 module {
                     single { handler }
-                    // Parses on the main thread, which the Compose test rule waits for, so the text is shown by the time
-                    // the test looks at it.
-                    single { MarkdownRepository(Dispatchers.Main) }
                     single { TableColumnWidths(Dispatchers.Main) }
                 },
             )

@@ -15,6 +15,7 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.compose.ui.text.AnnotatedString
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -39,7 +40,7 @@ class MarkdownTableTest {
     private fun show(markdown: String) {
         composeRule.setContent {
             KarmaKameleonTheme(dynamicColor = false) {
-                MarkdownText(markdown = markdown, onTextClick = { calls += "text" })
+                MarkdownText(blocks = parseMarkdownBlocks(markdown), onTextClick = { calls += "text" })
             }
         }
     }

@@ -7,6 +7,7 @@ import com.karmakameleon.shared.data.media.ImageFiles
 import com.karmakameleon.shared.data.media.ImageReadException
 import com.karmakameleon.shared.testing.MockReddit
 import com.karmakameleon.shared.testing.form
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -29,7 +30,7 @@ class CommentImageRepositoryTest {
     private val reddit = MockReddit()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val markdown = MarkdownRepository(UnconfinedTestDispatcher())
+    private val markdown = MarkdownParser(UnconfinedTestDispatcher())
 
     private val photo = ImageFile("photo.jpeg", "image/jpeg", byteArrayOf(1, 2, 3))
 

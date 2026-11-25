@@ -7,7 +7,6 @@ import com.karmakameleon.shared.createTestMessage
 import com.karmakameleon.shared.createTestUser
 import com.karmakameleon.shared.data.repository.ActionRepository
 import com.karmakameleon.shared.data.repository.InboxPoller
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.MessageRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.InboxFilter
@@ -15,6 +14,7 @@ import com.karmakameleon.shared.domain.model.Message
 import com.karmakameleon.shared.errorsOf
 import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -50,7 +50,7 @@ class InboxViewModelTest {
         fakeApi = FakeRedditApi(fakeAuthManager)
         messageRepo = MessageRepository(fakeApi)
         actionRepo = testActionRepository(fakeApi)
-        userRepo = UserRepository(fakeApi, fakeAuthManager, MarkdownRepository(Dispatchers.Main))
+        userRepo = UserRepository(fakeApi, fakeAuthManager)
         inboxPoller = InboxPoller(messageRepo, fakeAuthManager)
         viewModel = InboxViewModel(messageRepo, actionRepo, userRepo, inboxPoller)
     }

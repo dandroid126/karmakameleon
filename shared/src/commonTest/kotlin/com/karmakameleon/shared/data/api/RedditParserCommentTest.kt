@@ -5,6 +5,7 @@ import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.FlairRichtext
 import com.karmakameleon.shared.domain.model.MoreComments
 import com.karmakameleon.shared.testing.readFixture
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
@@ -204,6 +205,14 @@ class RedditParserCommentTest {
             "Look: ![img](https://i.redd.it/2sh3c89s183i1.gif)\n\n![img](https://preview.redd.it/abc.png?s=1) *Processing img gone...*",
             commentWithPlaceholder(status = "valid").body,
         )
+    }
+
+    // So the comment's text shows on its first frame, with its images.
+    @Test
+    fun comment_comesWithTheTextItShowsParsed() {
+        val comment = commentWithPlaceholder(status = "valid")
+
+        assertEquals(parseMarkdownBlocks(comment.body), comment.bodyBlocks)
     }
 
     @Test

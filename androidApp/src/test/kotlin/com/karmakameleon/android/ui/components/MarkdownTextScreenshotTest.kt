@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -248,7 +249,11 @@ class MarkdownTextScreenshotTest {
             KarmaKameleonTheme(darkTheme = darkTheme, dynamicColor = false) {
                 CompositionLocalProvider(LocalDensity provides density, LocalLayoutDirection provides layoutDirection) {
                     Surface(color = MaterialTheme.colorScheme.background) {
-                        MarkdownText(markdown = markdown, renderInlineImages = renderInlineImages, modifier = Modifier.padding(8.dp))
+                        MarkdownText(
+                            blocks = parseMarkdownBlocks(markdown),
+                            renderInlineImages = renderInlineImages,
+                            modifier = Modifier.padding(8.dp),
+                        )
                     }
                 }
             }

@@ -20,7 +20,6 @@ import kotlinx.coroutines.launch
 class UserRepository(
     private val redditApi: RedditApi,
     private val authManager: AuthManager,
-    private val markdownRepository: MarkdownRepository,
     scope: CoroutineScope = CoroutineScope(Dispatchers.Default),
 ) {
     private val _currentAccount = MutableStateFlow<User?>(null)
@@ -62,7 +61,7 @@ class UserRepository(
         sort: PostSort = PostSort.NEW,
         timeFilter: TimeFilter? = null,
         after: String? = null,
-    ): Result<Listing<Comment>> = runSuspendCatching { redditApi.getUserComments(username, sort, timeFilter, after).withParsedBodies() }
+    ): Result<Listing<Comment>> = runSuspendCatching { redditApi.getUserComments(username, sort, timeFilter, after) }
 
     suspend fun getSavedPosts(after: String? = null): Result<Listing<Post>> {
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
@@ -71,13 +70,8 @@ class UserRepository(
 
     suspend fun getSavedComments(after: String? = null): Result<Listing<Comment>> {
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))
-        return runSuspendCatching { redditApi.getSavedComments(username, after).withParsedBodies() }
+        return runSuspendCatching { redditApi.getSavedComments(username, after) }
     }
-
-    // Parses the comments' text before they're shown, so the screen shows it on its first frame without parsing it
-    // while drawing.
-    private suspend fun Listing<Comment>.withParsedBodies(): Listing<Comment> =
-        also { markdownRepository.parseAll(items.map(Comment::body)) }
 
     suspend fun getUpvotedPosts(after: String? = null): Result<Listing<Post>> {
         val username = _currentAccount.value?.name ?: return Result.failure(Exception("Not logged in"))

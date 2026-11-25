@@ -8,6 +8,8 @@ import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.domain.model.CommentSort
 import com.karmakameleon.shared.util.RedditLink
+import com.karmakameleon.shared.util.markdown.MarkdownParser
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -21,7 +23,7 @@ import kotlin.test.assertTrue
 class PostRepositoryTest {
     // Parses as soon as it's asked to, so the texts are cached by the time a call returns.
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val markdown = MarkdownRepository(UnconfinedTestDispatcher())
+    private val markdown = MarkdownParser(UnconfinedTestDispatcher())
 
     private fun createRepo(api: FakeRedditApi = FakeRedditApi()) = PostRepository(api, markdown) to api
 
@@ -127,19 +129,26 @@ class PostRepositoryTest {
         }
 
     @Test
-    fun getPostWithComments_parsesThePostAndEveryCommentBeforeReturning() =
+    fun getPostWithComments_parsesThePostsText() =
         runTest {
             val (repo, api) = createRepo()
-            val reply = createTestComment(id = "c2", body = "a *reply*")
-            val comment = createTestComment(id = "c1", body = "a **comment**", replies = listOf(reply))
-            api.postWithCommentsResult = createTestPost(id = "p1", selfText = "the post") to listOf(CommentOrMore.CommentItem(comment))
+            api.postWithCommentsResult = createTestPost(id = "p1", selfText = "the **post**") to emptyList()
 
-            repo.getPostWithComments("sub", "p1")
+            val post = repo.getPostWithComments("sub", "p1").getOrThrow().first
 
-            // So the screen doesn't parse them while drawing.
-            assertNotNull(markdown.cached("the post"))
-            assertNotNull(markdown.cached("a **comment**"))
-            assertNotNull(markdown.cached("a *reply*"))
+            // So the screen doesn't parse it while drawing.
+            assertEquals(parseMarkdownBlocks("the **post**"), post.selfTextBlocks)
+            assertEquals(post, repo.getCachedPost("p1"))
+        }
+
+    @Test
+    fun withParsedSelfText_parsesAFeedPostsText() =
+        runTest {
+            val (repo, _) = createRepo()
+            val post = createTestPost(selfText = "a *feed* post")
+
+            assertEquals(null, post.selfTextBlocks)
+            assertEquals(parseMarkdownBlocks("a *feed* post"), repo.withParsedSelfText(post).selfTextBlocks)
         }
 
     // ==================== getMoreComments ====================
@@ -162,7 +171,6 @@ class PostRepositoryTest {
                     .single()
                     .depth,
             )
-            assertNotNull(markdown.cached(thread.body))
         }
 
     @Test

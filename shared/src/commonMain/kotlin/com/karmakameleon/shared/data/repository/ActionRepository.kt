@@ -2,6 +2,7 @@ package com.karmakameleon.shared.data.repository
 
 import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApi
+import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.Message
 import com.karmakameleon.shared.domain.model.Post
@@ -34,9 +35,10 @@ data class ItemChanges(
     val isDeleted: Boolean = false,
 )
 
-/** A comment's text after an edit: [body] is what it shows, [sourceBody] the markdown the user wrote. */
+/** A comment's text after an edit: [body] is what it shows, parsed in [bodyBlocks], and [sourceBody] the markdown the user wrote. */
 data class CommentEdit(
     val body: String,
+    val bodyBlocks: List<MarkdownBlock>,
     val sourceBody: String,
 )
 
@@ -196,7 +198,7 @@ class ActionRepository(
         text: String,
     ): Boolean {
         val edited = reportingFailure("Edit failed") { commentRepository.editComment(comment, text).getOrThrow() } ?: return false
-        change(comment.name) { it.copy(edit = CommentEdit(edited.body, edited.sourceBody)) }
+        change(comment.name) { it.copy(edit = CommentEdit(edited.body, edited.bodyBlocks, edited.sourceBody)) }
         return true
     }
 
@@ -328,6 +330,7 @@ fun Comment.withChanges(changes: Map<String, ItemChanges>): Comment {
             score = score + likesToVote(likes) - likesToVote(this.likes),
             isSaved = change.isSaved ?: isSaved,
             body = change.edit?.body ?: body,
+            bodyBlocks = change.edit?.bodyBlocks ?: bodyBlocks,
             sourceBody = change.edit?.sourceBody ?: sourceBody,
         )
     return if (changed == withReplies) withReplies else changed

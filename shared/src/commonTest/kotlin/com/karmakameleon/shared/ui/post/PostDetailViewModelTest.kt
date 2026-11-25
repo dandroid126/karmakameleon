@@ -3,6 +3,7 @@ package com.karmakameleon.shared.ui.post
 import com.karmakameleon.shared.FakeRedditApi
 import com.karmakameleon.shared.FakeRedditApi.CommentsRequest
 import com.karmakameleon.shared.createTestComment
+import com.karmakameleon.shared.createTestListing
 import com.karmakameleon.shared.createTestMoreComments
 import com.karmakameleon.shared.createTestPost
 import com.karmakameleon.shared.createTestSubreddit
@@ -11,17 +12,18 @@ import com.karmakameleon.shared.data.api.CommentOrMore
 import com.karmakameleon.shared.data.api.RedditApiException
 import com.karmakameleon.shared.data.repository.CommentDraftRepository
 import com.karmakameleon.shared.data.repository.CommentRepository
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.data.repository.PostRepository
 import com.karmakameleon.shared.data.repository.SettingsRepository
 import com.karmakameleon.shared.data.repository.SubredditRepository
 import com.karmakameleon.shared.data.repository.UserRepository
 import com.karmakameleon.shared.domain.model.Comment
 import com.karmakameleon.shared.domain.model.CommentSort
+import com.karmakameleon.shared.domain.model.withParsedSelfText
 import com.karmakameleon.shared.errorsOf
 import com.karmakameleon.shared.testActionRepository
 import com.karmakameleon.shared.testing.FakeAuthManager
 import com.karmakameleon.shared.ui.comment.CommentViewModel
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import com.russhwolf.settings.MapSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -43,7 +45,7 @@ class PostDetailViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val authManager = FakeAuthManager()
     private val fakeApi = FakeRedditApi(authManager)
-    private val postRepo = PostRepository(fakeApi, MarkdownRepository(testDispatcher))
+    private val postRepo = PostRepository(fakeApi, MarkdownParser(testDispatcher))
     private val settingsRepo = SettingsRepository(MapSettings())
     private val draftRepo = CommentDraftRepository(MapSettings())
 
@@ -70,7 +72,7 @@ class PostDetailViewModelTest {
 
     private fun createViewModel(
         target: PostDetailTarget = PostDetailTarget("kotlin", "abc123"),
-        userRepo: UserRepository = UserRepository(fakeApi, authManager, MarkdownRepository(Dispatchers.Main)),
+        userRepo: UserRepository = UserRepository(fakeApi, authManager),
     ): PostDetailViewModel =
         PostDetailViewModel(
             target,
@@ -95,7 +97,7 @@ class PostDetailViewModelTest {
             val viewModel = createViewModel()
             advanceUntilIdle()
 
-            assertEquals(post, viewModel.uiState.value.post)
+            assertEquals(post.withParsedSelfText(), viewModel.uiState.value.post)
             assertEquals(listOf("c1"), viewModel.commentIds())
             assertFalse(viewModel.uiState.value.isLoading)
             assertNull(viewModel.uiState.value.error)
@@ -108,7 +110,22 @@ class PostDetailViewModelTest {
 
             val viewModel = createViewModel()
 
+            assertEquals(post.withParsedSelfText(), viewModel.uiState.value.post)
+        }
+
+    @Test
+    fun init_parsesTheTextOfAPostFromAFeed() =
+        runTest {
+            fakeApi.postsResult = createTestListing(items = listOf(post))
+            postRepo.getPosts("kotlin")
+            // The post doesn't load, so what shows is the feed's post.
+            fakeApi.postWithCommentsResult = null
+
+            val viewModel = createViewModel()
             assertEquals(post, viewModel.uiState.value.post)
+            advanceUntilIdle()
+
+            assertEquals(post.withParsedSelfText(), viewModel.uiState.value.post)
         }
 
     @Test
@@ -186,7 +203,7 @@ class PostDetailViewModelTest {
     fun init_loadsTheAccountOfALoggedInUser() =
         runTest {
             // Logged in, but the account failed to load then.
-            val userRepo = UserRepository(fakeApi, authManager, MarkdownRepository(Dispatchers.Main))
+            val userRepo = UserRepository(fakeApi, authManager)
             userRepo.handleAuthCallback("code")
             fakeApi.meResult = createTestUser(name = "me")
 
@@ -200,7 +217,7 @@ class PostDetailViewModelTest {
     @Test
     fun init_loadsWhatTheSubredditAllowsInCommentsForALoggedInUser() =
         runTest {
-            val userRepo = UserRepository(fakeApi, authManager, MarkdownRepository(Dispatchers.Main))
+            val userRepo = UserRepository(fakeApi, authManager)
             fakeApi.subredditResult = createTestSubreddit(displayName = "kotlin", allowedMediaInComments = setOf("static"))
 
             val viewModel = createViewModel(userRepo = userRepo)

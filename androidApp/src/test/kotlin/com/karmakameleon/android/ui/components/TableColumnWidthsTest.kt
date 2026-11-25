@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
-import com.karmakameleon.shared.data.repository.MarkdownRepository
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import kotlinx.coroutines.CoroutineDispatcher
@@ -73,6 +72,9 @@ class TableColumnWidthsTest {
         > | in | italics |
         """.trimIndent()
 
+    // Parsed once, like a comment's text, so the tables shown are these.
+    private val blocks = parseMarkdownBlocks(markdown)
+
     // Shows the markdown, then checks that each table's widths, which it measured from its cells and kept, are what
     // measureColumns measures for it.
     private fun assertMeasuredLikeTheCells(
@@ -88,32 +90,22 @@ class TableColumnWidthsTest {
                     style = MaterialTheme.typography.bodyMedium
                     val resolver = LocalFontFamilyResolver.current
                     environment = { TableTextEnvironment(it, density, layoutDirection, resolver) }
-                    MarkdownText(markdown = markdown, style = style, modifier = Modifier.width(360.dp))
+                    MarkdownText(blocks = blocks, style = style, modifier = Modifier.width(360.dp))
                 }
             }
         }
         composeRule.waitForIdle()
 
-        val tables = tablesIn(parseMarkdownBlocks(markdown), style)
+        val tables = tablesIn(blocks, style)
         assertEquals(3, tables.size)
         for ((table, tableStyle) in tables) {
-            // The instance the table was shown with, from MarkdownRepository.
-            val shown = shownTable(table)
-            val kept = checkNotNull(widths.get(shown, environment(tableStyle))) { "$table wasn't kept" }
-            val measured = measureColumns(shown, environment(tableStyle))
+            val kept = checkNotNull(widths.get(table, environment(tableStyle))) { "$table wasn't kept" }
+            val measured = measureColumns(table, environment(tableStyle))
             assertArrayEquals(measured.widest, kept.widest)
             kept.narrowest?.let { assertArrayEquals(measured.narrowest, it) }
         }
         // The wide table doesn't fit, so it measured its narrowest widths too.
-        assertNotNull(widths.get(shownTable(tables[1].first), environment(tables[1].second))!!.narrowest)
-    }
-
-    private fun shownTable(table: MarkdownBlock.Table): MarkdownBlock.Table {
-        val repository = GlobalContext.get().get<MarkdownRepository>()
-        val blocks = repository.cached(markdown)!!
-        return (blocks + blocks.filterIsInstance<MarkdownBlock.BlockQuote>().flatMap { it.children })
-            .filterIsInstance<MarkdownBlock.Table>()
-            .single { it == table }
+        assertNotNull(widths.get(tables[1].first, environment(tables[1].second))!!.narrowest)
     }
 
     @Test
@@ -133,18 +125,12 @@ class TableColumnWidthsTest {
                 val style = MaterialTheme.typography.bodyMedium
                 environment =
                     TableTextEnvironment(style, LocalDensity.current, LocalLayoutDirection.current, LocalFontFamilyResolver.current)
-                MeasureTablesAhead(key = markdown, style = style) { listOf(markdown) }
+                MeasureTablesAhead(key = blocks, style = style) { listOf(blocks) }
             }
         }
         composeRule.waitForIdle()
 
-        val table =
-            GlobalContext
-                .get()
-                .get<MarkdownRepository>()
-                .cached(markdown)!!
-                .filterIsInstance<MarkdownBlock.Table>()
-                .first()
+        val table = blocks.filterIsInstance<MarkdownBlock.Table>().first()
         val measured = checkNotNull(widths.get(table, environment))
         assertArrayEquals(measureColumns(table, environment).widest, measured.widest)
     }

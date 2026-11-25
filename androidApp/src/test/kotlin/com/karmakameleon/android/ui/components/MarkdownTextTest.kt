@@ -14,8 +14,7 @@ import androidx.compose.ui.test.performFirstLinkClick
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
-import com.karmakameleon.shared.data.repository.MarkdownRepository
-import kotlinx.coroutines.test.StandardTestDispatcher
+import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -42,7 +41,7 @@ class MarkdownTextTest {
         composeRule.setContent {
             KarmaKameleonTheme(dynamicColor = false) {
                 MarkdownText(
-                    markdown = markdown,
+                    blocks = parseMarkdownBlocks(markdown),
                     onTextClick = { calls += "text" },
                     renderInlineImages = renderInlineImages,
                     onImageClick = { calls += "image $it" },
@@ -59,23 +58,15 @@ class MarkdownTextTest {
 
     @Test
     fun changedTextReplacesTheOldOne() {
-        // Parses only when the test runs the dispatcher, so the test can look while the new text is being parsed.
-        val parsing = StandardTestDispatcher()
-        val repository = MarkdownRepository(parsing)
         // Like a comment edited in place: the same MarkdownText gets a new text.
-        var markdown by mutableStateOf("The **old** text")
+        var blocks by mutableStateOf(parseMarkdownBlocks("The **old** text"))
         composeRule.setContent {
-            KarmaKameleonTheme(dynamicColor = false) { MarkdownText(markdown = markdown, markdownRepository = repository) }
+            KarmaKameleonTheme(dynamicColor = false) { MarkdownText(blocks = blocks) }
         }
-        composeRule.waitForIdle()
-        parsing.scheduler.advanceUntilIdle()
         composeRule.onNodeWithText("The old text").assertExists()
 
-        markdown = "The **new** text"
-        composeRule.waitForIdle()
+        blocks = parseMarkdownBlocks("The **new** text")
         composeRule.onNodeWithText("The old text").assertDoesNotExist()
-
-        parsing.scheduler.advanceUntilIdle()
         composeRule.onNodeWithText("The new text").assertExists()
     }
 
