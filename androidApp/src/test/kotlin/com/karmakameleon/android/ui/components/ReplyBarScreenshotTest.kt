@@ -61,10 +61,11 @@ class ReplyBarScreenshotTest {
         composeRule.onRoot().captureRoboImage("src/test/screenshots/$name.png")
     }
 
+    // With the image button, as in a reply on a post.
     private fun showFormatting(
         replyText: String,
         darkTheme: Boolean,
-        images: ReplyImageActions? = null,
+        images: ReplyImageActions = images(),
     ) {
         show(replyText, images, darkTheme)
         composeRule.onNodeWithContentDescription("Formatting").clickWithoutRipple()

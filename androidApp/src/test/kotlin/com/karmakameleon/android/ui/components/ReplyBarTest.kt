@@ -1,6 +1,7 @@
 package com.karmakameleon.android.ui.components
 
 import android.os.Looper
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,11 +35,13 @@ import com.karmakameleon.shared.ui.comment.ReplyImage
 import com.karmakameleon.shared.ui.comment.ReplyImageStatus
 import com.karmakameleon.shared.ui.comment.previewImageUrl
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 
 @RunWith(RobolectricTestRunner::class)
@@ -108,6 +111,11 @@ class ReplyBarTest {
             composeRule.mainClock.advanceTimeByFrame()
             shadowOf(Looper.getMainLooper()).idle()
         }
+
+    private fun keyboardShown(): Boolean {
+        val keyboard = RuntimeEnvironment.getApplication().getSystemService(InputMethodManager::class.java)
+        return shadowOf(keyboard).isSoftInputVisible
+    }
 
     private fun assertSelection(
         start: Int,
@@ -180,6 +188,8 @@ class ReplyBarTest {
         val link = "[docs](https://e.com/a%20%28b%29)"
         assertEquals("Read the $link now", replyText)
         assertSelection(9 + link.length)
+        assertTrue(field().hasFocus())
+        assertTrue(keyboardShown())
     }
 
     @Test
@@ -207,6 +217,8 @@ class ReplyBarTest {
 
         composeRule.onNodeWithText("Insert link").assertDoesNotExist()
         assertEquals("See ", replyText)
+        assertTrue(field().hasFocus())
+        assertTrue(keyboardShown())
     }
 
     @Test
@@ -234,6 +246,25 @@ class ReplyBarTest {
         composeRule.onNodeWithText("Preview").assertIsNotSelected()
         composeRule.onNodeWithText("Some bold and a link").assertDoesNotExist()
         assertSelection(4)
+    }
+
+    @Test
+    fun preview_hidesTheKeyboard_andLeavingItGivesTheFieldBackTheFocusAndTheKeyboard() {
+        show("Some text")
+        select(4)
+        tap("Formatting")
+        tap("Bold")
+        assertTrue(keyboardShown())
+
+        composeRule.onNodeWithText("Preview").performClick()
+        composeRule.waitForIdle()
+        assertFalse(keyboardShown())
+
+        composeRule.onNodeWithText("Preview").performClick()
+        composeRule.waitForIdle()
+        assertSelection(6)
+        assertTrue(field().hasFocus())
+        assertTrue(keyboardShown())
     }
 
     @Test
