@@ -5,7 +5,9 @@ import android.os.Build
 import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.ViewTreeObserver
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -254,11 +256,28 @@ private class ReplyFieldRef {
         focus()
     }
 
+    // Called as a dialog closes, the field's window doesn't have the focus yet, and the keyboard ignores a field
+    // outside the focused window, so it's shown once the window gets the focus back.
     fun focus() {
-        editText?.apply {
-            requestFocus()
-            context.getSystemService(InputMethodManager::class.java)?.showSoftInput(this, 0)
+        val editText = editText ?: return
+        editText.requestFocus()
+        if (editText.hasWindowFocus()) {
+            editText.showKeyboard()
+        } else {
+            editText.viewTreeObserver.addOnWindowFocusChangeListener(
+                object : ViewTreeObserver.OnWindowFocusChangeListener {
+                    override fun onWindowFocusChanged(hasFocus: Boolean) {
+                        if (!hasFocus) return
+                        editText.viewTreeObserver.removeOnWindowFocusChangeListener(this)
+                        editText.showKeyboard()
+                    }
+                },
+            )
         }
+    }
+
+    private fun EditText.showKeyboard() {
+        context.getSystemService(InputMethodManager::class.java)?.showSoftInput(this, 0)
     }
 
     fun hideKeyboard() {
