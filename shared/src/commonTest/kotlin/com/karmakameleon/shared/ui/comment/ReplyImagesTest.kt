@@ -25,12 +25,12 @@ class ReplyImagesTest {
     }
 
     @Test
-    fun withPreviewImages_showsTheGivenKeysAsImages() {
+    fun withPreviewImages_showsTheGivenKeysAsImagesAndLeavesOutTheOthers() {
         val text = "![image](img-1) ![image](img-2) ![x](https://e.com/a.png)"
 
         val preview = text.withPreviewImages(setOf("img-1"))
 
-        assertEquals("![img](${previewImageUrl("img-1")}) ![image](img-2) ![x](https://e.com/a.png)", preview)
+        assertEquals("![img](${previewImageUrl("img-1")})  ![x](https://e.com/a.png)", preview)
         val image = parseInlineMarkdown(preview).first()
         assertEquals(MarkdownInline.Image(previewImageUrl("img-1")), image)
     }

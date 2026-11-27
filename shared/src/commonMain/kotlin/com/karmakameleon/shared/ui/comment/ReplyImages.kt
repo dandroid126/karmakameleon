@@ -38,12 +38,13 @@ internal fun String.withAssetIds(assetIds: Map<String, String>): String =
 
 /**
  * This text with the token of each image in [keys] as an image the markdown parser shows, at [previewImageUrl], so a
- * preview of the reply can show the image where it is in the text.
+ * preview of the reply can show the image where it is in the text. The other tokens are left out, since there's no
+ * image to show for them yet, and the parser would load them from Reddit.
  */
 fun String.withPreviewImages(keys: Set<String>): String =
     IMAGE_TOKEN.replace(this) { match ->
         val key = match.groupValues[1]
-        if (key in keys) "![img](${previewImageUrl(key)})" else match.value
+        if (key in keys) "![img](${previewImageUrl(key)})" else ""
     }
 
 /** Where a preview of the reply shows the image with [key]. It's on a host that can't exist, so nothing loads it. */

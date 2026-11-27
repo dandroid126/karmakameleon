@@ -141,7 +141,7 @@ class ReplyBarTest {
         tap("Formatting")
         tap("Italic")
 
-        assertEquals("Hello __", replyText)
+        assertEquals("Hello **", replyText)
         assertSelection(7)
         assertTrue(field().hasFocus())
     }
@@ -300,6 +300,20 @@ class ReplyBarTest {
         // The thumbnail in the tray asks for the same bytes, so the preview's request is told apart by its count.
         assertEquals(1, fakeImages.requested.count { it === photo.bytes })
         assertTrue(fakeImages.requested.none { it == previewImageUrl("img-1") })
+    }
+
+    @Test
+    fun preview_leavesOutImagesStillBeingRead() {
+        val reading = images().copy(images = listOf(ReplyImage("img-1", ReplyImageStatus.Reading)))
+        show("Look:\n\n![image](img-1)", images = reading)
+        tap("Formatting")
+        fakeImages.requested.clear()
+
+        composeRule.onNodeWithText("Preview").performClick()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText("Look:").assertExists()
+        assertEquals(emptyList<Any>(), fakeImages.requested)
     }
 
     @Test

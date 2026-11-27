@@ -28,20 +28,26 @@ class MarkdownFormattingTest {
 
     @Test
     fun cursor_insertsAnEmptyPairAroundIt() {
-        assertEquals("Hello _|_", toggle("Hello |", MarkdownMarkers.Italic))
+        assertEquals("Hello *|*", toggle("Hello |", MarkdownMarkers.Italic))
         assertEquals("**|**Hello", toggle("|Hello", MarkdownMarkers.Bold))
         assertEquals("a >!|!< b", toggle("a | b", MarkdownMarkers.Spoiler))
     }
 
     @Test
     fun cursorInAnEmptyPair_removesIt() {
-        assertEquals("Hello |", toggle("Hello _|_", MarkdownMarkers.Italic))
+        assertEquals("Hello |", toggle("Hello *|*", MarkdownMarkers.Italic))
         assertEquals("a | b", toggle("a >!|!< b", MarkdownMarkers.Spoiler))
     }
 
     @Test
     fun cursorInAnotherEmptyPair_nestsTheNewOne() {
-        assertEquals("_**|**_", toggle("_|_", MarkdownMarkers.Bold))
+        assertEquals("~~**|**~~", toggle("~~|~~", MarkdownMarkers.Bold))
+    }
+
+    @Test
+    fun cursorInAnEmptyBoldPair_isntInAnItalicPair() {
+        assertEquals("***|***", toggle("**|**", MarkdownMarkers.Italic))
+        assertEquals("|", toggle("**|**", MarkdownMarkers.Bold))
     }
 
     @Test
@@ -61,7 +67,7 @@ class MarkdownFormattingTest {
     fun wrappedSelection_canBeWrappedAgain() {
         val bold = selection("Hello [world]").toggleMarkers(MarkdownMarkers.Bold)
 
-        assertEquals("Hello **_[world]_**", bold.toggleMarkers(MarkdownMarkers.Italic).marked())
+        assertEquals("Hello ***[world]***", bold.toggleMarkers(MarkdownMarkers.Italic).marked())
     }
 
     @Test
@@ -77,24 +83,38 @@ class MarkdownFormattingTest {
 
     @Test
     fun otherMarkers_areWrappedNotUnwrapped() {
-        assertEquals("Hello **_[world]_**", toggle("Hello **[world]**", MarkdownMarkers.Italic))
-        assertEquals("_[**world**]_", toggle("[**world**]", MarkdownMarkers.Italic))
+        assertEquals("Hello ***[world]***", toggle("Hello **[world]**", MarkdownMarkers.Italic))
+        assertEquals("*[**world**]*", toggle("[**world**]", MarkdownMarkers.Italic))
+        assertEquals("~~[**world**]~~", toggle("[**world**]", MarkdownMarkers.Strikethrough))
+    }
+
+    @Test
+    fun boldAndItalic_eachUnwrapTheirOwnMarkers() {
+        assertEquals("**[world]**", toggle("***[world]***", MarkdownMarkers.Italic))
+        assertEquals("*[world]*", toggle("***[world]***", MarkdownMarkers.Bold))
+    }
+
+    @Test
+    fun separateSpans_areWrappedTogetherNotUnwrapped() {
+        assertEquals("**[**a** and **b**]**", toggle("[**a** and **b**]", MarkdownMarkers.Bold))
+        assertEquals(">![>!a!< >!b!<]!<", toggle("[>!a!< >!b!<]", MarkdownMarkers.Spoiler))
+        assertEquals("*[*x* or *y*]*", toggle("[*x* or *y*]", MarkdownMarkers.Italic))
     }
 
     @Test
     fun spacesAtTheEdges_stayOutside() {
-        assertEquals("Hello _[world]_ again", toggle("Hello [world ]again", MarkdownMarkers.Italic))
+        assertEquals("Hello *[world]* again", toggle("Hello [world ]again", MarkdownMarkers.Italic))
         assertEquals("a  **[b]**  c", toggle("a [ b ] c", MarkdownMarkers.Bold))
     }
 
     @Test
     fun onlySpacesSelected_insertsAPairAtTheEnd() {
-        assertEquals("a _|_b", toggle("a[ ]b", MarkdownMarkers.Italic))
+        assertEquals("a *|*b", toggle("a[ ]b", MarkdownMarkers.Italic))
     }
 
     @Test
     fun paragraphWithLineBreaks_isWrappedInOnePair() {
-        assertEquals("_[one\ntwo]_", toggle("[one\ntwo]", MarkdownMarkers.Italic))
+        assertEquals("*[one\ntwo]*", toggle("[one\ntwo]", MarkdownMarkers.Italic))
     }
 
     @Test
@@ -116,7 +136,7 @@ class MarkdownFormattingTest {
 
     @Test
     fun selectionStartingInABlankLine_skipsIt() {
-        assertEquals("one\n\n_[two]_", toggle("one\n[\ntwo]", MarkdownMarkers.Italic))
+        assertEquals("one\n\n*[two]*", toggle("one\n[\ntwo]", MarkdownMarkers.Italic))
     }
 
     @Test

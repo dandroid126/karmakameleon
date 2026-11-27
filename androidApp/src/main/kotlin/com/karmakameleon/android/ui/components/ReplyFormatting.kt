@@ -195,8 +195,8 @@ internal fun LinkDialog(
 
 /**
  * The reply as it will look once posted, in the text field's place. Its images that are read show where they are in
- * the text, from the device. Links don't open, so a mistap doesn't leave the reply; spoilers still reveal on a tap.
- * The text is parsed off the main thread, only while the preview is shown.
+ * the text, from the device, and those still being read are left out. Links don't open, so a mistap doesn't leave the
+ * reply; spoilers still reveal on a tap. The text is parsed off the main thread, only while the preview is shown.
  */
 @Composable
 internal fun ReplyPreview(

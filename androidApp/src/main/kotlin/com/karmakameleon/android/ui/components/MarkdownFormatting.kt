@@ -13,7 +13,8 @@ internal data class MarkdownMarkers(
     val close: String = open,
 ) {
     companion object {
-        val Italic = MarkdownMarkers("_")
+        // Not _, which doesn't make italics inside a word.
+        val Italic = MarkdownMarkers("*")
         val Bold = MarkdownMarkers("**")
         val Strikethrough = MarkdownMarkers("~~")
         val Spoiler = MarkdownMarkers(">!", "!<")
@@ -90,6 +91,7 @@ private class Unwrap(
 )
 
 // The opening marker can be at the paragraph's start or just before it, and the closing one at its end or just after.
+// They only count when they're a pair: `**a** and **b**` is two bold words, not one.
 private fun TextWithSelection.markersAround(
     paragraph: IntRange,
     markers: MarkdownMarkers,
@@ -100,16 +102,18 @@ private fun TextWithSelection.markersAround(
     val close = markers.close.length
     val openStart =
         when {
-            text.startsWith(markers.open, first) -> first
-            first >= open && text.startsWith(markers.open, first - open) -> first - open
+            text.isMarkerAt(markers.open, first) -> first
+            first >= open && text.isMarkerAt(markers.open, first - open) -> first - open
             else -> return null
         }
     val closeEnd =
         when {
-            last - close >= openStart + open && text.startsWith(markers.close, last - close) -> last
-            text.startsWith(markers.close, last) -> last + close
+            last - close >= openStart + open && text.isMarkerAt(markers.close, last - close) -> last
+            text.isMarkerAt(markers.close, last) -> last + close
             else -> return null
         }
+    val content = text.substring(openStart + open, closeEnd - close)
+    if (content.contains(markers.open) || content.contains(markers.close)) return null
     return Unwrap(
         edits = listOf(Edit(openStart, openStart + open, ""), Edit(closeEnd - close, closeEnd, "")),
         contentStart = openStart + open,
@@ -122,12 +126,35 @@ private fun TextWithSelection.toggleEmptyPair(
     cursor: Int,
 ): TextWithSelection {
     val open = markers.open.length
-    val inEmptyPair = cursor >= open && text.startsWith(markers.open, cursor - open) && text.startsWith(markers.close, cursor)
+    // The markers touch, so each side's run is measured from the cursor.
+    val inEmptyPair =
+        cursor >= open &&
+            text.substring(0, cursor).isMarkerAt(markers.open, cursor - open) &&
+            text.substring(cursor).isMarkerAt(markers.close, 0)
     if (inEmptyPair) {
         return TextWithSelection(text.removeRange(cursor - open, cursor + markers.close.length), cursor - open)
     }
     return TextWithSelection(text.substring(0, cursor) + markers.open + markers.close + text.substring(cursor), cursor + open)
 }
+
+// Whether marker is at index, and not part of a longer run of its character: one * of a bold ** isn't an italic marker.
+// A run of three, bold and italic at once, counts for both.
+private fun String.isMarkerAt(
+    marker: String,
+    index: Int,
+): Boolean {
+    if (!startsWith(marker, index)) return false
+    val char = marker[0]
+    if (marker.any { it != char }) return true
+    var runStart = index
+    while (runStart > 0 && this[runStart - 1] == char) runStart--
+    var runEnd = index + marker.length
+    while (runEnd < length && this[runEnd] == char) runEnd++
+    val run = runEnd - runStart
+    return run == marker.length || run == BOLD_ITALIC_RUN
+}
+
+private const val BOLD_ITALIC_RUN = 3
 
 // Replaces the text from start up to end with replacement.
 private data class Edit(
