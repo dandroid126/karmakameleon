@@ -116,7 +116,7 @@ class ReplyBarScreenshotTest {
         )
         composeRule.onNodeWithText("Preview").clickWithoutRipple()
         composeRule.waitForIdle()
-        composeRule.onRoot().captureRoboImage("src/test/screenshots/$name.png")
+        saveScreenshotWithDialog(name)
     }
 
     @Test

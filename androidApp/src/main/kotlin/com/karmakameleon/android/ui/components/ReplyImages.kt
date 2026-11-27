@@ -55,13 +55,12 @@ import com.karmakameleon.shared.ui.comment.ReplyImageStatus
 
 /**
  * The button that adds an image, with a menu of where it comes from: the photo picker, or a link. [onInsert] puts the
- * added image's token at the reply's cursor. [onOpen] is called when the menu opens.
+ * added image's token at the reply's cursor.
  */
 @Composable
 internal fun AddImageButton(
     images: ReplyImageActions,
     onInsert: (String) -> Unit,
-    onOpen: () -> Unit = {},
 ) {
     var expanded by remember { mutableStateOf(false) }
     var showLinkDialog by remember { mutableStateOf(false) }
@@ -74,7 +73,6 @@ internal fun AddImageButton(
         // Where the subreddit allows no uploads, the button looks disabled but still takes a tap, to say why.
         IconButton(onClick = {
             if (images.canAddImages) {
-                onOpen()
                 expanded = true
             } else {
                 images.explainDisabled()

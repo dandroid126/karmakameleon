@@ -1,12 +1,10 @@
 package com.karmakameleon.android.ui.components
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -21,16 +19,15 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,7 +50,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.karmakameleon.shared.domain.markdown.MarkdownBlock
 import com.karmakameleon.shared.ui.comment.ReplyImage
@@ -81,36 +77,30 @@ internal fun MarkdownHelperButton(
     }
 }
 
-/**
- * The formatting buttons, which scroll sideways when they don't fit, and Preview, which stays at the end. The buttons
- * are disabled while [previewing].
- */
+/** The formatting buttons, which scroll sideways when they don't fit, and Preview, which stays at the end. */
 @Composable
 internal fun FormattingBar(
-    previewing: Boolean,
     onFormat: (MarkdownMarkers) -> Unit,
     onLink: () -> Unit,
-    onPreviewChange: (Boolean) -> Unit,
+    onPreview: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Row(modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
-            val enabled = !previewing
-            FormatButton(Icons.Default.FormatItalic, "Italic", enabled) { onFormat(MarkdownMarkers.Italic) }
-            FormatButton(Icons.Default.FormatBold, "Bold", enabled) { onFormat(MarkdownMarkers.Bold) }
-            FormatButton(Icons.Default.FormatStrikethrough, "Strikethrough", enabled) { onFormat(MarkdownMarkers.Strikethrough) }
-            FormatButton(Icons.Default.VisibilityOff, "Spoiler", enabled) { onFormat(MarkdownMarkers.Spoiler) }
-            FormatButton(Icons.Default.Link, "Link", enabled, onLink)
+            FormatButton(Icons.Default.FormatItalic, "Italic") { onFormat(MarkdownMarkers.Italic) }
+            FormatButton(Icons.Default.FormatBold, "Bold") { onFormat(MarkdownMarkers.Bold) }
+            FormatButton(Icons.Default.FormatStrikethrough, "Strikethrough") { onFormat(MarkdownMarkers.Strikethrough) }
+            FormatButton(Icons.Default.VisibilityOff, "Spoiler") { onFormat(MarkdownMarkers.Spoiler) }
+            FormatButton(Icons.Default.Link, "Link", onLink)
         }
-        FilterChip(
-            selected = previewing,
-            onClick = { onPreviewChange(!previewing) },
+        AssistChip(
+            onClick = onPreview,
             label = { Text("Preview") },
             leadingIcon = {
                 Icon(
                     Icons.Default.Visibility,
                     contentDescription = null,
-                    modifier = Modifier.size(FilterChipDefaults.IconSize),
+                    modifier = Modifier.size(AssistChipDefaults.IconSize),
                 )
             },
             modifier = Modifier.padding(start = 8.dp),
@@ -124,7 +114,6 @@ internal fun FormattingBar(
 private fun FormatButton(
     icon: ImageVector,
     label: String,
-    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     TooltipBox(
@@ -132,7 +121,7 @@ private fun FormatButton(
         tooltip = { PlainTooltip { Text(label) } },
         state = rememberTooltipState(),
     ) {
-        IconButton(onClick = onClick, enabled = enabled) {
+        IconButton(onClick = onClick) {
             Icon(icon, contentDescription = label)
         }
     }
@@ -194,16 +183,17 @@ internal fun LinkDialog(
 }
 
 /**
- * The reply as it will look once posted, in the text field's place. Its images that are read show where they are in
- * the text, from the device, and those still being read are left out. Links don't open, so a mistap doesn't leave the
- * reply; spoilers still reveal on a tap. The text is parsed off the main thread, only while the preview is shown.
+ * The reply as it will look once posted, in a dialog, so it's clear it can't be edited there. The text field stays
+ * where it is behind it, with its cursor. Its images that are read show where they are in the text, from the device,
+ * and those still being read are left out. Links don't open, so a mistap doesn't leave the reply; spoilers still
+ * reveal on a tap. The text is parsed off the main thread, only while the dialog is open.
  */
 @Composable
-internal fun ReplyPreview(
+internal fun ReplyPreviewDialog(
     replyText: String,
     images: List<ReplyImage>,
-    maxHeight: Dp,
-    modifier: Modifier = Modifier,
+    onSend: () -> Unit,
+    onDismiss: () -> Unit,
     markdownParser: MarkdownParser = koinInject(),
 ) {
     val localImages =
@@ -214,27 +204,39 @@ internal fun ReplyPreview(
         value = markdownParser.parse(replyText.withPreviewImages(localImages.keys))
     }
     val imagesByUrl = remember(localImages) { localImages.mapKeys { (key, _) -> previewImageUrl(key) } }
-    val colors = MaterialTheme.colorScheme
-    Box(
-        modifier =
-            modifier
-                .heightIn(min = OutlinedTextFieldDefaults.MinHeight, max = maxHeight)
-                .border(1.dp, colors.outline, OutlinedTextFieldDefaults.shape)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-    ) {
-        if (replyText.isBlank()) {
-            Text("Nothing to preview", style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant)
-        } else {
-            blocks?.let {
-                MarkdownText(
-                    blocks = it,
-                    style = MaterialTheme.typography.bodyLarge,
-                    localImages = imagesByUrl,
-                    linksOpen = false,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Preview") },
+        text = {
+            Box(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                if (replyText.isBlank()) {
+                    Text(
+                        "Nothing to preview",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    blocks?.let {
+                        MarkdownText(
+                            blocks = it,
+                            style = MaterialTheme.typography.bodyLarge,
+                            localImages = imagesByUrl,
+                            linksOpen = false,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
             }
-        }
-    }
+        },
+        confirmButton = {
+            TextButton(onClick = onSend, enabled = replyText.isNotBlank()) {
+                Text("Send")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+    )
 }

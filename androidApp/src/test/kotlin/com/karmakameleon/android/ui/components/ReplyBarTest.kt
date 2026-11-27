@@ -9,13 +9,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -26,8 +25,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.test.espresso.Espresso.onView
-import androidx.test.espresso.Espresso.pressBack
-import androidx.test.espresso.assertion.ViewAssertions.doesNotExist
 import androidx.test.espresso.matcher.ViewMatchers.withHint
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.data.media.ImageFile
@@ -221,88 +218,64 @@ class ReplyBarTest {
         assertTrue(keyboardShown())
     }
 
-    @Test
-    fun preview_showsTheRenderedReplyInPlaceOfTheField() {
-        show("Some **bold** and [a link](https://kotlinlang.org)")
-        select(4)
-        tap("Formatting")
-
+    // Like the link dialog, the preview's dialog keeps Robolectric's Compose from going idle.
+    private fun openPreview() {
+        composeRule.mainClock.autoAdvance = false
         composeRule.onNodeWithText("Preview").performClick()
-        composeRule.waitForIdle()
-
-        composeRule.onNodeWithText("Preview").assertIsSelected()
-        composeRule.onNodeWithText("Some bold and a link").assertExists()
-        onView(withHint("Write a reply...")).check(doesNotExist())
-        composeRule.onNodeWithContentDescription("Italic").assertIsNotEnabled()
-
-        // Links don't open, so a mistap doesn't leave the reply.
-        composeRule
-            .onNodeWithText("Some bold and a link")
-            .performFirstLinkClick({ link: AnnotatedString.Range<LinkAnnotation> -> true })
-        assertEquals(emptyList<String>(), navigation.calls)
-
-        composeRule.onNodeWithText("Preview").performClick()
-        composeRule.waitForIdle()
-        composeRule.onNodeWithText("Preview").assertIsNotSelected()
-        composeRule.onNodeWithText("Some bold and a link").assertDoesNotExist()
-        assertSelection(4)
+        settle()
     }
 
+    private fun inPreview(text: String) = composeRule.onNode(hasText(text) and hasAnyAncestor(isDialog()))
+
     @Test
-    fun preview_hidesTheKeyboard_andLeavingItGivesTheFieldBackTheFocusAndTheKeyboard() {
-        show("Some text")
-        select(4)
+    fun preview_showsTheRenderedReplyInADialog_overTheField() {
+        show("Some bold and [a link](https://kotlinlang.org)")
+        select(5, 9)
         tap("Formatting")
         tap("Bold")
         assertTrue(keyboardShown())
 
-        composeRule.onNodeWithText("Preview").performClick()
-        composeRule.waitForIdle()
-        assertFalse(keyboardShown())
+        openPreview()
 
-        composeRule.onNodeWithText("Preview").performClick()
-        composeRule.waitForIdle()
-        assertSelection(6)
+        inPreview("Some bold and a link").assertExists()
+        assertFalse(keyboardShown())
+        assertEquals("Some **bold** and [a link](https://kotlinlang.org)", field().text.toString())
+
+        // Links don't open, so a mistap doesn't leave the reply.
+        inPreview("Some bold and a link")
+            .performFirstLinkClick({ link: AnnotatedString.Range<LinkAnnotation> -> true })
+        assertEquals(emptyList<String>(), navigation.calls)
+
+        composeRule.onNodeWithText("Close").performClick()
+        settle()
+        composeRule.onNodeWithText("Some bold and a link").assertDoesNotExist()
+        assertSelection(7, 11)
         assertTrue(field().hasFocus())
         assertTrue(keyboardShown())
     }
 
     @Test
-    fun preview_ofNothing_saysSo() {
+    fun preview_ofNothing_saysSo_andCantBeSent() {
         show()
         tap("Formatting")
 
-        composeRule.onNodeWithText("Preview").performClick()
+        openPreview()
 
-        composeRule.onNodeWithText("Nothing to preview").assertExists()
+        inPreview("Nothing to preview").assertExists()
+        inPreview("Send").assertIsNotEnabled()
     }
 
     @Test
     fun preview_canBeSent() {
         show("Done")
         tap("Formatting")
-        composeRule.onNodeWithText("Preview").performClick()
+        openPreview()
 
-        tap("Send")
+        inPreview("Send").performClick()
+        settle()
 
         assertEquals(listOf("Done"), sent)
-    }
-
-    @Test
-    fun hidingTheFormattingBar_leavesThePreview() {
-        show("Some text")
-        tap("Formatting")
-        composeRule.onNodeWithText("Preview").performClick()
-        composeRule.waitForIdle()
-
-        tap("Formatting")
-
-        composeRule.onNodeWithText("Some text").assertDoesNotExist()
-        assertEquals("Some text", field().text.toString())
-
-        // It starts without the preview when it's shown again.
-        tap("Formatting")
-        composeRule.onNodeWithText("Preview").assertIsNotSelected()
+        composeRule.onNodeWithText("Close").assertDoesNotExist()
     }
 
     private val photo = ImageFile("photo.png", "image/png", byteArrayOf(1, 2, 3))
@@ -325,8 +298,7 @@ class ReplyBarTest {
         tap("Formatting")
         fakeImages.requested.clear()
 
-        composeRule.onNodeWithText("Preview").performClick()
-        composeRule.waitForIdle()
+        openPreview()
 
         // The thumbnail in the tray asks for the same bytes, so the preview's request is told apart by its count.
         assertEquals(1, fakeImages.requested.count { it === photo.bytes })
@@ -340,26 +312,10 @@ class ReplyBarTest {
         tap("Formatting")
         fakeImages.requested.clear()
 
-        composeRule.onNodeWithText("Preview").performClick()
-        composeRule.waitForIdle()
+        openPreview()
 
-        composeRule.onNodeWithText("Look:").assertExists()
+        inPreview("Look:").assertExists()
         assertEquals(emptyList<Any>(), fakeImages.requested)
-    }
-
-    @Test
-    fun addingAnImage_leavesThePreview() {
-        show("Some text", images = images())
-        tap("Formatting")
-        composeRule.onNodeWithText("Preview").performClick()
-        composeRule.waitForIdle()
-
-        tap("Add image")
-        // Closes the menu of where the image comes from.
-        pressBack()
-
-        composeRule.onNodeWithText("Preview").assertIsNotSelected()
-        assertEquals("Some text", field().text.toString())
     }
 }
 
