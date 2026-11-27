@@ -92,6 +92,14 @@ class MarkdownFormattingTest {
     fun boldAndItalic_eachUnwrapTheirOwnMarkers() {
         assertEquals("**[world]**", toggle("***[world]***", MarkdownMarkers.Italic))
         assertEquals("*[world]*", toggle("***[world]***", MarkdownMarkers.Bold))
+        assertEquals("[**world**]", toggle("[***world***]", MarkdownMarkers.Italic))
+        assertEquals("[*world*]", toggle("[***world***]", MarkdownMarkers.Bold))
+    }
+
+    @Test
+    fun spanWithOtherMarkersInside_unwraps() {
+        assertEquals("[a **b** c]", toggle("[*a **b** c*]", MarkdownMarkers.Italic))
+        assertEquals("[a *b* c]", toggle("[**a *b* c**]", MarkdownMarkers.Bold))
     }
 
     @Test

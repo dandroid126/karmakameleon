@@ -112,8 +112,9 @@ private fun TextWithSelection.markersAround(
             text.isMarkerAt(markers.close, last) -> last + close
             else -> return null
         }
+    // Read on its own, so a run of stars is only what's inside: `**word**` in `***word***` has no italic marker.
     val content = text.substring(openStart + open, closeEnd - close)
-    if (content.contains(markers.open) || content.contains(markers.close)) return null
+    if (content.indices.any { content.isMarkerAt(markers.open, it) || content.isMarkerAt(markers.close, it) }) return null
     return Unwrap(
         edits = listOf(Edit(openStart, openStart + open, ""), Edit(closeEnd - close, closeEnd, "")),
         contentStart = openStart + open,
