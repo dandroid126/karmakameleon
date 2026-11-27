@@ -5,6 +5,7 @@ import android.os.Build
 import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -59,7 +60,7 @@ fun ReplyBar(
     images: ReplyImageActions? = null,
 ) {
     val field = remember { ReplyFieldRef() }
-    val currentImages by rememberUpdatedState(images)
+    val formatting = remember { ReplyFormattingState(field) }
     Surface(
         color = MaterialTheme.colorScheme.surface,
         modifier =
@@ -73,6 +74,7 @@ fun ReplyBar(
                     .fillMaxWidth()
                     .padding(8.dp),
         ) {
+            if (formatting.barShown) ReplyFormattingBar(formatting, field)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -80,7 +82,11 @@ fun ReplyBar(
                 IconButton(onClick = onCancel) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
                 }
-                if (images?.showsButton == true) AddImageButton(images, onInsert = field::insert)
+                if (images?.showsButton == true) {
+                    // The image goes in at the cursor, so it's added in the text field rather than the preview.
+                    AddImageButton(images, onInsert = field::insert, onOpen = { formatting.preview(false) })
+                }
+                MarkdownHelperButton(checked = formatting.barShown, onCheckedChange = formatting::showBar)
                 ReplyBarTextActions(
                     canSaveDraft = replyText.isNotBlank(),
                     hasDraft = hasDraft,
@@ -95,34 +101,178 @@ fun ReplyBar(
                 }
             }
             images?.let { ReplyImageTray(it, replyText) }
-            SpellCheckedTextField(
-                value = replyText,
-                onValueChange = onReplyTextChange,
+            ReplyEditor(
+                previewing = formatting.previewing,
+                replyText = replyText,
+                onReplyTextChange = onReplyTextChange,
                 placeholder = placeholder,
-                fieldRef = field,
-                acceptsImages = images != null,
-                // Where replies can't have images, a keyboard GIF that comes with a link goes in as the link.
-                onReceiveImage = { uri, mimeType, linkUrl ->
-                    currentImages?.attachImage(uri.toString(), mimeType, linkUrl) ?: linkUrl?.let { imageLink(mimeType, it) }
-                },
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = replyFieldMaxHeight()),
+                field = field,
+                images = images,
             )
         }
     }
+    formatting.linkTarget?.let { target ->
+        ReplyLinkDialog(target, field, onClose = { formatting.linkTarget = null })
+    }
 }
 
-// The reply's text field, for putting text at its cursor from outside it.
+@Composable
+private fun ReplyFormattingBar(
+    formatting: ReplyFormattingState,
+    field: ReplyFieldRef,
+) {
+    FormattingBar(
+        previewing = formatting.previewing,
+        onFormat = { markers -> field.edit { it.toggleMarkers(markers) } },
+        onLink = { formatting.linkTarget = field.current() },
+        onPreviewChange = formatting::preview,
+    )
+}
+
+// The formatting bar's state. The bar is hidden each time a reply is opened, since the bar leaves the screen when it
+// closes.
+private class ReplyFormattingState(
+    private val field: ReplyFieldRef,
+) {
+    var barShown by mutableStateOf(false)
+        private set
+    var previewing by mutableStateOf(false)
+        private set
+
+    // The text and selection the link dialog replaces, while it's open.
+    var linkTarget by mutableStateOf<TextWithSelection?>(null)
+
+    fun preview(on: Boolean) {
+        if (on && !previewing) field.leaveForPreview()
+        previewing = on
+    }
+
+    // Hiding the bar hides its Preview too.
+    fun showBar(show: Boolean) {
+        barShown = show
+        if (!show) preview(false)
+    }
+}
+
+// The text field, or in its place the preview.
+@Composable
+private fun ReplyEditor(
+    previewing: Boolean,
+    replyText: String,
+    onReplyTextChange: (String) -> Unit,
+    placeholder: String,
+    field: ReplyFieldRef,
+    images: ReplyImageActions?,
+) {
+    val currentImages by rememberUpdatedState(images)
+    if (previewing) {
+        ReplyPreview(
+            replyText = replyText,
+            images = images?.images.orEmpty(),
+            maxHeight = replyFieldMaxHeight(),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    } else {
+        SpellCheckedTextField(
+            value = replyText,
+            onValueChange = onReplyTextChange,
+            placeholder = placeholder,
+            fieldRef = field,
+            acceptsImages = images != null,
+            // Where replies can't have images, a keyboard GIF that comes with a link goes in as the link.
+            onReceiveImage = { uri, mimeType, linkUrl ->
+                currentImages?.attachImage(uri.toString(), mimeType, linkUrl) ?: linkUrl?.let { imageLink(mimeType, it) }
+            },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = replyFieldMaxHeight()),
+        )
+    }
+}
+
+// Asks for a link and puts it in place of the target's selection, or puts the focus back in the field.
+@Composable
+private fun ReplyLinkDialog(
+    target: TextWithSelection,
+    field: ReplyFieldRef,
+    onClose: () -> Unit,
+) {
+    LinkDialog(
+        selectedText = target.selectedText,
+        onInsert = { displayText, url ->
+            onClose()
+            field.edit { target.replaceSelection(linkMarkdown(displayText, url)) }
+        },
+        onDismiss = {
+            onClose()
+            field.focus()
+        },
+    )
+}
+
+// The reply's text field, for changing its text from outside it.
 private class ReplyFieldRef {
     var editText: ContentReceivingEditText? = null
+
+    // Where the cursor was when the field left for the preview, to put it back when it returns.
+    private var selectionBeforePreview: Pair<Int, Int>? = null
 
     fun insert(text: String) {
         editText?.apply {
             insertAtCursor(text)
             requestFocus()
         }
+    }
+
+    // Without a cursor, as before the field is first tapped, it's at the end.
+    fun current(): TextWithSelection? =
+        editText?.let {
+            val text = it.text.toString()
+            TextWithSelection(
+                text,
+                it.selectionStart.takeIf { s -> s >= 0 } ?: text.length,
+                it.selectionEnd.takeIf { e -> e >= 0 } ?: text.length,
+            )
+        }
+
+    // Changes only the part of the text that differs, so the spell checker's marks elsewhere stay, and keeps the focus
+    // and the keyboard.
+    fun edit(change: (TextWithSelection) -> TextWithSelection) {
+        val editText = editText ?: return
+        val old = editText.text.toString()
+        val result = change(current() ?: return)
+        val new = result.text
+        val prefix = old.commonPrefixWith(new).length
+        val suffix = old.substring(prefix).commonSuffixWith(new.substring(prefix)).length
+        editText.text.replace(prefix, old.length - suffix, new, prefix, new.length - suffix)
+        editText.setSelection(result.selectionStart, result.selectionEnd)
+        focus()
+    }
+
+    fun focus() {
+        editText?.apply {
+            requestFocus()
+            context.getSystemService(InputMethodManager::class.java)?.showSoftInput(this, 0)
+        }
+    }
+
+    // The field leaves the screen for the preview, and the keyboard goes with it.
+    fun leaveForPreview() {
+        editText?.apply {
+            selectionBeforePreview = selectionStart to selectionEnd
+            context.getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(windowToken, 0)
+        }
+    }
+
+    // A new field, made after the preview, gets the cursor back where it was, and the focus.
+    fun attach(editText: ContentReceivingEditText) {
+        this.editText = editText
+        val selection = selectionBeforePreview ?: return
+        selectionBeforePreview = null
+        val length = editText.text.length
+        editText.setSelection(selection.first.coerceIn(0, length), selection.second.coerceIn(0, length))
+        editText.post { focus() }
     }
 }
 
@@ -193,7 +343,6 @@ private fun SpellCheckedTextField(
     AndroidView(
         factory = { context ->
             ContentReceivingEditText(context).apply {
-                fieldRef.editText = this
                 receiveImages(keepAll = acceptsImages) { uri, mimeType, linkUrl -> currentOnReceiveImage(uri, mimeType, linkUrl) }
                 background = null
                 inputType = InputType.TYPE_CLASS_TEXT or
@@ -208,10 +357,12 @@ private fun SpellCheckedTextField(
                     minimumHeight = OutlinedTextFieldDefaults.MinHeight.roundToPx()
                 }
                 setText(value)
+                fieldRef.attach(this)
                 doAfterTextChanged { currentOnValueChange(it?.toString().orEmpty()) }
                 setOnFocusChangeListener { _, hasFocus -> isFocused = hasFocus }
             }
         },
+        onRelease = { editText -> if (fieldRef.editText === editText) fieldRef.editText = null },
         update = { editText ->
             // Text changed outside the field, e.g. by Quote or Load Draft.
             if (editText.text.toString() != value) {

@@ -2,6 +2,7 @@ package com.karmakameleon.android.ui.components
 
 import com.karmakameleon.android.navigation.NavigationHandler
 import com.karmakameleon.shared.domain.model.Comment
+import com.karmakameleon.shared.util.markdown.MarkdownParser
 import com.karmakameleon.shared.util.markdown.parseMarkdownBlocks
 import kotlinx.coroutines.Dispatchers
 import org.junit.rules.ExternalResource
@@ -71,8 +72,8 @@ class RecordedCommentActions {
 }
 
 /**
- * Gives the components what they get from Koin: a [NavigationHandler] that records where it was asked to go, and the
- * tables' [TableColumnWidths].
+ * Gives the components what they get from Koin: a [NavigationHandler] that records where it was asked to go, the
+ * tables' [TableColumnWidths], and a [MarkdownParser] for the reply preview.
  */
 class NavigationRule : ExternalResource() {
     val calls = mutableListOf<String>()
@@ -90,6 +91,7 @@ class NavigationRule : ExternalResource() {
                 module {
                     single { handler }
                     single { TableColumnWidths(Dispatchers.Main) }
+                    single { MarkdownParser(Dispatchers.Main) }
                 },
             )
         }

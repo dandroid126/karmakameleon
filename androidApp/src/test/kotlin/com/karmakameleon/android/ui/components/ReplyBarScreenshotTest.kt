@@ -1,10 +1,17 @@
 package com.karmakameleon.android.ui.components
 
+import android.widget.EditText
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.matcher.ViewMatchers.withHint
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.karmakameleon.android.testing.clickWithoutRipple
+import com.karmakameleon.android.testing.saveScreenshotWithDialog
 import com.karmakameleon.android.ui.theme.KarmaKameleonTheme
 import com.karmakameleon.shared.data.media.ImageFile
 import com.karmakameleon.shared.ui.comment.ReplyImage
@@ -24,23 +31,99 @@ class ReplyBarScreenshotTest {
     @get:Rule
     val fakeImages = FakeImagesRule()
 
+    // The preview's parser comes from Koin.
+    @get:Rule
+    val navigation = NavigationRule()
+
     private val photo = ImageFile("photo.png", "image/png", byteArrayOf(1))
+
+    private fun show(
+        replyText: String,
+        images: ReplyImageActions?,
+        darkTheme: Boolean = false,
+    ) {
+        composeRule.setContent {
+            // Dynamic colors come from the wallpaper, which would make the screenshots depend on the machine.
+            KarmaKameleonTheme(darkTheme = darkTheme, dynamicColor = false) {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    ReplyBar(replyText = replyText, onReplyTextChange = {}, onSubmit = {}, onCancel = {}, images = images)
+                }
+            }
+        }
+    }
 
     private fun capture(
         name: String,
         replyText: String,
         images: ReplyImageActions,
     ) {
-        composeRule.setContent {
-            // Dynamic colors come from the wallpaper, which would make the screenshots depend on the machine.
-            KarmaKameleonTheme(dynamicColor = false) {
-                Surface(color = MaterialTheme.colorScheme.background) {
-                    ReplyBar(replyText = replyText, onReplyTextChange = {}, onSubmit = {}, onCancel = {}, images = images)
-                }
-            }
-        }
+        show(replyText, images)
         composeRule.onRoot().captureRoboImage("src/test/screenshots/$name.png")
     }
+
+    // With the image button, as in a reply on a post.
+    private fun showFormatting(
+        replyText: String,
+        darkTheme: Boolean,
+        images: ReplyImageActions = images(),
+    ) {
+        show(replyText, images, darkTheme)
+        composeRule.onNodeWithContentDescription("Formatting").clickWithoutRipple()
+        composeRule.waitForIdle()
+    }
+
+    private fun captureFormattingBar(
+        name: String,
+        darkTheme: Boolean,
+    ) {
+        showFormatting("Hello world", darkTheme)
+        composeRule.onRoot().captureRoboImage("src/test/screenshots/$name.png")
+    }
+
+    @Test
+    fun formattingBar() = captureFormattingBar("reply_bar_formatting", darkTheme = false)
+
+    @Test
+    fun formattingBarDark() = captureFormattingBar("reply_bar_formatting_dark", darkTheme = true)
+
+    private fun captureLinkDialog(
+        name: String,
+        darkTheme: Boolean,
+    ) {
+        showFormatting("Read the docs", darkTheme)
+        var field: EditText? = null
+        onView(withHint("Write a reply...")).check { view, _ -> field = view as EditText }
+        composeRule.runOnUiThread { checkNotNull(field).setSelection(9, 13) }
+        composeRule.onNodeWithContentDescription("Link").clickWithoutRipple()
+        composeRule.waitForIdle()
+        saveScreenshotWithDialog(name)
+    }
+
+    @Test
+    fun linkDialog() = captureLinkDialog("reply_bar_link_dialog", darkTheme = false)
+
+    @Test
+    fun linkDialogDark() = captureLinkDialog("reply_bar_link_dialog_dark", darkTheme = true)
+
+    private fun capturePreview(
+        name: String,
+        darkTheme: Boolean,
+    ) {
+        showFormatting(
+            "_Italic_, **bold**, ~~struck~~, a >!spoiler!< and [a link](https://kotlinlang.org).\n\n![image](img-1)",
+            darkTheme,
+            images = images(listOf(ReplyImage("img-1", ReplyImageStatus.Uploading, photo))),
+        )
+        composeRule.onNodeWithText("Preview").clickWithoutRipple()
+        composeRule.waitForIdle()
+        composeRule.onRoot().captureRoboImage("src/test/screenshots/$name.png")
+    }
+
+    @Test
+    fun preview() = capturePreview("reply_bar_preview", darkTheme = false)
+
+    @Test
+    fun previewDark() = capturePreview("reply_bar_preview_dark", darkTheme = true)
 
     private fun images(
         images: List<ReplyImage> = emptyList(),
