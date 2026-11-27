@@ -5,6 +5,9 @@ import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.annotation.DelicateCoilApi
 import coil3.asImage
+import coil3.decode.DataSource
+import coil3.intercept.Interceptor
+import coil3.request.SuccessResult
 import coil3.test.FakeImageLoaderEngine
 import com.karmakameleon.android.R
 import com.karmakameleon.shared.domain.model.GalleryData
@@ -108,7 +111,10 @@ class FakeImagesRule : ExternalResource() {
     @OptIn(DelicateCoilApi::class)
     override fun before() {
         val context = RuntimeEnvironment.getApplication()
-        val image = checkNotNull(ContextCompat.getDrawable(context, R.drawable.karma_kameleon)).asImage()
+
+        // A new drawable for each request: two images showing one drawable each set its bounds, which redraws the other,
+        // so they would redraw each other forever.
+        fun image() = checkNotNull(ContextCompat.getDrawable(context, R.drawable.karma_kameleon)).asImage()
         val engine =
             FakeImageLoaderEngine
                 .Builder()
@@ -116,8 +122,8 @@ class FakeImagesRule : ExternalResource() {
                 .intercept({ data ->
                     requested += data
                     false
-                }, image)
-                .default(image)
+                }, image())
+                .default(Interceptor { chain -> SuccessResult(image(), chain.request, DataSource.MEMORY) })
                 .build()
         SingletonImageLoader.setUnsafe(
             ImageLoader

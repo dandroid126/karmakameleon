@@ -36,6 +36,19 @@ internal fun String.imageKeys(): Set<String> = IMAGE_TOKEN.findAll(this).map { i
 internal fun String.withAssetIds(assetIds: Map<String, String>): String =
     IMAGE_TOKEN.replace(this) { match -> assetIds[match.groupValues[1]]?.let { "![img]($it)" } ?: match.value }
 
+/**
+ * This text with the token of each image in [keys] as an image the markdown parser shows, at [previewImageUrl], so a
+ * preview of the reply can show the image where it is in the text.
+ */
+fun String.withPreviewImages(keys: Set<String>): String =
+    IMAGE_TOKEN.replace(this) { match ->
+        val key = match.groupValues[1]
+        if (key in keys) "![img](${previewImageUrl(key)})" else match.value
+    }
+
+/** Where a preview of the reply shows the image with [key]. It's on a host that can't exist, so nothing loads it. */
+fun previewImageUrl(key: String) = "https://reply-image.invalid/$key"
+
 /** This text without the image tokens whose keys aren't in [keys]. */
 internal fun String.keepingImageTokens(keys: Set<String>): String =
     IMAGE_TOKEN.replace(this) { match -> if (match.groupValues[1] in keys) match.value else "" }

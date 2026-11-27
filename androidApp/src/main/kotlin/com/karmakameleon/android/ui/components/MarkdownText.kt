@@ -69,6 +69,11 @@ fun MarkdownText(
     renderInlineImages: Boolean = true,
     onImageClick: (String) -> Unit = {},
     navigationHandler: NavigationHandler = koinInject(),
+    // Images shown from what's given here instead of from their URL, like those of a reply that aren't uploaded yet.
+    // They have no long-press menu, since their URL doesn't lead anywhere.
+    localImages: Map<String, Any> = emptyMap(),
+    // Whether tapping a link opens it. A preview turns it off, so a mistap doesn't leave what's being written.
+    linksOpen: Boolean = true,
 ) {
     // The same objects while only the callbacks change, so a recomposition of the screen around unchanged text (a vote,
     // or hiding the post body) can skip its blocks. Callers usually pass new lambdas each time.
@@ -76,12 +81,13 @@ fun MarkdownText(
     val currentOnTextClick by rememberUpdatedState(onTextClick)
     val linkColor = MaterialTheme.colorScheme.primary
     val rendering =
-        remember(linkColor, navigationHandler, renderInlineImages) {
+        remember(linkColor, navigationHandler, renderInlineImages, localImages, linksOpen) {
             InlineRendering(
                 linkColor = linkColor,
-                onLinkClick = { url -> navigationHandler.handleLink(url) },
+                onLinkClick = { url -> if (linksOpen) navigationHandler.handleLink(url) },
                 renderInlineImages = renderInlineImages,
                 onImageClick = { url -> currentOnImageClick(url) },
+                localImages = localImages,
             )
         }
     val hasTextClick = onTextClick != null
@@ -100,6 +106,7 @@ internal data class InlineRendering(
     val onLinkClick: (String) -> Unit,
     val renderInlineImages: Boolean,
     val onImageClick: (String) -> Unit,
+    val localImages: Map<String, Any> = emptyMap(),
 )
 
 @Composable
@@ -359,7 +366,12 @@ private fun RenderInlineList(
                 }
 
                 is InlineSegment.ImageItem -> {
-                    InlineImage(url = segment.url, modifier = Modifier.padding(vertical = 4.dp), onImageClick = rendering.onImageClick)
+                    InlineImage(
+                        url = segment.url,
+                        localImage = rendering.localImages[segment.url],
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        onImageClick = rendering.onImageClick,
+                    )
                 }
             }
         }
@@ -566,10 +578,11 @@ private val aspectRatioCache = mutableMapOf<String, Float>()
 @Composable
 private fun InlineImage(
     url: String,
+    localImage: Any?,
     modifier: Modifier = Modifier,
     onImageClick: (String) -> Unit = {},
 ) {
-    var aspectRatio by remember(url) { mutableStateOf(aspectRatioCache[url]) }
+    var aspectRatio by remember(url, localImage) { mutableStateOf(if (localImage == null) aspectRatioCache[url] else null) }
     var showMenu by remember { mutableStateOf(false) }
     val menuItems = imageMenuItems(url)
 
@@ -587,11 +600,11 @@ private fun InlineImage(
                         },
                     indication = null,
                     onClick = { onImageClick(url) },
-                    onLongClick = { showMenu = true },
+                    onLongClick = if (localImage == null) ({ showMenu = true }) else null,
                 ),
     ) {
         AsyncImage(
-            model = url,
+            model = localImage ?: url,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.FillWidth,
@@ -600,7 +613,8 @@ private fun InlineImage(
                 val h = state.result.image.height
                 if (w > 0 && h > 0) {
                     val ratio = w.toFloat() / h.toFloat()
-                    aspectRatioCache[url] = ratio
+                    // A local image's URL can stand for another image in the next reply.
+                    if (localImage == null) aspectRatioCache[url] = ratio
                     aspectRatio = ratio
                 }
             },
