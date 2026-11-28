@@ -5,7 +5,9 @@ import android.os.Build
 import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.ViewTreeObserver
 import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -82,11 +84,8 @@ fun ReplyBar(
                 IconButton(onClick = onCancel) {
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
                 }
-                if (images?.showsButton == true) {
-                    // The image goes in at the cursor, so it's added in the text field rather than the preview.
-                    AddImageButton(images, onInsert = field::insert, onOpen = { formatting.preview(false) })
-                }
-                MarkdownHelperButton(checked = formatting.barShown, onCheckedChange = formatting::showBar)
+                if (images?.showsButton == true) AddImageButton(images, onInsert = field::insert)
+                MarkdownHelperButton(checked = formatting.barShown, onCheckedChange = { formatting.barShown = it })
                 ReplyBarTextActions(
                     canSaveDraft = replyText.isNotBlank(),
                     hasDraft = hasDraft,
@@ -102,7 +101,6 @@ fun ReplyBar(
             }
             images?.let { ReplyImageTray(it, replyText) }
             ReplyEditor(
-                previewing = formatting.previewing,
                 replyText = replyText,
                 onReplyTextChange = onReplyTextChange,
                 placeholder = placeholder,
@@ -111,8 +109,31 @@ fun ReplyBar(
             )
         }
     }
+    ReplyFormattingDialogs(formatting, field, replyText, images, onSubmit)
+}
+
+// The formatting bar's link dialog and preview, while one is open.
+@Composable
+private fun ReplyFormattingDialogs(
+    formatting: ReplyFormattingState,
+    field: ReplyFieldRef,
+    replyText: String,
+    images: ReplyImageActions?,
+    onSubmit: () -> Unit,
+) {
     formatting.linkTarget?.let { target ->
         ReplyLinkDialog(target, field, onClose = { formatting.linkTarget = null })
+    }
+    if (formatting.previewing) {
+        ReplyPreviewDialog(
+            replyText = replyText,
+            images = images?.images.orEmpty(),
+            onSend = {
+                formatting.closePreview(focusField = false)
+                onSubmit()
+            },
+            onDismiss = { formatting.closePreview(focusField = true) },
+        )
     }
 }
 
@@ -122,10 +143,9 @@ private fun ReplyFormattingBar(
     field: ReplyFieldRef,
 ) {
     FormattingBar(
-        previewing = formatting.previewing,
         onFormat = { markers -> field.edit { it.toggleMarkers(markers) } },
         onLink = { formatting.linkTarget = field.current() },
-        onPreviewChange = formatting::preview,
+        onPreview = formatting::openPreview,
     )
 }
 
@@ -135,29 +155,27 @@ private class ReplyFormattingState(
     private val field: ReplyFieldRef,
 ) {
     var barShown by mutableStateOf(false)
-        private set
     var previewing by mutableStateOf(false)
         private set
 
     // The text and selection the link dialog replaces, while it's open.
     var linkTarget by mutableStateOf<TextWithSelection?>(null)
 
-    fun preview(on: Boolean) {
-        if (on && !previewing) field.leaveForPreview()
-        previewing = on
+    // The preview's dialog covers the field, so the keyboard would only hide the preview.
+    fun openPreview() {
+        field.hideKeyboard()
+        previewing = true
     }
 
-    // Hiding the bar hides its Preview too.
-    fun showBar(show: Boolean) {
-        barShown = show
-        if (!show) preview(false)
+    // Back from the preview, the field gets the focus and the keyboard again, unless the reply was sent.
+    fun closePreview(focusField: Boolean) {
+        previewing = false
+        if (focusField) field.focus()
     }
 }
 
-// The text field, or in its place the preview.
 @Composable
 private fun ReplyEditor(
-    previewing: Boolean,
     replyText: String,
     onReplyTextChange: (String) -> Unit,
     placeholder: String,
@@ -165,30 +183,21 @@ private fun ReplyEditor(
     images: ReplyImageActions?,
 ) {
     val currentImages by rememberUpdatedState(images)
-    if (previewing) {
-        ReplyPreview(
-            replyText = replyText,
-            images = images?.images.orEmpty(),
-            maxHeight = replyFieldMaxHeight(),
-            modifier = Modifier.fillMaxWidth(),
-        )
-    } else {
-        SpellCheckedTextField(
-            value = replyText,
-            onValueChange = onReplyTextChange,
-            placeholder = placeholder,
-            fieldRef = field,
-            acceptsImages = images != null,
-            // Where replies can't have images, a keyboard GIF that comes with a link goes in as the link.
-            onReceiveImage = { uri, mimeType, linkUrl ->
-                currentImages?.attachImage(uri.toString(), mimeType, linkUrl) ?: linkUrl?.let { imageLink(mimeType, it) }
-            },
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = replyFieldMaxHeight()),
-        )
-    }
+    SpellCheckedTextField(
+        value = replyText,
+        onValueChange = onReplyTextChange,
+        placeholder = placeholder,
+        fieldRef = field,
+        acceptsImages = images != null,
+        // Where replies can't have images, a keyboard GIF that comes with a link goes in as the link.
+        onReceiveImage = { uri, mimeType, linkUrl ->
+            currentImages?.attachImage(uri.toString(), mimeType, linkUrl) ?: linkUrl?.let { imageLink(mimeType, it) }
+        },
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(max = replyFieldMaxHeight()),
+    )
 }
 
 // Asks for a link and puts it in place of the target's selection, or puts the focus back in the field.
@@ -214,9 +223,6 @@ private fun ReplyLinkDialog(
 // The reply's text field, for changing its text from outside it.
 private class ReplyFieldRef {
     var editText: ContentReceivingEditText? = null
-
-    // Where the cursor was when the field left for the preview, to put it back when it returns.
-    private var selectionBeforePreview: Pair<Int, Int>? = null
 
     fun insert(text: String) {
         editText?.apply {
@@ -250,29 +256,34 @@ private class ReplyFieldRef {
         focus()
     }
 
+    // Called as a dialog closes, the field's window doesn't have the focus yet, and the keyboard ignores a field
+    // outside the focused window, so it's shown once the window gets the focus back.
     fun focus() {
-        editText?.apply {
-            requestFocus()
-            context.getSystemService(InputMethodManager::class.java)?.showSoftInput(this, 0)
+        val editText = editText ?: return
+        editText.requestFocus()
+        if (editText.hasWindowFocus()) {
+            editText.showKeyboard()
+        } else {
+            editText.viewTreeObserver.addOnWindowFocusChangeListener(
+                object : ViewTreeObserver.OnWindowFocusChangeListener {
+                    override fun onWindowFocusChanged(hasFocus: Boolean) {
+                        if (!hasFocus) return
+                        editText.viewTreeObserver.removeOnWindowFocusChangeListener(this)
+                        editText.showKeyboard()
+                    }
+                },
+            )
         }
     }
 
-    // The field leaves the screen for the preview, and the keyboard goes with it.
-    fun leaveForPreview() {
+    private fun EditText.showKeyboard() {
+        context.getSystemService(InputMethodManager::class.java)?.showSoftInput(this, 0)
+    }
+
+    fun hideKeyboard() {
         editText?.apply {
-            selectionBeforePreview = selectionStart to selectionEnd
             context.getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(windowToken, 0)
         }
-    }
-
-    // A new field, made after the preview, gets the cursor back where it was, and the focus.
-    fun attach(editText: ContentReceivingEditText) {
-        this.editText = editText
-        val selection = selectionBeforePreview ?: return
-        selectionBeforePreview = null
-        val length = editText.text.length
-        editText.setSelection(selection.first.coerceIn(0, length), selection.second.coerceIn(0, length))
-        editText.post { focus() }
     }
 }
 
@@ -357,7 +368,7 @@ private fun SpellCheckedTextField(
                     minimumHeight = OutlinedTextFieldDefaults.MinHeight.roundToPx()
                 }
                 setText(value)
-                fieldRef.attach(this)
+                fieldRef.editText = this
                 doAfterTextChanged { currentOnValueChange(it?.toString().orEmpty()) }
                 setOnFocusChangeListener { _, hasFocus -> isFocused = hasFocus }
             }
